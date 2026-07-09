@@ -1,11 +1,13 @@
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 MarketType = Literal["primary", "secondary"]
 ReportAudience = Literal["buyer", "realtor", "investor"]
 ReportFormat = Literal["json", "html"]
+AlertChannel = Literal["email", "telegram"]
+AlertFrequency = Literal["instant", "daily", "weekly"]
 
 
 class PriceHistoryPoint(BaseModel):
@@ -159,3 +161,65 @@ class GeneratedReportListItem(BaseModel):
 class GeneratedReport(GeneratedReportListItem):
     content: str
     report_metadata: dict
+
+
+class FavoriteCreate(BaseModel):
+    listing_id: str
+    note: str | None = None
+
+
+class FavoriteUpdate(BaseModel):
+    note: str | None = None
+
+
+class Favorite(BaseModel):
+    id: str
+    owner_id: str
+    listing_id: str
+    note: str | None = None
+    created_at: datetime
+    listing: Listing | None = None
+
+
+class AlertFilters(BaseModel):
+    city: str | None = None
+    district: str | None = None
+    rooms: int | None = Field(default=None, ge=1, le=10)
+    max_price: int | None = Field(default=None, gt=0)
+    min_area_m2: float | None = Field(default=None, gt=0)
+    min_investment_score: int | None = Field(default=None, ge=0, le=100)
+    max_risk_score: int | None = Field(default=None, ge=0, le=100)
+
+
+class AlertCreate(BaseModel):
+    name: str
+    filters: AlertFilters = Field(default_factory=AlertFilters)
+    channel: AlertChannel = "email"
+    frequency: AlertFrequency = "daily"
+
+
+class AlertUpdate(BaseModel):
+    name: str | None = None
+    filters: AlertFilters | None = None
+    channel: AlertChannel | None = None
+    frequency: AlertFrequency | None = None
+    is_active: bool | None = None
+
+
+class Alert(BaseModel):
+    id: str
+    owner_id: str
+    name: str
+    filters: AlertFilters
+    channel: AlertChannel
+    frequency: AlertFrequency
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class AlertPreview(BaseModel):
+    alert: Alert
+    matches: list[ListingAnalysis]
+    total_matches: int
+    applied_filters: dict[str, Any]

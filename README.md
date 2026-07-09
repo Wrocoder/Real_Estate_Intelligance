@@ -120,6 +120,35 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports
 Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/content
 ```
 
+## Избранное и уведомления
+
+До подключения auth endpoints используют временный `owner_id` query parameter.
+По умолчанию используется `demo-user`.
+
+Добавить объект в избранное:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/favorites?owner_id=buyer-1 `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"wr-001","note":"Проверить транспортные планы"}'
+```
+
+Создать saved search alert:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts?owner_id=buyer-1 `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"name":"Fabryczna до 700k","filters":{"city":"Wrocław","district":"Fabryczna","max_price":700000,"min_investment_score":40}}'
+```
+
+Посмотреть, какие объекты сейчас подходят под alert:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/preview?owner_id=buyer-1
+```
+
 ## Git workflow
 
 Перед началом работы:

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, Response
 
 from domarion.report_store.base import ReportStore
@@ -8,9 +8,16 @@ from domarion.report_store.factory import get_report_store
 from domarion.repositories.base import RealEstateRepository
 from domarion.repositories.factory import get_repository
 from domarion.schemas import (
+    Alert,
+    AlertCreate,
+    AlertPreview,
+    AlertUpdate,
     AreaStatistics,
     CompareRequest,
     CompareResponse,
+    Favorite,
+    FavoriteCreate,
+    FavoriteUpdate,
     GeneratedReport,
     GeneratedReportListItem,
     GenerateReportRequest,
@@ -20,16 +27,21 @@ from domarion.schemas import (
     ReportAudience,
     ReportRequest,
 )
+from domarion.services.alerts import build_alert_preview
 from domarion.services.report_generation import (
     generate_and_store_object_report,
     generate_object_report_html,
 )
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
+from domarion.user_store.base import UserStore
+from domarion.user_store.factory import get_user_store
 
 router = APIRouter(prefix="/api/v1")
 RepositoryDep = Annotated[RealEstateRepository, Depends(get_repository)]
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
+UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
+OwnerId = Annotated[str, Query(description="Temporary owner id until auth is implemented.")]
 
 
 @router.get("/listings", response_model=list[Listing])
@@ -171,3 +183,140 @@ def get_generated_report_content(report_id: str, report_store: ReportStoreDep) -
         media_type=report.content_type,
         headers={"Content-Disposition": f'inline; filename="domarion-report-{report_id}"'},
     )
+
+
+@router.post("/favorites", response_model=Favorite, status_code=status.HTTP_201_CREATED)
+def add_favorite(
+    payload: FavoriteCreate,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Favorite:
+    listing = repository.get_listing(payload.listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    favorite = user_store.add_favorite(owner_id, payload)
+    return favorite.model_copy(update={"listing": listing})
+
+
+@router.get("/favorites", response_model=list[Favorite])
+def list_favorites(
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> list[Favorite]:
+    favorites = user_store.list_favorites(owner_id)
+    return [_attach_listing(repository, favorite) for favorite in favorites]
+
+
+@router.get("/favorites/{favorite_id}", response_model=Favorite)
+def get_favorite(
+    favorite_id: str,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Favorite:
+    favorite = user_store.get_favorite(owner_id, favorite_id)
+    if favorite is None:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return _attach_listing(repository, favorite)
+
+
+@router.patch("/favorites/{favorite_id}", response_model=Favorite)
+def update_favorite(
+    favorite_id: str,
+    payload: FavoriteUpdate,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Favorite:
+    favorite = user_store.update_favorite(owner_id, favorite_id, payload)
+    if favorite is None:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return _attach_listing(repository, favorite)
+
+
+@router.delete("/favorites/{favorite_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_favorite(
+    favorite_id: str,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Response:
+    deleted = user_store.remove_favorite(owner_id, favorite_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Favorite not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post("/alerts", response_model=Alert, status_code=status.HTTP_201_CREATED)
+def create_alert(
+    payload: AlertCreate,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Alert:
+    return user_store.create_alert(owner_id, payload)
+
+
+@router.get("/alerts", response_model=list[Alert])
+def list_alerts(
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> list[Alert]:
+    return user_store.list_alerts(owner_id)
+
+
+@router.get("/alerts/{alert_id}", response_model=Alert)
+def get_alert(
+    alert_id: str,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Alert:
+    alert = user_store.get_alert(owner_id, alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@router.patch("/alerts/{alert_id}", response_model=Alert)
+def update_alert(
+    alert_id: str,
+    payload: AlertUpdate,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Alert:
+    alert = user_store.update_alert(owner_id, alert_id, payload)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return alert
+
+
+@router.delete("/alerts/{alert_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_alert(
+    alert_id: str,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+) -> Response:
+    deleted = user_store.delete_alert(owner_id, alert_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get("/alerts/{alert_id}/preview", response_model=AlertPreview)
+def preview_alert(
+    alert_id: str,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    owner_id: OwnerId = "demo-user",
+    limit: Annotated[int, Query(ge=1, le=50)] = 10,
+) -> AlertPreview:
+    alert = user_store.get_alert(owner_id, alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return build_alert_preview(repository, alert, limit=limit)
+
+
+def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Favorite:
+    listing = repository.get_listing(favorite.listing_id)
+    return favorite.model_copy(update={"listing": listing})

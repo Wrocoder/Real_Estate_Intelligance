@@ -49,7 +49,7 @@
 - [x] Добавить demo seed command.
 - [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
 - [ ] Добавить geometry columns и spatial indexes.
-- [ ] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
+- [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
 - [ ] Добавить миграционную проверку в CI.
 
 ## 4. Listings и Search API
@@ -65,7 +65,7 @@
 - [ ] Добавить сортировку.
 - [ ] Добавить фильтры по score, price/m2, days_on_market.
 - [ ] Добавить OpenSearch или PostgreSQL full-text search.
-- [ ] Добавить saved searches.
+- [x] Добавить saved searches.
 
 ## 5. Ingestion Pipeline
 
@@ -125,13 +125,13 @@
 
 ## 9. Favorites и Alerts
 
-- [ ] Добавить user_favorites table.
-- [ ] Добавить API избранного.
-- [ ] Добавить user_alerts table.
-- [ ] Добавить saved search alerts.
+- [x] Добавить user_favorites table.
+- [x] Добавить API избранного.
+- [x] Добавить user_alerts table.
+- [x] Добавить saved search alerts.
 - [ ] Добавить daily email alerts.
 - [ ] Добавить Telegram alerts.
-- [ ] Добавить hidden gems alert v1.
+- [x] Добавить hidden gems alert v1.
 
 ## 10. Frontend MVP
 
@@ -216,7 +216,7 @@
 
 - [x] Commit 1: product docs, backend foundation, DB, ingestion, HTML reports.
 - [x] Commit 2: report persistence and report history API.
-- [ ] Commit 3: favorites and alerts foundation.
+- [x] Commit 3: favorites and alerts foundation.
 - [ ] Commit 4: frontend MVP shell and listing pages.
 - [ ] Commit 5: map MVP.
 - [ ] Commit 6: auth and subscriptions foundation.
@@ -225,11 +225,13 @@
 
 ## Current Sprint
 
-Цель: превратить текущий backend prototype в MVP backend, который хранит отчеты и поддерживает первые пользовательские сценарии.
+Цель: добавить пользовательские действия MVP: избранное и saved search alerts.
 
-- [ ] Проверить Docker Desktop/PostGIS миграции на живой БД.
-- [x] Добавить `generated_reports` migration/model.
-- [x] Добавить report persistence service.
-- [x] Добавить `/api/v1/reports` list/detail endpoints.
-- [x] Добавить tests для report persistence.
-- [x] Сделать Commit 2 и push.
+- [x] Добавить `user_favorites` migration/model.
+- [x] Добавить `user_alerts` migration/model.
+- [x] Добавить memory/postgres user store.
+- [x] Добавить favorites CRUD API.
+- [x] Добавить alerts CRUD API.
+- [x] Добавить alert preview endpoint.
+- [x] Добавить tests для favorites/alerts.
+- [x] Сделать Commit 3 и push.
