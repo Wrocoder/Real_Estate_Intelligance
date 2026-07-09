@@ -1,10 +1,11 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 MarketType = Literal["primary", "secondary"]
 ReportAudience = Literal["buyer", "realtor", "investor"]
+ReportFormat = Literal["json", "html"]
 
 
 class PriceHistoryPoint(BaseModel):
@@ -116,6 +117,10 @@ class ReportRequest(BaseModel):
     audience: ReportAudience = "buyer"
 
 
+class GenerateReportRequest(ReportRequest):
+    report_format: ReportFormat = "html"
+
+
 class ReportSection(BaseModel):
     title: str
     items: list[str]
@@ -128,3 +133,29 @@ class ObjectReport(BaseModel):
     sections: list[ReportSection]
     disclaimer: str
 
+
+class GeneratedReportCreate(BaseModel):
+    listing_id: str
+    audience: ReportAudience
+    report_format: ReportFormat
+    content_type: str
+    title: str
+    summary: str
+    content: str
+    report_metadata: dict = Field(default_factory=dict)
+
+
+class GeneratedReportListItem(BaseModel):
+    id: str
+    listing_id: str
+    audience: ReportAudience
+    report_format: ReportFormat
+    content_type: str
+    title: str
+    summary: str
+    created_at: datetime
+
+
+class GeneratedReport(GeneratedReportListItem):
+    content: str
+    report_metadata: dict

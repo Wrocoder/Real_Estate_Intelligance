@@ -105,8 +105,8 @@
 - [x] Добавить CLI генерацию HTML.
 - [x] Добавить API endpoint HTML-отчета.
 - [x] Добавить XSS escaping для HTML.
-- [ ] Добавить `generated_reports` в БД.
-- [ ] Добавить `/api/v1/reports` history endpoints.
+- [x] Добавить `generated_reports` в БД.
+- [x] Добавить `/api/v1/reports` history endpoints.
 - [ ] Добавить report templates для buyer/realtor/investor.
 - [ ] Добавить branded realtor report fields.
 - [ ] Добавить native PDF generation.
@@ -215,7 +215,7 @@
 ## 17. Git Commit Milestones
 
 - [x] Commit 1: product docs, backend foundation, DB, ingestion, HTML reports.
-- [ ] Commit 2: report persistence and report history API.
+- [x] Commit 2: report persistence and report history API.
 - [ ] Commit 3: favorites and alerts foundation.
 - [ ] Commit 4: frontend MVP shell and listing pages.
 - [ ] Commit 5: map MVP.
@@ -228,8 +228,8 @@
 Цель: превратить текущий backend prototype в MVP backend, который хранит отчеты и поддерживает первые пользовательские сценарии.
 
 - [ ] Проверить Docker Desktop/PostGIS миграции на живой БД.
-- [ ] Добавить `generated_reports` migration/model.
-- [ ] Добавить report persistence service.
-- [ ] Добавить `/api/v1/reports` list/detail endpoints.
-- [ ] Добавить tests для report persistence.
-- [ ] Сделать Commit 2 и push.
+- [x] Добавить `generated_reports` migration/model.
+- [x] Добавить report persistence service.
+- [x] Добавить `/api/v1/reports` list/detail endpoints.
+- [x] Добавить tests для report persistence.
+- [x] Сделать Commit 2 и push.

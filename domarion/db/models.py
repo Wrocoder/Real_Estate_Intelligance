@@ -147,3 +147,18 @@ class AreaStatistic(Base):
     price_change_90d_pct: Mapped[float] = mapped_column(Float)
     supply_change_90d_pct: Mapped[float] = mapped_column(Float)
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class GeneratedReport(Base):
+    __tablename__ = "generated_reports"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    listing_id: Mapped[str] = mapped_column(String(120), index=True)
+    audience: Mapped[str] = mapped_column(String(40), index=True)
+    report_format: Mapped[str] = mapped_column(String(20), index=True)
+    content_type: Mapped[str] = mapped_column(String(80))
+    title: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    report_metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)

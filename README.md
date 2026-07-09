@@ -97,6 +97,29 @@ Start-Process http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 HTML рассчитан на печать в PDF через браузер. Это первый отчетный артефакт MVP;
 нативный PDF-рендеринг лучше добавлять отдельным шагом после выбора движка.
 
+## История сгенерированных отчетов
+
+Сгенерировать и сохранить отчет через API:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/object/generate `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"wr-001","audience":"buyer","report_format":"html"}'
+```
+
+Получить список сохраненных отчетов:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports
+```
+
+Получить HTML/JSON content сохраненного отчета:
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/content
+```
+
 ## Git workflow
 
 Перед началом работы:
