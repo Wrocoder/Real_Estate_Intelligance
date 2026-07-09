@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { BarChart3, Bell, FileText, Search } from "lucide-react";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 import "./globals.css";
 

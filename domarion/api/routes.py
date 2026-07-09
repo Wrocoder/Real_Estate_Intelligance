@@ -23,11 +23,13 @@ from domarion.schemas import (
     GenerateReportRequest,
     Listing,
     ListingAnalysis,
+    MapFeatureCollection,
     ObjectReport,
     ReportAudience,
     ReportRequest,
 )
 from domarion.services.alerts import build_alert_preview
+from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.report_generation import (
     generate_and_store_object_report,
     generate_object_report_html,
@@ -65,6 +67,44 @@ def list_listings(
 @router.get("/areas", response_model=list[AreaStatistics])
 def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
     return repository.list_area_statistics()
+
+
+@router.get("/map/features", response_model=MapFeatureCollection)
+def get_map_features(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+    rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
+    max_price: Annotated[int | None, Query(gt=0)] = None,
+    min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    bbox: Annotated[
+        str | None,
+        Query(description="Optional map viewport: min_lon,min_lat,max_lon,max_lat"),
+    ] = None,
+    lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
+    lon: Annotated[float | None, Query(ge=-180, le=180)] = None,
+    radius_km: Annotated[float | None, Query(gt=0, le=100)] = None,
+    min_investment_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    max_risk_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+) -> MapFeatureCollection:
+    try:
+        parsed_bbox = parse_bbox(bbox)
+        return build_map_feature_collection(
+            repository,
+            city=city,
+            district=district,
+            rooms=rooms,
+            max_price=max_price,
+            min_area_m2=min_area_m2,
+            bbox=parsed_bbox,
+            lat=lat,
+            lon=lon,
+            radius_km=radius_km,
+            min_investment_score=min_investment_score,
+            max_risk_score=max_risk_score,
+        )
+    except MapQueryError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/listings/{listing_id}", response_model=Listing)

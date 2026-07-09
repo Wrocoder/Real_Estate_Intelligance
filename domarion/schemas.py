@@ -68,6 +68,40 @@ class AreaStatistics(BaseModel):
     supply_change_90d_pct: float
 
 
+class PlannedInvestment(BaseModel):
+    id: str
+    name: str
+    investment_type: str
+    status: str
+    city: str
+    district: str | None = None
+    expected_year: int | None = None
+    lat: float
+    lon: float
+    source_url: str | None = None
+    confidence_score: int = Field(ge=0, le=100)
+    notes: str | None = None
+
+
+class MapPointGeometry(BaseModel):
+    type: Literal["Point"] = "Point"
+    coordinates: tuple[float, float]
+
+
+class MapFeature(BaseModel):
+    type: Literal["Feature"] = "Feature"
+    id: str
+    geometry: MapPointGeometry
+    properties: dict[str, Any]
+
+
+class MapFeatureCollection(BaseModel):
+    type: Literal["FeatureCollection"] = "FeatureCollection"
+    features: list[MapFeature]
+    bbox: tuple[float, float, float, float] | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class ScoreBreakdown(BaseModel):
     price_position: int
     area_trend: int

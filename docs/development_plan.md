@@ -150,14 +150,14 @@
 
 ## 11. Map и GIS
 
-- [ ] Подключить MapLibre.
-- [ ] Отобразить listings на карте.
+- [x] Подключить MapLibre.
+- [x] Отобразить listings на карте.
 - [ ] Добавить clusters.
-- [ ] Добавить infrastructure layers.
-- [ ] Добавить planned investments layer.
+- [x] Добавить infrastructure layers.
+- [x] Добавить planned investments layer.
 - [ ] Добавить PostGIS distance calculations.
-- [ ] Добавить filters by radius.
-- [ ] Добавить risk/growth map overlays.
+- [x] Добавить filters by radius.
+- [x] Добавить risk/growth map overlays.
 
 ## 12. Admin Panel
 
@@ -219,20 +219,20 @@
 - [x] Commit 2: report persistence and report history API.
 - [x] Commit 3: favorites and alerts foundation.
 - [x] Commit 4: frontend MVP shell and listing pages.
-- [ ] Commit 5: map MVP.
+- [x] Commit 5: map MVP.
 - [ ] Commit 6: auth and subscriptions foundation.
 - [ ] Commit 7: paid report flow.
 - [ ] Commit 8: deployment MVP.
 
 ## Current Sprint
 
-Цель: заменить MVP-карту-схему на полноценный MapLibre/PostGIS map MVP.
+Цель: добавить auth/subscriptions foundation для Free, Buyer Pro и Realtor.
 
-- [ ] Подключить MapLibre к frontend.
-- [ ] Сделать endpoint с listings geojson/features.
-- [ ] Отобразить markers и price labels.
-- [ ] Добавить bbox/radius filters.
-- [ ] Добавить первый слой planned investments из demo/open data.
-- [ ] Добавить risk/growth overlays v1.
-- [ ] Добавить tests для geo endpoint.
-- [ ] Сделать Commit 5 и push.
+- [ ] Выбрать MVP auth mode: custom JWT или Auth.js/Clerk.
+- [ ] Добавить `users` model/schema/migration.
+- [ ] Добавить роли: buyer, realtor, agency_admin, admin.
+- [ ] Добавить `subscriptions` model/schema/migration.
+- [ ] Добавить plan limits для Free/Buyer Pro/Realtor.
+- [ ] Добавить middleware/dependency для текущего пользователя.
+- [ ] Заменить временный `owner_id` на user identity fallback.
+- [ ] Сделать Commit 6 и push.

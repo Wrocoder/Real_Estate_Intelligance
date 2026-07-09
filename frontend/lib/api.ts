@@ -134,8 +134,63 @@ export type AlertPreview = {
   applied_filters: Record<string, unknown>;
 };
 
+export type MapFeatureType = "listing" | "planned_investment";
+
+export type MapFeatureProperties = {
+  feature_type: MapFeatureType;
+  [key: string]: string | number | boolean | null;
+};
+
+export type MapFeature = {
+  type: "Feature";
+  id: string;
+  geometry: {
+    type: "Point";
+    coordinates: [number, number];
+  };
+  properties: MapFeatureProperties;
+};
+
+export type MapFeatureCollection = {
+  type: "FeatureCollection";
+  features: MapFeature[];
+  bbox: [number, number, number, number] | null;
+  metadata: {
+    listing_count?: number;
+    planned_investment_count?: number;
+    skipped_listings?: number;
+    filters?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+};
+
+export type MapQuery = {
+  city?: string;
+  district?: string;
+  rooms?: number;
+  max_price?: number;
+  min_area_m2?: number;
+  bbox?: string;
+  lat?: number;
+  lon?: number;
+  radius_km?: number;
+  min_investment_score?: number;
+  max_risk_score?: number;
+};
+
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? "demo-user";
+
+function toQueryString(params: MapQuery) {
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      searchParams.set(key, String(value));
+    }
+  });
+  const query = searchParams.toString();
+  return query ? `?${query}` : "";
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -158,6 +213,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   listListings: () => request<Listing[]>("/api/v1/listings"),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  getMapFeatures: (params: MapQuery = {}) =>
+    request<MapFeatureCollection>(`/api/v1/map/features${toQueryString(params)}`),
   getListing: (id: string) => request<Listing>(`/api/v1/listings/${id}`),
   getAnalysis: (id: string) => request<ListingAnalysis>(`/api/v1/listings/${id}/analysis`),
   addFavorite: (listingId: string, note?: string) =>

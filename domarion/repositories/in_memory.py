@@ -1,6 +1,6 @@
 from datetime import date
 
-from domarion.schemas import AreaStatistics, Listing, PriceHistoryPoint
+from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
 
 
 class InMemoryRealEstateRepository:
@@ -163,6 +163,65 @@ class InMemoryRealEstateRepository:
             ),
         }
 
+        self._planned_investments = {
+            "pi-001": PlannedInvestment(
+                id="pi-001",
+                name="Demo: Nowy Dwór tram corridor",
+                investment_type="tram",
+                status="planned",
+                city="Wrocław",
+                district="Fabryczna",
+                expected_year=2027,
+                lat=51.1125,
+                lon=16.9671,
+                source_url="https://example.com/planned-investments/nowy-dwor-tram",
+                confidence_score=72,
+                notes="Demo layer for MVP validation; replace with verified municipal data.",
+            ),
+            "pi-002": PlannedInvestment(
+                id="pi-002",
+                name="Demo: Jagodno road and bus priority upgrade",
+                investment_type="road_transport",
+                status="in_consultation",
+                city="Wrocław",
+                district="Krzyki",
+                expected_year=2028,
+                lat=51.0574,
+                lon=17.0619,
+                source_url="https://example.com/planned-investments/jagodno-transport",
+                confidence_score=66,
+                notes="Demo layer for MVP validation; replace with verified municipal data.",
+            ),
+            "pi-003": PlannedInvestment(
+                id="pi-003",
+                name="Demo: Psie Pole school and public services hub",
+                investment_type="school",
+                status="planned",
+                city="Wrocław",
+                district="Psie Pole",
+                expected_year=2029,
+                lat=51.1538,
+                lon=17.0649,
+                source_url="https://example.com/planned-investments/psie-pole-school",
+                confidence_score=61,
+                notes="Demo layer for MVP validation; replace with verified municipal data.",
+            ),
+            "pi-004": PlannedInvestment(
+                id="pi-004",
+                name="Demo: pocket park and greenery renewal",
+                investment_type="park",
+                status="planned",
+                city="Wrocław",
+                district="Psie Pole",
+                expected_year=2027,
+                lat=51.1509,
+                lon=17.0704,
+                source_url="https://example.com/planned-investments/greenery-renewal",
+                confidence_score=58,
+                notes="Demo layer for MVP validation; replace with verified municipal data.",
+            ),
+        }
+
         self._history = {
             "wr-001": [
                 PriceHistoryPoint(observed_at=date(2026, 4, 12), price=725000, price_per_m2=12247),
@@ -212,6 +271,24 @@ class InMemoryRealEstateRepository:
 
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
         return self._areas.get(area_id)
+
+    def list_planned_investments(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+    ) -> list[PlannedInvestment]:
+        investments = list(self._planned_investments.values())
+
+        if city:
+            investments = [item for item in investments if item.city.lower() == city.lower()]
+        if district:
+            investments = [
+                item
+                for item in investments
+                if item.district is not None and item.district.lower() == district.lower()
+            ]
+
+        return investments
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         return self._history.get(listing_id, [])

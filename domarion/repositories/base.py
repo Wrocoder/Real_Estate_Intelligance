@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from domarion.schemas import AreaStatistics, Listing, PriceHistoryPoint
+from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
 
 
 class RealEstateRepository(Protocol):
@@ -23,9 +23,15 @@ class RealEstateRepository(Protocol):
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
         raise NotImplementedError
 
+    def list_planned_investments(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+    ) -> list[PlannedInvestment]:
+        raise NotImplementedError
+
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         raise NotImplementedError
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
         raise NotImplementedError
-

@@ -11,9 +11,12 @@ from domarion.db.models import (
     Property,
     PropertySource,
 )
+from domarion.db.models import (
+    PlannedInvestment as PlannedInvestmentRow,
+)
 from domarion.db.session import SessionLocal
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
-from domarion.schemas import Listing, PriceHistoryPoint
+from domarion.schemas import Listing, PlannedInvestment, PriceHistoryPoint
 
 
 def seed_demo_data() -> dict[str, int]:
@@ -27,6 +30,7 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
 
     areas_seeded = 0
     listings_seeded = 0
+    planned_investments_seeded = 0
     snapshots_seeded = 0
 
     for area in demo_repository.list_area_statistics():
@@ -57,10 +61,14 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
             session.add(_build_snapshot(property_source, listing, history_point))
             snapshots_seeded += 1
 
+    for investment in demo_repository.list_planned_investments():
+        planned_investments_seeded += int(_upsert_planned_investment(session, investment))
+
     session.commit()
     return {
         "areas_seeded": areas_seeded,
         "listings_seeded": listings_seeded,
+        "planned_investments_seeded": planned_investments_seeded,
         "snapshots_seeded": snapshots_seeded,
     }
 
@@ -178,3 +186,26 @@ def _build_snapshot(
         normalized_payload=payload,
     )
 
+
+def _upsert_planned_investment(session: Session, investment: PlannedInvestment) -> bool:
+    row = session.scalar(
+        select(PlannedInvestmentRow).where(
+            PlannedInvestmentRow.name == investment.name,
+            PlannedInvestmentRow.city == investment.city,
+        )
+    )
+    created = row is None
+    if row is None:
+        row = PlannedInvestmentRow(name=investment.name, city=investment.city)
+        session.add(row)
+
+    row.investment_type = investment.investment_type
+    row.status = investment.status
+    row.district = investment.district
+    row.expected_year = investment.expected_year
+    row.lat = Decimal(str(investment.lat))
+    row.lon = Decimal(str(investment.lon))
+    row.source_url = investment.source_url
+    row.confidence_score = investment.confidence_score
+    row.notes = investment.notes
+    return created

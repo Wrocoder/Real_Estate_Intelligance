@@ -12,6 +12,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены API endpoints, Dockerfile, `compose.yaml` с PostGIS и Redis.
 - Подготовлены тесты для API и скоринга.
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
+- Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -27,6 +28,7 @@ API будет доступен:
 - http://127.0.0.1:8000/health
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 
 ## Frontend локально
@@ -58,7 +60,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 
 Основные страницы:
 
-- http://127.0.0.1:3000/ — подбор объектов, фильтры, карта-схема, избранное, быстрые отчеты.
+- http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
@@ -205,8 +207,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Подключить MapLibre и реальные GIS-слои вместо MVP-карты-схемы.
-2. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
-3. Добавить auth/access limits для Free/Buyer Pro/Realtor.
-4. Подготовить paid report flow для one-time object reports.
+1. Добавить auth/access limits для Free/Buyer Pro/Realtor.
+2. Подготовить paid report flow для one-time object reports.
+3. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
+4. Подключить реальные open-data слои planned investments вместо demo layer.
 5. Добавить GitHub Actions CI для backend и frontend checks.

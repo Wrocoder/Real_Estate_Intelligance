@@ -6,7 +6,13 @@ import { Bell, FileText, Heart, RefreshCw, Search } from "lucide-react";
 import { ListingCard } from "@/components/ListingCard";
 import { PropertyMap } from "@/components/PropertyMap";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, type AreaStatistics, type ListingAnalysis } from "@/lib/api";
+import {
+  api,
+  type AreaStatistics,
+  type ListingAnalysis,
+  type MapFeatureCollection,
+  type MapQuery,
+} from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
 
 type Filters = {
@@ -14,18 +20,25 @@ type Filters = {
   rooms: string;
   maxPrice: string;
   minInvestment: string;
+  radiusKm: string;
 };
+
+const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
 
 export default function ExplorerPage() {
   const [analyses, setAnalyses] = useState<ListingAnalysis[]>([]);
   const [areas, setAreas] = useState<AreaStatistics[]>([]);
+  const [mapData, setMapData] = useState<MapFeatureCollection | null>(null);
   const [filters, setFilters] = useState<Filters>({
     district: "",
     rooms: "",
     maxPrice: "",
     minInvestment: "",
+    radiusKm: "",
   });
   const [status, setStatus] = useState("Загрузка аналитики...");
+  const [mapStatus, setMapStatus] = useState("Загрузка GIS-слоев...");
+  const [mapError, setMapError] = useState("");
   const [error, setError] = useState("");
 
   async function load() {
@@ -50,12 +63,61 @@ export default function ExplorerPage() {
     void load();
   }, []);
 
+  const mapQuery = useMemo<MapQuery>(() => {
+    const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
+    return {
+      city: "Wrocław",
+      district: filters.district || undefined,
+      rooms: filters.rooms ? Number(filters.rooms) : undefined,
+      max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+      min_investment_score: filters.minInvestment ? Number(filters.minInvestment) : undefined,
+      lat: radiusKm ? WROCLAW_CENTER.lat : undefined,
+      lon: radiusKm ? WROCLAW_CENTER.lon : undefined,
+      radius_km: radiusKm,
+    };
+  }, [filters]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMap() {
+      setMapError("");
+      setMapStatus("Обновление GIS-слоев...");
+      try {
+        const data = await api.getMapFeatures(mapQuery);
+        if (cancelled) return;
+        setMapData(data);
+        setMapStatus(
+          `${data.metadata.listing_count ?? 0} объектов · ${
+            data.metadata.planned_investment_count ?? 0
+          } planned investments`,
+        );
+      } catch (caught) {
+        if (cancelled) return;
+        setMapError(caught instanceof Error ? caught.message : "unknown error");
+        setMapStatus("GIS API недоступен");
+      }
+    }
+
+    void loadMap();
+    return () => {
+      cancelled = true;
+    };
+  }, [mapQuery]);
+
   const filtered = useMemo(() => {
     return analyses.filter((item) => {
       const listing = item.listing;
       if (filters.district && listing.district !== filters.district) return false;
       if (filters.rooms && listing.rooms !== Number(filters.rooms)) return false;
       if (filters.maxPrice && listing.price > Number(filters.maxPrice)) return false;
+      if (
+        filters.radiusKm &&
+        distanceKm(WROCLAW_CENTER.lat, WROCLAW_CENTER.lon, listing.lat, listing.lon) >
+          Number(filters.radiusKm)
+      ) {
+        return false;
+      }
       if (
         filters.minInvestment &&
         item.scores.investment_score < Number(filters.minInvestment)
@@ -184,10 +246,32 @@ export default function ExplorerPage() {
               onChange={(event) => setFilters({ ...filters, minInvestment: event.target.value })}
             />
           </label>
+          <label className="field">
+            <span>Радиус от центра</span>
+            <select
+              className="select"
+              value={filters.radiusKm}
+              onChange={(event) => setFilters({ ...filters, radiusKm: event.target.value })}
+            >
+              <option value="">Весь Wrocław MVP</option>
+              <option value="5">5 км</option>
+              <option value="8">8 км</option>
+              <option value="10">10 км</option>
+              <option value="15">15 км</option>
+            </select>
+          </label>
           <button
             className="button"
             type="button"
-            onClick={() => setFilters({ district: "", rooms: "", maxPrice: "", minInvestment: "" })}
+            onClick={() =>
+              setFilters({
+                district: "",
+                rooms: "",
+                maxPrice: "",
+                minInvestment: "",
+                radiusKm: "",
+              })
+            }
           >
             <Search size={16} /> Сброс
           </button>
@@ -217,10 +301,14 @@ export default function ExplorerPage() {
 
           <aside className="panel">
             <div className="panel-header">
-              <h2>Карта и действия</h2>
-              <span className="muted">{filtered.length} pins</span>
+              <h2>Карта и GIS-слои</h2>
+              <span className="muted">{mapStatus}</span>
             </div>
-            <PropertyMap analyses={filtered} />
+            <PropertyMap
+              collection={mapData}
+              isLoading={!mapData && !mapError}
+              error={mapError}
+            />
             <div className="panel-body">
               <div className="toolbar">
                 <a className="button" href="/reports">
@@ -241,3 +329,16 @@ export default function ExplorerPage() {
   );
 }
 
+function distanceKm(latA: number, lonA: number, latB: number, lonB: number) {
+  const radius = 6371;
+  const deltaLat = toRadians(latB - latA);
+  const deltaLon = toRadians(lonB - lonA);
+  const value =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(deltaLon / 2) ** 2;
+  return 2 * radius * Math.asin(Math.sqrt(value));
+}
+
+function toRadians(value: number) {
+  return (value * Math.PI) / 180;
+}

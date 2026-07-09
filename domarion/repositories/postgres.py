@@ -1,8 +1,14 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domarion.db.models import AreaStatistic, ListingSnapshot
-from domarion.schemas import AreaStatistics, Listing, PriceHistoryPoint
+from domarion.db.models import (
+    AreaStatistic,
+    ListingSnapshot,
+)
+from domarion.db.models import (
+    PlannedInvestment as PlannedInvestmentRow,
+)
+from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
 
 
 class PostgresRealEstateRepository:
@@ -47,6 +53,23 @@ class PostgresRealEstateRepository:
         if row is None:
             return None
         return self._area_to_schema(row)
+
+    def list_planned_investments(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+    ) -> list[PlannedInvestment]:
+        statement = select(PlannedInvestmentRow).where(
+            PlannedInvestmentRow.lat.is_not(None),
+            PlannedInvestmentRow.lon.is_not(None),
+        )
+        if city:
+            statement = statement.where(PlannedInvestmentRow.city.ilike(city))
+        if district:
+            statement = statement.where(PlannedInvestmentRow.district.ilike(district))
+
+        rows = self.session.scalars(statement.order_by(PlannedInvestmentRow.name)).all()
+        return [self._planned_investment_to_schema(row) for row in rows]
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         snapshots = self.session.scalars(
@@ -121,3 +144,22 @@ class PostgresRealEstateRepository:
             supply_change_90d_pct=row.supply_change_90d_pct,
         )
 
+    @staticmethod
+    def _planned_investment_to_schema(row: PlannedInvestmentRow) -> PlannedInvestment:
+        if row.lat is None or row.lon is None:
+            raise ValueError(f"Planned investment {row.id} has no coordinates")
+
+        return PlannedInvestment(
+            id=f"planned-{row.id}",
+            name=row.name,
+            investment_type=row.investment_type,
+            status=row.status,
+            city=row.city,
+            district=row.district,
+            expected_year=row.expected_year,
+            lat=float(row.lat),
+            lon=float(row.lon),
+            source_url=row.source_url,
+            confidence_score=row.confidence_score,
+            notes=row.notes,
+        )
