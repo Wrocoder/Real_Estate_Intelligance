@@ -135,14 +135,15 @@
 
 ## 10. Frontend MVP
 
-- [ ] Создать Next.js app.
-- [ ] Настроить TypeScript, Tailwind, API client.
-- [ ] Сделать layout и навигацию.
-- [ ] Сделать search page.
-- [ ] Сделать listing card.
-- [ ] Сделать listing detail page.
+- [x] Создать Next.js app.
+- [x] Настроить TypeScript, API client и CSS design system.
+- [x] Сделать layout и навигацию.
+- [x] Сделать search page.
+- [x] Сделать listing card.
+- [x] Сделать listing detail page.
 - [ ] Сделать compare page.
-- [ ] Сделать HTML report preview page.
+- [x] Сделать reports generation/history page.
+- [x] Сделать alerts page.
 - [ ] Сделать pricing page.
 - [ ] Сделать account page.
 - [ ] Подключить auth.
@@ -217,7 +218,7 @@
 - [x] Commit 1: product docs, backend foundation, DB, ingestion, HTML reports.
 - [x] Commit 2: report persistence and report history API.
 - [x] Commit 3: favorites and alerts foundation.
-- [ ] Commit 4: frontend MVP shell and listing pages.
+- [x] Commit 4: frontend MVP shell and listing pages.
 - [ ] Commit 5: map MVP.
 - [ ] Commit 6: auth and subscriptions foundation.
 - [ ] Commit 7: paid report flow.
@@ -225,13 +226,13 @@
 
 ## Current Sprint
 
-Цель: добавить пользовательские действия MVP: избранное и saved search alerts.
+Цель: заменить MVP-карту-схему на полноценный MapLibre/PostGIS map MVP.
 
-- [x] Добавить `user_favorites` migration/model.
-- [x] Добавить `user_alerts` migration/model.
-- [x] Добавить memory/postgres user store.
-- [x] Добавить favorites CRUD API.
-- [x] Добавить alerts CRUD API.
-- [x] Добавить alert preview endpoint.
-- [x] Добавить tests для favorites/alerts.
-- [x] Сделать Commit 3 и push.
+- [ ] Подключить MapLibre к frontend.
+- [ ] Сделать endpoint с listings geojson/features.
+- [ ] Отобразить markers и price labels.
+- [ ] Добавить bbox/radius filters.
+- [ ] Добавить первый слой planned investments из demo/open data.
+- [ ] Добавить risk/growth overlays v1.
+- [ ] Добавить tests для geo endpoint.
+- [ ] Сделать Commit 5 и push.

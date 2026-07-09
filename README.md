@@ -11,9 +11,10 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены первые формулы `Investment Score`, `Risk Score`, `Negotiation Score`.
 - Добавлены API endpoints, Dockerfile, `compose.yaml` с PostGIS и Redis.
 - Подготовлены тесты для API и скоринга.
+- Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
-## Быстрый старт локально
+## Backend локально
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
@@ -27,6 +28,40 @@ API будет доступен:
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
+
+## Frontend локально
+
+Frontend находится в `frontend/` и по умолчанию ожидает backend на
+`http://127.0.0.1:8000`.
+
+```powershell
+cd frontend
+npm install
+npm run lint
+npm run typecheck
+npm run build
+npm run dev -- --hostname 127.0.0.1 --port 3000
+```
+
+Если backend запущен на другом порту, создай `frontend/.env.local`:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+И измени `NEXT_PUBLIC_API_BASE_URL`, например:
+
+```env
+NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
+NEXT_PUBLIC_OWNER_ID=demo-user
+```
+
+Основные страницы:
+
+- http://127.0.0.1:3000/ — подбор объектов, фильтры, карта-схема, избранное, быстрые отчеты.
+- http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
+- http://127.0.0.1:3000/reports — история и генерация отчетов.
+- http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
 
 ## Запуск инфраструктуры
 
@@ -170,8 +205,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Подключить PostgreSQL/PostGIS как основной repository вместо in-memory.
-2. Реализовать ingestion pipeline для первого легального источника данных.
-3. Добавить генерацию HTML/PDF-отчета.
-4. Поднять Next.js frontend для поиска, карты и карточки объекта.
-5. Добавить Alembic autogenerate-проверку в CI после стабилизации схемы.
+1. Подключить MapLibre и реальные GIS-слои вместо MVP-карты-схемы.
+2. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
+3. Добавить auth/access limits для Free/Buyer Pro/Realtor.
+4. Подготовить paid report flow для one-time object reports.
+5. Добавить GitHub Actions CI для backend и frontend checks.
