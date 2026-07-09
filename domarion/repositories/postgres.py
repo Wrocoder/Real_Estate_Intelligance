@@ -1,0 +1,123 @@
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from domarion.db.models import AreaStatistic, ListingSnapshot
+from domarion.schemas import AreaStatistics, Listing, PriceHistoryPoint
+
+
+class PostgresRealEstateRepository:
+    def __init__(self, session: Session) -> None:
+        self.session = session
+
+    def list_listings(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+        rooms: int | None = None,
+        max_price: int | None = None,
+        min_area_m2: float | None = None,
+    ) -> list[Listing]:
+        listings = self._latest_listings()
+
+        if city:
+            listings = [item for item in listings if item.city.lower() == city.lower()]
+        if district:
+            listings = [item for item in listings if item.district.lower() == district.lower()]
+        if rooms:
+            listings = [item for item in listings if item.rooms == rooms]
+        if max_price:
+            listings = [item for item in listings if item.price <= max_price]
+        if min_area_m2:
+            listings = [item for item in listings if item.area_m2 >= min_area_m2]
+
+        return listings
+
+    def get_listing(self, listing_id: str) -> Listing | None:
+        for listing in self._latest_listings():
+            if listing.id == listing_id:
+                return listing
+        return None
+
+    def list_area_statistics(self) -> list[AreaStatistics]:
+        rows = self.session.scalars(select(AreaStatistic).order_by(AreaStatistic.city)).all()
+        return [self._area_to_schema(row) for row in rows]
+
+    def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
+        row = self.session.get(AreaStatistic, area_id)
+        if row is None:
+            return None
+        return self._area_to_schema(row)
+
+    def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
+        snapshots = self.session.scalars(
+            select(ListingSnapshot).order_by(ListingSnapshot.observed_at)
+        ).all()
+
+        history = []
+        for snapshot in snapshots:
+            payload = snapshot.normalized_payload
+            if payload.get("id") != listing_id:
+                continue
+
+            area_m2 = float(snapshot.area_m2 or payload["area_m2"])
+            price_per_m2 = int(round(snapshot.price / area_m2))
+            history.append(
+                PriceHistoryPoint(
+                    observed_at=snapshot.observed_at.date(),
+                    price=snapshot.price,
+                    price_per_m2=price_per_m2,
+                )
+            )
+
+        return history
+
+    def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
+        candidates = [
+            candidate
+            for candidate in self._latest_listings()
+            if candidate.id != listing.id
+            and candidate.city == listing.city
+            and abs(candidate.area_m2 - listing.area_m2) <= 25
+        ]
+
+        return sorted(
+            candidates,
+            key=lambda candidate: (
+                candidate.district != listing.district,
+                abs(candidate.rooms - listing.rooms),
+                abs(candidate.price_per_m2 - listing.price_per_m2),
+            ),
+        )[:limit]
+
+    def _latest_listings(self) -> list[Listing]:
+        snapshots = self.session.scalars(
+            select(ListingSnapshot).order_by(ListingSnapshot.observed_at.desc())
+        ).all()
+
+        listings = []
+        seen_ids = set()
+        for snapshot in snapshots:
+            listing = Listing.model_validate(snapshot.normalized_payload)
+            if listing.id in seen_ids:
+                continue
+            listings.append(listing)
+            seen_ids.add(listing.id)
+
+        return listings
+
+    @staticmethod
+    def _area_to_schema(row: AreaStatistic) -> AreaStatistics:
+        return AreaStatistics(
+            area_id=row.area_id,
+            name=row.name,
+            city=row.city,
+            median_price_per_m2=row.median_price_per_m2,
+            average_price_per_m2=row.average_price_per_m2,
+            active_listings=row.active_listings,
+            new_listings_30d=row.new_listings_30d,
+            removed_listings_30d=row.removed_listings_30d,
+            average_days_on_market=row.average_days_on_market,
+            price_change_90d_pct=row.price_change_90d_pct,
+            supply_change_90d_pct=row.supply_change_90d_pct,
+        )
+
