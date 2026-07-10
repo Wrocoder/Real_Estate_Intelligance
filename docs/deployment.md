@@ -75,6 +75,21 @@ Smoke check:
 python scripts\smoke_deployment.py
 ```
 
+PostgreSQL/PostGIS verification без frontend build:
+
+```powershell
+$env:TEST_DATABASE_URL="postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
+python scripts\verify_postgres_staging.py --database-url $env:TEST_DATABASE_URL
+```
+
+Что проверяет verifier:
+
+- Alembic `upgrade head`.
+- Наличие PostGIS через `postgis_full_version()`.
+- Demo seed.
+- PostgreSQL repository для listings, area statistics, price history и comparables.
+- Planned investments create/update/delete.
+
 Если порты отличаются:
 
 ```powershell

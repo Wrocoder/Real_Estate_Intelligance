@@ -125,6 +125,21 @@ docker compose up -d db redis
 .\.venv\Scripts\python.exe -m alembic downgrade -1
 ```
 
+Проверить живую PostgreSQL/PostGIS БД: Alembic migrations, demo seed,
+repository search и planned investments CRUD:
+
+```powershell
+$env:TEST_DATABASE_URL="postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
+.\.venv\Scripts\python.exe scripts\verify_postgres_staging.py --database-url $env:TEST_DATABASE_URL
+```
+
+Optional pytest для той же проверки:
+
+```powershell
+$env:TEST_DATABASE_URL="postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
+.\.venv\Scripts\python.exe -m pytest tests\test_postgres_repository_integration.py
+```
+
 ## CI и deployment foundation
 
 GitHub Actions проверяет backend, frontend, Alembic SQL generation и Docker build.
@@ -443,7 +458,7 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Проверить миграции на живой PostGIS БД и staging compose.
+1. Запустить `scripts\verify_postgres_staging.py` на живой PostGIS БД после стабилизации Docker Desktop.
 2. Подключить реальные open-data слои planned investments вместо demo layer.
 3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 4. Добавить SEO structured content для следующих городов.

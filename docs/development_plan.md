@@ -202,7 +202,7 @@
 - [x] Добавить scoring tests.
 - [x] Добавить ingestion tests.
 - [x] Добавить report tests.
-- [ ] Добавить repository integration tests с Postgres.
+- [x] Добавить optional repository integration tests с Postgres.
 - [ ] Добавить contract tests для API.
 - [ ] Добавить coverage report.
 - [ ] Добавить structured logging.
@@ -236,6 +236,7 @@
 - [x] Commit 12: SEO area pages.
 - [x] Commit 13: payment audit and alert delivery skeleton.
 - [x] Commit 14: payment webhook processing.
+- [x] Commit 15: alert delivery transports.
 
 ## Current Sprint
 
@@ -245,5 +246,6 @@
 - [x] Добавить payment callback endpoints и idempotency keys.
 - [x] Добавить фактическую SMTP delivery отправку.
 - [x] Добавить фактическую Telegram Bot API delivery отправку.
+- [x] Добавить PostGIS staging verifier и optional integration test.
 - [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
-- [ ] Сделать Commit 15 и push.
+- [ ] Сделать Commit 16 и push.
