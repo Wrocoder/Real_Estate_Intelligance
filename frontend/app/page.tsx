@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Bell, FileText, Heart, RefreshCw, Search } from "lucide-react";
 
 import { ListingCard } from "@/components/ListingCard";
@@ -57,6 +57,7 @@ export default function ExplorerPage() {
   const [mapStatus, setMapStatus] = useState("Загрузка GIS-слоев...");
   const [mapError, setMapError] = useState("");
   const [error, setError] = useState("");
+  const appliedUrlFiltersRef = useRef(false);
 
   const load = useCallback(async (nextPage: number) => {
     setError("");
@@ -84,8 +85,16 @@ export default function ExplorerPage() {
   }, [filters]);
 
   useEffect(() => {
+    if (!appliedUrlFiltersRef.current) {
+      appliedUrlFiltersRef.current = true;
+      const district = new URLSearchParams(window.location.search).get("district");
+      if (district && filters.district !== district) {
+        setFilters((current) => ({ ...current, district }));
+        return;
+      }
+    }
     void load(page);
-  }, [load, page]);
+  }, [filters.district, load, page]);
 
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;

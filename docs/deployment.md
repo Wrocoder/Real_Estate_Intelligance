@@ -108,6 +108,7 @@ python scripts\smoke_deployment.py
 | --- | --- |
 | `NEXT_PUBLIC_API_BASE_URL` | Публичный URL backend API |
 | `NEXT_PUBLIC_OWNER_ID` | Временный MVP owner fallback |
+| `NEXT_PUBLIC_SITE_URL` | Публичный URL frontend для sitemap/canonical URLs |
 
 Для реального production нельзя оставлять demo identity как auth-модель. Следующий шаг перед
 публичным запуском: заменить header/demo auth на Auth.js/Clerk/custom JWT и добавить реальные

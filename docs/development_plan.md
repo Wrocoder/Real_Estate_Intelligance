@@ -184,10 +184,10 @@
 - [ ] Добавить news_articles schema.
 - [ ] Добавить ручной news ingestion v1.
 - [ ] Добавить AI summary для новости.
-- [ ] Добавить SEO area pages.
-- [ ] Добавить sitemap.
-- [ ] Добавить robots.txt.
-- [ ] Добавить structured data.
+- [x] Добавить SEO area pages.
+- [x] Добавить sitemap.
+- [x] Добавить robots.txt.
+- [x] Добавить structured data.
 
 ## 15. Testing, Quality и Observability
 
@@ -226,12 +226,14 @@
 - [x] Commit 9: search pagination and compare page.
 - [x] Commit 10: ingestion admin MVP.
 - [x] Commit 11: planned investments CRUD.
+- [x] Commit 12: SEO area pages.
 
 ## Current Sprint
 
-Цель: добавить первые SEO area pages для органического спроса.
+Цель: подготовить реальную монетизацию и delivery-каналы.
 
-- [ ] Добавить SEO area pages для Wrocław districts.
-- [ ] Добавить sitemap и robots.txt.
-- [ ] Добавить structured metadata для районных страниц.
-- [ ] Сделать Commit 12 и push.
+- [ ] Подготовить PayU/Stripe adapter interface вместо только mock checkout.
+- [ ] Добавить audit logging для paid artifacts.
+- [ ] Добавить email alerts delivery skeleton.
+- [ ] Добавить Telegram alerts delivery skeleton.
+- [ ] Сделать Commit 13 и push.

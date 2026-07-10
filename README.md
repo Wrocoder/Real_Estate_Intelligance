@@ -19,6 +19,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
+- Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -75,6 +76,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 Основные страницы:
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
+- http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
+- http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
@@ -82,6 +85,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
 - http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
 - http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
+- http://127.0.0.1:3000/sitemap.xml — sitemap для SEO.
+- http://127.0.0.1:3000/robots.txt — robots rules.
 
 ## Запуск инфраструктуры
 
@@ -392,8 +397,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить SEO area pages.
-2. Добавить sitemap и robots.txt.
-3. Подготовить PayU/Stripe adapter вместо mock checkout.
-4. Подключить реальные open-data слои planned investments вместо demo layer.
-5. Добавить deployment workflow после выбора hosting.
+1. Подготовить PayU/Stripe adapter вместо mock checkout.
+2. Подключить реальные open-data слои planned investments вместо demo layer.
+3. Добавить SEO structured content для следующих городов.
+4. Добавить deployment workflow после выбора hosting.
+5. Добавить email/Telegram alerts delivery.

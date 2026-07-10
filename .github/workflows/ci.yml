@@ -52,6 +52,7 @@ jobs:
     env:
       NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
       NEXT_PUBLIC_OWNER_ID: demo-user
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - name: Checkout
@@ -97,5 +98,6 @@ jobs:
           docker build \
             --build-arg NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 \
             --build-arg NEXT_PUBLIC_OWNER_ID=demo-user \
+            --build-arg NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000 \
             -t domarion-frontend:ci \
             ./frontend

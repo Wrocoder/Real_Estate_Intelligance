@@ -98,6 +98,10 @@ def main() -> int:
     if FRONTEND_BASE_URL:
         _html_endpoint("frontend pricing", f"{FRONTEND_BASE_URL}/pricing")
         _html_endpoint("frontend admin", f"{FRONTEND_BASE_URL}/admin")
+        _html_endpoint("frontend areas", f"{FRONTEND_BASE_URL}/areas")
+        _html_endpoint("frontend area detail", f"{FRONTEND_BASE_URL}/areas/wroclaw-fabryczna")
+        _html_endpoint("frontend sitemap", f"{FRONTEND_BASE_URL}/sitemap.xml")
+        _html_endpoint("frontend robots", f"{FRONTEND_BASE_URL}/robots.txt")
 
     return 0
 

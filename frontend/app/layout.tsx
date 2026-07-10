@@ -8,6 +8,7 @@ import {
   CreditCard,
   Database,
   FileText,
+  MapPinned,
   Search,
   UserCircle,
 } from "lucide-react";
@@ -45,6 +46,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/compare">
                 <Columns3 size={18} />
                 Сравнение
+              </Link>
+              <Link href="/areas">
+                <MapPinned size={18} />
+                Районы
               </Link>
               <Link href="/pricing">
                 <CreditCard size={18} />
