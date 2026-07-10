@@ -277,6 +277,21 @@ class ReportOrderEvent(Base):
     order: Mapped[ReportOrder] = relationship()
 
 
+class PaymentWebhookEvent(Base):
+    __tablename__ = "payment_webhook_events"
+    __table_args__ = (UniqueConstraint("provider", "provider_event_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    provider: Mapped[str] = mapped_column(String(40), index=True)
+    provider_event_id: Mapped[str] = mapped_column(String(160), index=True)
+    order_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    event_type: Mapped[str] = mapped_column(String(120), index=True)
+    status: Mapped[str] = mapped_column(String(40), index=True)
+    payload_hash: Mapped[str] = mapped_column(String(128), index=True)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class UserFavorite(Base):
     __tablename__ = "user_favorites"
     __table_args__ = (UniqueConstraint("owner_id", "listing_id"),)

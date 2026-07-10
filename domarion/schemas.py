@@ -18,10 +18,13 @@ ReportOrderEventType = Literal[
     "order_created",
     "checkout_created",
     "payment_marked_paid",
+    "payment_webhook_processed",
+    "payment_webhook_ignored",
     "report_fulfilled",
     "fulfillment_skipped",
     "payment_provider_error",
 ]
+PaymentWebhookStatus = Literal["processed", "duplicate", "ignored", "rejected"]
 IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
@@ -351,6 +354,38 @@ class ReportOrderEvent(BaseModel):
     message: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
+
+
+class PaymentWebhookEventCreate(BaseModel):
+    provider: PaymentProviderName
+    provider_event_id: str
+    order_id: str | None = None
+    event_type: str
+    status: PaymentWebhookStatus
+    payload_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class PaymentWebhookEvent(BaseModel):
+    id: str
+    provider: PaymentProviderName
+    provider_event_id: str
+    order_id: str | None = None
+    event_type: str
+    status: PaymentWebhookStatus
+    payload_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class PaymentWebhookResult(BaseModel):
+    provider: PaymentProviderName
+    provider_event_id: str
+    status: PaymentWebhookStatus
+    message: str
+    order: ReportOrder | None = None
+    generated_report_id: str | None = None
+    webhook_event: PaymentWebhookEvent
 
 
 class ReportSection(BaseModel):

@@ -2,11 +2,15 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from domarion.db.models import PaymentWebhookEvent as PaymentWebhookEventModel
 from domarion.db.models import ReportOrder as ReportOrderModel
 from domarion.db.models import ReportOrderEvent as ReportOrderEventModel
 from domarion.schemas import (
+    PaymentWebhookEvent,
+    PaymentWebhookEventCreate,
     ReportOrder,
     ReportOrderCreate,
     ReportOrderEvent,
@@ -58,6 +62,12 @@ class PostgresReportOrderStore:
     def get_order(self, owner_id: str, order_id: str) -> ReportOrder | None:
         row = self.session.get(ReportOrderModel, order_id)
         if row is None or row.owner_id != owner_id:
+            return None
+        return self._order_from_row(row)
+
+    def get_order_by_id(self, order_id: str) -> ReportOrder | None:
+        row = self.session.get(ReportOrderModel, order_id)
+        if row is None:
             return None
         return self._order_from_row(row)
 
@@ -147,6 +157,52 @@ class PostgresReportOrderStore:
         ).all()
         return [self._event_from_row(row) for row in rows]
 
+    def get_payment_webhook_event(
+        self,
+        provider: str,
+        provider_event_id: str,
+    ) -> PaymentWebhookEvent | None:
+        row = self.session.scalar(
+            select(PaymentWebhookEventModel).where(
+                PaymentWebhookEventModel.provider == provider,
+                PaymentWebhookEventModel.provider_event_id == provider_event_id,
+            )
+        )
+        if row is None:
+            return None
+        return self._webhook_event_from_row(row)
+
+    def record_payment_webhook_event(
+        self,
+        payload: PaymentWebhookEventCreate,
+    ) -> PaymentWebhookEvent:
+        existing = self.get_payment_webhook_event(payload.provider, payload.provider_event_id)
+        if existing is not None:
+            return existing
+
+        row = PaymentWebhookEventModel(
+            id=str(uuid4()),
+            provider=payload.provider,
+            provider_event_id=payload.provider_event_id,
+            order_id=payload.order_id,
+            event_type=payload.event_type,
+            status=payload.status,
+            payload_hash=payload.payload_hash,
+            metadata_json=payload.metadata,
+            created_at=datetime.utcnow(),
+        )
+        self.session.add(row)
+        try:
+            self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+            existing = self.get_payment_webhook_event(payload.provider, payload.provider_event_id)
+            if existing is not None:
+                return existing
+            raise
+        self.session.refresh(row)
+        return self._webhook_event_from_row(row)
+
     @staticmethod
     def _order_from_row(row: ReportOrderModel) -> ReportOrder:
         return ReportOrder(
@@ -176,6 +232,20 @@ class PostgresReportOrderStore:
             event_type=row.event_type,
             actor_id=row.actor_id,
             message=row.message,
+            metadata=row.metadata_json,
+            created_at=row.created_at,
+        )
+
+    @staticmethod
+    def _webhook_event_from_row(row: PaymentWebhookEventModel) -> PaymentWebhookEvent:
+        return PaymentWebhookEvent(
+            id=row.id,
+            provider=row.provider,
+            provider_event_id=row.provider_event_id,
+            order_id=row.order_id,
+            event_type=row.event_type,
+            status=row.status,
+            payload_hash=row.payload_hash,
             metadata=row.metadata_json,
             created_at=row.created_at,
         )

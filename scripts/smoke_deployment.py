@@ -99,6 +99,11 @@ def main() -> int:
         f"{API_BASE_URL}/api/v1/alert-delivery-jobs",
         lambda payload: assert_list(payload),
     )
+    _json_endpoint(
+        "payment webhook route",
+        f"{API_BASE_URL}/openapi.json",
+        lambda payload: assert_openapi_path(payload, "/api/v1/payment-webhooks/{provider}"),
+    )
 
     if FRONTEND_BASE_URL:
         _html_endpoint("frontend pricing", f"{FRONTEND_BASE_URL}/pricing")
@@ -130,6 +135,13 @@ def assert_search_response(payload: object) -> None:
     assert isinstance(payload.get("items"), list), "expected items list"
     assert payload["items"], "expected non-empty items"
     assert payload.get("total", 0) >= len(payload["items"]), "expected valid total"
+
+
+def assert_openapi_path(payload: object, path: str) -> None:
+    assert isinstance(payload, dict), "expected JSON object"
+    paths = payload.get("paths")
+    assert isinstance(paths, dict), "expected OpenAPI paths object"
+    assert path in paths, f"expected OpenAPI path {path}"
 
 
 if __name__ == "__main__":

@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     ingestion_admin_store_backend: str = "memory"
     payment_provider: str = "mock"
     payment_checkout_base_url: str | None = None
+    payment_webhook_tolerance_seconds: int = 300
+    stripe_webhook_secret: str | None = None
+    payu_second_key: str | None = None
     alert_email_enabled: bool = False
     alert_email_sender: str = "alerts@domarion.local"
     alert_smtp_host: str | None = None

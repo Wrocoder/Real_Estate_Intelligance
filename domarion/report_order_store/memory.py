@@ -2,6 +2,8 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from domarion.schemas import (
+    PaymentWebhookEvent,
+    PaymentWebhookEventCreate,
     ReportOrder,
     ReportOrderCreate,
     ReportOrderEvent,
@@ -14,6 +16,7 @@ class InMemoryReportOrderStore:
     def __init__(self) -> None:
         self._orders: dict[str, ReportOrder] = {}
         self._events: dict[str, list[ReportOrderEvent]] = {}
+        self._webhook_events: dict[tuple[str, str], PaymentWebhookEvent] = {}
 
     def create_order(
         self,
@@ -49,6 +52,9 @@ class InMemoryReportOrderStore:
         if order is None or order.owner_id != owner_id:
             return None
         return order
+
+    def get_order_by_id(self, order_id: str) -> ReportOrder | None:
+        return self._orders.get(order_id)
 
     def set_checkout_url(self, owner_id: str, order_id: str, checkout_url: str) -> ReportOrder:
         order = self.get_order(owner_id, order_id)
@@ -124,9 +130,39 @@ class InMemoryReportOrderStore:
         events = [event for event in self._events.get(order_id, []) if event.owner_id == owner_id]
         return sorted(events, key=lambda item: item.created_at, reverse=True)[:limit]
 
+    def get_payment_webhook_event(
+        self,
+        provider: str,
+        provider_event_id: str,
+    ) -> PaymentWebhookEvent | None:
+        return self._webhook_events.get((provider, provider_event_id))
+
+    def record_payment_webhook_event(
+        self,
+        payload: PaymentWebhookEventCreate,
+    ) -> PaymentWebhookEvent:
+        existing = self.get_payment_webhook_event(payload.provider, payload.provider_event_id)
+        if existing is not None:
+            return existing
+
+        event = PaymentWebhookEvent(
+            id=str(uuid4()),
+            provider=payload.provider,
+            provider_event_id=payload.provider_event_id,
+            order_id=payload.order_id,
+            event_type=payload.event_type,
+            status=payload.status,
+            payload_hash=payload.payload_hash,
+            metadata=payload.metadata,
+            created_at=_now(),
+        )
+        self._webhook_events[(event.provider, event.provider_event_id)] = event
+        return event
+
     def clear(self) -> None:
         self._orders.clear()
         self._events.clear()
+        self._webhook_events.clear()
 
 
 def _now() -> datetime:

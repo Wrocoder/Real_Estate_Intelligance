@@ -120,7 +120,9 @@
 - [x] Добавить subscriptions table.
 - [x] Добавить access limits для Free/Buyer Pro/Realtor.
 - [x] Добавить PayU/Stripe adapter interface поверх mock checkout.
-- [ ] Подключить Stripe или PayU.
+- [x] Добавить Stripe/PayU webhook signature verification.
+- [x] Добавить payment callback endpoints и idempotency keys.
+- [ ] Подключить hosted checkout API для Stripe или PayU.
 - [x] Добавить one-time report purchase flow.
 - [x] Добавить audit logging для paid artifacts.
 
@@ -236,8 +238,8 @@
 
 Цель: перейти от skeleton к production-grade интеграциям и данным.
 
-- [ ] Подключить реальные PayU/Stripe SDK и webhook verification.
-- [ ] Добавить payment callback endpoints и idempotency keys.
+- [x] Подключить Stripe/PayU webhook verification.
+- [x] Добавить payment callback endpoints и idempotency keys.
 - [ ] Добавить фактическую SMTP delivery отправку.
 - [ ] Добавить фактическую Telegram Bot API delivery отправку.
 - [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.

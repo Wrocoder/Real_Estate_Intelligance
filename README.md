@@ -18,6 +18,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
 - Добавлен alerts delivery skeleton: email/Telegram dry-run, skip reasons и delivery jobs.
+- Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
@@ -42,6 +43,8 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
+- http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
+- http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
@@ -318,7 +321,7 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
 Разовые отчеты работают через order lifecycle:
 
 1. `unpaid` — заказ создан.
-2. `paid` — mock payment подтвержден.
+2. `paid` — mock payment или verified webhook подтвердил оплату.
 3. `fulfilled` — отчет сгенерирован и сохранен в `generated_reports`.
 
 Посмотреть продукты:
@@ -358,6 +361,13 @@ Paid fulfillment не расходует подписочный monthly report l
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.id)/events"
 ```
+
+Webhook endpoints:
+
+- `POST /api/v1/payment-webhooks/stripe` проверяет `Stripe-Signature` через `STRIPE_WEBHOOK_SECRET`.
+- `POST /api/v1/payment-webhooks/payu` проверяет `OpenPayU-Signature` через `PAYU_SECOND_KEY`.
+- Повторный `provider_event_id` возвращает `duplicate` и не генерирует второй отчет.
+- Paid webhook автоматически переводит order в `fulfilled` и создает saved report.
 
 ## Избранное и уведомления
 
@@ -424,8 +434,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Подключить реальные PayU/Stripe SDK, webhooks и payment verification.
+1. Реализовать фактическую SMTP/Telegram отправку поверх delivery skeleton.
 2. Подключить реальные open-data слои planned investments вместо demo layer.
-3. Реализовать фактическую SMTP/Telegram отправку поверх delivery skeleton.
+3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 4. Добавить SEO structured content для следующих городов.
 5. Добавить deployment workflow после выбора hosting.

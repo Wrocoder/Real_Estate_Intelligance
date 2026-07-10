@@ -322,6 +322,8 @@ export type ReportOrderEvent = {
     | "order_created"
     | "checkout_created"
     | "payment_marked_paid"
+    | "payment_webhook_processed"
+    | "payment_webhook_ignored"
     | "report_fulfilled"
     | "fulfillment_skipped"
     | "payment_provider_error";

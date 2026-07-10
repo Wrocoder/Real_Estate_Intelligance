@@ -1,6 +1,8 @@
 from typing import Protocol
 
 from domarion.schemas import (
+    PaymentWebhookEvent,
+    PaymentWebhookEventCreate,
     ReportOrder,
     ReportOrderCreate,
     ReportOrderEvent,
@@ -23,6 +25,9 @@ class ReportOrderStore(Protocol):
         raise NotImplementedError
 
     def get_order(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        raise NotImplementedError
+
+    def get_order_by_id(self, order_id: str) -> ReportOrder | None:
         raise NotImplementedError
 
     def set_checkout_url(self, owner_id: str, order_id: str, checkout_url: str) -> ReportOrder:
@@ -53,4 +58,17 @@ class ReportOrderStore(Protocol):
         order_id: str,
         limit: int = 100,
     ) -> list[ReportOrderEvent]:
+        raise NotImplementedError
+
+    def get_payment_webhook_event(
+        self,
+        provider: str,
+        provider_event_id: str,
+    ) -> PaymentWebhookEvent | None:
+        raise NotImplementedError
+
+    def record_payment_webhook_event(
+        self,
+        payload: PaymentWebhookEventCreate,
+    ) -> PaymentWebhookEvent:
         raise NotImplementedError

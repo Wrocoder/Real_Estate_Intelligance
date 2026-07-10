@@ -102,6 +102,9 @@ python scripts\smoke_deployment.py
 | `INGESTION_ADMIN_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `PAYMENT_PROVIDER` | `mock`, `stripe` или `payu` | `mock` |
 | `PAYMENT_CHECKOUT_BASE_URL` | Base URL для внешнего checkout handoff | пусто |
+| `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Допуск Stripe timestamp для webhook signature | `300` |
+| `STRIPE_WEBHOOK_SECRET` | Endpoint secret для `Stripe-Signature` verification | пусто |
+| `PAYU_SECOND_KEY` | PayU second key для `OpenPayU-Signature` verification | пусто |
 | `ALERT_EMAIL_ENABLED` | включает skeleton email delivery | `false` |
 | `ALERT_EMAIL_SENDER` | отправитель email alerts | `alerts@domarion.local` |
 | `ALERT_SMTP_HOST` | SMTP host для будущей отправки | пусто |
@@ -121,7 +124,8 @@ python scripts\smoke_deployment.py
 
 Для реального production нельзя оставлять demo identity как auth-модель. Следующий шаг перед
 публичным запуском: заменить header/demo auth на Auth.js/Clerk/custom JWT, подключить реальные
-PSP SDK/webhooks для PayU/Stripe и включить delivery только после настройки SMTP/Telegram secrets.
+hosted checkout SDK calls для PayU/Stripe и включить delivery только после настройки
+SMTP/Telegram secrets.
 
 ## Hosting shortlist для MVP
 
@@ -144,7 +148,7 @@ PostGIS/Redis на официальных страницах.
 ## Что еще нужно до production
 
 - Подключить реальный auth.
-- Подключить PayU/Stripe SDK и webhook verification вместо checkout skeleton.
+- Подключить PayU/Stripe SDK hosted checkout calls вместо checkout handoff skeleton.
 - Перенести secrets в hosting secret manager.
 - Добавить managed backups для Postgres.
 - Добавить error tracking и structured logs.

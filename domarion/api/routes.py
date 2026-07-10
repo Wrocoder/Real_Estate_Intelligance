@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import HTMLResponse, Response
 
 from domarion.auth import CurrentAccount, CurrentAccountDep
@@ -45,6 +45,8 @@ from domarion.schemas import (
     MapFeatureCollection,
     MarketType,
     ObjectReport,
+    PaymentWebhookEventCreate,
+    PaymentWebhookResult,
     PlanLimits,
     PlannedInvestment,
     PlannedInvestmentCreate,
@@ -62,7 +64,13 @@ from domarion.schemas import (
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alerts import build_alert_preview
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
-from domarion.services.payments import PaymentConfigurationError, get_payment_provider
+from domarion.services.payments import (
+    PaymentConfigurationError,
+    PaymentWebhookVerificationError,
+    get_payment_provider,
+    payment_payload_hash,
+    verify_payment_webhook,
+)
 from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.report_generation import (
     generate_and_store_object_report,
@@ -527,6 +535,187 @@ def fulfill_report_order(
     return fulfilled
 
 
+@router.post("/payment-webhooks/{provider}", response_model=PaymentWebhookResult)
+async def receive_payment_webhook(
+    provider: str,
+    request: Request,
+    repository: RepositoryDep,
+    order_store: ReportOrderStoreDep,
+    report_store: ReportStoreDep,
+) -> PaymentWebhookResult:
+    body = await request.body()
+    try:
+        verified = verify_payment_webhook(provider, body, dict(request.headers))
+    except PaymentConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except PaymentWebhookVerificationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    existing = order_store.get_payment_webhook_event(
+        verified.provider,
+        verified.provider_event_id,
+    )
+    if existing is not None:
+        order = order_store.get_order_by_id(existing.order_id) if existing.order_id else None
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="duplicate",
+            message="Webhook event was already processed.",
+            order=order,
+            generated_report_id=order.generated_report_id if order else None,
+            webhook_event=existing,
+        )
+
+    payload_hash = payment_payload_hash(body)
+    order = order_store.get_order_by_id(verified.order_id) if verified.order_id else None
+    if verified.order_id is None:
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=None,
+                event_type=verified.event_type,
+                status="ignored",
+                payload_hash=payload_hash,
+                metadata={**verified.metadata, "reason": "missing_order_id"},
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="ignored",
+            message="Webhook ignored because order_id is missing.",
+            webhook_event=webhook_event,
+        )
+    if order is None:
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=verified.order_id,
+                event_type=verified.event_type,
+                status="ignored",
+                payload_hash=payload_hash,
+                metadata={**verified.metadata, "reason": "order_not_found"},
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="ignored",
+            message="Webhook ignored because order was not found.",
+            webhook_event=webhook_event,
+        )
+
+    if not verified.should_mark_paid:
+        _record_order_event_for_owner(
+            order_store,
+            order.owner_id,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="payment_webhook_ignored",
+                actor_id=f"webhook:{verified.provider}",
+                message="Payment webhook received but status is not paid.",
+                metadata={
+                    "provider_event_id": verified.provider_event_id,
+                    "event_type": verified.event_type,
+                    "payment_status": verified.payment_status,
+                },
+            ),
+        )
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=order.id,
+                event_type=verified.event_type,
+                status="ignored",
+                payload_hash=payload_hash,
+                metadata=verified.metadata,
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="ignored",
+            message="Webhook status is not paid; order was not changed.",
+            order=order,
+            generated_report_id=order.generated_report_id,
+            webhook_event=webhook_event,
+        )
+
+    paid_order = order_store.mark_paid(order.owner_id, order.id) or order
+    _record_order_event_for_owner(
+        order_store,
+        order.owner_id,
+        order.id,
+        ReportOrderEventCreate(
+            event_type="payment_webhook_processed",
+            actor_id=f"webhook:{verified.provider}",
+            message="Verified payment webhook marked order as paid.",
+            metadata={
+                "provider": verified.provider,
+                "provider_event_id": verified.provider_event_id,
+                "event_type": verified.event_type,
+                "payment_status": verified.payment_status,
+            },
+        ),
+    )
+
+    generated_report_id = paid_order.generated_report_id
+    final_order = paid_order
+    if paid_order.status != "fulfilled":
+        report = generate_and_store_object_report(
+            repository=repository,
+            report_store=report_store,
+            listing_id=paid_order.listing_id,
+            audience=paid_order.audience,
+            report_format=paid_order.report_format,
+            owner_id=paid_order.owner_id,
+        )
+        fulfilled = order_store.mark_fulfilled(paid_order.owner_id, paid_order.id, report.id)
+        if fulfilled is not None:
+            final_order = fulfilled
+            generated_report_id = report.id
+        _record_order_event_for_owner(
+            order_store,
+            order.owner_id,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="report_fulfilled",
+                actor_id=f"webhook:{verified.provider}",
+                message="Paid report generated from verified payment webhook.",
+                metadata={"generated_report_id": report.id},
+            ),
+        )
+
+    webhook_event = order_store.record_payment_webhook_event(
+        PaymentWebhookEventCreate(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            order_id=final_order.id,
+            event_type=verified.event_type,
+            status="processed",
+            payload_hash=payload_hash,
+            metadata={
+                **verified.metadata,
+                "generated_report_id": generated_report_id,
+                "order_status": final_order.status,
+            },
+        )
+    )
+    return PaymentWebhookResult(
+        provider=verified.provider,
+        provider_event_id=verified.provider_event_id,
+        status="processed",
+        message="Payment webhook processed.",
+        order=final_order,
+        generated_report_id=generated_report_id,
+        webhook_event=webhook_event,
+    )
+
+
 @router.get("/map/features", response_model=MapFeatureCollection)
 def get_map_features(
     repository: RepositoryDep,
@@ -960,8 +1149,17 @@ def _record_order_event(
     order_id: str,
     payload: ReportOrderEventCreate,
 ) -> ReportOrderEvent | None:
+    return _record_order_event_for_owner(order_store, account.user.id, order_id, payload)
+
+
+def _record_order_event_for_owner(
+    order_store: ReportOrderStore,
+    owner_id: str,
+    order_id: str,
+    payload: ReportOrderEventCreate,
+) -> ReportOrderEvent | None:
     try:
-        return order_store.record_event(account.user.id, order_id, payload)
+        return order_store.record_event(owner_id, order_id, payload)
     except KeyError:
         return None
 
