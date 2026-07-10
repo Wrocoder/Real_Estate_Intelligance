@@ -50,6 +50,35 @@ export type AreaStatistics = {
   supply_change_90d_pct: number;
 };
 
+export type PlannedInvestment = {
+  id: string;
+  name: string;
+  investment_type: string;
+  status: string;
+  city: string;
+  district: string | null;
+  expected_year: number | null;
+  lat: number;
+  lon: number;
+  source_url: string | null;
+  confidence_score: number;
+  notes: string | null;
+};
+
+export type PlannedInvestmentPayload = {
+  name: string;
+  investment_type: string;
+  status?: string;
+  city: string;
+  district?: string | null;
+  expected_year?: number | null;
+  lat: number;
+  lon: number;
+  source_url?: string | null;
+  confidence_score?: number;
+  notes?: string | null;
+};
+
 export type PriceHistoryPoint = {
   observed_at: string;
   price: number;
@@ -441,6 +470,31 @@ export const api = {
       `/api/v1/admin/raw-listings${toQueryString(params)}`,
       { headers: ADMIN_HEADERS },
     ),
+  listAdminPlannedInvestments: (params: { city?: string; district?: string } = {}) =>
+    request<PlannedInvestment[]>(
+      `/api/v1/admin/planned-investments${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  createAdminPlannedInvestment: (payload: PlannedInvestmentPayload) =>
+    request<PlannedInvestment>("/api/v1/admin/planned-investments", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  updateAdminPlannedInvestment: (
+    investmentId: string,
+    payload: Partial<PlannedInvestmentPayload>,
+  ) =>
+    request<PlannedInvestment>(`/api/v1/admin/planned-investments/${investmentId}`, {
+      method: "PATCH",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  deleteAdminPlannedInvestment: (investmentId: string) =>
+    fetch(`${API_BASE_URL}/api/v1/admin/planned-investments/${investmentId}`, {
+      method: "DELETE",
+      headers: ADMIN_HEADERS,
+    }),
   listReportProducts: () => request<ReportProduct[]>("/api/v1/report-products"),
   listReportOrders: () => request<ReportOrder[]>("/api/v1/report-orders"),
   createReportOrder: (payload: {

@@ -166,7 +166,7 @@
 - [x] Добавить просмотр raw listings.
 - [ ] Добавить ручное исправление normalized listing.
 - [ ] Добавить dedup review queue.
-- [ ] Добавить planned investments CRUD.
+- [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.
 
 ## 13. AI Assistant
@@ -225,13 +225,13 @@
 - [x] Commit 8: deployment MVP.
 - [x] Commit 9: search pagination and compare page.
 - [x] Commit 10: ingestion admin MVP.
+- [x] Commit 11: planned investments CRUD.
 
 ## Current Sprint
 
-Цель: добавить управляемые planned investments и первые SEO area pages.
+Цель: добавить первые SEO area pages для органического спроса.
 
-- [ ] Добавить planned investments CRUD API.
-- [ ] Добавить admin UI для planned investments.
 - [ ] Добавить SEO area pages для Wrocław districts.
 - [ ] Добавить sitemap и robots.txt.
-- [ ] Сделать Commit 11 и push.
+- [ ] Добавить structured metadata для районных страниц.
+- [ ] Сделать Commit 12 и push.

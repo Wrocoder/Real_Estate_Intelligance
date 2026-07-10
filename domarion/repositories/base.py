@@ -1,6 +1,13 @@
 from typing import Protocol
 
-from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
+from domarion.schemas import (
+    AreaStatistics,
+    Listing,
+    PlannedInvestment,
+    PlannedInvestmentCreate,
+    PlannedInvestmentUpdate,
+    PriceHistoryPoint,
+)
 
 
 class RealEstateRepository(Protocol):
@@ -28,6 +35,25 @@ class RealEstateRepository(Protocol):
         city: str | None = None,
         district: str | None = None,
     ) -> list[PlannedInvestment]:
+        raise NotImplementedError
+
+    def get_planned_investment(self, investment_id: str) -> PlannedInvestment | None:
+        raise NotImplementedError
+
+    def create_planned_investment(
+        self,
+        payload: PlannedInvestmentCreate,
+    ) -> PlannedInvestment:
+        raise NotImplementedError
+
+    def update_planned_investment(
+        self,
+        investment_id: str,
+        payload: PlannedInvestmentUpdate,
+    ) -> PlannedInvestment | None:
+        raise NotImplementedError
+
+    def delete_planned_investment(self, investment_id: str) -> bool:
         raise NotImplementedError
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:

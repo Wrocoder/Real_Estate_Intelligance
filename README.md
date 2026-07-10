@@ -18,6 +18,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
+- Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -40,6 +41,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
+- http://127.0.0.1:8000/api/v1/admin/planned-investments
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 
@@ -246,6 +248,7 @@ $headers = @{
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/ingestion/jobs -Headers $headers
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/data-quality/logs -Headers $headers
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/raw-listings -Headers $headers
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/planned-investments -Headers $headers
 ```
 
 CSV import теперь создает `ingestion_jobs` и пишет `data_quality_logs` при низком
@@ -253,6 +256,16 @@ quality score или отсутствующих optional infrastructure fields:
 
 ```powershell
 .\.venv\Scripts\domarion.exe import-partner-csv data\samples\partner_listings_wroclaw.csv --source-name "Demo Partner"
+```
+
+Создать planned investment вручную:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/planned-investments `
+  -Headers $headers `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"name":"New tram corridor","investment_type":"tram","status":"planned","city":"Wrocław","district":"Fabryczna","expected_year":2029,"lat":51.112,"lon":16.968,"confidence_score":60}'
 ```
 
 ## Search API MVP
@@ -379,8 +392,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Подключить реальные open-data слои planned investments вместо demo layer.
-2. Подготовить PayU/Stripe adapter вместо mock checkout.
-3. Добавить planned investments CRUD v1.
-4. Добавить SEO area pages.
+1. Добавить SEO area pages.
+2. Добавить sitemap и robots.txt.
+3. Подготовить PayU/Stripe adapter вместо mock checkout.
+4. Подключить реальные open-data слои planned investments вместо demo layer.
 5. Добавить deployment workflow после выбора hosting.

@@ -34,7 +34,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -169,13 +170,20 @@ button {
 }
 
 .input,
-.select {
+.select,
+.textarea {
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
   padding: 0 10px;
   color: var(--ink);
+}
+
+.textarea {
+  min-height: 82px;
+  padding: 9px 10px;
+  resize: vertical;
 }
 
 .grid-2 {
@@ -211,6 +219,12 @@ button {
 .panel-header h3 {
   margin: 0;
   font-size: 15px;
+}
+
+.panel-header.inline {
+  min-height: auto;
+  padding: 0 0 10px;
+  border-bottom: 0;
 }
 
 .panel-body {
@@ -748,6 +762,10 @@ button {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.form-grid.compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .field {
   display: grid;
   gap: 5px;
@@ -810,6 +828,19 @@ button {
 
 .admin-wide {
   grid-column: 1 / -1;
+}
+
+.planned-investment-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 430px;
+  gap: 14px;
+}
+
+.investment-form {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
 }
 
 .selected-row {
@@ -884,7 +915,8 @@ button {
 
   .grid-2,
   .detail-grid,
-  .admin-grid {
+  .admin-grid,
+  .planned-investment-grid {
     grid-template-columns: 1fr;
   }
 
@@ -898,6 +930,10 @@ button {
   }
 
   .form-grid.wide {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid.compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -927,6 +963,10 @@ button {
   }
 
   .form-grid.wide {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid.compact {
     grid-template-columns: 1fr;
   }
 }

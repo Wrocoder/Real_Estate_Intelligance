@@ -44,6 +44,9 @@ from domarion.schemas import (
     MarketType,
     ObjectReport,
     PlanLimits,
+    PlannedInvestment,
+    PlannedInvestmentCreate,
+    PlannedInvestmentUpdate,
     RawListingSummary,
     ReportAudience,
     ReportOrder,
@@ -230,6 +233,71 @@ def get_admin_raw_listing(
     if raw_listing is None:
         raise HTTPException(status_code=404, detail="Raw listing not found")
     return raw_listing
+
+
+@router.get("/admin/planned-investments", response_model=list[PlannedInvestment])
+def list_admin_planned_investments(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+) -> list[PlannedInvestment]:
+    _ensure_admin(account)
+    return repository.list_planned_investments(city=city, district=district)
+
+
+@router.post(
+    "/admin/planned-investments",
+    response_model=PlannedInvestment,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_planned_investment(
+    payload: PlannedInvestmentCreate,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> PlannedInvestment:
+    _ensure_admin(account)
+    return repository.create_planned_investment(payload)
+
+
+@router.get("/admin/planned-investments/{investment_id}", response_model=PlannedInvestment)
+def get_admin_planned_investment(
+    investment_id: str,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> PlannedInvestment:
+    _ensure_admin(account)
+    investment = repository.get_planned_investment(investment_id)
+    if investment is None:
+        raise HTTPException(status_code=404, detail="Planned investment not found")
+    return investment
+
+
+@router.patch("/admin/planned-investments/{investment_id}", response_model=PlannedInvestment)
+def update_admin_planned_investment(
+    investment_id: str,
+    payload: PlannedInvestmentUpdate,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> PlannedInvestment:
+    _ensure_admin(account)
+    investment = repository.update_planned_investment(investment_id, payload)
+    if investment is None:
+        raise HTTPException(status_code=404, detail="Planned investment not found")
+    return investment
+
+
+@router.delete("/admin/planned-investments/{investment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_planned_investment(
+    investment_id: str,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_admin(account)
+    deleted = repository.delete_planned_investment(investment_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Planned investment not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/report-products", response_model=list[ReportProduct])

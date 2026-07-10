@@ -106,6 +106,34 @@ class PlannedInvestment(BaseModel):
     notes: str | None = None
 
 
+class PlannedInvestmentCreate(BaseModel):
+    name: str
+    investment_type: str
+    status: str = "planned"
+    city: str
+    district: str | None = None
+    expected_year: int | None = Field(default=None, ge=2020, le=2100)
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+    source_url: str | None = None
+    confidence_score: int = Field(default=50, ge=0, le=100)
+    notes: str | None = None
+
+
+class PlannedInvestmentUpdate(BaseModel):
+    name: str | None = None
+    investment_type: str | None = None
+    status: str | None = None
+    city: str | None = None
+    district: str | None = None
+    expected_year: int | None = Field(default=None, ge=2020, le=2100)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    source_url: str | None = None
+    confidence_score: int | None = Field(default=None, ge=0, le=100)
+    notes: str | None = None
+
+
 class IngestionJobCreate(BaseModel):
     source_name: str
     source_type: str = "partner_csv"

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,7 +10,14 @@ from domarion.db.models import (
 from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
 )
-from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
+from domarion.schemas import (
+    AreaStatistics,
+    Listing,
+    PlannedInvestment,
+    PlannedInvestmentCreate,
+    PlannedInvestmentUpdate,
+    PriceHistoryPoint,
+)
 
 
 class PostgresRealEstateRepository:
@@ -70,6 +79,53 @@ class PostgresRealEstateRepository:
 
         rows = self.session.scalars(statement.order_by(PlannedInvestmentRow.name)).all()
         return [self._planned_investment_to_schema(row) for row in rows]
+
+    def get_planned_investment(self, investment_id: str) -> PlannedInvestment | None:
+        row_id = self._parse_planned_investment_id(investment_id)
+        if row_id is None:
+            return None
+        row = self.session.get(PlannedInvestmentRow, row_id)
+        if row is None:
+            return None
+        return self._planned_investment_to_schema(row)
+
+    def create_planned_investment(
+        self,
+        payload: PlannedInvestmentCreate,
+    ) -> PlannedInvestment:
+        row = PlannedInvestmentRow()
+        self._apply_planned_investment_payload(row, payload.model_dump(exclude_unset=True))
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._planned_investment_to_schema(row)
+
+    def update_planned_investment(
+        self,
+        investment_id: str,
+        payload: PlannedInvestmentUpdate,
+    ) -> PlannedInvestment | None:
+        row_id = self._parse_planned_investment_id(investment_id)
+        if row_id is None:
+            return None
+        row = self.session.get(PlannedInvestmentRow, row_id)
+        if row is None:
+            return None
+        self._apply_planned_investment_payload(row, payload.model_dump(exclude_unset=True))
+        self.session.commit()
+        self.session.refresh(row)
+        return self._planned_investment_to_schema(row)
+
+    def delete_planned_investment(self, investment_id: str) -> bool:
+        row_id = self._parse_planned_investment_id(investment_id)
+        if row_id is None:
+            return False
+        row = self.session.get(PlannedInvestmentRow, row_id)
+        if row is None:
+            return False
+        self.session.delete(row)
+        self.session.commit()
+        return True
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         snapshots = self.session.scalars(
@@ -163,3 +219,21 @@ class PostgresRealEstateRepository:
             confidence_score=row.confidence_score,
             notes=row.notes,
         )
+
+    @staticmethod
+    def _parse_planned_investment_id(investment_id: str) -> int | None:
+        raw_id = investment_id.removeprefix("planned-")
+        if not raw_id.isdigit():
+            return None
+        return int(raw_id)
+
+    @staticmethod
+    def _apply_planned_investment_payload(
+        row: PlannedInvestmentRow,
+        payload: dict,
+    ) -> None:
+        for key, value in payload.items():
+            if key in {"lat", "lon"} and value is not None:
+                setattr(row, key, Decimal(str(value)))
+            else:
+                setattr(row, key, value)

@@ -1,6 +1,14 @@
 from datetime import date
+from uuid import uuid4
 
-from domarion.schemas import AreaStatistics, Listing, PlannedInvestment, PriceHistoryPoint
+from domarion.schemas import (
+    AreaStatistics,
+    Listing,
+    PlannedInvestment,
+    PlannedInvestmentCreate,
+    PlannedInvestmentUpdate,
+    PriceHistoryPoint,
+)
 
 
 class InMemoryRealEstateRepository:
@@ -289,6 +297,36 @@ class InMemoryRealEstateRepository:
             ]
 
         return investments
+
+    def get_planned_investment(self, investment_id: str) -> PlannedInvestment | None:
+        return self._planned_investments.get(investment_id)
+
+    def create_planned_investment(
+        self,
+        payload: PlannedInvestmentCreate,
+    ) -> PlannedInvestment:
+        investment = PlannedInvestment(
+            id=f"pi-{uuid4().hex[:8]}",
+            **payload.model_dump(),
+        )
+        self._planned_investments[investment.id] = investment
+        return investment
+
+    def update_planned_investment(
+        self,
+        investment_id: str,
+        payload: PlannedInvestmentUpdate,
+    ) -> PlannedInvestment | None:
+        investment = self._planned_investments.get(investment_id)
+        if investment is None:
+            return None
+        update_data = payload.model_dump(exclude_unset=True)
+        updated = investment.model_copy(update=update_data)
+        self._planned_investments[investment_id] = updated
+        return updated
+
+    def delete_planned_investment(self, investment_id: str) -> bool:
+        return self._planned_investments.pop(investment_id, None) is not None
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         return self._history.get(listing_id, [])
