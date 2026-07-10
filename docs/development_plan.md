@@ -134,8 +134,10 @@
 - [x] Добавить saved search alerts.
 - [x] Добавить email alerts delivery skeleton.
 - [x] Добавить Telegram alerts delivery skeleton.
+- [x] Добавить фактическую SMTP delivery отправку.
+- [x] Добавить фактическую Telegram Bot API delivery отправку.
 - [ ] Добавить daily email alerts.
-- [ ] Добавить Telegram alerts.
+- [x] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
 
 ## 10. Frontend MVP
@@ -233,6 +235,7 @@
 - [x] Commit 11: planned investments CRUD.
 - [x] Commit 12: SEO area pages.
 - [x] Commit 13: payment audit and alert delivery skeleton.
+- [x] Commit 14: payment webhook processing.
 
 ## Current Sprint
 
@@ -240,7 +243,7 @@
 
 - [x] Подключить Stripe/PayU webhook verification.
 - [x] Добавить payment callback endpoints и idempotency keys.
-- [ ] Добавить фактическую SMTP delivery отправку.
-- [ ] Добавить фактическую Telegram Bot API delivery отправку.
+- [x] Добавить фактическую SMTP delivery отправку.
+- [x] Добавить фактическую Telegram Bot API delivery отправку.
 - [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
-- [ ] Сделать Commit 14 и push.
+- [ ] Сделать Commit 15 и push.

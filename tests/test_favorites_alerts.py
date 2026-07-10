@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 
+import domarion.services.alert_delivery as alert_delivery
+from domarion.core.config import get_settings
 from domarion.main import app
 from domarion.user_store.factory import memory_user_store
 
@@ -184,3 +186,134 @@ def test_telegram_delivery_without_target_is_skipped() -> None:
     assert job["provider"] == "telegram:bot-api"
     assert job["delivered_count"] == 0
     assert "Telegram chat id is missing" in job["message"]
+
+
+def test_email_delivery_sends_smtp_message(monkeypatch) -> None:
+    memory_user_store.clear()
+    sent_messages = []
+    smtp_sessions = []
+
+    class FakeSMTP:
+        def __init__(self, host: str, port: int, timeout: float) -> None:
+            self.host = host
+            self.port = port
+            self.timeout = timeout
+            self.started_tls = False
+            self.login_args = None
+            smtp_sessions.append(self)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def starttls(self) -> None:
+            self.started_tls = True
+
+        def login(self, username: str, password: str) -> None:
+            self.login_args = (username, password)
+
+        def send_message(self, message) -> None:
+            sent_messages.append(message)
+
+    monkeypatch.setenv("ALERT_EMAIL_ENABLED", "true")
+    monkeypatch.setenv("ALERT_EMAIL_SENDER", "alerts@example.com")
+    monkeypatch.setenv("ALERT_SMTP_HOST", "smtp.example.com")
+    monkeypatch.setenv("ALERT_SMTP_PORT", "2525")
+    monkeypatch.setenv("ALERT_SMTP_USERNAME", "smtp-user")
+    monkeypatch.setenv("ALERT_SMTP_PASSWORD", "smtp-pass")
+    monkeypatch.setenv("ALERT_SMTP_USE_TLS", "true")
+    monkeypatch.setattr(alert_delivery.smtplib, "SMTP", FakeSMTP)
+    get_settings.cache_clear()
+    headers = {
+        "X-Domarion-User-Id": "smtp-alert-owner",
+        "X-Domarion-Email": "buyer@example.com",
+    }
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=headers,
+        json={
+            "name": "Email delivery",
+            "channel": "email",
+            "frequency": "instant",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+    delivered = client.post(
+        f"/api/v1/alerts/{created['id']}/deliver",
+        headers=headers,
+        json={"dry_run": False, "max_matches": 2},
+    )
+    job = delivered.json()
+
+    assert delivered.status_code == 200
+    assert job["status"] == "sent"
+    assert job["provider"] == "email:smtp"
+    assert job["delivered_count"] == 1
+    assert smtp_sessions[0].host == "smtp.example.com"
+    assert smtp_sessions[0].port == 2525
+    assert smtp_sessions[0].started_tls is True
+    assert smtp_sessions[0].login_args == ("smtp-user", "smtp-pass")
+    assert sent_messages[0]["To"] == "buyer@example.com"
+    assert "Domarion alert" in sent_messages[0]["Subject"]
+    assert "Fabryczna" in sent_messages[0].get_content()
+    get_settings.cache_clear()
+
+
+def test_telegram_delivery_sends_bot_api_payload(monkeypatch) -> None:
+    memory_user_store.clear()
+    requests = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok":true}'
+
+    def fake_urlopen(request, timeout: float):
+        requests.append((request, timeout))
+        return FakeResponse()
+
+    monkeypatch.setenv("ALERT_TELEGRAM_ENABLED", "true")
+    monkeypatch.setenv("ALERT_TELEGRAM_BOT_TOKEN", "token-123")
+    monkeypatch.setenv("ALERT_TELEGRAM_BOT_NAME", "DomarionTestBot")
+    monkeypatch.setenv("ALERT_TELEGRAM_API_BASE_URL", "https://telegram.local")
+    monkeypatch.setattr(alert_delivery, "urlopen", fake_urlopen)
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "telegram-send-owner"}
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=headers,
+        json={
+            "name": "Telegram delivery",
+            "channel": "telegram",
+            "frequency": "instant",
+            "delivery_target": "123456",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+    delivered = client.post(
+        f"/api/v1/alerts/{created['id']}/deliver",
+        headers=headers,
+        json={"dry_run": False, "max_matches": 2},
+    )
+    job = delivered.json()
+    request, timeout = requests[0]
+
+    assert delivered.status_code == 200
+    assert job["status"] == "sent"
+    assert job["provider"] == "telegram:bot-api"
+    assert job["metadata"]["bot_name"] == "DomarionTestBot"
+    assert request.full_url == "https://telegram.local/bottoken-123/sendMessage"
+    assert timeout == 10.0
+    payload = request.data.decode("utf-8")
+    assert '"chat_id": "123456"' in payload
+    assert "Fabryczna" in payload
+    get_settings.cache_clear()

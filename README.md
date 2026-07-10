@@ -17,7 +17,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
-- Добавлен alerts delivery skeleton: email/Telegram dry-run, skip reasons и delivery jobs.
+- Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
 - Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
@@ -407,6 +407,15 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/deliver?owner_i
   -Body '{"dry_run":true,"max_matches":5}'
 ```
 
+Запустить реальную отправку после настройки `ALERT_EMAIL_*` или `ALERT_TELEGRAM_*`:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/deliver?owner_id=buyer-1 `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"dry_run":false,"max_matches":5}'
+```
+
 Посмотреть историю delivery jobs:
 
 ```powershell
@@ -434,7 +443,7 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Реализовать фактическую SMTP/Telegram отправку поверх delivery skeleton.
+1. Проверить миграции на живой PostGIS БД и staging compose.
 2. Подключить реальные open-data слои planned investments вместо demo layer.
 3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 4. Добавить SEO structured content для следующих городов.

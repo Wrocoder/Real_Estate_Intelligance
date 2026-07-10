@@ -23,9 +23,15 @@ class Settings(BaseSettings):
     alert_email_enabled: bool = False
     alert_email_sender: str = "alerts@domarion.local"
     alert_smtp_host: str | None = None
+    alert_smtp_port: int = 587
+    alert_smtp_username: str | None = None
+    alert_smtp_password: str | None = None
+    alert_smtp_use_tls: bool = True
+    alert_delivery_timeout_seconds: float = 10.0
     alert_telegram_enabled: bool = False
     alert_telegram_bot_name: str = "DomarionBot"
     alert_telegram_bot_token: str | None = None
+    alert_telegram_api_base_url: str = "https://api.telegram.org"
     demo_user_id: str = "demo-user"
     demo_user_email: str = "demo@domarion.local"
     cors_origins: list[str] = Field(

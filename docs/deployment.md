@@ -105,12 +105,18 @@ python scripts\smoke_deployment.py
 | `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Допуск Stripe timestamp для webhook signature | `300` |
 | `STRIPE_WEBHOOK_SECRET` | Endpoint secret для `Stripe-Signature` verification | пусто |
 | `PAYU_SECOND_KEY` | PayU second key для `OpenPayU-Signature` verification | пусто |
-| `ALERT_EMAIL_ENABLED` | включает skeleton email delivery | `false` |
+| `ALERT_EMAIL_ENABLED` | включает SMTP email delivery | `false` |
 | `ALERT_EMAIL_SENDER` | отправитель email alerts | `alerts@domarion.local` |
-| `ALERT_SMTP_HOST` | SMTP host для будущей отправки | пусто |
-| `ALERT_TELEGRAM_ENABLED` | включает skeleton Telegram delivery | `false` |
+| `ALERT_SMTP_HOST` | SMTP host для email alerts | пусто |
+| `ALERT_SMTP_PORT` | SMTP port | `587` |
+| `ALERT_SMTP_USERNAME` | SMTP username, если нужен login | пусто |
+| `ALERT_SMTP_PASSWORD` | SMTP password, если нужен login | пусто |
+| `ALERT_SMTP_USE_TLS` | включает STARTTLS | `true` |
+| `ALERT_DELIVERY_TIMEOUT_SECONDS` | timeout SMTP/Telegram delivery | `10` |
+| `ALERT_TELEGRAM_ENABLED` | включает Telegram Bot API delivery | `false` |
 | `ALERT_TELEGRAM_BOT_NAME` | имя Telegram bot для metadata | `DomarionBot` |
 | `ALERT_TELEGRAM_BOT_TOKEN` | token будущего Telegram bot | пусто |
+| `ALERT_TELEGRAM_API_BASE_URL` | Telegram API base URL | `https://api.telegram.org` |
 | `DEMO_USER_ID` | fallback user для MVP auth | `demo-user` |
 | `DEMO_USER_EMAIL` | fallback email для MVP auth | `demo@domarion.local` |
 

@@ -77,7 +77,7 @@ export default function AlertsPage() {
       <header className="page-header">
         <div>
           <h1>Saved search alerts</h1>
-          <p>Базовые уведомления по фильтрам и скорингу. Доставка email/Telegram будет следующим слоем.</p>
+          <p>Уведомления по фильтрам и скорингу с dry-run и delivery через email/Telegram.</p>
         </div>
         <button className="button" type="button" onClick={() => void load()}>
           <RefreshCw size={16} /> Обновить
