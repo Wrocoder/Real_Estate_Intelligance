@@ -10,7 +10,7 @@
 - [x] Каждый крупный блок закрывать тестами.
 - [x] Перед коммитом запускать `pytest` и `ruff`.
 - [x] Держать документацию запуска в `README.md`.
-- [ ] Добавить CI на GitHub Actions.
+- [x] Добавить CI на GitHub Actions.
 - [ ] Добавить pre-commit hooks после стабилизации форматирования.
 - [ ] Вести changelog/release notes после первого deploy.
 
@@ -35,7 +35,7 @@
 - [x] Добавить базовый README с командами запуска.
 - [x] Добавить Dockerfile.
 - [x] Добавить `compose.yaml` с PostGIS и Redis.
-- [ ] Добавить GitHub Actions CI.
+- [x] Добавить GitHub Actions CI.
 - [ ] Добавить Makefile/Taskfile или единый CLI для dev-команд.
 
 ## 3. Database и Repository Layer
@@ -50,7 +50,7 @@
 - [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
 - [ ] Добавить geometry columns и spatial indexes.
 - [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
-- [ ] Добавить миграционную проверку в CI.
+- [x] Добавить миграционную проверку в CI.
 
 ## 4. Listings и Search API
 
@@ -205,12 +205,12 @@
 ## 16. Deployment
 
 - [ ] Выбрать MVP hosting: VPS/Render/Railway/Fly.io/Cloud Run.
-- [ ] Добавить production Docker build.
-- [ ] Добавить environment variable documentation.
+- [x] Добавить production Docker build.
+- [x] Добавить environment variable documentation.
 - [ ] Добавить managed Postgres/PostGIS.
 - [ ] Добавить Redis.
 - [ ] Добавить backup strategy.
-- [ ] Добавить staging environment.
+- [x] Добавить staging environment.
 - [ ] Добавить production deploy.
 
 ## 17. Git Commit Milestones
@@ -222,17 +222,15 @@
 - [x] Commit 5: map MVP.
 - [x] Commit 6: auth and subscriptions foundation.
 - [x] Commit 7: paid report flow.
-- [ ] Commit 8: deployment MVP.
+- [x] Commit 8: deployment MVP.
 
 ## Current Sprint
 
-Цель: добавить CI/deployment foundation для стабильной разработки и демо.
+Цель: улучшить поиск и сравнение объектов, чтобы MVP стал полезнее для покупателей и риелторов.
 
-- [ ] Добавить GitHub Actions CI: backend tests + ruff.
-- [ ] Добавить GitHub Actions CI: frontend lint + typecheck + build.
-- [ ] Добавить production Docker build для frontend/backend.
-- [ ] Добавить deployment env documentation.
-- [ ] Добавить staging startup smoke script.
-- [ ] Проверить Alembic migrations в CI.
-- [ ] Подготовить hosting target shortlist.
-- [ ] Сделать Commit 8 и push.
+- [ ] Добавить pagination для `/api/v1/listings`.
+- [ ] Добавить sorting по цене, price/m2, score, days_on_market.
+- [ ] Добавить фильтры по Investment/Risk/Negotiation Score.
+- [ ] Добавить frontend controls для sorting/filtering.
+- [ ] Сделать compare page для 2-5 объектов.
+- [ ] Сделать Commit 9 и push.

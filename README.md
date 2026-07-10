@@ -15,6 +15,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
+- Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -100,6 +101,29 @@ docker compose up -d db redis
 .\.venv\Scripts\python.exe -m alembic current
 .\.venv\Scripts\python.exe -m alembic upgrade head
 .\.venv\Scripts\python.exe -m alembic downgrade -1
+```
+
+## CI и deployment foundation
+
+GitHub Actions проверяет backend, frontend, Alembic SQL generation и Docker build.
+Подробности: `docs/deployment.md`.
+
+Локальный Docker build:
+
+```powershell
+docker build -t domarion-api:local .
+docker build `
+  --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 `
+  --build-arg NEXT_PUBLIC_OWNER_ID=demo-user `
+  -t domarion-frontend:local `
+  .\frontend
+```
+
+Staging-like запуск:
+
+```powershell
+docker compose -f compose.staging.yaml up --build
+python scripts\smoke_deployment.py
 ```
 
 ## Импорт партнерского CSV
@@ -289,8 +313,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить GitHub Actions CI для backend и frontend checks.
-2. Добавить production/staging deployment config.
-3. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
-4. Подключить реальные open-data слои planned investments вместо demo layer.
-5. Подготовить PayU/Stripe adapter вместо mock checkout.
+1. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
+2. Подключить реальные open-data слои planned investments вместо demo layer.
+3. Подготовить PayU/Stripe adapter вместо mock checkout.
+4. Добавить compare page.
+5. Добавить deployment workflow после выбора hosting.

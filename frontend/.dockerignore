@@ -1,0 +1,13 @@
+.env.local
+.next
+node_modules
+out
+coverage
+tsconfig.tsbuildinfo
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+.DS_Store
+Thumbs.db

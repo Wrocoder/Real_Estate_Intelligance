@@ -1,0 +1,118 @@
+x-api-env: &api-env
+  APP_NAME: ${APP_NAME:-Domarion Analytics API}
+  ENVIRONMENT: ${ENVIRONMENT:-staging}
+  DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-domarion}:${POSTGRES_PASSWORD:-domarion}@db:5432/${POSTGRES_DB:-domarion}
+  REDIS_URL: redis://redis:6379/0
+  CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  DATA_REPOSITORY_BACKEND: ${DATA_REPOSITORY_BACKEND:-postgres}
+  REPORT_STORE_BACKEND: ${REPORT_STORE_BACKEND:-postgres}
+  REPORT_ORDER_STORE_BACKEND: ${REPORT_ORDER_STORE_BACKEND:-postgres}
+  USER_STORE_BACKEND: ${USER_STORE_BACKEND:-postgres}
+  AUTH_STORE_BACKEND: ${AUTH_STORE_BACKEND:-postgres}
+  DEMO_USER_ID: ${DEMO_USER_ID:-demo-user}
+  DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@domarion.local}
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-domarion}
+      POSTGRES_USER: ${POSTGRES_USER:-domarion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-domarion}
+    volumes:
+      - staging_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-domarion} -d ${POSTGRES_DB:-domarion}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - staging_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: *api-env
+    command: python -m alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: *api-env
+    command: domarion seed-demo
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: *api-env
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
+        NEXT_PUBLIC_OWNER_ID: ${NEXT_PUBLIC_OWNER_ID:-demo-user}
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  staging_postgres_data:
+  staging_redis_data:
