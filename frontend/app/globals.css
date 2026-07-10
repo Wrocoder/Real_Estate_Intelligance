@@ -586,6 +586,53 @@ button {
   gap: 10px;
 }
 
+.pricing-listing-field {
+  max-width: 340px;
+  margin-bottom: 12px;
+}
+
+.pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pricing-card {
+  display: grid;
+  align-content: space-between;
+  gap: 12px;
+  min-height: 310px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.pricing-card-header {
+  display: grid;
+  gap: 8px;
+}
+
+.pricing-card-header strong,
+.pricing-card-header b {
+  display: block;
+  font-size: 17px;
+}
+
+.pricing-card-header span {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.pricing-card .section-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+}
+
 .usage-row {
   display: grid;
   gap: 5px;
@@ -691,6 +738,7 @@ button {
   .metric-grid,
   .grid-3,
   .plan-grid,
+  .pricing-grid,
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -714,6 +762,7 @@ button {
   .metric-grid,
   .grid-3,
   .plan-grid,
+  .pricing-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

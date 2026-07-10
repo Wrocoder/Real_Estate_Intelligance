@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { CreditCard, RefreshCw, ShieldCheck, UserCircle } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, type AccountSummary, type PlanLimits, type SubscriptionPlan } from "@/lib/api";
+import {
+  api,
+  reportContentUrl,
+  type AccountSummary,
+  type PlanLimits,
+  type ReportOrder,
+  type SubscriptionPlan,
+} from "@/lib/api";
 import { numberValue } from "@/lib/format";
 
 const PLAN_LABELS: Record<SubscriptionPlan, string> = {
@@ -18,6 +25,7 @@ const PLAN_LABELS: Record<SubscriptionPlan, string> = {
 export default function AccountPage() {
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [plans, setPlans] = useState<PlanLimits[]>([]);
+  const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [status, setStatus] = useState("Загрузка аккаунта...");
   const [error, setError] = useState("");
 
@@ -25,9 +33,14 @@ export default function AccountPage() {
     setError("");
     setStatus("Загрузка аккаунта...");
     try {
-      const [accountData, planData] = await Promise.all([api.getMe(), api.listPlans()]);
+      const [accountData, planData, orderData] = await Promise.all([
+        api.getMe(),
+        api.listPlans(),
+        api.listReportOrders(),
+      ]);
       setAccount(accountData);
       setPlans(planData);
+      setOrders(orderData);
       setStatus("Аккаунт обновлен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
@@ -160,6 +173,48 @@ export default function AccountPage() {
           </div>
         </aside>
       </div>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>Разовые покупки</h2>
+          <span className="muted">{orders.length} orders</span>
+        </div>
+        <div className="panel-body">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Продукт</th>
+                <th>Объект</th>
+                <th>Статус</th>
+                <th>Отчет</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order) => (
+                <tr key={order.id}>
+                  <td>{order.product_code}</td>
+                  <td>{order.listing_id}</td>
+                  <td>{order.status}</td>
+                  <td>
+                    {order.generated_report_id ? (
+                      <a
+                        className="button"
+                        href={reportContentUrl(order.generated_report_id)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Открыть
+                      </a>
+                    ) : (
+                      <span className="muted">-</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </>
   );
 }

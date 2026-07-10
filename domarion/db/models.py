@@ -202,6 +202,26 @@ class Subscription(Base):
     user: Mapped[User] = relationship()
 
 
+class ReportOrder(Base):
+    __tablename__ = "report_orders"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    listing_id: Mapped[str] = mapped_column(String(120), index=True)
+    product_code: Mapped[str] = mapped_column(String(60), index=True)
+    audience: Mapped[str] = mapped_column(String(40), index=True)
+    report_format: Mapped[str] = mapped_column(String(20), default="html")
+    status: Mapped[str] = mapped_column(String(40), default="unpaid", index=True)
+    amount_grosz: Mapped[int] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(8), default="PLN")
+    checkout_url: Mapped[str | None] = mapped_column(String(500))
+    generated_report_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime)
+    fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime)
+
+
 class UserFavorite(Base):
     __tablename__ = "user_favorites"
     __table_args__ = (UniqueConstraint("owner_id", "listing_id"),)

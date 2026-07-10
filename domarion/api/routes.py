@@ -6,6 +6,8 @@ from fastapi.responses import HTMLResponse, Response
 from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
+from domarion.report_order_store.base import ReportOrderStore
+from domarion.report_order_store.factory import get_report_order_store
 from domarion.report_store.base import ReportStore
 from domarion.report_store.factory import get_report_store
 from domarion.repositories.base import RealEstateRepository
@@ -18,6 +20,7 @@ from domarion.schemas import (
     AlertPreview,
     AlertUpdate,
     AreaStatistics,
+    CheckoutSession,
     CompareRequest,
     CompareResponse,
     Favorite,
@@ -32,16 +35,21 @@ from domarion.schemas import (
     ObjectReport,
     PlanLimits,
     ReportAudience,
+    ReportOrder,
+    ReportOrderCreate,
+    ReportProduct,
     ReportRequest,
     SubscriptionUpdate,
 )
 from domarion.services.alerts import build_alert_preview
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
+from domarion.services.payments import MockPaymentProvider
 from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.report_generation import (
     generate_and_store_object_report,
     generate_object_report_html,
 )
+from domarion.services.report_products import get_report_product, list_report_products
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
 from domarion.user_store.base import UserStore
@@ -49,6 +57,7 @@ from domarion.user_store.factory import get_user_store
 
 router = APIRouter(prefix="/api/v1")
 RepositoryDep = Annotated[RealEstateRepository, Depends(get_repository)]
+ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store)]
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
@@ -82,6 +91,11 @@ def list_plans() -> list[PlanLimits]:
     return list_plan_limits()
 
 
+@router.get("/report-products", response_model=list[ReportProduct])
+def list_one_time_report_products() -> list[ReportProduct]:
+    return list_report_products()
+
+
 @router.get("/me", response_model=AccountSummary)
 def get_me(
     account: CurrentAccountDep,
@@ -106,6 +120,99 @@ def update_my_subscription(
         limits=get_plan_limits(subscription.plan),
     )
     return _build_account_summary(updated_account, user_store, report_store)
+
+
+@router.post(
+    "/report-orders",
+    response_model=CheckoutSession,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_report_order(
+    payload: ReportOrderCreate,
+    repository: RepositoryDep,
+    order_store: ReportOrderStoreDep,
+    account: CurrentAccountDep,
+) -> CheckoutSession:
+    listing = repository.get_listing(payload.listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    product = get_report_product(payload.product_code)
+    order = order_store.create_order(account.user.id, payload, product)
+    payment_session = MockPaymentProvider().create_checkout_session(order)
+    order = order_store.set_checkout_url(account.user.id, order.id, payment_session.checkout_url)
+    return CheckoutSession(
+        provider=payment_session.provider,
+        mode=payment_session.mode,
+        checkout_url=payment_session.checkout_url,
+        order=order,
+    )
+
+
+@router.get("/report-orders", response_model=list[ReportOrder])
+def list_report_orders(
+    order_store: ReportOrderStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[ReportOrder]:
+    return order_store.list_orders(account.user.id, limit=limit)
+
+
+@router.get("/report-orders/{order_id}", response_model=ReportOrder)
+def get_report_order(
+    order_id: str,
+    order_store: ReportOrderStoreDep,
+    account: CurrentAccountDep,
+) -> ReportOrder:
+    order = order_store.get_order(account.user.id, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Report order not found")
+    return order
+
+
+@router.post("/report-orders/{order_id}/mock-pay", response_model=ReportOrder)
+def mock_pay_report_order(
+    order_id: str,
+    order_store: ReportOrderStoreDep,
+    account: CurrentAccountDep,
+) -> ReportOrder:
+    order = order_store.mark_paid(account.user.id, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Report order not found")
+    return order
+
+
+@router.post("/report-orders/{order_id}/fulfill", response_model=ReportOrder)
+def fulfill_report_order(
+    order_id: str,
+    repository: RepositoryDep,
+    order_store: ReportOrderStoreDep,
+    report_store: ReportStoreDep,
+    account: CurrentAccountDep,
+) -> ReportOrder:
+    order = order_store.get_order(account.user.id, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Report order not found")
+    if order.status == "fulfilled":
+        return order
+    if order.status != "paid":
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Report order must be paid before fulfillment",
+        )
+
+    report = generate_and_store_object_report(
+        repository=repository,
+        report_store=report_store,
+        listing_id=order.listing_id,
+        audience=order.audience,
+        report_format=order.report_format,
+        owner_id=account.user.id,
+    )
+    fulfilled = order_store.mark_fulfilled(account.user.id, order.id, report.id)
+    if fulfilled is None:
+        raise HTTPException(status_code=404, detail="Report order not found")
+    return fulfilled
 
 
 @router.get("/map/features", response_model=MapFeatureCollection)

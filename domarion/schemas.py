@@ -11,6 +11,8 @@ AlertFrequency = Literal["instant", "daily", "weekly"]
 UserRole = Literal["buyer", "realtor", "agency_admin", "admin"]
 SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise"]
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
+ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
+ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
 
 
 class PriceHistoryPoint(BaseModel):
@@ -158,6 +160,48 @@ class ReportRequest(BaseModel):
 
 class GenerateReportRequest(ReportRequest):
     report_format: ReportFormat = "html"
+
+
+class ReportProduct(BaseModel):
+    code: ReportProductCode
+    title: str
+    audience: ReportAudience
+    amount_grosz: int
+    currency: str = "PLN"
+    description: str
+    features: list[str]
+
+
+class ReportOrderCreate(BaseModel):
+    listing_id: str
+    product_code: ReportProductCode = "object_report"
+    audience: ReportAudience | None = None
+    report_format: ReportFormat = "html"
+
+
+class ReportOrder(BaseModel):
+    id: str
+    owner_id: str
+    listing_id: str
+    product_code: ReportProductCode
+    audience: ReportAudience
+    report_format: ReportFormat
+    status: ReportOrderStatus
+    amount_grosz: int
+    currency: str = "PLN"
+    checkout_url: str | None = None
+    generated_report_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    paid_at: datetime | None = None
+    fulfilled_at: datetime | None = None
+
+
+class CheckoutSession(BaseModel):
+    provider: str
+    mode: Literal["mock", "live"]
+    checkout_url: str
+    order: ReportOrder
 
 
 class ReportSection(BaseModel):

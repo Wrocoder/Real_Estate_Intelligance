@@ -100,6 +100,8 @@ export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_
 export type UserRole = "buyer" | "realtor" | "agency_admin" | "admin";
 export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "enterprise";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+export type ReportProductCode = "object_report" | "full_object_analysis" | "investor_report";
+export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 
 export type UserAccount = {
   id: string;
@@ -143,6 +145,41 @@ export type AccountSummary = {
   subscription: Subscription;
   limits: PlanLimits;
   usage: AccountUsage;
+};
+
+export type ReportProduct = {
+  code: ReportProductCode;
+  title: string;
+  audience: "buyer" | "realtor" | "investor";
+  amount_grosz: number;
+  currency: string;
+  description: string;
+  features: string[];
+};
+
+export type ReportOrder = {
+  id: string;
+  owner_id: string;
+  listing_id: string;
+  product_code: ReportProductCode;
+  audience: "buyer" | "realtor" | "investor";
+  report_format: "json" | "html";
+  status: ReportOrderStatus;
+  amount_grosz: number;
+  currency: string;
+  checkout_url: string | null;
+  generated_report_id: string | null;
+  created_at: string;
+  updated_at: string;
+  paid_at: string | null;
+  fulfilled_at: string | null;
+};
+
+export type CheckoutSession = {
+  provider: string;
+  mode: "mock" | "live";
+  checkout_url: string;
+  order: ReportOrder;
 };
 
 export type Favorite = {
@@ -264,6 +301,25 @@ export const api = {
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
+  listReportProducts: () => request<ReportProduct[]>("/api/v1/report-products"),
+  listReportOrders: () => request<ReportOrder[]>("/api/v1/report-orders"),
+  createReportOrder: (payload: {
+    listing_id: string;
+    product_code: ReportProductCode;
+    audience?: "buyer" | "realtor" | "investor";
+  }) =>
+    request<CheckoutSession>("/api/v1/report-orders", {
+      method: "POST",
+      body: JSON.stringify({ ...payload, report_format: "html" }),
+    }),
+  mockPayReportOrder: (orderId: string) =>
+    request<ReportOrder>(`/api/v1/report-orders/${orderId}/mock-pay`, {
+      method: "POST",
+    }),
+  fulfillReportOrder: (orderId: string) =>
+    request<ReportOrder>(`/api/v1/report-orders/${orderId}/fulfill`, {
+      method: "POST",
+    }),
   updateSubscription: (plan: SubscriptionPlan) =>
     request<AccountSummary>("/api/v1/me/subscription", {
       method: "PATCH",

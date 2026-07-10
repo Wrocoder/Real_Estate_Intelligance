@@ -120,7 +120,7 @@
 - [x] Добавить subscriptions table.
 - [x] Добавить access limits для Free/Buyer Pro/Realtor.
 - [ ] Подключить Stripe или PayU.
-- [ ] Добавить one-time report purchase flow.
+- [x] Добавить one-time report purchase flow.
 - [ ] Добавить audit logging для paid artifacts.
 
 ## 9. Favorites и Alerts
@@ -144,7 +144,7 @@
 - [ ] Сделать compare page.
 - [x] Сделать reports generation/history page.
 - [x] Сделать alerts page.
-- [ ] Сделать pricing page.
+- [x] Сделать pricing page.
 - [x] Сделать account page.
 - [x] Подключить auth foundation.
 
@@ -221,18 +221,18 @@
 - [x] Commit 4: frontend MVP shell and listing pages.
 - [x] Commit 5: map MVP.
 - [x] Commit 6: auth and subscriptions foundation.
-- [ ] Commit 7: paid report flow.
+- [x] Commit 7: paid report flow.
 - [ ] Commit 8: deployment MVP.
 
 ## Current Sprint
 
-Цель: добавить paid report flow для one-time object reports.
+Цель: добавить CI/deployment foundation для стабильной разработки и демо.
 
-- [ ] Спроектировать `report_orders` / `purchases` schema.
-- [ ] Добавить unpaid/paid/fulfilled статусы.
-- [ ] Добавить checkout mock endpoint без реального PSP.
-- [ ] Ограничить premium report generation наличием purchase или подписки.
-- [ ] Добавить pricing page.
-- [ ] Добавить order history в account page.
-- [ ] Подготовить PayU/Stripe adapter interface.
-- [ ] Сделать Commit 7 и push.
+- [ ] Добавить GitHub Actions CI: backend tests + ruff.
+- [ ] Добавить GitHub Actions CI: frontend lint + typecheck + build.
+- [ ] Добавить production Docker build для frontend/backend.
+- [ ] Добавить deployment env documentation.
+- [ ] Добавить staging startup smoke script.
+- [ ] Проверить Alembic migrations в CI.
+- [ ] Подготовить hosting target shortlist.
+- [ ] Сделать Commit 8 и push.

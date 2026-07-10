@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     data_repository_backend: str = "memory"
     report_store_backend: str = "memory"
+    report_order_store_backend: str = "memory"
     user_store_backend: str = "memory"
     auth_store_backend: str = "memory"
     demo_user_id: str = "demo-user"

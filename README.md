@@ -14,6 +14,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
+- Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -30,6 +31,8 @@ API будет доступен:
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/api/v1/me
 - http://127.0.0.1:8000/api/v1/plans
+- http://127.0.0.1:8000/api/v1/report-products
+- http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
@@ -66,6 +69,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
+- http://127.0.0.1:3000/pricing — разовые paid reports и mock checkout.
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
 - http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
 
@@ -196,6 +200,45 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/me/subscription `
 Лимиты уже применяются к favorites, alerts, saved reports и compare items.
 Старый `?owner_id=...` работает как fallback для совместимости старых запросов.
 
+## Paid report flow MVP
+
+Разовые отчеты работают через order lifecycle:
+
+1. `unpaid` — заказ создан.
+2. `paid` — mock payment подтвержден.
+3. `fulfilled` — отчет сгенерирован и сохранен в `generated_reports`.
+
+Посмотреть продукты:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-products
+```
+
+Создать заказ:
+
+```powershell
+$checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"wr-001","product_code":"object_report","report_format":"html"}'
+```
+
+Оплатить через mock checkout:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000$($checkout.checkout_url)" -Method Post
+```
+
+Сгенерировать оплаченный отчет:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.id)/fulfill" `
+  -Method Post
+```
+
+Paid fulfillment не расходует подписочный monthly report limit. Это MVP-модель для
+разовых покупок; реальный PayU/Stripe adapter должен заменить mock provider отдельным шагом.
+
 ## Избранное и уведомления
 
 Endpoints используют текущего пользователя из headers. Для обратной совместимости
@@ -246,8 +289,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить auth/access limits для Free/Buyer Pro/Realtor.
-2. Подготовить paid report flow для one-time object reports.
+1. Добавить GitHub Actions CI для backend и frontend checks.
+2. Добавить production/staging deployment config.
 3. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
 4. Подключить реальные open-data слои planned investments вместо demo layer.
-5. Добавить GitHub Actions CI для backend и frontend checks.
+5. Подготовить PayU/Stripe adapter вместо mock checkout.
