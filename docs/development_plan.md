@@ -78,7 +78,9 @@
 - [x] Добавить dry-run CLI.
 - [x] Добавить ingestion jobs table usage.
 - [x] Добавить data quality logs.
+- [x] Добавить JSON/CSV import planned investments для open-data слоев.
 - [ ] Добавить CSV import API endpoint для internal admin.
+- [ ] Добавить planned investments import API endpoint для internal admin.
 - [ ] Добавить дедупликацию v1 при импорте.
 - [ ] Добавить geocoding pipeline.
 - [ ] Добавить source monitoring и error reporting.
@@ -162,6 +164,7 @@
 - [ ] Добавить clusters.
 - [x] Добавить infrastructure layers.
 - [x] Добавить planned investments layer.
+- [x] Добавить sample open-data слой Wrocław planned transport investments.
 - [ ] Добавить PostGIS distance calculations.
 - [x] Добавить filters by radius.
 - [x] Добавить risk/growth map overlays.
@@ -237,15 +240,17 @@
 - [x] Commit 13: payment audit and alert delivery skeleton.
 - [x] Commit 14: payment webhook processing.
 - [x] Commit 15: alert delivery transports.
+- [x] Commit 16: PostGIS staging verifier.
+- [x] Commit 17: planned investments open-data ingestion.
 
 ## Current Sprint
 
 Цель: перейти от skeleton к production-grade интеграциям и данным.
 
-- [x] Подключить Stripe/PayU webhook verification.
-- [x] Добавить payment callback endpoints и idempotency keys.
-- [x] Добавить фактическую SMTP delivery отправку.
-- [x] Добавить фактическую Telegram Bot API delivery отправку.
 - [x] Добавить PostGIS staging verifier и optional integration test.
-- [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
-- [ ] Сделать Commit 16 и push.
+- [x] Сделать Commit 16 и push.
+- [x] Добавить JSON/CSV import planned investments.
+- [x] Добавить sample open-data файл по Wrocław transport investments.
+- [x] Добавить тесты dry-run и idempotent upsert.
+- [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
+- [x] Сделать Commit 17 и push.

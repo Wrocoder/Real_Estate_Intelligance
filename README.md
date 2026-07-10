@@ -23,6 +23,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
+- Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
@@ -185,6 +186,36 @@ python scripts\smoke_deployment.py
 
 `source_listing_id`, `title`, `source_url`, `city`, `district`, `address`,
 `market_type`, `price`, `area_m2`, `rooms`, `lat`, `lon`.
+
+## Импорт planned investments
+
+Planned investments можно добавлять вручную через admin CRUD или импортировать из
+проверяемых JSON/CSV файлов. Это основной путь для open-data слоев: транспорт,
+дороги, школы, парки и другие факторы будущего развития района.
+
+Пример файла на основе публичной страницы Wrocławskiego Programu
+Tramwajowo-Autobusowego:
+`data/samples/planned_investments_wroclaw_open_data.json`.
+
+Проверить файл без записи:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-planned-investments data\samples\planned_investments_wroclaw_open_data.json --source-name "wroclaw.pl WPT" --dry-run
+```
+
+Импортировать в текущий repository backend:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-planned-investments data\samples\planned_investments_wroclaw_open_data.json --source-name "wroclaw.pl WPT"
+```
+
+Минимальные обязательные поля JSON/CSV:
+
+`name`, `investment_type`, `status`, `city`, `lat`, `lon`.
+
+Поддерживаются aliases вроде `title`, `type`, `stage`, `latitude`, `longitude`.
+Импорт ищет существующую запись по `source_url + name`, затем по `name + city`,
+поэтому повторный запуск обновляет слой, а не создает дубли.
 
 ## HTML-отчеты
 
@@ -459,7 +490,7 @@ git push -u origin feature/mvp-api-foundation
 ## Следующий технический шаг
 
 1. Запустить `scripts\verify_postgres_staging.py` на живой PostGIS БД после стабилизации Docker Desktop.
-2. Подключить реальные open-data слои planned investments вместо demo layer.
+2. Подключить CSV/JSON import planned investments к internal admin endpoint.
 3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 4. Добавить SEO structured content для следующих городов.
 5. Добавить deployment workflow после выбора hosting.

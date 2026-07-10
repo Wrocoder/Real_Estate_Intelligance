@@ -1,8 +1,11 @@
 import argparse
 import json
+from contextlib import contextmanager
 
 from domarion.ingestion.db_writer import import_partner_csv
 from domarion.ingestion.partner_csv import read_partner_csv
+from domarion.ingestion.planned_investments import import_planned_investments
+from domarion.repositories.factory import get_repository
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
 from domarion.scripts.seed_demo import seed_demo_data
 from domarion.services.report_generation import write_object_report_html
@@ -23,6 +26,21 @@ def main() -> None:
         "--dry-run",
         action="store_true",
         help="Parse and validate CSV without writing to database.",
+    )
+    planned_parser = subparsers.add_parser(
+        "import-planned-investments",
+        help="Import planned infrastructure investments from a legal JSON/CSV open-data file.",
+    )
+    planned_parser.add_argument("path", help="Path to UTF-8 JSON or CSV file.")
+    planned_parser.add_argument(
+        "--source-name",
+        default=None,
+        help="Fallback source name if the file does not define one.",
+    )
+    planned_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Parse and validate the file without writing to the repository backend.",
     )
     report_parser = subparsers.add_parser(
         "generate-report-html",
@@ -52,6 +70,22 @@ def main() -> None:
             }
         else:
             result = import_partner_csv(args.path, args.source_name, args.source_type).as_dict()
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "import-planned-investments":
+        if args.dry_run:
+            result = import_planned_investments(
+                args.path,
+                InMemoryRealEstateRepository(),
+                default_source_name=args.source_name,
+                dry_run=True,
+            ).as_dict()
+        else:
+            with contextmanager(get_repository)() as repository:
+                result = import_planned_investments(
+                    args.path,
+                    repository,
+                    default_source_name=args.source_name,
+                ).as_dict()
         print(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "generate-report-html":
         repository = InMemoryRealEstateRepository()
