@@ -114,11 +114,11 @@
 
 ## 8. Users, Auth и Payments
 
-- [ ] Выбрать auth strategy: Auth.js/Clerk/custom JWT.
-- [ ] Добавить users table.
-- [ ] Добавить roles: buyer, realtor, agency_admin, admin.
-- [ ] Добавить subscriptions table.
-- [ ] Добавить access limits для Free/Buyer Pro/Realtor.
+- [x] Выбрать MVP auth strategy: header identity с fallback на future Auth.js/Clerk/custom JWT.
+- [x] Добавить users table.
+- [x] Добавить roles: buyer, realtor, agency_admin, admin.
+- [x] Добавить subscriptions table.
+- [x] Добавить access limits для Free/Buyer Pro/Realtor.
 - [ ] Подключить Stripe или PayU.
 - [ ] Добавить one-time report purchase flow.
 - [ ] Добавить audit logging для paid artifacts.
@@ -145,8 +145,8 @@
 - [x] Сделать reports generation/history page.
 - [x] Сделать alerts page.
 - [ ] Сделать pricing page.
-- [ ] Сделать account page.
-- [ ] Подключить auth.
+- [x] Сделать account page.
+- [x] Подключить auth foundation.
 
 ## 11. Map и GIS
 
@@ -220,19 +220,19 @@
 - [x] Commit 3: favorites and alerts foundation.
 - [x] Commit 4: frontend MVP shell and listing pages.
 - [x] Commit 5: map MVP.
-- [ ] Commit 6: auth and subscriptions foundation.
+- [x] Commit 6: auth and subscriptions foundation.
 - [ ] Commit 7: paid report flow.
 - [ ] Commit 8: deployment MVP.
 
 ## Current Sprint
 
-Цель: добавить auth/subscriptions foundation для Free, Buyer Pro и Realtor.
+Цель: добавить paid report flow для one-time object reports.
 
-- [ ] Выбрать MVP auth mode: custom JWT или Auth.js/Clerk.
-- [ ] Добавить `users` model/schema/migration.
-- [ ] Добавить роли: buyer, realtor, agency_admin, admin.
-- [ ] Добавить `subscriptions` model/schema/migration.
-- [ ] Добавить plan limits для Free/Buyer Pro/Realtor.
-- [ ] Добавить middleware/dependency для текущего пользователя.
-- [ ] Заменить временный `owner_id` на user identity fallback.
-- [ ] Сделать Commit 6 и push.
+- [ ] Спроектировать `report_orders` / `purchases` schema.
+- [ ] Добавить unpaid/paid/fulfilled статусы.
+- [ ] Добавить checkout mock endpoint без реального PSP.
+- [ ] Ограничить premium report generation наличием purchase или подписки.
+- [ ] Добавить pricing page.
+- [ ] Добавить order history в account page.
+- [ ] Подготовить PayU/Stripe adapter interface.
+- [ ] Сделать Commit 7 и push.

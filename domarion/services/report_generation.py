@@ -32,6 +32,7 @@ def generate_and_store_object_report(
     listing_id: str,
     audience: ReportAudience = "buyer",
     report_format: ReportFormat = "html",
+    owner_id: str = "demo-user",
 ) -> GeneratedReport:
     listing = repository.get_listing(listing_id)
     if listing is None:
@@ -48,6 +49,7 @@ def generate_and_store_object_report(
         content_type = "application/json"
 
     payload = GeneratedReportCreate(
+        owner_id=owner_id,
         listing_id=listing_id,
         audience=audience,
         report_format=report_format,

@@ -15,6 +15,7 @@ class PostgresReportStore:
     def save_report(self, payload: GeneratedReportCreate) -> GeneratedReport:
         row = GeneratedReportModel(
             id=str(uuid4()),
+            owner_id=payload.owner_id,
             listing_id=payload.listing_id,
             audience=payload.audience,
             report_format=payload.report_format,
@@ -30,17 +31,26 @@ class PostgresReportStore:
         self.session.refresh(row)
         return self._row_to_report(row)
 
-    def list_reports(self, limit: int = 50) -> list[GeneratedReportListItem]:
+    def list_reports(
+        self,
+        limit: int = 50,
+        owner_id: str | None = None,
+    ) -> list[GeneratedReportListItem]:
+        statement = select(GeneratedReportModel)
+        if owner_id is not None:
+            statement = statement.where(GeneratedReportModel.owner_id == owner_id)
         rows = self.session.scalars(
-            select(GeneratedReportModel)
-            .order_by(GeneratedReportModel.created_at.desc())
-            .limit(limit)
+            statement.order_by(GeneratedReportModel.created_at.desc()).limit(limit)
         ).all()
         return [self._row_to_list_item(row) for row in rows]
 
-    def get_report(self, report_id: str) -> GeneratedReport | None:
+    def get_report(
+        self,
+        report_id: str,
+        owner_id: str | None = None,
+    ) -> GeneratedReport | None:
         row = self.session.get(GeneratedReportModel, report_id)
-        if row is None:
+        if row is None or (owner_id is not None and row.owner_id != owner_id):
             return None
         return self._row_to_report(row)
 
@@ -48,6 +58,7 @@ class PostgresReportStore:
     def _row_to_report(row: GeneratedReportModel) -> GeneratedReport:
         return GeneratedReport(
             id=row.id,
+            owner_id=row.owner_id,
             listing_id=row.listing_id,
             audience=row.audience,
             report_format=row.report_format,
@@ -63,6 +74,7 @@ class PostgresReportStore:
     def _row_to_list_item(row: GeneratedReportModel) -> GeneratedReportListItem:
         return GeneratedReportListItem(
             id=row.id,
+            owner_id=row.owner_id,
             listing_id=row.listing_id,
             audience=row.audience,
             report_format=row.report_format,
@@ -71,4 +83,3 @@ class PostgresReportStore:
             summary=row.summary,
             created_at=row.created_at,
         )
-

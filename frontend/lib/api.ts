@@ -83,6 +83,7 @@ export type ListingAnalysis = {
 
 export type GeneratedReport = {
   id: string;
+  owner_id: string;
   listing_id: string;
   audience: "buyer" | "realtor" | "investor";
   report_format: "json" | "html";
@@ -95,6 +96,54 @@ export type GeneratedReport = {
 };
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
+
+export type UserRole = "buyer" | "realtor" | "agency_admin" | "admin";
+export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "enterprise";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+
+export type UserAccount = {
+  id: string;
+  email: string | null;
+  display_name: string | null;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Subscription = {
+  id: string;
+  user_id: string;
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
+  current_period_start: string | null;
+  current_period_end: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PlanLimits = {
+  plan: SubscriptionPlan;
+  max_favorites: number;
+  max_alerts: number;
+  monthly_reports: number;
+  max_compare_items: number;
+  can_export: boolean;
+  can_use_api: boolean;
+  can_white_label: boolean;
+};
+
+export type AccountUsage = {
+  favorites: number;
+  alerts: number;
+  reports_this_month: number;
+};
+
+export type AccountSummary = {
+  user: UserAccount;
+  subscription: Subscription;
+  limits: PlanLimits;
+  usage: AccountUsage;
+};
 
 export type Favorite = {
   id: string;
@@ -213,6 +262,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   listListings: () => request<Listing[]>("/api/v1/listings"),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  getMe: () => request<AccountSummary>("/api/v1/me"),
+  listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
+  updateSubscription: (plan: SubscriptionPlan) =>
+    request<AccountSummary>("/api/v1/me/subscription", {
+      method: "PATCH",
+      body: JSON.stringify({ plan, status: "active" }),
+    }),
   getMapFeatures: (params: MapQuery = {}) =>
     request<MapFeatureCollection>(`/api/v1/map/features${toQueryString(params)}`),
   getListing: (id: string) => request<Listing>(`/api/v1/listings/${id}`),

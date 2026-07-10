@@ -8,6 +8,9 @@ ReportAudience = Literal["buyer", "realtor", "investor"]
 ReportFormat = Literal["json", "html"]
 AlertChannel = Literal["email", "telegram"]
 AlertFrequency = Literal["instant", "daily", "weekly"]
+UserRole = Literal["buyer", "realtor", "agency_admin", "admin"]
+SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise"]
+SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 
 
 class PriceHistoryPoint(BaseModel):
@@ -171,6 +174,7 @@ class ObjectReport(BaseModel):
 
 
 class GeneratedReportCreate(BaseModel):
+    owner_id: str = "demo-user"
     listing_id: str
     audience: ReportAudience
     report_format: ReportFormat
@@ -183,6 +187,7 @@ class GeneratedReportCreate(BaseModel):
 
 class GeneratedReportListItem(BaseModel):
     id: str
+    owner_id: str
     listing_id: str
     audience: ReportAudience
     report_format: ReportFormat
@@ -195,6 +200,63 @@ class GeneratedReportListItem(BaseModel):
 class GeneratedReport(GeneratedReportListItem):
     content: str
     report_metadata: dict
+
+
+class UserAccount(BaseModel):
+    id: str
+    email: str | None = None
+    display_name: str | None = None
+    role: UserRole
+    created_at: datetime
+    updated_at: datetime
+
+
+class AuthIdentity(BaseModel):
+    user_id: str
+    email: str | None = None
+    display_name: str | None = None
+    role: UserRole = "buyer"
+    plan: SubscriptionPlan = "free"
+
+
+class Subscription(BaseModel):
+    id: str
+    user_id: str
+    plan: SubscriptionPlan
+    status: SubscriptionStatus
+    current_period_start: datetime | None = None
+    current_period_end: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class SubscriptionUpdate(BaseModel):
+    plan: SubscriptionPlan | None = None
+    status: SubscriptionStatus | None = None
+
+
+class PlanLimits(BaseModel):
+    plan: SubscriptionPlan
+    max_favorites: int
+    max_alerts: int
+    monthly_reports: int
+    max_compare_items: int
+    can_export: bool
+    can_use_api: bool
+    can_white_label: bool
+
+
+class AccountUsage(BaseModel):
+    favorites: int
+    alerts: int
+    reports_this_month: int
+
+
+class AccountSummary(BaseModel):
+    user: UserAccount
+    subscription: Subscription
+    limits: PlanLimits
+    usage: AccountUsage
 
 
 class FavoriteCreate(BaseModel):

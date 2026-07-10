@@ -163,6 +163,7 @@ class GeneratedReport(Base):
     __tablename__ = "generated_reports"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True, default="demo-user")
     listing_id: Mapped[str] = mapped_column(String(120), index=True)
     audience: Mapped[str] = mapped_column(String(40), index=True)
     report_format: Mapped[str] = mapped_column(String(20), index=True)
@@ -172,6 +173,33 @@ class GeneratedReport(Base):
     content: Mapped[str] = mapped_column(Text)
     report_metadata: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
+    display_name: Mapped[str | None] = mapped_column(String(160))
+    role: Mapped[str] = mapped_column(String(40), default="buyer", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+    __table_args__ = (UniqueConstraint("user_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    plan: Mapped[str] = mapped_column(String(40), default="free", index=True)
+    status: Mapped[str] = mapped_column(String(40), default="active", index=True)
+    current_period_start: Mapped[datetime | None] = mapped_column(DateTime)
+    current_period_end: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user: Mapped[User] = relationship()
 
 
 class UserFavorite(Base):

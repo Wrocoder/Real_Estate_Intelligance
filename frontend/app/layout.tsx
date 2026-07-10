@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BarChart3, Bell, FileText, Search } from "lucide-react";
+import { BarChart3, Bell, FileText, Search, UserCircle } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import "./globals.css";
@@ -36,6 +36,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/alerts">
                 <Bell size={18} />
                 Alerts
+              </Link>
+              <Link href="/account">
+                <UserCircle size={18} />
+                Аккаунт
               </Link>
               <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
                 <BarChart3 size={18} />

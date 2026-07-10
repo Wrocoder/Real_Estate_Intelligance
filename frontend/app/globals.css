@@ -550,6 +550,75 @@ button {
   background: #fbfcfd;
 }
 
+.section-list.compact {
+  gap: 6px;
+}
+
+.section-list.compact li {
+  padding: 7px 9px;
+  font-size: 13px;
+}
+
+.plan-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.plan-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.plan-card.active {
+  border-color: var(--accent);
+  background: #eef8f5;
+}
+
+.plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.usage-row {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.capability-list {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.capability {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fbfcfd;
+  color: var(--muted);
+  padding: 0 9px;
+  font-size: 12px;
+}
+
+.capability.enabled {
+  border-color: #b9ddce;
+  background: #edf8f2;
+  color: var(--ok);
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -621,6 +690,7 @@ button {
 
   .metric-grid,
   .grid-3,
+  .plan-grid,
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -643,6 +713,7 @@ button {
 
   .metric-grid,
   .grid-3,
+  .plan-grid,
   .form-grid {
     grid-template-columns: 1fr;
   }

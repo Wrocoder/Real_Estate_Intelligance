@@ -13,6 +13,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Подготовлены тесты для API и скоринга.
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
+- Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -27,6 +28,8 @@ API будет доступен:
 
 - http://127.0.0.1:8000/health
 - http://127.0.0.1:8000/docs
+- http://127.0.0.1:8000/api/v1/me
+- http://127.0.0.1:8000/api/v1/plans
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
@@ -64,6 +67,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
+- http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
 
 ## Запуск инфраструктуры
 
@@ -157,10 +161,45 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports
 Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/content
 ```
 
+## Auth и тарифные лимиты MVP
+
+Полноценный OAuth/JWT еще не подключен. Для MVP используется header-based identity,
+которую позже можно заменить на Clerk/Auth.js/custom JWT без переписывания бизнес-логики.
+
+По умолчанию API использует `demo-user`. Для имитации другого пользователя:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/me `
+  -Headers @{
+    "X-Domarion-User-Id"="agent-1";
+    "X-Domarion-Email"="agent@example.com";
+    "X-Domarion-Role"="realtor";
+    "X-Domarion-Plan"="realtor"
+  }
+```
+
+Список тарифных лимитов:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/plans
+```
+
+Сменить тариф текущего пользователя в MVP-режиме:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/me/subscription `
+  -Method Patch `
+  -ContentType "application/json" `
+  -Body '{"plan":"buyer_pro","status":"active"}'
+```
+
+Лимиты уже применяются к favorites, alerts, saved reports и compare items.
+Старый `?owner_id=...` работает как fallback для совместимости старых запросов.
+
 ## Избранное и уведомления
 
-До подключения auth endpoints используют временный `owner_id` query parameter.
-По умолчанию используется `demo-user`.
+Endpoints используют текущего пользователя из headers. Для обратной совместимости
+можно временно передавать `owner_id` query parameter. По умолчанию используется `demo-user`.
 
 Добавить объект в избранное:
 
