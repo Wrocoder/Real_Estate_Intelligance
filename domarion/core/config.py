@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     report_order_store_backend: str = "memory"
     user_store_backend: str = "memory"
     auth_store_backend: str = "memory"
+    ingestion_admin_store_backend: str = "memory"
     demo_user_id: str = "demo-user"
     demo_user_email: str = "demo@domarion.local"
     cors_origins: list[str] = Field(

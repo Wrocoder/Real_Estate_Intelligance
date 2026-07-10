@@ -98,6 +98,7 @@ python scripts\smoke_deployment.py
 | `REPORT_ORDER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `USER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `AUTH_STORE_BACKEND` | `memory` или `postgres` | `memory` |
+| `INGESTION_ADMIN_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `DEMO_USER_ID` | fallback user для MVP auth | `demo-user` |
 | `DEMO_USER_EMAIL` | fallback email для MVP auth | `demo@domarion.local` |
 

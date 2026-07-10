@@ -76,8 +76,8 @@
 - [x] Сохранять property, property_source, listing_snapshots.
 - [x] Добавить sample CSV.
 - [x] Добавить dry-run CLI.
-- [ ] Добавить ingestion jobs table usage.
-- [ ] Добавить data quality logs.
+- [x] Добавить ingestion jobs table usage.
+- [x] Добавить data quality logs.
 - [ ] Добавить CSV import API endpoint для internal admin.
 - [ ] Добавить дедупликацию v1 при импорте.
 - [ ] Добавить geocoding pipeline.
@@ -161,13 +161,13 @@
 
 ## 12. Admin Panel
 
-- [ ] Добавить internal admin auth.
-- [ ] Добавить список ingestion jobs.
-- [ ] Добавить просмотр raw listings.
+- [x] Добавить internal admin auth.
+- [x] Добавить список ingestion jobs.
+- [x] Добавить просмотр raw listings.
 - [ ] Добавить ручное исправление normalized listing.
 - [ ] Добавить dedup review queue.
 - [ ] Добавить planned investments CRUD.
-- [ ] Добавить data quality dashboard.
+- [x] Добавить data quality dashboard.
 
 ## 13. AI Assistant
 
@@ -224,14 +224,14 @@
 - [x] Commit 7: paid report flow.
 - [x] Commit 8: deployment MVP.
 - [x] Commit 9: search pagination and compare page.
+- [x] Commit 10: ingestion admin MVP.
 
 ## Current Sprint
 
-Цель: добавить первые реальные data-quality/admin возможности вокруг ingestion.
+Цель: добавить управляемые planned investments и первые SEO area pages.
 
-- [ ] Добавить ingestion jobs table usage.
-- [ ] Добавить data quality logs.
-- [ ] Добавить internal admin page для ingestion jobs.
-- [ ] Добавить raw listings preview.
-- [ ] Добавить ручное planned investments CRUD v1.
-- [ ] Сделать Commit 10 и push.
+- [ ] Добавить planned investments CRUD API.
+- [ ] Добавить admin UI для planned investments.
+- [ ] Добавить SEO area pages для Wrocław districts.
+- [ ] Добавить sitemap и robots.txt.
+- [ ] Сделать Commit 11 и push.

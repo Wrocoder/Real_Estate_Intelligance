@@ -28,6 +28,46 @@ class ListingSource(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class IngestionJob(Base):
+    __tablename__ = "ingestion_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_name: Mapped[str] = mapped_column(String(120), index=True)
+    source_type: Mapped[str] = mapped_column(String(60), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="queued", index=True)
+    rows_seen: Mapped[int] = mapped_column(Integer, default=0)
+    raw_created: Mapped[int] = mapped_column(Integer, default=0)
+    raw_updated: Mapped[int] = mapped_column(Integer, default=0)
+    properties_created: Mapped[int] = mapped_column(Integer, default=0)
+    properties_updated: Mapped[int] = mapped_column(Integer, default=0)
+    snapshots_created: Mapped[int] = mapped_column(Integer, default=0)
+    snapshots_updated: Mapped[int] = mapped_column(Integer, default=0)
+    errors_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_by: Mapped[str] = mapped_column(String(120), default="system", index=True)
+    notes: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class DataQualityLog(Base):
+    __tablename__ = "data_quality_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    job_id: Mapped[str | None] = mapped_column(ForeignKey("ingestion_jobs.id"), index=True)
+    source_name: Mapped[str] = mapped_column(String(120), index=True)
+    source_listing_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    severity: Mapped[str] = mapped_column(String(40), index=True)
+    code: Mapped[str] = mapped_column(String(80), index=True)
+    message: Mapped[str] = mapped_column(Text)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    job: Mapped[IngestionJob | None] = relationship()
+
+
 class RawListing(Base):
     __tablename__ = "raw_listings"
     __table_args__ = (UniqueConstraint("source_id", "source_listing_id"),)

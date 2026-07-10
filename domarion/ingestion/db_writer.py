@@ -3,11 +3,20 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, time
 from decimal import Decimal
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from domarion.db.models import ListingSnapshot, ListingSource, Property, PropertySource, RawListing
+from domarion.db.models import (
+    DataQualityLog,
+    IngestionJob,
+    ListingSnapshot,
+    ListingSource,
+    Property,
+    PropertySource,
+    RawListing,
+)
 from domarion.db.session import SessionLocal
 from domarion.ingestion.partner_csv import PartnerListingRecord, read_partner_csv
 from domarion.schemas import Listing
@@ -46,9 +55,21 @@ def import_partner_csv(
         default_source_type=source_type,
     )
     with SessionLocal() as session:
-        result = import_partner_records_in_session(session, records)
+        job = _create_ingestion_job(session, source_name, source_type, path)
         session.commit()
-        return result
+
+        try:
+            _mark_ingestion_job_running(session, job.id)
+            result = import_partner_records_in_session(session, records)
+            warnings_count = _write_data_quality_logs(session, job.id, records)
+            _finish_ingestion_job(session, job.id, result, "succeeded", warnings_count)
+            session.commit()
+            return result
+        except Exception as exc:
+            session.rollback()
+            _finish_failed_ingestion_job(session, job.id, exc)
+            session.commit()
+            raise
 
 
 def import_partner_records_in_session(
@@ -79,6 +100,143 @@ def import_partner_records_in_session(
 def payload_hash(payload: dict[str, str]) -> str:
     body = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def _create_ingestion_job(
+    session: Session,
+    source_name: str,
+    source_type: str,
+    path: str,
+) -> IngestionJob:
+    now = datetime.utcnow()
+    job = IngestionJob(
+        id=str(uuid4()),
+        source_name=source_name,
+        source_type=source_type,
+        status="queued",
+        rows_seen=0,
+        raw_created=0,
+        raw_updated=0,
+        properties_created=0,
+        properties_updated=0,
+        snapshots_created=0,
+        snapshots_updated=0,
+        errors_count=0,
+        created_by="cli",
+        notes=None,
+        metadata_json={"path": path},
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(job)
+    session.flush()
+    return job
+
+
+def _mark_ingestion_job_running(session: Session, job_id: str) -> None:
+    job = session.get(IngestionJob, job_id)
+    if job is None:
+        return
+    now = datetime.utcnow()
+    job.status = "running"
+    job.started_at = now
+    job.updated_at = now
+    session.flush()
+
+
+def _finish_ingestion_job(
+    session: Session,
+    job_id: str,
+    result: ImportResult,
+    status: str,
+    errors_count: int,
+) -> None:
+    job = session.get(IngestionJob, job_id)
+    if job is None:
+        return
+    for key, value in result.as_dict().items():
+        setattr(job, key, value)
+    job.status = status
+    job.errors_count = errors_count
+    job.finished_at = datetime.utcnow()
+    job.updated_at = datetime.utcnow()
+    session.flush()
+
+
+def _finish_failed_ingestion_job(session: Session, job_id: str, exc: Exception) -> None:
+    job = session.get(IngestionJob, job_id)
+    if job is None:
+        return
+    now = datetime.utcnow()
+    job.status = "failed"
+    job.errors_count = 1
+    job.finished_at = now
+    job.updated_at = now
+    session.add(
+        DataQualityLog(
+            id=str(uuid4()),
+            job_id=job_id,
+            source_name=job.source_name,
+            source_listing_id=None,
+            severity="error",
+            code="import_failed",
+            message=str(exc),
+            payload={"exception_type": type(exc).__name__},
+            created_at=now,
+        )
+    )
+    session.flush()
+
+
+def _write_data_quality_logs(
+    session: Session,
+    job_id: str,
+    records: list[PartnerListingRecord],
+) -> int:
+    warnings_count = 0
+    for record in records:
+        listing = record.listing
+        missing_fields = [
+            field
+            for field in (
+                "nearest_stop_m",
+                "nearest_school_m",
+                "nearest_major_road_m",
+                "nearest_industrial_zone_m",
+                "distance_to_center_km",
+            )
+            if not record.raw_payload.get(field)
+        ]
+
+        if listing.data_quality_score < 80 or missing_fields:
+            warnings_count += 1
+            code = (
+                "low_data_quality"
+                if listing.data_quality_score < 80
+                else "missing_optional_fields"
+            )
+            session.add(
+                DataQualityLog(
+                    id=str(uuid4()),
+                    job_id=job_id,
+                    source_name=record.source_name,
+                    source_listing_id=record.source_listing_id,
+                    severity="warning",
+                    code=code,
+                    message=(
+                        f"Data quality score is {listing.data_quality_score}/100."
+                        if listing.data_quality_score < 80
+                        else "Optional fields are missing in the source row."
+                    ),
+                    payload={
+                        "data_quality_score": listing.data_quality_score,
+                        "missing_fields": missing_fields,
+                    },
+                    created_at=datetime.utcnow(),
+                )
+            )
+    session.flush()
+    return warnings_count
 
 
 def _get_or_create_source(session: Session, record: PartnerListingRecord) -> ListingSource:

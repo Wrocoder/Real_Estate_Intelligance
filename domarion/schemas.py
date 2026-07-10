@@ -13,6 +13,8 @@ SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
+DataQualitySeverity = Literal["info", "warning", "error"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -102,6 +104,69 @@ class PlannedInvestment(BaseModel):
     source_url: str | None = None
     confidence_score: int = Field(ge=0, le=100)
     notes: str | None = None
+
+
+class IngestionJobCreate(BaseModel):
+    source_name: str
+    source_type: str = "partner_csv"
+    status: IngestionJobStatus = "queued"
+    created_by: str = "system"
+    notes: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class IngestionJob(BaseModel):
+    id: str
+    source_name: str
+    source_type: str
+    status: IngestionJobStatus
+    rows_seen: int = Field(ge=0)
+    raw_created: int = Field(ge=0)
+    raw_updated: int = Field(ge=0)
+    properties_created: int = Field(ge=0)
+    properties_updated: int = Field(ge=0)
+    snapshots_created: int = Field(ge=0)
+    snapshots_updated: int = Field(ge=0)
+    errors_count: int = Field(ge=0)
+    created_by: str
+    notes: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class DataQualityLogCreate(BaseModel):
+    job_id: str | None = None
+    source_name: str
+    source_listing_id: str | None = None
+    severity: DataQualitySeverity = "info"
+    code: str
+    message: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class DataQualityLog(BaseModel):
+    id: str
+    job_id: str | None = None
+    source_name: str
+    source_listing_id: str | None = None
+    severity: DataQualitySeverity
+    code: str
+    message: str
+    payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class RawListingSummary(BaseModel):
+    id: int | str
+    source_name: str
+    source_listing_id: str
+    source_url: str
+    fetched_at: datetime
+    payload_hash: str
+    raw_payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class MapPointGeometry(BaseModel):

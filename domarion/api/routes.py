@@ -6,6 +6,8 @@ from fastapi.responses import HTMLResponse, Response
 from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
+from domarion.ingestion_admin_store.base import IngestionAdminStore
+from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
 from domarion.report_order_store.base import ReportOrderStore
 from domarion.report_order_store.factory import get_report_order_store
 from domarion.report_store.base import ReportStore
@@ -23,12 +25,17 @@ from domarion.schemas import (
     CheckoutSession,
     CompareRequest,
     CompareResponse,
+    DataQualityLog,
+    DataQualityLogCreate,
+    DataQualitySeverity,
     Favorite,
     FavoriteCreate,
     FavoriteUpdate,
     GeneratedReport,
     GeneratedReportListItem,
     GenerateReportRequest,
+    IngestionJob,
+    IngestionJobCreate,
     Listing,
     ListingAnalysis,
     ListingSearchResponse,
@@ -37,6 +44,7 @@ from domarion.schemas import (
     MarketType,
     ObjectReport,
     PlanLimits,
+    RawListingSummary,
     ReportAudience,
     ReportOrder,
     ReportOrderCreate,
@@ -61,6 +69,7 @@ from domarion.user_store.factory import get_user_store
 
 router = APIRouter(prefix="/api/v1")
 RepositoryDep = Annotated[RealEstateRepository, Depends(get_repository)]
+IngestionAdminStoreDep = Annotated[IngestionAdminStore, Depends(get_ingestion_admin_store)]
 ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store)]
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
@@ -133,6 +142,94 @@ def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
 @router.get("/plans", response_model=list[PlanLimits])
 def list_plans() -> list[PlanLimits]:
     return list_plan_limits()
+
+
+@router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])
+def list_admin_ingestion_jobs(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[IngestionJob]:
+    _ensure_admin(account)
+    return admin_store.list_jobs(limit=limit)
+
+
+@router.post(
+    "/admin/ingestion/jobs",
+    response_model=IngestionJob,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_ingestion_job(
+    payload: IngestionJobCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> IngestionJob:
+    _ensure_admin(account)
+    audited_payload = payload.model_copy(update={"created_by": account.user.id})
+    return admin_store.create_job(audited_payload)
+
+
+@router.get("/admin/ingestion/jobs/{job_id}", response_model=IngestionJob)
+def get_admin_ingestion_job(
+    job_id: str,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> IngestionJob:
+    _ensure_admin(account)
+    job = admin_store.get_job(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Ingestion job not found")
+    return job
+
+
+@router.get("/admin/data-quality/logs", response_model=list[DataQualityLog])
+def list_admin_data_quality_logs(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    job_id: Annotated[str | None, Query()] = None,
+    severity: Annotated[DataQualitySeverity | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[DataQualityLog]:
+    _ensure_admin(account)
+    return admin_store.list_quality_logs(job_id=job_id, severity=severity, limit=limit)
+
+
+@router.post(
+    "/admin/data-quality/logs",
+    response_model=DataQualityLog,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_data_quality_log(
+    payload: DataQualityLogCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DataQualityLog:
+    _ensure_admin(account)
+    return admin_store.create_quality_log(payload)
+
+
+@router.get("/admin/raw-listings", response_model=list[RawListingSummary])
+def list_admin_raw_listings(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    source_name: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[RawListingSummary]:
+    _ensure_admin(account)
+    return admin_store.list_raw_listings(source_name=source_name, limit=limit)
+
+
+@router.get("/admin/raw-listings/{raw_listing_id}", response_model=RawListingSummary)
+def get_admin_raw_listing(
+    raw_listing_id: str,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> RawListingSummary:
+    _ensure_admin(account)
+    raw_listing = admin_store.get_raw_listing(raw_listing_id)
+    if raw_listing is None:
+        raise HTTPException(status_code=404, detail="Raw listing not found")
+    return raw_listing
 
 
 @router.get("/report-products", response_model=list[ReportProduct])
@@ -579,6 +676,11 @@ def preview_alert(
 def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Favorite:
     listing = repository.get_listing(favorite.listing_id)
     return favorite.model_copy(update={"listing": listing})
+
+
+def _ensure_admin(account: CurrentAccount) -> None:
+    if account.user.role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
 
 
 def _build_account_summary(

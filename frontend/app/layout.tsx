@@ -6,6 +6,7 @@ import {
   Bell,
   Columns3,
   CreditCard,
+  Database,
   FileText,
   Search,
   UserCircle,
@@ -56,6 +57,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/account">
                 <UserCircle size={18} />
                 Аккаунт
+              </Link>
+              <Link href="/admin">
+                <Database size={18} />
+                Admin
               </Link>
               <a href="http://127.0.0.1:8000/docs" target="_blank" rel="noreferrer">
                 <BarChart3 size={18} />

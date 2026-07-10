@@ -802,6 +802,66 @@ button {
   line-height: 1.35;
 }
 
+.admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 16px;
+}
+
+.admin-wide {
+  grid-column: 1 / -1;
+}
+
+.selected-row {
+  background: #eef8f5;
+}
+
+.table tr {
+  cursor: default;
+}
+
+.table tr[onclick],
+.table tr.selected-row {
+  cursor: pointer;
+}
+
+.table small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-pill.succeeded,
+.status-pill.info {
+  background: #edf8f2;
+  color: var(--ok);
+}
+
+.status-pill.warning,
+.status-pill.running,
+.status-pill.queued {
+  background: #fff8e8;
+  color: var(--warn);
+}
+
+.status-pill.failed,
+.status-pill.error {
+  background: #fff0ed;
+  color: var(--risk);
+}
+
 .status-line {
   min-height: 22px;
   color: var(--muted);
@@ -823,7 +883,8 @@ button {
   }
 
   .grid-2,
-  .detail-grid {
+  .detail-grid,
+  .admin-grid {
     grid-template-columns: 1fr;
   }
 

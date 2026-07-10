@@ -13,10 +13,17 @@ FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:3000").rstr
 RETRIES = int(os.getenv("SMOKE_RETRIES", "20"))
 SLEEP_SECONDS = float(os.getenv("SMOKE_SLEEP_SECONDS", "1.5"))
 TIMEOUT_SECONDS = float(os.getenv("SMOKE_TIMEOUT_SECONDS", "5"))
+ADMIN_HEADERS = {
+    "X-Domarion-User-Id": "smoke-admin",
+    "X-Domarion-Email": "smoke-admin@domarion.local",
+    "X-Domarion-Role": "admin",
+    "X-Domarion-Plan": "enterprise",
+}
 
 
-def _read_url(url: str) -> tuple[int, bytes]:
-    request = Request(url, headers={"User-Agent": "domarion-smoke/1.0"})
+def _read_url(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
+    request_headers = {"User-Agent": "domarion-smoke/1.0", **(headers or {})}
+    request = Request(url, headers=request_headers)
     with urlopen(request, timeout=TIMEOUT_SECONDS) as response:
         return response.status, response.read()
 
@@ -36,9 +43,14 @@ def _check_with_retry(name: str, checker: Callable[[], None]) -> None:
     raise SystemExit(1)
 
 
-def _json_endpoint(name: str, url: str, validator: Callable[[object], None]) -> None:
+def _json_endpoint(
+    name: str,
+    url: str,
+    validator: Callable[[object], None],
+    headers: dict[str, str] | None = None,
+) -> None:
     def check() -> None:
-        status, body = _read_url(url)
+        status, body = _read_url(url, headers=headers)
         assert 200 <= status < 300, f"HTTP {status}"
         validator(json.loads(body.decode("utf-8")))
 
@@ -70,9 +82,16 @@ def main() -> int:
         f"{API_BASE_URL}/api/v1/listings",
         lambda payload: assert_search_response(payload),
     )
+    _json_endpoint(
+        "admin ingestion jobs",
+        f"{API_BASE_URL}/api/v1/admin/ingestion/jobs",
+        lambda payload: assert_list(payload),
+        headers=ADMIN_HEADERS,
+    )
 
     if FRONTEND_BASE_URL:
         _html_endpoint("frontend pricing", f"{FRONTEND_BASE_URL}/pricing")
+        _html_endpoint("frontend admin", f"{FRONTEND_BASE_URL}/admin")
 
     return 0
 
@@ -85,6 +104,10 @@ def assert_dict_value(payload: object, key: str, expected: object) -> None:
 def assert_non_empty_list(payload: object) -> None:
     assert isinstance(payload, list), "expected JSON list"
     assert len(payload) > 0, "expected non-empty list"
+
+
+def assert_list(payload: object) -> None:
+    assert isinstance(payload, list), "expected JSON list"
 
 
 def assert_search_response(payload: object) -> None:

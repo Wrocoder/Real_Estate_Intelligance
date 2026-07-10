@@ -17,6 +17,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
+- Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -36,6 +37,9 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
+- http://127.0.0.1:8000/api/v1/admin/data-quality/logs
+- http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 
@@ -75,6 +79,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/pricing — разовые paid reports и mock checkout.
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
 - http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
+- http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
 
 ## Запуск инфраструктуры
 
@@ -226,6 +231,30 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/me/subscription `
 Лимиты уже применяются к favorites, alerts, saved reports и compare items.
 Старый `?owner_id=...` работает как fallback для совместимости старых запросов.
 
+## Internal admin MVP
+
+Admin endpoints требуют роль `admin` через MVP identity headers:
+
+```powershell
+$headers = @{
+  "X-Domarion-User-Id"="admin-1";
+  "X-Domarion-Email"="admin@example.com";
+  "X-Domarion-Role"="admin";
+  "X-Domarion-Plan"="enterprise"
+}
+
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/ingestion/jobs -Headers $headers
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/data-quality/logs -Headers $headers
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/raw-listings -Headers $headers
+```
+
+CSV import теперь создает `ingestion_jobs` и пишет `data_quality_logs` при низком
+quality score или отсутствующих optional infrastructure fields:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-partner-csv data\samples\partner_listings_wroclaw.csv --source-name "Demo Partner"
+```
+
 ## Search API MVP
 
 `/api/v1/listings` возвращает search response, а не голый список:
@@ -352,6 +381,6 @@ git push -u origin feature/mvp-api-foundation
 
 1. Подключить реальные open-data слои planned investments вместо demo layer.
 2. Подготовить PayU/Stripe adapter вместо mock checkout.
-3. Добавить ingestion jobs/data quality admin view.
+3. Добавить planned investments CRUD v1.
 4. Добавить SEO area pages.
 5. Добавить deployment workflow после выбора hosting.

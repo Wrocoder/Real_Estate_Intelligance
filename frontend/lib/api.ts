@@ -102,6 +102,8 @@ export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "en
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 export type ReportProductCode = "object_report" | "full_object_analysis" | "investor_report";
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
+export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
+export type DataQualitySeverity = "info" | "warning" | "error";
 export type ListingSort =
   | "price_asc"
   | "price_desc"
@@ -196,6 +198,50 @@ export type ListingSearchResponse = {
   total_pages: number;
   sort: ListingSort;
   filters: Record<string, unknown>;
+};
+
+export type IngestionJob = {
+  id: string;
+  source_name: string;
+  source_type: string;
+  status: IngestionJobStatus;
+  rows_seen: number;
+  raw_created: number;
+  raw_updated: number;
+  properties_created: number;
+  properties_updated: number;
+  snapshots_created: number;
+  snapshots_updated: number;
+  errors_count: number;
+  created_by: string;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  started_at: string | null;
+  finished_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DataQualityLog = {
+  id: string;
+  job_id: string | null;
+  source_name: string;
+  source_listing_id: string | null;
+  severity: DataQualitySeverity;
+  code: string;
+  message: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+};
+
+export type RawListingSummary = {
+  id: number | string;
+  source_name: string;
+  source_listing_id: string;
+  source_url: string;
+  fetched_at: string;
+  payload_hash: string;
+  raw_payload: Record<string, unknown>;
 };
 
 export type CompareResponse = {
@@ -321,6 +367,12 @@ export type MapQuery = {
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? "demo-user";
+const ADMIN_HEADERS = {
+  "X-Domarion-User-Id": "demo-admin",
+  "X-Domarion-Email": "admin@domarion.local",
+  "X-Domarion-Role": "admin",
+  "X-Domarion-Plan": "enterprise",
+};
 
 function toQueryString<T extends object>(params: T) {
   const searchParams = new URLSearchParams();
@@ -359,6 +411,36 @@ export const api = {
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
+  listAdminIngestionJobs: () =>
+    request<IngestionJob[]>("/api/v1/admin/ingestion/jobs", {
+      headers: ADMIN_HEADERS,
+    }),
+  createAdminIngestionJob: (payload: {
+    source_name: string;
+    source_type?: string;
+    status?: IngestionJobStatus;
+    notes?: string;
+    metadata?: Record<string, unknown>;
+  }) =>
+    request<IngestionJob>("/api/v1/admin/ingestion/jobs", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  listAdminDataQualityLogs: (params: {
+    job_id?: string;
+    severity?: DataQualitySeverity;
+    limit?: number;
+  } = {}) =>
+    request<DataQualityLog[]>(
+      `/api/v1/admin/data-quality/logs${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  listAdminRawListings: (params: { source_name?: string; limit?: number } = {}) =>
+    request<RawListingSummary[]>(
+      `/api/v1/admin/raw-listings${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
   listReportProducts: () => request<ReportProduct[]>("/api/v1/report-products"),
   listReportOrders: () => request<ReportOrder[]>("/api/v1/report-orders"),
   createReportOrder: (payload: {
