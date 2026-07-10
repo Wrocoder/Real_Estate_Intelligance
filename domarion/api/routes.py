@@ -31,7 +31,10 @@ from domarion.schemas import (
     GenerateReportRequest,
     Listing,
     ListingAnalysis,
+    ListingSearchResponse,
+    ListingSort,
     MapFeatureCollection,
+    MarketType,
     ObjectReport,
     PlanLimits,
     ReportAudience,
@@ -52,6 +55,7 @@ from domarion.services.report_generation import (
 from domarion.services.report_products import get_report_product, list_report_products
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
+from domarion.services.search import ListingSearchError, search_listing_analyses
 from domarion.user_store.base import UserStore
 from domarion.user_store.factory import get_user_store
 
@@ -63,22 +67,62 @@ UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
 
 
-@router.get("/listings", response_model=list[Listing])
+@router.get("/listings", response_model=ListingSearchResponse)
 def list_listings(
     repository: RepositoryDep,
     city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
     district: Annotated[str | None, Query(description="District or estate name")] = None,
     rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
+    market_type: Annotated[MarketType | None, Query()] = None,
+    min_price: Annotated[int | None, Query(gt=0)] = None,
     max_price: Annotated[int | None, Query(gt=0)] = None,
+    min_price_per_m2: Annotated[int | None, Query(gt=0)] = None,
+    max_price_per_m2: Annotated[int | None, Query(gt=0)] = None,
     min_area_m2: Annotated[float | None, Query(gt=0)] = None,
-) -> list[Listing]:
-    return repository.list_listings(
-        city=city,
-        district=district,
-        rooms=rooms,
-        max_price=max_price,
-        min_area_m2=min_area_m2,
-    )
+    max_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    max_days_on_market: Annotated[int | None, Query(ge=0)] = None,
+    min_investment_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    max_risk_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_negotiation_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_liquidity_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_rental_potential_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_data_quality_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    lat: Annotated[float | None, Query(ge=-90, le=90)] = None,
+    lon: Annotated[float | None, Query(ge=-180, le=180)] = None,
+    radius_km: Annotated[float | None, Query(gt=0, le=100)] = None,
+    sort: Annotated[ListingSort, Query()] = "investment_score_desc",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ListingSearchResponse:
+    try:
+        return search_listing_analyses(
+            repository,
+            city=city,
+            district=district,
+            rooms=rooms,
+            market_type=market_type,
+            min_price=min_price,
+            max_price=max_price,
+            min_price_per_m2=min_price_per_m2,
+            max_price_per_m2=max_price_per_m2,
+            min_area_m2=min_area_m2,
+            max_area_m2=max_area_m2,
+            max_days_on_market=max_days_on_market,
+            min_investment_score=min_investment_score,
+            max_risk_score=max_risk_score,
+            min_negotiation_score=min_negotiation_score,
+            min_liquidity_score=min_liquidity_score,
+            min_rental_potential_score=min_rental_potential_score,
+            min_data_quality_score=min_data_quality_score,
+            lat=lat,
+            lon=lon,
+            radius_km=radius_km,
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+    except ListingSearchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/areas", response_model=list[AreaStatistics])

@@ -152,6 +152,12 @@ button {
   color: #fff;
 }
 
+.button:disabled,
+.icon-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 .button.danger {
   border-color: #f1c3bd;
   color: var(--risk);
@@ -289,6 +295,26 @@ button {
 .score-pill.risk {
   background: #fff0ed;
   color: var(--risk);
+}
+
+.compare-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fbfcfd;
+  color: var(--muted);
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+.compare-toggle input,
+.compare-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
 }
 
 .score-stack {
@@ -671,6 +697,11 @@ button {
   border-collapse: collapse;
 }
 
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
 .table th,
 .table td {
   padding: 10px;
@@ -683,6 +714,20 @@ button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.compare-table {
+  min-width: 760px;
+}
+
+.compare-table th:first-child {
+  width: 180px;
+  background: #fbfcfd;
+}
+
+.compare-table td {
+  min-width: 220px;
+  line-height: 1.4;
 }
 
 .empty-state {
@@ -699,15 +744,62 @@ button {
   gap: 10px;
 }
 
+.form-grid.wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .field {
   display: grid;
   gap: 5px;
 }
 
-.field label {
+.field label,
+.field > span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 46px;
+  color: var(--muted);
+}
+
+.compare-selector {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compare-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: flex-start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 10px;
+}
+
+.compare-option strong,
+.compare-option small {
+  display: block;
+}
+
+.compare-option strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.compare-option small {
+  margin-top: 4px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .status-line {
@@ -739,7 +831,12 @@ button {
   .grid-3,
   .plan-grid,
   .pricing-grid,
+  .compare-selector,
   .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .form-grid.wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -763,7 +860,12 @@ button {
   .grid-3,
   .plan-grid,
   .pricing-grid,
+  .compare-selector,
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid.wide {
     grid-template-columns: 1fr;
   }
 }

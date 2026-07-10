@@ -61,9 +61,9 @@
 - [x] Добавить `/api/v1/areas`.
 - [x] Добавить `/api/v1/areas/{id}/statistics`.
 - [x] Добавить сравнение `/api/v1/compare`.
-- [ ] Добавить pagination.
-- [ ] Добавить сортировку.
-- [ ] Добавить фильтры по score, price/m2, days_on_market.
+- [x] Добавить pagination.
+- [x] Добавить сортировку.
+- [x] Добавить фильтры по score, price/m2, days_on_market.
 - [ ] Добавить OpenSearch или PostgreSQL full-text search.
 - [x] Добавить saved searches.
 
@@ -141,7 +141,7 @@
 - [x] Сделать search page.
 - [x] Сделать listing card.
 - [x] Сделать listing detail page.
-- [ ] Сделать compare page.
+- [x] Сделать compare page.
 - [x] Сделать reports generation/history page.
 - [x] Сделать alerts page.
 - [x] Сделать pricing page.
@@ -223,14 +223,15 @@
 - [x] Commit 6: auth and subscriptions foundation.
 - [x] Commit 7: paid report flow.
 - [x] Commit 8: deployment MVP.
+- [x] Commit 9: search pagination and compare page.
 
 ## Current Sprint
 
-Цель: улучшить поиск и сравнение объектов, чтобы MVP стал полезнее для покупателей и риелторов.
+Цель: добавить первые реальные data-quality/admin возможности вокруг ingestion.
 
-- [ ] Добавить pagination для `/api/v1/listings`.
-- [ ] Добавить sorting по цене, price/m2, score, days_on_market.
-- [ ] Добавить фильтры по Investment/Risk/Negotiation Score.
-- [ ] Добавить frontend controls для sorting/filtering.
-- [ ] Сделать compare page для 2-5 объектов.
-- [ ] Сделать Commit 9 и push.
+- [ ] Добавить ingestion jobs table usage.
+- [ ] Добавить data quality logs.
+- [ ] Добавить internal admin page для ingestion jobs.
+- [ ] Добавить raw listings preview.
+- [ ] Добавить ручное planned investments CRUD v1.
+- [ ] Сделать Commit 10 и push.

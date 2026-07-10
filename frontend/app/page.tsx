@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Bell, FileText, Heart, RefreshCw, Search } from "lucide-react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { BarChart3, Bell, FileText, Heart, RefreshCw, Search } from "lucide-react";
 
 import { ListingCard } from "@/components/ListingCard";
 import { PropertyMap } from "@/components/PropertyMap";
@@ -10,6 +11,8 @@ import {
   api,
   type AreaStatistics,
   type ListingAnalysis,
+  type ListingSearchQuery,
+  type ListingSort,
   type MapFeatureCollection,
   type MapQuery,
 } from "@/lib/api";
@@ -20,48 +23,69 @@ type Filters = {
   rooms: string;
   maxPrice: string;
   minInvestment: string;
+  maxRisk: string;
+  minNegotiation: string;
   radiusKm: string;
+  sort: ListingSort;
+  pageSize: string;
 };
 
 const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
+
+const defaultFilters: Filters = {
+  district: "",
+  rooms: "",
+  maxPrice: "",
+  minInvestment: "",
+  maxRisk: "",
+  minNegotiation: "",
+  radiusKm: "",
+  sort: "investment_score_desc",
+  pageSize: "10",
+};
 
 export default function ExplorerPage() {
   const [analyses, setAnalyses] = useState<ListingAnalysis[]>([]);
   const [areas, setAreas] = useState<AreaStatistics[]>([]);
   const [mapData, setMapData] = useState<MapFeatureCollection | null>(null);
-  const [filters, setFilters] = useState<Filters>({
-    district: "",
-    rooms: "",
-    maxPrice: "",
-    minInvestment: "",
-    radiusKm: "",
-  });
+  const [filters, setFilters] = useState<Filters>(defaultFilters);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
   const [status, setStatus] = useState("Загрузка аналитики...");
   const [mapStatus, setMapStatus] = useState("Загрузка GIS-слоев...");
   const [mapError, setMapError] = useState("");
   const [error, setError] = useState("");
 
-  async function load() {
+  const load = useCallback(async (nextPage: number) => {
     setError("");
     setStatus("Загрузка аналитики...");
     try {
-      const [listings, areaStats] = await Promise.all([api.listListings(), api.listAreas()]);
-      const listingAnalyses = await Promise.all(
-        listings.map((listing) => api.getAnalysis(listing.id)),
-      );
-      setAnalyses(listingAnalyses);
+      const [search, areaStats] = await Promise.all([
+        api.listListings(buildSearchQuery(filters, nextPage)),
+        api.listAreas(),
+      ]);
+      setAnalyses(search.items);
       setAreas(areaStats);
-      setStatus(`Загружено объектов: ${listingAnalyses.length}`);
+      setPage(search.page);
+      setTotal(search.total);
+      setTotalPages(search.total_pages);
+      setStatus(
+        `Найдено ${search.total} · страница ${search.page} из ${
+          search.total_pages || 1
+        } · сортировка ${search.sort}`,
+      );
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "unknown error";
       setError(message);
       setStatus("Backend API недоступен");
     }
-  }
+  }, [filters]);
 
   useEffect(() => {
-    void load();
-  }, []);
+    void load(page);
+  }, [load, page]);
 
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
@@ -71,6 +95,7 @@ export default function ExplorerPage() {
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
       min_investment_score: filters.minInvestment ? Number(filters.minInvestment) : undefined,
+      max_risk_score: filters.maxRisk ? Number(filters.maxRisk) : undefined,
       lat: radiusKm ? WROCLAW_CENTER.lat : undefined,
       lon: radiusKm ? WROCLAW_CENTER.lon : undefined,
       radius_km: radiusKm,
@@ -105,32 +130,36 @@ export default function ExplorerPage() {
     };
   }, [mapQuery]);
 
-  const filtered = useMemo(() => {
-    return analyses.filter((item) => {
-      const listing = item.listing;
-      if (filters.district && listing.district !== filters.district) return false;
-      if (filters.rooms && listing.rooms !== Number(filters.rooms)) return false;
-      if (filters.maxPrice && listing.price > Number(filters.maxPrice)) return false;
-      if (
-        filters.radiusKm &&
-        distanceKm(WROCLAW_CENTER.lat, WROCLAW_CENTER.lon, listing.lat, listing.lon) >
-          Number(filters.radiusKm)
-      ) {
-        return false;
-      }
-      if (
-        filters.minInvestment &&
-        item.scores.investment_score < Number(filters.minInvestment)
-      ) {
-        return false;
-      }
-      return true;
-    });
-  }, [analyses, filters]);
+  const districts = areas.map((area) => area.name);
+  const best = analyses[0];
+  const selectedArea =
+    areas.find((area) => area.name === filters.district) ?? areas[0] ?? null;
+  const compareHref = `/compare?ids=${compareIds.join(",")}`;
 
-  const districts = Array.from(new Set(analyses.map((item) => item.listing.district)));
-  const best = filtered[0];
-  const medianArea = areas[0];
+  function updateFilters(next: Partial<Filters>) {
+    setFilters((current) => ({ ...current, ...next }));
+    setPage(1);
+  }
+
+  function resetFilters() {
+    setFilters(defaultFilters);
+    setPage(1);
+    setCompareIds([]);
+    setStatus("Фильтры сброшены");
+  }
+
+  function toggleCompare(listingId: string) {
+    setCompareIds((current) => {
+      if (current.includes(listingId)) {
+        return current.filter((item) => item !== listingId);
+      }
+      if (current.length >= 5) {
+        setStatus("Для сравнения можно выбрать максимум 5 объектов");
+        return current;
+      }
+      return [...current, listingId];
+    });
+  }
 
   async function addFavorite(listingId: string) {
     await api.addFavorite(listingId, "Dodane z panelu wyszukiwania");
@@ -150,7 +179,10 @@ export default function ExplorerPage() {
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
-        min_investment_score: filters.minInvestment ? Number(filters.minInvestment) : null,
+        min_investment_score: filters.minInvestment
+          ? Number(filters.minInvestment)
+          : null,
+        max_risk_score: filters.maxRisk ? Number(filters.maxRisk) : null,
       },
     });
     setStatus("Alert создан");
@@ -164,9 +196,18 @@ export default function ExplorerPage() {
           <p>Поиск, карта, скоринг, история цены и быстрые действия для MVP-аналитики.</p>
         </div>
         <div className="toolbar">
-          <button className="button" type="button" onClick={() => void load()}>
+          <button className="button" type="button" onClick={() => void load(page)}>
             <RefreshCw size={16} /> Обновить
           </button>
+          {compareIds.length >= 2 ? (
+            <Link className="button" href={compareHref}>
+              <BarChart3 size={16} /> Сравнить {compareIds.length}
+            </Link>
+          ) : (
+            <button className="button" type="button" disabled>
+              <BarChart3 size={16} /> Сравнить {compareIds.length}
+            </button>
+          )}
           <button className="button primary" type="button" onClick={() => void createAlert()}>
             <Bell size={16} /> Alert
           </button>
@@ -175,8 +216,8 @@ export default function ExplorerPage() {
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Объектов в подборе</span>
-          <strong>{numberValue(filtered.length)}</strong>
+          <span>Объектов найдено</span>
+          <strong>{numberValue(total)}</strong>
         </div>
         <div className="metric">
           <span>Лучший Investment Score</span>
@@ -184,26 +225,28 @@ export default function ExplorerPage() {
         </div>
         <div className="metric">
           <span>Медиана района</span>
-          <strong>{medianArea ? `${money(medianArea.median_price_per_m2)}/m2` : "-"}</strong>
+          <strong>
+            {selectedArea ? `${money(selectedArea.median_price_per_m2)}/m2` : "-"}
+          </strong>
         </div>
         <div className="metric">
           <span>Динамика цены 90 дней</span>
-          <strong>{medianArea ? percent(medianArea.price_change_90d_pct) : "-"}</strong>
+          <strong>{selectedArea ? percent(selectedArea.price_change_90d_pct) : "-"}</strong>
         </div>
       </section>
 
       <div className="panel" style={{ marginTop: 16, marginBottom: 16 }}>
         <div className="panel-header">
-          <h2>Фильтры</h2>
+          <h2>Фильтры и сортировка</h2>
           <span className="status-line">{status}</span>
         </div>
-        <div className="panel-body form-grid">
+        <div className="panel-body form-grid wide">
           <label className="field">
             <span>Район</span>
             <select
               className="select"
               value={filters.district}
-              onChange={(event) => setFilters({ ...filters, district: event.target.value })}
+              onChange={(event) => updateFilters({ district: event.target.value })}
             >
               <option value="">Все районы</option>
               {districts.map((district) => (
@@ -218,7 +261,7 @@ export default function ExplorerPage() {
             <select
               className="select"
               value={filters.rooms}
-              onChange={(event) => setFilters({ ...filters, rooms: event.target.value })}
+              onChange={(event) => updateFilters({ rooms: event.target.value })}
             >
               <option value="">Любое</option>
               <option value="2">2</option>
@@ -233,7 +276,7 @@ export default function ExplorerPage() {
               inputMode="numeric"
               value={filters.maxPrice}
               placeholder="700000"
-              onChange={(event) => setFilters({ ...filters, maxPrice: event.target.value })}
+              onChange={(event) => updateFilters({ maxPrice: event.target.value })}
             />
           </label>
           <label className="field">
@@ -243,7 +286,27 @@ export default function ExplorerPage() {
               inputMode="numeric"
               value={filters.minInvestment}
               placeholder="60"
-              onChange={(event) => setFilters({ ...filters, minInvestment: event.target.value })}
+              onChange={(event) => updateFilters({ minInvestment: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Макс. Risk</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxRisk}
+              placeholder="55"
+              onChange={(event) => updateFilters({ maxRisk: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. Negotiation</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minNegotiation}
+              placeholder="45"
+              onChange={(event) => updateFilters({ minNegotiation: event.target.value })}
             />
           </label>
           <label className="field">
@@ -251,7 +314,7 @@ export default function ExplorerPage() {
             <select
               className="select"
               value={filters.radiusKm}
-              onChange={(event) => setFilters({ ...filters, radiusKm: event.target.value })}
+              onChange={(event) => updateFilters({ radiusKm: event.target.value })}
             >
               <option value="">Весь Wrocław MVP</option>
               <option value="5">5 км</option>
@@ -260,19 +323,39 @@ export default function ExplorerPage() {
               <option value="15">15 км</option>
             </select>
           </label>
-          <button
-            className="button"
-            type="button"
-            onClick={() =>
-              setFilters({
-                district: "",
-                rooms: "",
-                maxPrice: "",
-                minInvestment: "",
-                radiusKm: "",
-              })
-            }
-          >
+          <label className="field">
+            <span>Сортировка</span>
+            <select
+              className="select"
+              value={filters.sort}
+              onChange={(event) => updateFilters({ sort: event.target.value as ListingSort })}
+            >
+              <option value="investment_score_desc">Investment: выше</option>
+              <option value="price_asc">Цена: ниже</option>
+              <option value="price_desc">Цена: выше</option>
+              <option value="price_per_m2_asc">Цена/m2: ниже</option>
+              <option value="risk_score_asc">Risk: ниже</option>
+              <option value="negotiation_score_desc">Negotiation: выше</option>
+              <option value="days_on_market_desc">Дольше на рынке</option>
+              <option value="newest">Новые</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>На странице</span>
+            <select
+              className="select"
+              value={filters.pageSize}
+              onChange={(event) => updateFilters({ pageSize: event.target.value })}
+            >
+              <option value="5">5</option>
+              <option value="10">10</option>
+              <option value="20">20</option>
+            </select>
+          </label>
+          <button className="button primary" type="button" onClick={() => setPage(1)}>
+            <Search size={16} /> Применить
+          </button>
+          <button className="button" type="button" onClick={resetFilters}>
             <Search size={16} /> Сброс
           </button>
         </div>
@@ -280,23 +363,46 @@ export default function ExplorerPage() {
 
       {error ? (
         <ErrorBlock message={error} />
-      ) : analyses.length === 0 ? (
+      ) : analyses.length === 0 && status.startsWith("Загрузка") ? (
         <LoadingBlock />
       ) : (
         <div className="grid-2">
           <section className="listing-list">
-            {filtered.length === 0 ? (
+            {analyses.length === 0 ? (
               <EmptyBlock label="Нет объектов под выбранные фильтры." />
             ) : (
-              filtered.map((analysis) => (
+              analyses.map((analysis) => (
                 <ListingCard
                   key={analysis.listing.id}
                   analysis={analysis}
+                  isSelectedForCompare={compareIds.includes(analysis.listing.id)}
+                  onToggleCompare={toggleCompare}
                   onFavorite={(listingId) => void addFavorite(listingId)}
                   onReport={(listingId) => void generateReport(listingId)}
                 />
               ))
             )}
+            <div className="pagination-row">
+              <button
+                className="button"
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage(page - 1)}
+              >
+                Назад
+              </button>
+              <span>
+                Страница {page} из {totalPages || 1}
+              </span>
+              <button
+                className="button"
+                type="button"
+                disabled={totalPages === 0 || page >= totalPages}
+                onClick={() => setPage(page + 1)}
+              >
+                Вперед
+              </button>
+            </div>
           </section>
 
           <aside className="panel">
@@ -329,16 +435,25 @@ export default function ExplorerPage() {
   );
 }
 
-function distanceKm(latA: number, lonA: number, latB: number, lonB: number) {
-  const radius = 6371;
-  const deltaLat = toRadians(latB - latA);
-  const deltaLon = toRadians(lonB - lonA);
-  const value =
-    Math.sin(deltaLat / 2) ** 2 +
-    Math.cos(toRadians(latA)) * Math.cos(toRadians(latB)) * Math.sin(deltaLon / 2) ** 2;
-  return 2 * radius * Math.asin(Math.sqrt(value));
-}
-
-function toRadians(value: number) {
-  return (value * Math.PI) / 180;
+function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
+  const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
+  return {
+    city: "Wrocław",
+    district: filters.district || undefined,
+    rooms: filters.rooms ? Number(filters.rooms) : undefined,
+    max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    min_investment_score: filters.minInvestment
+      ? Number(filters.minInvestment)
+      : undefined,
+    max_risk_score: filters.maxRisk ? Number(filters.maxRisk) : undefined,
+    min_negotiation_score: filters.minNegotiation
+      ? Number(filters.minNegotiation)
+      : undefined,
+    lat: radiusKm ? WROCLAW_CENTER.lat : undefined,
+    lon: radiusKm ? WROCLAW_CENTER.lon : undefined,
+    radius_km: radiusKm,
+    sort: filters.sort,
+    page,
+    page_size: Number(filters.pageSize),
+  };
 }

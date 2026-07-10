@@ -13,6 +13,22 @@ SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+ListingSort = Literal[
+    "price_asc",
+    "price_desc",
+    "price_per_m2_asc",
+    "price_per_m2_desc",
+    "investment_score_desc",
+    "investment_score_asc",
+    "risk_score_asc",
+    "risk_score_desc",
+    "negotiation_score_desc",
+    "negotiation_score_asc",
+    "days_on_market_asc",
+    "days_on_market_desc",
+    "newest",
+    "oldest",
+]
 
 
 class PriceHistoryPoint(BaseModel):
@@ -143,6 +159,16 @@ class ListingAnalysis(BaseModel):
     insights: list[str]
     negotiation_arguments: list[str]
     data_quality_notes: list[str]
+
+
+class ListingSearchResponse(BaseModel):
+    items: list[ListingAnalysis]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    total_pages: int = Field(ge=0)
+    sort: ListingSort
+    filters: dict[str, Any] = Field(default_factory=dict)
 
 
 class CompareRequest(BaseModel):

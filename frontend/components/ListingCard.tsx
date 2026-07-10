@@ -10,9 +10,17 @@ type Props = {
   analysis: ListingAnalysis;
   onFavorite: (listingId: string) => void;
   onReport: (listingId: string) => void;
+  isSelectedForCompare?: boolean;
+  onToggleCompare?: (listingId: string) => void;
 };
 
-export function ListingCard({ analysis, onFavorite, onReport }: Props) {
+export function ListingCard({
+  analysis,
+  onFavorite,
+  onReport,
+  isSelectedForCompare = false,
+  onToggleCompare,
+}: Props) {
   const { listing, scores } = analysis;
 
   return (
@@ -40,6 +48,16 @@ export function ListingCard({ analysis, onFavorite, onReport }: Props) {
         </div>
       </div>
       <div className="toolbar">
+        {onToggleCompare ? (
+          <label className="compare-toggle" title="Добавить в сравнение">
+            <input
+              type="checkbox"
+              checked={isSelectedForCompare}
+              onChange={() => onToggleCompare(listing.id)}
+            />
+            <span>Сравнить</span>
+          </label>
+        ) : null}
         <button
           className="icon-button"
           type="button"
@@ -63,4 +81,3 @@ export function ListingCard({ analysis, onFavorite, onReport }: Props) {
     </article>
   );
 }
-

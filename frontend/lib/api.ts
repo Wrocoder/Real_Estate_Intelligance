@@ -102,6 +102,21 @@ export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "en
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 export type ReportProductCode = "object_report" | "full_object_analysis" | "investor_report";
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
+export type ListingSort =
+  | "price_asc"
+  | "price_desc"
+  | "price_per_m2_asc"
+  | "price_per_m2_desc"
+  | "investment_score_desc"
+  | "investment_score_asc"
+  | "risk_score_asc"
+  | "risk_score_desc"
+  | "negotiation_score_desc"
+  | "negotiation_score_asc"
+  | "days_on_market_asc"
+  | "days_on_market_desc"
+  | "newest"
+  | "oldest";
 
 export type UserAccount = {
   id: string;
@@ -145,6 +160,46 @@ export type AccountSummary = {
   subscription: Subscription;
   limits: PlanLimits;
   usage: AccountUsage;
+};
+
+export type ListingSearchQuery = {
+  city?: string;
+  district?: string;
+  rooms?: number;
+  market_type?: "primary" | "secondary";
+  min_price?: number;
+  max_price?: number;
+  min_price_per_m2?: number;
+  max_price_per_m2?: number;
+  min_area_m2?: number;
+  max_area_m2?: number;
+  max_days_on_market?: number;
+  min_investment_score?: number;
+  max_risk_score?: number;
+  min_negotiation_score?: number;
+  min_liquidity_score?: number;
+  min_rental_potential_score?: number;
+  min_data_quality_score?: number;
+  lat?: number;
+  lon?: number;
+  radius_km?: number;
+  sort?: ListingSort;
+  page?: number;
+  page_size?: number;
+};
+
+export type ListingSearchResponse = {
+  items: ListingAnalysis[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  sort: ListingSort;
+  filters: Record<string, unknown>;
+};
+
+export type CompareResponse = {
+  items: ListingAnalysis[];
 };
 
 export type ReportProduct = {
@@ -267,13 +322,15 @@ export type MapQuery = {
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? "demo-user";
 
-function toQueryString(params: MapQuery) {
+function toQueryString<T extends object>(params: T) {
   const searchParams = new URLSearchParams();
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null && value !== "") {
-      searchParams.set(key, String(value));
-    }
-  });
+  Object.entries(params as Record<string, string | number | boolean | undefined | null>).forEach(
+    ([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        searchParams.set(key, String(value));
+      }
+    },
+  );
   const query = searchParams.toString();
   return query ? `?${query}` : "";
 }
@@ -297,7 +354,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  listListings: () => request<Listing[]>("/api/v1/listings"),
+  listListings: (params: ListingSearchQuery = {}) =>
+    request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
@@ -319,6 +377,11 @@ export const api = {
   fulfillReportOrder: (orderId: string) =>
     request<ReportOrder>(`/api/v1/report-orders/${orderId}/fulfill`, {
       method: "POST",
+    }),
+  compareListings: (listingIds: string[]) =>
+    request<CompareResponse>("/api/v1/compare", {
+      method: "POST",
+      body: JSON.stringify({ listing_ids: listingIds }),
     }),
   updateSubscription: (plan: SubscriptionPlan) =>
     request<AccountSummary>("/api/v1/me/subscription", {

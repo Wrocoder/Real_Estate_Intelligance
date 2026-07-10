@@ -16,6 +16,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
+- Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -69,6 +70,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
+- http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/pricing — разовые paid reports и mock checkout.
 - http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
@@ -224,6 +226,41 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/me/subscription `
 Лимиты уже применяются к favorites, alerts, saved reports и compare items.
 Старый `?owner_id=...` работает как fallback для совместимости старых запросов.
 
+## Search API MVP
+
+`/api/v1/listings` возвращает search response, а не голый список:
+
+```json
+{
+  "items": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 20,
+  "total_pages": 0,
+  "sort": "investment_score_desc",
+  "filters": {}
+}
+```
+
+Пример поиска:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/listings?city=Wrocław&page=1&page_size=2&sort=price_asc&min_investment_score=40&max_risk_score=70"
+```
+
+Поддерживаются базовые фильтры по району, комнатам, рынку, цене, price/m2,
+площади, days on market, радиусу от точки, data quality и score-фильтры:
+Investment, Risk, Negotiation, Liquidity, Rental Potential.
+
+Сравнение объектов:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_ids":["wr-001","wr-002"]}'
+```
+
 ## Paid report flow MVP
 
 Разовые отчеты работают через order lifecycle:
@@ -313,8 +350,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить pagination/sorting и расширенные фильтры по score, price/m2, days_on_market.
-2. Подключить реальные open-data слои planned investments вместо demo layer.
-3. Подготовить PayU/Stripe adapter вместо mock checkout.
-4. Добавить compare page.
+1. Подключить реальные open-data слои planned investments вместо demo layer.
+2. Подготовить PayU/Stripe adapter вместо mock checkout.
+3. Добавить ingestion jobs/data quality admin view.
+4. Добавить SEO area pages.
 5. Добавить deployment workflow после выбора hosting.

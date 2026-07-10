@@ -68,7 +68,7 @@ def main() -> int:
     _json_endpoint(
         "listings",
         f"{API_BASE_URL}/api/v1/listings",
-        lambda payload: assert_non_empty_list(payload),
+        lambda payload: assert_search_response(payload),
     )
 
     if FRONTEND_BASE_URL:
@@ -85,6 +85,13 @@ def assert_dict_value(payload: object, key: str, expected: object) -> None:
 def assert_non_empty_list(payload: object) -> None:
     assert isinstance(payload, list), "expected JSON list"
     assert len(payload) > 0, "expected non-empty list"
+
+
+def assert_search_response(payload: object) -> None:
+    assert isinstance(payload, dict), "expected JSON object"
+    assert isinstance(payload.get("items"), list), "expected items list"
+    assert payload["items"], "expected non-empty items"
+    assert payload.get("total", 0) >= len(payload["items"]), "expected valid total"
 
 
 if __name__ == "__main__":
