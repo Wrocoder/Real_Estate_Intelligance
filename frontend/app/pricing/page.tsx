@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, CreditCard, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { Activity, CheckCircle2, CreditCard, ExternalLink, FileText, RefreshCw } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -10,6 +10,7 @@ import {
   type AccountSummary,
   type PlanLimits,
   type ReportOrder,
+  type ReportOrderEvent,
   type ReportProduct,
 } from "@/lib/api";
 import { numberValue } from "@/lib/format";
@@ -19,6 +20,7 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<PlanLimits[]>([]);
   const [products, setProducts] = useState<ReportProduct[]>([]);
   const [orders, setOrders] = useState<ReportOrder[]>([]);
+  const [events, setEvents] = useState<ReportOrderEvent[]>([]);
   const [listingId, setListingId] = useState("wr-001");
   const [status, setStatus] = useState("Загрузка тарифов...");
   const [error, setError] = useState("");
@@ -55,14 +57,20 @@ export default function PricingPage() {
       product_code: product.code,
       audience: product.audience,
     });
-    setStatus(`Mock checkout: ${checkout.order.id}`);
+    setStatus(`Checkout ${checkout.provider}: ${checkout.external_reference ?? checkout.order.id}`);
 
     const paid = await api.mockPayReportOrder(checkout.order.id);
     setStatus(`Оплачено: ${paid.id}`);
 
     const fulfilled = await api.fulfillReportOrder(paid.id);
     setOrders((current) => [fulfilled, ...current.filter((order) => order.id !== fulfilled.id)]);
+    setEvents(await api.listReportOrderEvents(fulfilled.id));
     setStatus(`Отчет готов: ${fulfilled.generated_report_id}`);
+  }
+
+  async function loadEvents(orderId: string) {
+    setEvents(await api.listReportOrderEvents(orderId));
+    setStatus(`Audit events: ${orderId}`);
   }
 
   const planByCode = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.plan, plan])), [plans]);
@@ -162,6 +170,7 @@ export default function PricingPage() {
                   <th>Объект</th>
                   <th>Статус</th>
                   <th>Отчет</th>
+                  <th>Audit</th>
                 </tr>
               </thead>
               <tbody>
@@ -183,6 +192,11 @@ export default function PricingPage() {
                       ) : (
                         <span className="muted">-</span>
                       )}
+                    </td>
+                    <td>
+                      <button className="button" type="button" onClick={() => void loadEvents(order.id)}>
+                        <Activity size={16} /> Events
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -208,6 +222,28 @@ export default function PricingPage() {
           </div>
         </aside>
       </div>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>Audit trail</h2>
+          <span className="muted">{events.length} events</span>
+        </div>
+        <div className="panel-body">
+          {events.length === 0 ? (
+            <p className="muted">Выберите заказ, чтобы увидеть историю checkout, оплаты и генерации.</p>
+          ) : (
+            <ul className="section-list">
+              {events.map((event) => (
+                <li key={event.id}>
+                  <Activity size={14} />
+                  <strong>{event.event_type}</strong>
+                  <span>{event.message ?? "event"}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
     </>
   );
 }

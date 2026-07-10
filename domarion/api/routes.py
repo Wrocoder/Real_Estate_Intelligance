@@ -19,6 +19,8 @@ from domarion.schemas import (
     AccountUsage,
     Alert,
     AlertCreate,
+    AlertDeliveryJob,
+    AlertDeliveryRequest,
     AlertPreview,
     AlertUpdate,
     AreaStatistics,
@@ -51,13 +53,16 @@ from domarion.schemas import (
     ReportAudience,
     ReportOrder,
     ReportOrderCreate,
+    ReportOrderEvent,
+    ReportOrderEventCreate,
     ReportProduct,
     ReportRequest,
     SubscriptionUpdate,
 )
+from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alerts import build_alert_preview
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
-from domarion.services.payments import MockPaymentProvider
+from domarion.services.payments import PaymentConfigurationError, get_payment_provider
 from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.report_generation import (
     generate_and_store_object_report,
@@ -348,13 +353,62 @@ def create_report_order(
 
     product = get_report_product(payload.product_code)
     order = order_store.create_order(account.user.id, payload, product)
-    payment_session = MockPaymentProvider().create_checkout_session(order)
+    _record_order_event(
+        order_store,
+        account,
+        order.id,
+        ReportOrderEventCreate(
+            event_type="order_created",
+            actor_id=account.user.id,
+            message="Report order created.",
+            metadata={
+                "product_code": order.product_code,
+                "amount_grosz": order.amount_grosz,
+                "currency": order.currency,
+            },
+        ),
+    )
+
+    try:
+        payment_session = get_payment_provider().create_checkout_session(order)
+    except PaymentConfigurationError as exc:
+        _record_order_event(
+            order_store,
+            account,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="payment_provider_error",
+                actor_id=account.user.id,
+                message=str(exc),
+            ),
+        )
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
     order = order_store.set_checkout_url(account.user.id, order.id, payment_session.checkout_url)
+    _record_order_event(
+        order_store,
+        account,
+        order.id,
+        ReportOrderEventCreate(
+            event_type="checkout_created",
+            actor_id=account.user.id,
+            message=f"{payment_session.provider} checkout session created.",
+            metadata={
+                "provider": payment_session.provider,
+                "mode": payment_session.mode,
+                "checkout_url": payment_session.checkout_url,
+                "external_reference": payment_session.external_reference,
+                **(payment_session.metadata or {}),
+            },
+        ),
+    )
     return CheckoutSession(
         provider=payment_session.provider,
         mode=payment_session.mode,
         checkout_url=payment_session.checkout_url,
         order=order,
+        external_reference=payment_session.external_reference,
+        metadata=payment_session.metadata or {},
     )
 
 
@@ -379,6 +433,19 @@ def get_report_order(
     return order
 
 
+@router.get("/report-orders/{order_id}/events", response_model=list[ReportOrderEvent])
+def list_report_order_events(
+    order_id: str,
+    order_store: ReportOrderStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[ReportOrderEvent]:
+    order = order_store.get_order(account.user.id, order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Report order not found")
+    return order_store.list_events(account.user.id, order_id, limit=limit)
+
+
 @router.post("/report-orders/{order_id}/mock-pay", response_model=ReportOrder)
 def mock_pay_report_order(
     order_id: str,
@@ -388,6 +455,20 @@ def mock_pay_report_order(
     order = order_store.mark_paid(account.user.id, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Report order not found")
+    _record_order_event(
+        order_store,
+        account,
+        order.id,
+        ReportOrderEventCreate(
+            event_type="payment_marked_paid",
+            actor_id=account.user.id,
+            message="Mock payment marked the order as paid.",
+            metadata={
+                "status": order.status,
+                "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+            },
+        ),
+    )
     return order
 
 
@@ -403,6 +484,17 @@ def fulfill_report_order(
     if order is None:
         raise HTTPException(status_code=404, detail="Report order not found")
     if order.status == "fulfilled":
+        _record_order_event(
+            order_store,
+            account,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="fulfillment_skipped",
+                actor_id=account.user.id,
+                message="Order already fulfilled.",
+                metadata={"generated_report_id": order.generated_report_id},
+            ),
+        )
         return order
     if order.status != "paid":
         raise HTTPException(
@@ -421,6 +513,17 @@ def fulfill_report_order(
     fulfilled = order_store.mark_fulfilled(account.user.id, order.id, report.id)
     if fulfilled is None:
         raise HTTPException(status_code=404, detail="Report order not found")
+    _record_order_event(
+        order_store,
+        account,
+        fulfilled.id,
+        ReportOrderEventCreate(
+            event_type="report_fulfilled",
+            actor_id=account.user.id,
+            message="Paid report generated and attached to order.",
+            metadata={"generated_report_id": report.id},
+        ),
+    )
     return fulfilled
 
 
@@ -679,6 +782,7 @@ def create_alert(
     account: CurrentAccountDep,
 ) -> Alert:
     _ensure_alert_limit(account, user_store)
+    payload = _with_default_alert_delivery_target(payload, account)
     return user_store.create_alert(account.user.id, payload)
 
 
@@ -739,6 +843,39 @@ def preview_alert(
     if alert is None:
         raise HTTPException(status_code=404, detail="Alert not found")
     return build_alert_preview(repository, alert, limit=limit)
+
+
+@router.post("/alerts/{alert_id}/deliver", response_model=AlertDeliveryJob)
+def deliver_alert(
+    alert_id: str,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    payload: AlertDeliveryRequest | None = None,
+) -> AlertDeliveryJob:
+    alert = user_store.get_alert(account.user.id, alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+
+    request_payload = payload or AlertDeliveryRequest()
+    preview = build_alert_preview(repository, alert, limit=request_payload.max_matches)
+    job = build_alert_delivery_job(
+        owner_id=account.user.id,
+        owner_email=account.user.email,
+        alert=alert,
+        preview=preview,
+        request=request_payload,
+    )
+    return user_store.save_alert_delivery_job(job)
+
+
+@router.get("/alert-delivery-jobs", response_model=list[AlertDeliveryJob])
+def list_alert_delivery_jobs(
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[AlertDeliveryJob]:
+    return user_store.list_alert_delivery_jobs(account.user.id, limit=limit)
 
 
 def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Favorite:
@@ -815,3 +952,24 @@ def _ensure_report_limit(account: CurrentAccount, report_store: ReportStore) -> 
                 "limit": account.limits.monthly_reports,
             },
         )
+
+
+def _record_order_event(
+    order_store: ReportOrderStore,
+    account: CurrentAccount,
+    order_id: str,
+    payload: ReportOrderEventCreate,
+) -> ReportOrderEvent | None:
+    try:
+        return order_store.record_event(account.user.id, order_id, payload)
+    except KeyError:
+        return None
+
+
+def _with_default_alert_delivery_target(
+    payload: AlertCreate,
+    account: CurrentAccount,
+) -> AlertCreate:
+    if payload.channel == "email" and not payload.delivery_target and account.user.email:
+        return payload.model_copy(update={"delivery_target": account.user.email})
+    return payload

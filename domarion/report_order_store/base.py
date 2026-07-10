@@ -1,6 +1,12 @@
 from typing import Protocol
 
-from domarion.schemas import ReportOrder, ReportOrderCreate, ReportProduct
+from domarion.schemas import (
+    ReportOrder,
+    ReportOrderCreate,
+    ReportOrderEvent,
+    ReportOrderEventCreate,
+    ReportProduct,
+)
 
 
 class ReportOrderStore(Protocol):
@@ -31,4 +37,20 @@ class ReportOrderStore(Protocol):
         order_id: str,
         generated_report_id: str,
     ) -> ReportOrder | None:
+        raise NotImplementedError
+
+    def record_event(
+        self,
+        owner_id: str,
+        order_id: str,
+        payload: ReportOrderEventCreate,
+    ) -> ReportOrderEvent:
+        raise NotImplementedError
+
+    def list_events(
+        self,
+        owner_id: str,
+        order_id: str,
+        limit: int = 100,
+    ) -> list[ReportOrderEvent]:
         raise NotImplementedError

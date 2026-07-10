@@ -15,6 +15,14 @@ class Settings(BaseSettings):
     user_store_backend: str = "memory"
     auth_store_backend: str = "memory"
     ingestion_admin_store_backend: str = "memory"
+    payment_provider: str = "mock"
+    payment_checkout_base_url: str | None = None
+    alert_email_enabled: bool = False
+    alert_email_sender: str = "alerts@domarion.local"
+    alert_smtp_host: str | None = None
+    alert_telegram_enabled: bool = False
+    alert_telegram_bot_name: str = "DomarionBot"
+    alert_telegram_bot_token: str | None = None
     demo_user_id: str = "demo-user"
     demo_user_email: str = "demo@domarion.local"
     cors_origins: list[str] = Field(

@@ -262,6 +262,21 @@ class ReportOrder(Base):
     fulfilled_at: Mapped[datetime | None] = mapped_column(DateTime)
 
 
+class ReportOrderEvent(Base):
+    __tablename__ = "report_order_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    order_id: Mapped[str] = mapped_column(ForeignKey("report_orders.id"), index=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    event_type: Mapped[str] = mapped_column(String(60), index=True)
+    actor_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    message: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    order: Mapped[ReportOrder] = relationship()
+
+
 class UserFavorite(Base):
     __tablename__ = "user_favorites"
     __table_args__ = (UniqueConstraint("owner_id", "listing_id"),)
@@ -281,7 +296,27 @@ class UserAlert(Base):
     name: Mapped[str] = mapped_column(String(160))
     channel: Mapped[str] = mapped_column(String(40), default="email")
     frequency: Mapped[str] = mapped_column(String(40), default="daily")
+    delivery_target: Mapped[str | None] = mapped_column(String(255))
     filters: Mapped[dict] = mapped_column(JSONB, default=dict)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AlertDeliveryJob(Base):
+    __tablename__ = "alert_delivery_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    alert_id: Mapped[str] = mapped_column(ForeignKey("user_alerts.id"), index=True)
+    channel: Mapped[str] = mapped_column(String(40), index=True)
+    provider: Mapped[str] = mapped_column(String(80), index=True)
+    status: Mapped[str] = mapped_column(String(40), index=True)
+    total_matches: Mapped[int] = mapped_column(Integer, default=0)
+    delivered_count: Mapped[int] = mapped_column(Integer, default=0)
+    message: Mapped[str] = mapped_column(Text)
+    listing_ids: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    alert: Mapped[UserAlert] = relationship()

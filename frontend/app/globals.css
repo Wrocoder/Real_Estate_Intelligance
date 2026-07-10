@@ -164,6 +164,14 @@ button {
   color: var(--risk);
 }
 
+.button-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .icon-button {
   width: 38px;
   padding: 0;
@@ -1024,6 +1032,10 @@ button {
 
   .area-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .button-row {
+    justify-content: flex-start;
   }
 
   .form-grid.wide {

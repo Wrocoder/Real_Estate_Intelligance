@@ -1,12 +1,19 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from domarion.schemas import ReportOrder, ReportOrderCreate, ReportProduct
+from domarion.schemas import (
+    ReportOrder,
+    ReportOrderCreate,
+    ReportOrderEvent,
+    ReportOrderEventCreate,
+    ReportProduct,
+)
 
 
 class InMemoryReportOrderStore:
     def __init__(self) -> None:
         self._orders: dict[str, ReportOrder] = {}
+        self._events: dict[str, list[ReportOrderEvent]] = {}
 
     def create_order(
         self,
@@ -82,8 +89,44 @@ class InMemoryReportOrderStore:
         self._orders[order_id] = updated
         return updated
 
+    def record_event(
+        self,
+        owner_id: str,
+        order_id: str,
+        payload: ReportOrderEventCreate,
+    ) -> ReportOrderEvent:
+        order = self.get_order(owner_id, order_id)
+        if order is None:
+            raise KeyError(order_id)
+
+        event = ReportOrderEvent(
+            id=str(uuid4()),
+            order_id=order_id,
+            owner_id=owner_id,
+            event_type=payload.event_type,
+            actor_id=payload.actor_id,
+            message=payload.message,
+            metadata=payload.metadata,
+            created_at=_now(),
+        )
+        self._events.setdefault(order_id, []).append(event)
+        return event
+
+    def list_events(
+        self,
+        owner_id: str,
+        order_id: str,
+        limit: int = 100,
+    ) -> list[ReportOrderEvent]:
+        order = self.get_order(owner_id, order_id)
+        if order is None:
+            return []
+        events = [event for event in self._events.get(order_id, []) if event.owner_id == owner_id]
+        return sorted(events, key=lambda item: item.created_at, reverse=True)[:limit]
+
     def clear(self) -> None:
         self._orders.clear()
+        self._events.clear()
 
 
 def _now() -> datetime:

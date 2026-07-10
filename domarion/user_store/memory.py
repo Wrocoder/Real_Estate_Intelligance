@@ -4,6 +4,7 @@ from uuid import uuid4
 from domarion.schemas import (
     Alert,
     AlertCreate,
+    AlertDeliveryJob,
     AlertUpdate,
     Favorite,
     FavoriteCreate,
@@ -15,6 +16,7 @@ class InMemoryUserStore:
     def __init__(self) -> None:
         self._favorites: dict[str, Favorite] = {}
         self._alerts: dict[str, Alert] = {}
+        self._delivery_jobs: dict[str, AlertDeliveryJob] = {}
 
     def add_favorite(self, owner_id: str, payload: FavoriteCreate) -> Favorite:
         existing = self._find_favorite_by_listing(owner_id, payload.listing_id)
@@ -75,6 +77,7 @@ class InMemoryUserStore:
             filters=payload.filters,
             channel=payload.channel,
             frequency=payload.frequency,
+            delivery_target=payload.delivery_target,
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -113,13 +116,25 @@ class InMemoryUserStore:
         del self._alerts[alert_id]
         return True
 
+    def save_alert_delivery_job(self, job: AlertDeliveryJob) -> AlertDeliveryJob:
+        self._delivery_jobs[job.id] = job
+        return job
+
+    def list_alert_delivery_jobs(
+        self,
+        owner_id: str,
+        limit: int = 50,
+    ) -> list[AlertDeliveryJob]:
+        jobs = [job for job in self._delivery_jobs.values() if job.owner_id == owner_id]
+        return sorted(jobs, key=lambda item: item.created_at, reverse=True)[:limit]
+
     def clear(self) -> None:
         self._favorites.clear()
         self._alerts.clear()
+        self._delivery_jobs.clear()
 
     def _find_favorite_by_listing(self, owner_id: str, listing_id: str) -> Favorite | None:
         for favorite in self._favorites.values():
             if favorite.owner_id == owner_id and favorite.listing_id == listing_id:
                 return favorite
         return None
-

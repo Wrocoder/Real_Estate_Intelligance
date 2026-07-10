@@ -42,6 +42,7 @@ Frontend:
 docker build `
   --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 `
   --build-arg NEXT_PUBLIC_OWNER_ID=demo-user `
+  --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 `
   -t domarion-frontend:local `
   .\frontend
 ```
@@ -99,6 +100,14 @@ python scripts\smoke_deployment.py
 | `USER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `AUTH_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `INGESTION_ADMIN_STORE_BACKEND` | `memory` или `postgres` | `memory` |
+| `PAYMENT_PROVIDER` | `mock`, `stripe` или `payu` | `mock` |
+| `PAYMENT_CHECKOUT_BASE_URL` | Base URL для внешнего checkout handoff | пусто |
+| `ALERT_EMAIL_ENABLED` | включает skeleton email delivery | `false` |
+| `ALERT_EMAIL_SENDER` | отправитель email alerts | `alerts@domarion.local` |
+| `ALERT_SMTP_HOST` | SMTP host для будущей отправки | пусто |
+| `ALERT_TELEGRAM_ENABLED` | включает skeleton Telegram delivery | `false` |
+| `ALERT_TELEGRAM_BOT_NAME` | имя Telegram bot для metadata | `DomarionBot` |
+| `ALERT_TELEGRAM_BOT_TOKEN` | token будущего Telegram bot | пусто |
 | `DEMO_USER_ID` | fallback user для MVP auth | `demo-user` |
 | `DEMO_USER_EMAIL` | fallback email для MVP auth | `demo@domarion.local` |
 
@@ -111,8 +120,8 @@ python scripts\smoke_deployment.py
 | `NEXT_PUBLIC_SITE_URL` | Публичный URL frontend для sitemap/canonical URLs |
 
 Для реального production нельзя оставлять demo identity как auth-модель. Следующий шаг перед
-публичным запуском: заменить header/demo auth на Auth.js/Clerk/custom JWT и добавить реальные
-payment secrets для PayU/Stripe.
+публичным запуском: заменить header/demo auth на Auth.js/Clerk/custom JWT, подключить реальные
+PSP SDK/webhooks для PayU/Stripe и включить delivery только после настройки SMTP/Telegram secrets.
 
 ## Hosting shortlist для MVP
 
@@ -135,7 +144,7 @@ PostGIS/Redis на официальных страницах.
 ## Что еще нужно до production
 
 - Подключить реальный auth.
-- Подключить PayU/Stripe вместо mock checkout.
+- Подключить PayU/Stripe SDK и webhook verification вместо checkout skeleton.
 - Перенести secrets в hosting secret manager.
 - Добавить managed backups для Postgres.
 - Добавить error tracking и structured logs.

@@ -42,6 +42,7 @@ def test_report_order_mock_payment_and_fulfillment() -> None:
 
     assert checkout.status_code == 201
     assert checkout_payload["provider"] == "mock"
+    assert checkout_payload["external_reference"] == f"mock:{order['id']}"
     assert order["status"] == "unpaid"
     assert order["checkout_url"].endswith(f"/report-orders/{order['id']}/mock-pay")
 
@@ -60,6 +61,16 @@ def test_report_order_mock_payment_and_fulfillment() -> None:
     assert len(reports) == 1
     assert reports[0]["id"] == fulfilled["generated_report_id"]
 
+    events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
+    event_types = {event["event_type"] for event in events}
+    assert {
+        "order_created",
+        "checkout_created",
+        "payment_marked_paid",
+        "report_fulfilled",
+    }.issubset(event_types)
+    assert any(event["metadata"].get("generated_report_id") == reports[0]["id"] for event in events)
+
 
 def test_report_orders_are_user_scoped() -> None:
     owner_a = {"X-Domarion-User-Id": "order-owner-a"}
@@ -73,9 +84,11 @@ def test_report_orders_are_user_scoped() -> None:
 
     owner_b_list = client.get("/api/v1/report-orders", headers=owner_b).json()
     owner_b_get = client.get(f"/api/v1/report-orders/{created['id']}", headers=owner_b)
+    owner_b_events = client.get(f"/api/v1/report-orders/{created['id']}/events", headers=owner_b)
 
     assert owner_b_list == []
     assert owner_b_get.status_code == 404
+    assert owner_b_events.status_code == 404
 
 
 def test_paid_order_can_fulfill_after_free_report_limit_is_reached() -> None:

@@ -13,8 +13,18 @@ SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+PaymentProviderName = Literal["mock", "stripe", "payu"]
+ReportOrderEventType = Literal[
+    "order_created",
+    "checkout_created",
+    "payment_marked_paid",
+    "report_fulfilled",
+    "fulfillment_skipped",
+    "payment_provider_error",
+]
 IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
+AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -321,6 +331,26 @@ class CheckoutSession(BaseModel):
     mode: Literal["mock", "live"]
     checkout_url: str
     order: ReportOrder
+    external_reference: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportOrderEventCreate(BaseModel):
+    event_type: ReportOrderEventType
+    actor_id: str | None = None
+    message: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReportOrderEvent(BaseModel):
+    id: str
+    order_id: str
+    owner_id: str
+    event_type: ReportOrderEventType
+    actor_id: str | None = None
+    message: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
 
 
 class ReportSection(BaseModel):
@@ -455,6 +485,7 @@ class AlertCreate(BaseModel):
     filters: AlertFilters = Field(default_factory=AlertFilters)
     channel: AlertChannel = "email"
     frequency: AlertFrequency = "daily"
+    delivery_target: str | None = None
 
 
 class AlertUpdate(BaseModel):
@@ -462,6 +493,7 @@ class AlertUpdate(BaseModel):
     filters: AlertFilters | None = None
     channel: AlertChannel | None = None
     frequency: AlertFrequency | None = None
+    delivery_target: str | None = None
     is_active: bool | None = None
 
 
@@ -472,6 +504,7 @@ class Alert(BaseModel):
     filters: AlertFilters
     channel: AlertChannel
     frequency: AlertFrequency
+    delivery_target: str | None = None
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -482,3 +515,23 @@ class AlertPreview(BaseModel):
     matches: list[ListingAnalysis]
     total_matches: int
     applied_filters: dict[str, Any]
+
+
+class AlertDeliveryRequest(BaseModel):
+    dry_run: bool = True
+    max_matches: int = Field(default=10, ge=1, le=50)
+
+
+class AlertDeliveryJob(BaseModel):
+    id: str
+    owner_id: str
+    alert_id: str
+    channel: AlertChannel
+    provider: str
+    status: AlertDeliveryStatus
+    total_matches: int = Field(ge=0)
+    delivered_count: int = Field(ge=0)
+    message: str
+    listing_ids: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime

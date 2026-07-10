@@ -310,6 +310,25 @@ export type CheckoutSession = {
   mode: "mock" | "live";
   checkout_url: string;
   order: ReportOrder;
+  external_reference: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type ReportOrderEvent = {
+  id: string;
+  order_id: string;
+  owner_id: string;
+  event_type:
+    | "order_created"
+    | "checkout_created"
+    | "payment_marked_paid"
+    | "report_fulfilled"
+    | "fulfillment_skipped"
+    | "payment_provider_error";
+  actor_id: string | null;
+  message: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export type Favorite = {
@@ -338,6 +357,7 @@ export type Alert = {
   filters: AlertFilters;
   channel: "email" | "telegram";
   frequency: "instant" | "daily" | "weekly";
+  delivery_target: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -348,6 +368,21 @@ export type AlertPreview = {
   matches: ListingAnalysis[];
   total_matches: number;
   applied_filters: Record<string, unknown>;
+};
+
+export type AlertDeliveryJob = {
+  id: string;
+  owner_id: string;
+  alert_id: string;
+  channel: "email" | "telegram";
+  provider: string;
+  status: "dry_run" | "sent" | "skipped" | "failed";
+  total_matches: number;
+  delivered_count: number;
+  message: string;
+  listing_ids: string[];
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export type MapFeatureType = "listing" | "planned_investment";
@@ -497,6 +532,8 @@ export const api = {
     }),
   listReportProducts: () => request<ReportProduct[]>("/api/v1/report-products"),
   listReportOrders: () => request<ReportOrder[]>("/api/v1/report-orders"),
+  listReportOrderEvents: (orderId: string) =>
+    request<ReportOrderEvent[]>(`/api/v1/report-orders/${orderId}/events`),
   createReportOrder: (payload: {
     listing_id: string;
     product_code: ReportProductCode;
@@ -544,19 +581,33 @@ export const api = {
       body: JSON.stringify({ listing_id: listingId, audience, report_format: "html" }),
     }),
   listReports: () => request<GeneratedReportListItem[]>("/api/v1/reports"),
-  createAlert: (payload: { name: string; filters: AlertFilters }) =>
+  createAlert: (payload: {
+    name: string;
+    filters: AlertFilters;
+    channel?: "email" | "telegram";
+    frequency?: "instant" | "daily" | "weekly";
+    delivery_target?: string | null;
+  }) =>
     request<Alert>(`/api/v1/alerts?owner_id=${OWNER_ID}`, {
       method: "POST",
       body: JSON.stringify({
         name: payload.name,
         filters: payload.filters,
-        channel: "email",
-        frequency: "daily",
+        channel: payload.channel ?? "email",
+        frequency: payload.frequency ?? "daily",
+        delivery_target: payload.delivery_target ?? null,
       }),
     }),
   listAlerts: () => request<Alert[]>(`/api/v1/alerts?owner_id=${OWNER_ID}`),
   previewAlert: (alertId: string) =>
     request<AlertPreview>(`/api/v1/alerts/${alertId}/preview?owner_id=${OWNER_ID}`),
+  deliverAlert: (alertId: string, dryRun = true, maxMatches = 10) =>
+    request<AlertDeliveryJob>(`/api/v1/alerts/${alertId}/deliver?owner_id=${OWNER_ID}`, {
+      method: "POST",
+      body: JSON.stringify({ dry_run: dryRun, max_matches: maxMatches }),
+    }),
+  listAlertDeliveryJobs: () =>
+    request<AlertDeliveryJob[]>(`/api/v1/alert-delivery-jobs?owner_id=${OWNER_ID}`),
 };
 
 export function reportContentUrl(reportId: string) {

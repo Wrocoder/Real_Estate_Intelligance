@@ -119,3 +119,68 @@ def test_alert_owner_scope() -> None:
 
     assert response.status_code == 404
 
+
+def test_alert_delivery_dry_run_is_persisted() -> None:
+    memory_user_store.clear()
+    headers = {
+        "X-Domarion-User-Id": "alert-delivery-owner",
+        "X-Domarion-Email": "buyer@example.com",
+    }
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=headers,
+        json={
+            "name": "Fabryczna delivery",
+            "channel": "email",
+            "frequency": "daily",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+
+    assert created["delivery_target"] == "buyer@example.com"
+
+    delivered = client.post(
+        f"/api/v1/alerts/{created['id']}/deliver",
+        headers=headers,
+        json={"dry_run": True, "max_matches": 2},
+    )
+    job = delivered.json()
+
+    assert delivered.status_code == 200
+    assert job["status"] == "dry_run"
+    assert job["provider"] == "email:dry-run"
+    assert job["total_matches"] >= 1
+    assert 1 <= len(job["listing_ids"]) <= 2
+
+    jobs = client.get("/api/v1/alert-delivery-jobs", headers=headers).json()
+    assert jobs[0]["id"] == job["id"]
+
+
+def test_telegram_delivery_without_target_is_skipped() -> None:
+    memory_user_store.clear()
+    headers = {"X-Domarion-User-Id": "telegram-alert-owner"}
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=headers,
+        json={
+            "name": "Telegram delivery",
+            "channel": "telegram",
+            "frequency": "instant",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+
+    delivered = client.post(
+        f"/api/v1/alerts/{created['id']}/deliver",
+        headers=headers,
+        json={"dry_run": False, "max_matches": 3},
+    )
+    job = delivered.json()
+
+    assert delivered.status_code == 200
+    assert job["status"] == "skipped"
+    assert job["provider"] == "telegram:bot-api"
+    assert job["delivered_count"] == 0
+    assert "Telegram chat id is missing" in job["message"]

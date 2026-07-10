@@ -94,6 +94,11 @@ def main() -> int:
         lambda payload: assert_non_empty_list(payload),
         headers=ADMIN_HEADERS,
     )
+    _json_endpoint(
+        "alert delivery jobs",
+        f"{API_BASE_URL}/api/v1/alert-delivery-jobs",
+        lambda payload: assert_list(payload),
+    )
 
     if FRONTEND_BASE_URL:
         _html_endpoint("frontend pricing", f"{FRONTEND_BASE_URL}/pricing")

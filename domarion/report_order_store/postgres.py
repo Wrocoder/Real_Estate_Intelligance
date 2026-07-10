@@ -5,7 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domarion.db.models import ReportOrder as ReportOrderModel
-from domarion.schemas import ReportOrder, ReportOrderCreate, ReportProduct
+from domarion.db.models import ReportOrderEvent as ReportOrderEventModel
+from domarion.schemas import (
+    ReportOrder,
+    ReportOrderCreate,
+    ReportOrderEvent,
+    ReportOrderEventCreate,
+    ReportProduct,
+)
 
 
 class PostgresReportOrderStore:
@@ -95,6 +102,51 @@ class PostgresReportOrderStore:
         self.session.refresh(row)
         return self._order_from_row(row)
 
+    def record_event(
+        self,
+        owner_id: str,
+        order_id: str,
+        payload: ReportOrderEventCreate,
+    ) -> ReportOrderEvent:
+        order = self.session.get(ReportOrderModel, order_id)
+        if order is None or order.owner_id != owner_id:
+            raise KeyError(order_id)
+
+        row = ReportOrderEventModel(
+            id=str(uuid4()),
+            order_id=order_id,
+            owner_id=owner_id,
+            event_type=payload.event_type,
+            actor_id=payload.actor_id,
+            message=payload.message,
+            metadata_json=payload.metadata,
+            created_at=datetime.utcnow(),
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._event_from_row(row)
+
+    def list_events(
+        self,
+        owner_id: str,
+        order_id: str,
+        limit: int = 100,
+    ) -> list[ReportOrderEvent]:
+        order = self.session.get(ReportOrderModel, order_id)
+        if order is None or order.owner_id != owner_id:
+            return []
+        rows = self.session.scalars(
+            select(ReportOrderEventModel)
+            .where(
+                ReportOrderEventModel.owner_id == owner_id,
+                ReportOrderEventModel.order_id == order_id,
+            )
+            .order_by(ReportOrderEventModel.created_at.desc())
+            .limit(limit)
+        ).all()
+        return [self._event_from_row(row) for row in rows]
+
     @staticmethod
     def _order_from_row(row: ReportOrderModel) -> ReportOrder:
         return ReportOrder(
@@ -113,4 +165,17 @@ class PostgresReportOrderStore:
             updated_at=row.updated_at,
             paid_at=row.paid_at,
             fulfilled_at=row.fulfilled_at,
+        )
+
+    @staticmethod
+    def _event_from_row(row: ReportOrderEventModel) -> ReportOrderEvent:
+        return ReportOrderEvent(
+            id=row.id,
+            order_id=row.order_id,
+            owner_id=row.owner_id,
+            event_type=row.event_type,
+            actor_id=row.actor_id,
+            message=row.message,
+            metadata=row.metadata_json,
+            created_at=row.created_at,
         )

@@ -15,6 +15,9 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
+- Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
+- Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
+- Добавлен alerts delivery skeleton: email/Telegram dry-run, skip reasons и delivery jobs.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
@@ -38,11 +41,13 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/plans
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
+- http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
+- http://127.0.0.1:8000/api/v1/alert-delivery-jobs
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 
@@ -81,8 +86,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
-- http://127.0.0.1:3000/pricing — разовые paid reports и mock checkout.
-- http://127.0.0.1:3000/alerts — saved searches и preview matching объектов.
+- http://127.0.0.1:3000/pricing — разовые paid reports, checkout и audit trail.
+- http://127.0.0.1:3000/alerts — saved searches, preview и delivery dry-run.
 - http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
 - http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
 - http://127.0.0.1:3000/sitemap.xml — sitemap для SEO.
@@ -345,7 +350,14 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.
 ```
 
 Paid fulfillment не расходует подписочный monthly report limit. Это MVP-модель для
-разовых покупок; реальный PayU/Stripe adapter должен заменить mock provider отдельным шагом.
+разовых покупок. `PAYMENT_PROVIDER=mock` работает по умолчанию; `stripe`/`payu` уже вынесены
+в adapter interface, но до production нужны реальные SDK/webhooks и verification.
+
+Посмотреть audit trail заказа:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.id)/events"
+```
 
 ## Избранное и уведомления
 
@@ -376,6 +388,21 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts?owner_id=buyer-1 `
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/preview?owner_id=buyer-1
 ```
 
+Запустить delivery dry-run:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/deliver?owner_id=buyer-1 `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"dry_run":true,"max_matches":5}'
+```
+
+Посмотреть историю delivery jobs:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/alert-delivery-jobs?owner_id=buyer-1
+```
+
 ## Git workflow
 
 Перед началом работы:
@@ -397,8 +424,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Подготовить PayU/Stripe adapter вместо mock checkout.
+1. Подключить реальные PayU/Stripe SDK, webhooks и payment verification.
 2. Подключить реальные open-data слои planned investments вместо demo layer.
-3. Добавить SEO structured content для следующих городов.
-4. Добавить deployment workflow после выбора hosting.
-5. Добавить email/Telegram alerts delivery.
+3. Реализовать фактическую SMTP/Telegram отправку поверх delivery skeleton.
+4. Добавить SEO structured content для следующих городов.
+5. Добавить deployment workflow после выбора hosting.

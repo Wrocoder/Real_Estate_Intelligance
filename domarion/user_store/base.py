@@ -3,6 +3,7 @@ from typing import Protocol
 from domarion.schemas import (
     Alert,
     AlertCreate,
+    AlertDeliveryJob,
     AlertUpdate,
     Favorite,
     FavoriteCreate,
@@ -46,3 +47,12 @@ class UserStore(Protocol):
     def delete_alert(self, owner_id: str, alert_id: str) -> bool:
         raise NotImplementedError
 
+    def save_alert_delivery_job(self, job: AlertDeliveryJob) -> AlertDeliveryJob:
+        raise NotImplementedError
+
+    def list_alert_delivery_jobs(
+        self,
+        owner_id: str,
+        limit: int = 50,
+    ) -> list[AlertDeliveryJob]:
+        raise NotImplementedError

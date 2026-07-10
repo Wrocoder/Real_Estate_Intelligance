@@ -4,11 +4,13 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domarion.db.models import AlertDeliveryJob as AlertDeliveryJobModel
 from domarion.db.models import UserAlert as UserAlertModel
 from domarion.db.models import UserFavorite as UserFavoriteModel
 from domarion.schemas import (
     Alert,
     AlertCreate,
+    AlertDeliveryJob,
     AlertFilters,
     AlertUpdate,
     Favorite,
@@ -88,6 +90,7 @@ class PostgresUserStore:
             name=payload.name,
             channel=payload.channel,
             frequency=payload.frequency,
+            delivery_target=payload.delivery_target,
             filters=payload.filters.model_dump(exclude_none=True),
             is_active=True,
             created_at=now,
@@ -124,6 +127,8 @@ class PostgresUserStore:
             row.channel = update_data["channel"]
         if "frequency" in update_data:
             row.frequency = update_data["frequency"]
+        if "delivery_target" in update_data:
+            row.delivery_target = update_data["delivery_target"]
         if "filters" in update_data and payload.filters is not None:
             row.filters = payload.filters.model_dump(exclude_none=True)
         if "is_active" in update_data:
@@ -141,6 +146,39 @@ class PostgresUserStore:
         self.session.delete(row)
         self.session.commit()
         return True
+
+    def save_alert_delivery_job(self, job: AlertDeliveryJob) -> AlertDeliveryJob:
+        row = AlertDeliveryJobModel(
+            id=job.id,
+            owner_id=job.owner_id,
+            alert_id=job.alert_id,
+            channel=job.channel,
+            provider=job.provider,
+            status=job.status,
+            total_matches=job.total_matches,
+            delivered_count=job.delivered_count,
+            message=job.message,
+            listing_ids=job.listing_ids,
+            metadata_json=job.metadata,
+            created_at=job.created_at,
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._delivery_job_from_row(row)
+
+    def list_alert_delivery_jobs(
+        self,
+        owner_id: str,
+        limit: int = 50,
+    ) -> list[AlertDeliveryJob]:
+        rows = self.session.scalars(
+            select(AlertDeliveryJobModel)
+            .where(AlertDeliveryJobModel.owner_id == owner_id)
+            .order_by(AlertDeliveryJobModel.created_at.desc())
+            .limit(limit)
+        ).all()
+        return [self._delivery_job_from_row(row) for row in rows]
 
     @staticmethod
     def _favorite_from_row(row: UserFavoriteModel) -> Favorite:
@@ -161,8 +199,25 @@ class PostgresUserStore:
             filters=AlertFilters(**row.filters),
             channel=row.channel,
             frequency=row.frequency,
+            delivery_target=row.delivery_target,
             is_active=row.is_active,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
 
+    @staticmethod
+    def _delivery_job_from_row(row: AlertDeliveryJobModel) -> AlertDeliveryJob:
+        return AlertDeliveryJob(
+            id=row.id,
+            owner_id=row.owner_id,
+            alert_id=row.alert_id,
+            channel=row.channel,
+            provider=row.provider,
+            status=row.status,
+            total_matches=row.total_matches,
+            delivered_count=row.delivered_count,
+            message=row.message,
+            listing_ids=row.listing_ids,
+            metadata=row.metadata_json,
+            created_at=row.created_at,
+        )

@@ -119,9 +119,10 @@
 - [x] Добавить roles: buyer, realtor, agency_admin, admin.
 - [x] Добавить subscriptions table.
 - [x] Добавить access limits для Free/Buyer Pro/Realtor.
+- [x] Добавить PayU/Stripe adapter interface поверх mock checkout.
 - [ ] Подключить Stripe или PayU.
 - [x] Добавить one-time report purchase flow.
-- [ ] Добавить audit logging для paid artifacts.
+- [x] Добавить audit logging для paid artifacts.
 
 ## 9. Favorites и Alerts
 
@@ -129,6 +130,8 @@
 - [x] Добавить API избранного.
 - [x] Добавить user_alerts table.
 - [x] Добавить saved search alerts.
+- [x] Добавить email alerts delivery skeleton.
+- [x] Добавить Telegram alerts delivery skeleton.
 - [ ] Добавить daily email alerts.
 - [ ] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
@@ -227,13 +230,15 @@
 - [x] Commit 10: ingestion admin MVP.
 - [x] Commit 11: planned investments CRUD.
 - [x] Commit 12: SEO area pages.
+- [x] Commit 13: payment audit and alert delivery skeleton.
 
 ## Current Sprint
 
-Цель: подготовить реальную монетизацию и delivery-каналы.
+Цель: перейти от skeleton к production-grade интеграциям и данным.
 
-- [ ] Подготовить PayU/Stripe adapter interface вместо только mock checkout.
-- [ ] Добавить audit logging для paid artifacts.
-- [ ] Добавить email alerts delivery skeleton.
-- [ ] Добавить Telegram alerts delivery skeleton.
-- [ ] Сделать Commit 13 и push.
+- [ ] Подключить реальные PayU/Stripe SDK и webhook verification.
+- [ ] Добавить payment callback endpoints и idempotency keys.
+- [ ] Добавить фактическую SMTP delivery отправку.
+- [ ] Добавить фактическую Telegram Bot API delivery отправку.
+- [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
+- [ ] Сделать Commit 14 и push.
