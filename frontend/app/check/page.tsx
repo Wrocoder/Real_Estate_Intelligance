@@ -2,10 +2,15 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { ClipboardCheck, RefreshCw, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
-import { api, type UserSubmittedListingAnalysis } from "@/lib/api";
+import {
+  api,
+  type UserSubmittedListingAnalysis,
+  type UserSubmittedListingReport,
+  type UserSubmittedListingRequest,
+} from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
 
 type CheckFormState = {
@@ -43,7 +48,9 @@ const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
 export default function CheckListingPage() {
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
+  const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [status, setStatus] = useState("Готово к проверке");
+  const [reportStatus, setReportStatus] = useState("Отчет не создан");
   const [error, setError] = useState("");
 
   async function analyze(event?: FormEvent<HTMLFormElement>) {
@@ -51,25 +58,32 @@ export default function CheckListingPage() {
     setError("");
     setStatus("Расчет...");
     try {
-      const payload = await api.analyzeUserSubmittedListing({
-        source_url: form.source_url.trim() || null,
-        address: form.address.trim(),
-        city: form.city.trim() || "Wrocław",
-        district: form.district,
-        market_type: form.market_type,
-        price: toNumber(form.price),
-        area_m2: toNumber(form.area_m2),
-        rooms: toNumber(form.rooms),
-        floor: toOptionalNumber(form.floor),
-        building_floors: toOptionalNumber(form.building_floors),
-        building_year: toOptionalNumber(form.building_year),
-        confirm_private_analysis: form.confirm_private_analysis,
-      });
+      const payload = await api.analyzeUserSubmittedListing(buildListingPayload(form));
       setResult(payload);
+      setReportResult(null);
       setStatus("Проверка готова");
+      setReportStatus("Отчет не создан");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setStatus("Ошибка проверки");
+    }
+  }
+
+  async function createReport() {
+    setError("");
+    setReportStatus("Генерация...");
+    try {
+      const payload = await api.createUserSubmittedListingReport({
+        ...buildListingPayload(form),
+        audience: "buyer",
+      });
+      setResult(payload.analysis);
+      setReportResult(payload);
+      setStatus("Проверка готова");
+      setReportStatus("Отчет готов");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown error");
+      setReportStatus("Ошибка отчета");
     }
   }
 
@@ -86,14 +100,24 @@ export default function CheckListingPage() {
           <h1>Проверить квартиру</h1>
           <p>Адрес, параметры объекта, fair price, риски, торг и ближайшие аналоги.</p>
         </div>
-        <button
-          className="button primary"
-          disabled={!form.confirm_private_analysis}
-          type="button"
-          onClick={() => void analyze()}
-        >
-          <ClipboardCheck size={16} /> Проверить
-        </button>
+        <div className="button-row">
+          <button
+            className="button"
+            disabled={!form.confirm_private_analysis}
+            type="button"
+            onClick={() => void createReport()}
+          >
+            <FileText size={16} /> Отчет
+          </button>
+          <button
+            className="button primary"
+            disabled={!form.confirm_private_analysis}
+            type="button"
+            onClick={() => void analyze()}
+          >
+            <ClipboardCheck size={16} /> Проверить
+          </button>
+        </div>
       </header>
 
       {error ? <ErrorBlock message={error} /> : null}
@@ -231,6 +255,7 @@ export default function CheckListingPage() {
               <span>private analysis</span>
             </label>
             <p className="status-line">{status}</p>
+            <p className="status-line">{reportStatus}</p>
           </div>
         </form>
 
@@ -346,8 +371,52 @@ export default function CheckListingPage() {
           </div>
         </section>
       ) : null}
+
+      {reportResult ? (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <h2>Buyer report</h2>
+            <span className="status-pill info">{reportResult.report.template_name}</span>
+          </div>
+          <div className="panel-body">
+            <p className="empty-state">{reportResult.report.summary}</p>
+            <div className="grid-2" style={{ marginTop: 12 }}>
+              {reportResult.report.sections.map((section) => (
+                <section key={section.title}>
+                  <div className="panel-header inline">
+                    <h3>{section.title}</h3>
+                  </div>
+                  <ul className="section-list">
+                    {section.items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+            <p className="muted">{reportResult.report.disclaimer}</p>
+          </div>
+        </section>
+      ) : null}
     </>
   );
+}
+
+function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest {
+  return {
+    source_url: form.source_url.trim() || null,
+    address: form.address.trim(),
+    city: form.city.trim() || "Wrocław",
+    district: form.district,
+    market_type: form.market_type,
+    price: toNumber(form.price),
+    area_m2: toNumber(form.area_m2),
+    rooms: toNumber(form.rooms),
+    floor: toOptionalNumber(form.floor),
+    building_floors: toOptionalNumber(form.building_floors),
+    building_year: toOptionalNumber(form.building_year),
+    confirm_private_analysis: form.confirm_private_analysis,
+  };
 }
 
 function NumberField({

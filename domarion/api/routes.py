@@ -102,6 +102,8 @@ from domarion.schemas import (
     SourceRegistryEntryUpdate,
     SubscriptionUpdate,
     UserSubmittedListingAnalysis,
+    UserSubmittedListingReport,
+    UserSubmittedListingReportRequest,
     UserSubmittedListingRequest,
 )
 from domarion.services.alert_delivery import build_alert_delivery_job
@@ -247,6 +249,27 @@ def analyze_user_submitted_listing_endpoint(
         return analyze_user_submitted_listing(repository, payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/user-submitted-listings/report",
+    response_model=UserSubmittedListingReport,
+)
+def create_user_submitted_listing_report(
+    payload: UserSubmittedListingReportRequest,
+    repository: RepositoryDep,
+) -> UserSubmittedListingReport:
+    try:
+        analysis = analyze_user_submitted_listing(repository, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    report = build_object_report(
+        analysis.analysis,
+        payload.audience,
+        branding=payload.branding,
+    )
+    return UserSubmittedListingReport(analysis=analysis, report=report)
 
 
 @router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])

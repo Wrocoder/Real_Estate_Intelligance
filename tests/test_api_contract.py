@@ -20,6 +20,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/user-submitted-listings/analyze",
             "post",
         ): "UserSubmittedListingAnalysis",
+        (
+            "/api/v1/user-submitted-listings/report",
+            "post",
+        ): "UserSubmittedListingReport",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
     }
@@ -92,6 +96,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "SourceRegistryEntryUpdate",
         "UserSubmittedListingAnalysis",
         "UserSubmittedListingRequest",
+        "UserSubmittedListingReport",
+        "UserSubmittedListingReportRequest",
     }
 
     assert expected_schemas <= set(schemas)
@@ -116,3 +122,11 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "application/json"
     ]["schema"]
     assert user_listing_request_schema["$ref"] == "#/components/schemas/UserSubmittedListingRequest"
+
+    user_report_operation = openapi["paths"]["/api/v1/user-submitted-listings/report"]["post"]
+    user_report_request_schema = user_report_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert user_report_request_schema["$ref"] == (
+        "#/components/schemas/UserSubmittedListingReportRequest"
+    )

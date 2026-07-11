@@ -723,6 +723,16 @@ class ObjectReport(BaseModel):
     disclaimer: str
 
 
+class UserSubmittedListingReportRequest(UserSubmittedListingRequest):
+    audience: ReportAudience = "buyer"
+    branding: ReportBranding | None = None
+
+
+class UserSubmittedListingReport(BaseModel):
+    analysis: UserSubmittedListingAnalysis
+    report: ObjectReport
+
+
 class GeneratedReportCreate(BaseModel):
     owner_id: str = "demo-user"
     listing_id: str

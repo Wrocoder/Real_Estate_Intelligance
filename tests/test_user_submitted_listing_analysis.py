@@ -59,6 +59,39 @@ def test_user_submitted_listing_analysis_requires_private_confirmation() -> None
     assert response.json()["detail"] == "Private analysis confirmation is required"
 
 
+def test_user_submitted_listing_report_uses_buyer_template_without_source_url_leak() -> None:
+    source_url = "https://www.otodom.pl/pl/oferta/demo-private-reference"
+    response = client.post(
+        "/api/v1/user-submitted-listings/report",
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "audience": "buyer",
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["analysis"]["source_url_private"] == source_url
+    assert payload["analysis"]["analysis"]["listing"]["source_url"] != source_url
+    assert payload["report"]["template_code"] == "buyer_object_report_v1"
+    assert payload["report"]["listing_id"].startswith("user-submitted-")
+    assert "не финансовая" in payload["report"]["disclaimer"]
+    section_titles = {section["title"] for section in payload["report"]["sections"]}
+    assert "Вопросы продавцу" in section_titles
+    assert "Чеклист проверки перед оффером" in section_titles
+
+
 def test_user_submitted_listing_analysis_rejects_unknown_area() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/analyze",

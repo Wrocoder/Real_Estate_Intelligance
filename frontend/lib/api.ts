@@ -244,6 +244,32 @@ export type ReportBranding = {
   note?: string | null;
 };
 
+export type ReportSection = {
+  title: string;
+  items: string[];
+};
+
+export type ObjectReport = {
+  listing_id: string;
+  audience: "buyer" | "realtor" | "investor";
+  template_code: string;
+  template_name: string;
+  branding: ReportBranding | null;
+  summary: string;
+  sections: ReportSection[];
+  disclaimer: string;
+};
+
+export type UserSubmittedListingReportRequest = UserSubmittedListingRequest & {
+  audience?: "buyer" | "realtor" | "investor";
+  branding?: ReportBranding | null;
+};
+
+export type UserSubmittedListingReport = {
+  analysis: UserSubmittedListingAnalysis;
+  report: ObjectReport;
+};
+
 export type ReportEmailResult = {
   report_id: string;
   provider: string;
@@ -744,6 +770,11 @@ export const api = {
     }),
   analyzeUserSubmittedListing: (payload: UserSubmittedListingRequest) =>
     request<UserSubmittedListingAnalysis>("/api/v1/user-submitted-listings/analyze", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  createUserSubmittedListingReport: (payload: UserSubmittedListingReportRequest) =>
+    request<UserSubmittedListingReport>("/api/v1/user-submitted-listings/report", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

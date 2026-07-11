@@ -27,7 +27,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
-- Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, а оценка строится на legal-first базе без live scraping порталов.
+- Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score и buyer report без live scraping порталов.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -75,6 +75,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
+- http://127.0.0.1:8000/api/v1/user-submitted-listings/report
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
@@ -554,6 +555,15 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze `
 ```
 
 Frontend flow доступен на `http://127.0.0.1:3000/check`.
+
+Сформировать buyer object-check report из тех же ручных параметров:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/report `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"audience":"buyer","confirm_private_analysis":true}'
+```
 
 ## Paid report flow MVP
 
