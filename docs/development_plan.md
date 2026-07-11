@@ -188,6 +188,7 @@
 - [x] Добавить buyer report секции: mortgage calculation, seller questions, purchase checklist, total cost.
 - [x] Добавить buyer object-check report из user-submitted listing draft.
 - [x] Добавить сохранение buyer object-check report из user-submitted draft в report history.
+- [x] Добавить paid checkout/fulfillment для user-submitted draft через `draft:<draft_id>`.
 - [x] Добавить realtor report секции: map, comparable listings table, client-facing price arguments.
 - [x] Добавить investor report секции: rental yield, alternatives comparison, liquidity and growth thesis.
 - [ ] Добавить paid area report product.
@@ -416,6 +417,7 @@
 - [x] Commit 22: user-submitted draft persistence and retention.
 - [x] Commit 23: saved report generation from user-submitted draft.
 - [x] Commit 24: user-facing private draft history page.
+- [x] Commit 25: paid report orders for user-submitted drafts.
 
 ## Current Sprint
 
@@ -435,6 +437,7 @@
 - [x] Добавить private draft persistence, owner-scoped draft endpoints, admin list/prune и retention metadata.
 - [x] Добавить генерацию saved report из user-submitted draft в существующую историю отчетов.
 - [x] Добавить user-facing страницу истории private drafts с удалением и генерацией отчетов.
+- [x] Добавить paid checkout/fulfillment из private draft через существующий report order lifecycle.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -444,3 +447,4 @@
 - [x] Сделать Commit 22 и push.
 - [x] Сделать Commit 23 и push.
 - [x] Сделать Commit 24 и push.
+- [x] Сделать Commit 25 и push.

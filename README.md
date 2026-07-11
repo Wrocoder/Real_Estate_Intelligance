@@ -582,6 +582,16 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/drafts/<d
 Saved report metadata содержит `user_submitted_draft_id` и `source_domain`, но не
 содержит полный `source_url_private`.
 
+Создать one-time paid order из private draft можно через существующий checkout
+flow, передав `listing_id` как `draft:<draft_id>`:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"draft:<draft_id>","product_code":"object_report","audience":"buyer"}'
+```
+
 Посмотреть private drafts текущего пользователя:
 
 ```powershell

@@ -964,12 +964,16 @@ def update_my_subscription(
 def create_report_order(
     payload: ReportOrderCreate,
     repository: RepositoryDep,
+    draft_store: UserSubmittedListingStoreDep,
     order_store: ReportOrderStoreDep,
     account: CurrentAccountDep,
 ) -> CheckoutSession:
-    listing = repository.get_listing(payload.listing_id)
-    if listing is None:
-        raise HTTPException(status_code=404, detail="Listing not found")
+    order_metadata = _validate_report_order_listing_reference(
+        payload.listing_id,
+        repository=repository,
+        draft_store=draft_store,
+        owner_id=account.user.id,
+    )
 
     product = get_report_product(payload.product_code)
     order = order_store.create_order(account.user.id, payload, product)
@@ -985,6 +989,7 @@ def create_report_order(
                 "product_code": order.product_code,
                 "amount_grosz": order.amount_grosz,
                 "currency": order.currency,
+                **order_metadata,
             },
         ),
     )
@@ -1096,6 +1101,7 @@ def mock_pay_report_order(
 def fulfill_report_order(
     order_id: str,
     repository: RepositoryDep,
+    draft_store: UserSubmittedListingStoreDep,
     order_store: ReportOrderStoreDep,
     report_store: ReportStoreDep,
     account: CurrentAccountDep,
@@ -1122,13 +1128,11 @@ def fulfill_report_order(
             detail="Report order must be paid before fulfillment",
         )
 
-    report = generate_and_store_object_report(
+    report = _generate_paid_report_for_order(
         repository=repository,
+        draft_store=draft_store,
         report_store=report_store,
-        listing_id=order.listing_id,
-        audience=order.audience,
-        report_format=order.report_format,
-        owner_id=account.user.id,
+        order=order,
     )
     fulfilled = order_store.mark_fulfilled(account.user.id, order.id, report.id)
     if fulfilled is None:
@@ -1152,6 +1156,7 @@ async def receive_payment_webhook(
     provider: str,
     request: Request,
     repository: RepositoryDep,
+    draft_store: UserSubmittedListingStoreDep,
     order_store: ReportOrderStoreDep,
     report_store: ReportStoreDep,
 ) -> PaymentWebhookResult:
@@ -1278,13 +1283,11 @@ async def receive_payment_webhook(
     generated_report_id = paid_order.generated_report_id
     final_order = paid_order
     if paid_order.status != "fulfilled":
-        report = generate_and_store_object_report(
+        report = _generate_paid_report_for_order(
             repository=repository,
+            draft_store=draft_store,
             report_store=report_store,
-            listing_id=paid_order.listing_id,
-            audience=paid_order.audience,
-            report_format=paid_order.report_format,
-            owner_id=paid_order.owner_id,
+            order=paid_order,
         )
         fulfilled = order_store.mark_fulfilled(paid_order.owner_id, paid_order.id, report.id)
         if fulfilled is not None:
@@ -1875,6 +1878,72 @@ def _ensure_report_limit(account: CurrentAccount, report_store: ReportStore) -> 
                 "limit": account.limits.monthly_reports,
             },
         )
+
+
+DRAFT_REPORT_LISTING_PREFIX = "draft:"
+
+
+def _validate_report_order_listing_reference(
+    listing_id: str,
+    repository: RealEstateRepository,
+    draft_store: UserSubmittedListingStore,
+    owner_id: str,
+) -> dict[str, str | None]:
+    if _is_draft_report_listing_id(listing_id):
+        draft_id = _draft_id_from_report_listing_id(listing_id)
+        draft = draft_store.get_draft(owner_id, draft_id)
+        if draft is None:
+            raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+        return {
+            "listing_reference_type": "user_submitted_draft",
+            "user_submitted_draft_id": draft.id,
+            "source_domain": draft.source_domain,
+        }
+
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return {"listing_reference_type": "listing", "listing_id": listing.id}
+
+
+def _generate_paid_report_for_order(
+    repository: RealEstateRepository,
+    draft_store: UserSubmittedListingStore,
+    report_store: ReportStore,
+    order: ReportOrder,
+) -> GeneratedReport:
+    if _is_draft_report_listing_id(order.listing_id):
+        draft_id = _draft_id_from_report_listing_id(order.listing_id)
+        draft = draft_store.get_draft(order.owner_id, draft_id)
+        if draft is None:
+            raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+        return generate_and_store_user_submitted_draft_report(
+            report_store=report_store,
+            draft=draft,
+            audience=order.audience,
+            report_format=order.report_format,
+            owner_id=order.owner_id,
+        )
+
+    return generate_and_store_object_report(
+        repository=repository,
+        report_store=report_store,
+        listing_id=order.listing_id,
+        audience=order.audience,
+        report_format=order.report_format,
+        owner_id=order.owner_id,
+    )
+
+
+def _is_draft_report_listing_id(listing_id: str) -> bool:
+    return listing_id.startswith(DRAFT_REPORT_LISTING_PREFIX)
+
+
+def _draft_id_from_report_listing_id(listing_id: str) -> str:
+    draft_id = listing_id.removeprefix(DRAFT_REPORT_LISTING_PREFIX).strip()
+    if not draft_id:
+        raise HTTPException(status_code=400, detail="Draft listing reference is empty")
+    return draft_id
 
 
 def _record_order_event(

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ExternalLink, FileText, RefreshCw, Trash2 } from "lucide-react";
+import { CreditCard, ExternalLink, FileText, RefreshCw, Trash2 } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -68,6 +68,29 @@ export default function CheckDraftsPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setStatus("Ошибка генерации отчета");
+    }
+  }
+
+  async function mockPayReport(draftId: string) {
+    setError("");
+    setStatus("Создание заказа...");
+    try {
+      const checkout = await api.createReportOrder({
+        listing_id: `draft:${draftId}`,
+        product_code: "object_report",
+        audience: "buyer",
+      });
+      setStatus(`Mock payment: ${checkout.order.id}`);
+      const paid = await api.mockPayReportOrder(checkout.order.id);
+      const fulfilled = await api.fulfillReportOrder(paid.id);
+      if (fulfilled.generated_report_id) {
+        const report = await api.getGeneratedReport(fulfilled.generated_report_id);
+        setSavedReports((current) => ({ ...current, [draftId]: report }));
+      }
+      setStatus(`Paid report ready: ${shortId(fulfilled.id)}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown error");
+      setStatus("Ошибка оплаты");
     }
   }
 
@@ -151,13 +174,22 @@ export default function CheckDraftsPage() {
                                 <ExternalLink size={16} /> HTML
                               </a>
                             ) : (
-                              <button
-                                className="button"
-                                type="button"
-                                onClick={() => void saveReport(draft.id)}
-                              >
-                                <FileText size={16} /> Отчет
-                              </button>
+                              <>
+                                <button
+                                  className="button"
+                                  type="button"
+                                  onClick={() => void saveReport(draft.id)}
+                                >
+                                  <FileText size={16} /> Отчет
+                                </button>
+                                <button
+                                  className="button primary"
+                                  type="button"
+                                  onClick={() => void mockPayReport(draft.id)}
+                                >
+                                  <CreditCard size={16} /> Mock pay
+                                </button>
+                              </>
                             )}
                             <button
                               className="button danger"

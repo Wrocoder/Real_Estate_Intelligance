@@ -1039,6 +1039,7 @@ export const api = {
       }),
     }),
   listReports: () => request<GeneratedReportListItem[]>("/api/v1/reports"),
+  getGeneratedReport: (reportId: string) => request<GeneratedReport>(`/api/v1/reports/${reportId}`),
   createAlert: (payload: {
     name: string;
     filters: AlertFilters;

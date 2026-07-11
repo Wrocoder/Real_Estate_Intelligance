@@ -5,6 +5,7 @@ from domarion.main import app
 from domarion.report_order_store.factory import memory_report_order_store
 from domarion.report_store.factory import memory_report_store
 from domarion.user_store.factory import memory_user_store
+from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
 
@@ -13,6 +14,7 @@ def setup_function() -> None:
     memory_auth_store.clear()
     memory_report_order_store.clear()
     memory_report_store.clear()
+    memory_user_submitted_listing_store.clear()
     memory_user_store.clear()
 
 
@@ -129,3 +131,61 @@ def test_report_order_rejects_missing_listing() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Listing not found"
+
+
+def test_user_submitted_draft_report_order_mock_payment_and_fulfillment() -> None:
+    headers = {"X-Domarion-User-Id": "paid-draft-buyer"}
+    source_url = "https://www.otodom.pl/pl/oferta/paid-draft-reference"
+    draft = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    checkout = client.post(
+        "/api/v1/report-orders",
+        headers=headers,
+        json={
+            "listing_id": f"draft:{draft['draft_id']}",
+            "product_code": "object_report",
+            "audience": "buyer",
+        },
+    )
+    order = checkout.json()["order"]
+    client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
+    fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers)
+    report = client.get(
+        f"/api/v1/reports/{fulfilled.json()['generated_report_id']}",
+        headers=headers,
+    ).json()
+
+    assert checkout.status_code == 201
+    assert order["listing_id"] == f"draft:{draft['draft_id']}"
+    assert fulfilled.status_code == 200
+    assert fulfilled.json()["status"] == "fulfilled"
+    assert report["listing_id"].startswith("user-submitted-")
+    assert source_url not in report["content"]
+    assert report["report_metadata"]["user_submitted_draft_id"] == draft["draft_id"]
+    assert report["report_metadata"]["source_domain"] == "otodom.pl"
+    assert "source_url_private" not in report["report_metadata"]
+
+
+def test_report_order_rejects_missing_user_submitted_draft() -> None:
+    response = client.post(
+        "/api/v1/report-orders",
+        headers={"X-Domarion-User-Id": "missing-draft-order"},
+        json={"listing_id": "draft:not-found", "product_code": "object_report"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User-submitted listing draft not found"

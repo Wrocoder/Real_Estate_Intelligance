@@ -74,10 +74,11 @@
 - предупреждение, если используется area-level fallback или district-level defaults;
 - buyer object-check report из текущих report templates без сохранения private URL в отчете;
 - owner-scoped draft access, manual deletion, `expires_at` и admin prune для retention;
-- saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content.
+- saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content;
+- paid report order lifecycle для draft references через `listing_id="draft:<draft_id>"`.
 
-Следующие шаги: paid fulfillment из draft, user-facing draft history page и optional URL-assisted
-parser после legal review источника.
+Следующие шаги: optional URL-assisted parser после legal review источника, draft-to-paid checkout UX
+для live PSP и demand-validation landing page.
 
 ## Non-Goals For MVP
 

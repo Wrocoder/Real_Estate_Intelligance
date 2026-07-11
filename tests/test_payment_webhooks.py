@@ -11,6 +11,7 @@ from domarion.main import app
 from domarion.report_order_store.factory import memory_report_order_store
 from domarion.report_store.factory import memory_report_store
 from domarion.user_store.factory import memory_user_store
+from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
 
@@ -20,6 +21,7 @@ def setup_function() -> None:
     memory_auth_store.clear()
     memory_report_order_store.clear()
     memory_report_store.clear()
+    memory_user_submitted_listing_store.clear()
     memory_user_store.clear()
 
 
@@ -90,6 +92,47 @@ def test_stripe_webhook_rejects_invalid_signature(monkeypatch) -> None:
     assert "signature" in response.json()["detail"].lower()
 
 
+def test_stripe_paid_webhook_fulfills_user_submitted_draft_order(monkeypatch) -> None:
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "stripe-draft-buyer"}
+    source_url = "https://www.otodom.pl/pl/oferta/webhook-draft-reference"
+    draft = _create_user_submitted_draft(headers, source_url)
+    order = _create_order(headers, listing_id=f"draft:{draft['draft_id']}")
+    body = _json_bytes(
+        {
+            "id": "evt_stripe_paid_draft_1",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_test_draft_1",
+                    "payment_status": "paid",
+                    "metadata": {"order_id": order["id"]},
+                }
+            },
+        }
+    )
+
+    response = client.post(
+        "/api/v1/payment-webhooks/stripe",
+        content=body,
+        headers={"Stripe-Signature": _stripe_signature(body, "whsec_test")},
+    )
+    payload = response.json()
+    report = client.get(
+        f"/api/v1/reports/{payload['generated_report_id']}",
+        headers=headers,
+    ).json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "processed"
+    assert payload["order"]["status"] == "fulfilled"
+    assert report["listing_id"].startswith("user-submitted-")
+    assert source_url not in report["content"]
+    assert report["report_metadata"]["user_submitted_draft_id"] == draft["draft_id"]
+    assert "source_url_private" not in report["report_metadata"]
+
+
 def test_payu_completed_webhook_fulfills_order(monkeypatch) -> None:
     monkeypatch.setenv("PAYU_SECOND_KEY", "second-key-test")
     get_settings.cache_clear()
@@ -119,12 +162,30 @@ def test_payu_completed_webhook_fulfills_order(monkeypatch) -> None:
     assert payload["webhook_event"]["metadata"]["payu_order_id"] == "payu-order-1"
 
 
-def _create_order(headers: dict[str, str]) -> dict:
+def _create_order(headers: dict[str, str], listing_id: str = "wr-001") -> dict:
     return client.post(
         "/api/v1/report-orders",
         headers=headers,
-        json={"listing_id": "wr-001", "product_code": "object_report"},
+        json={"listing_id": listing_id, "product_code": "object_report"},
     ).json()["order"]
+
+
+def _create_user_submitted_draft(headers: dict[str, str], source_url: str) -> dict:
+    return client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    ).json()
 
 
 def _json_bytes(payload: dict) -> bytes:
