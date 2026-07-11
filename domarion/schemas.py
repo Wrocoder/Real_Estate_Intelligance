@@ -431,6 +431,8 @@ class UserSubmittedListingRequest(BaseModel):
     schools_within_1km: int | None = Field(default=None, ge=0)
     planned_investments_within_2km: int | None = Field(default=None, ge=0)
     confirm_private_analysis: bool
+    save_private_draft: bool = True
+    retention_days: int = Field(default=30, ge=1, le=180)
 
 
 class UserSubmittedListingAnalysis(BaseModel):
@@ -441,6 +443,34 @@ class UserSubmittedListingAnalysis(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     comparables_basis: str
     retention_note: str
+    draft_id: str | None = None
+    draft_expires_at: datetime | None = None
+
+
+class UserSubmittedListingDraft(BaseModel):
+    id: str
+    owner_id: str
+    listing_id: str
+    source_url_private: str | None = None
+    source_domain: str | None = None
+    address: str
+    city: str
+    district: str
+    market_type: MarketType
+    price: int
+    area_m2: float
+    rooms: int
+    data_quality_score: int = Field(ge=0, le=100)
+    confidence_score: int = Field(ge=0, le=100)
+    request_payload: dict[str, Any] = Field(default_factory=dict)
+    analysis_payload: dict[str, Any] = Field(default_factory=dict)
+    expires_at: datetime
+    created_at: datetime
+    updated_at: datetime
+
+
+class UserSubmittedListingDraftPruneResult(BaseModel):
+    deleted: int = Field(ge=0)
 
 
 class ListingSearchResponse(BaseModel):

@@ -102,6 +102,8 @@ from domarion.schemas import (
     SourceRegistryEntryUpdate,
     SubscriptionUpdate,
     UserSubmittedListingAnalysis,
+    UserSubmittedListingDraft,
+    UserSubmittedListingDraftPruneResult,
     UserSubmittedListingReport,
     UserSubmittedListingReportRequest,
     UserSubmittedListingRequest,
@@ -134,6 +136,8 @@ from domarion.services.search import ListingSearchError, search_listing_analyses
 from domarion.services.user_submitted_listings import analyze_user_submitted_listing
 from domarion.user_store.base import UserStore
 from domarion.user_store.factory import get_user_store
+from domarion.user_submitted_listing_store.base import UserSubmittedListingStore
+from domarion.user_submitted_listing_store.factory import get_user_submitted_listing_store
 
 router = APIRouter(prefix="/api/v1")
 RepositoryDep = Annotated[RealEstateRepository, Depends(get_repository)]
@@ -142,6 +146,10 @@ ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
+UserSubmittedListingStoreDep = Annotated[
+    UserSubmittedListingStore,
+    Depends(get_user_submitted_listing_store),
+]
 
 MAX_PARTNER_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 PARTNER_CSV_UPLOAD_EXTENSIONS = {".csv"}
@@ -244,9 +252,16 @@ def calculate_mortgage_budget(
 def analyze_user_submitted_listing_endpoint(
     payload: UserSubmittedListingRequest,
     repository: RepositoryDep,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
 ) -> UserSubmittedListingAnalysis:
     try:
-        return analyze_user_submitted_listing(repository, payload)
+        return _analyze_and_optionally_save_user_submitted_draft(
+            repository=repository,
+            draft_store=draft_store,
+            account=account,
+            payload=payload,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -258,9 +273,16 @@ def analyze_user_submitted_listing_endpoint(
 def create_user_submitted_listing_report(
     payload: UserSubmittedListingReportRequest,
     repository: RepositoryDep,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
 ) -> UserSubmittedListingReport:
     try:
-        analysis = analyze_user_submitted_listing(repository, payload)
+        analysis = _analyze_and_optionally_save_user_submitted_draft(
+            repository=repository,
+            draft_store=draft_store,
+            account=account,
+            payload=payload,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -270,6 +292,100 @@ def create_user_submitted_listing_report(
         branding=payload.branding,
     )
     return UserSubmittedListingReport(analysis=analysis, report=report)
+
+
+@router.get(
+    "/user-submitted-listings/drafts",
+    response_model=list[UserSubmittedListingDraft],
+)
+def list_user_submitted_listing_drafts(
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+    include_expired: Annotated[bool, Query()] = False,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[UserSubmittedListingDraft]:
+    return draft_store.list_drafts(
+        account.user.id,
+        include_expired=include_expired,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/user-submitted-listings/drafts/{draft_id}",
+    response_model=UserSubmittedListingDraft,
+)
+def get_user_submitted_listing_draft(
+    draft_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> UserSubmittedListingDraft:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    return draft
+
+
+@router.delete("/user-submitted-listings/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user_submitted_listing_draft(
+    draft_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    deleted = draft_store.delete_draft(account.user.id, draft_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/admin/user-submitted-listing-drafts",
+    response_model=list[UserSubmittedListingDraft],
+)
+def list_admin_user_submitted_listing_drafts(
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+    include_expired: Annotated[bool, Query()] = False,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[UserSubmittedListingDraft]:
+    _ensure_admin(account)
+    return draft_store.list_admin_drafts(include_expired=include_expired, limit=limit)
+
+
+@router.post(
+    "/admin/user-submitted-listing-drafts/prune-expired",
+    response_model=UserSubmittedListingDraftPruneResult,
+)
+def prune_admin_user_submitted_listing_drafts(
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> UserSubmittedListingDraftPruneResult:
+    _ensure_admin(account)
+    return UserSubmittedListingDraftPruneResult(deleted=draft_store.prune_expired())
+
+
+def _analyze_and_optionally_save_user_submitted_draft(
+    repository: RealEstateRepository,
+    draft_store: UserSubmittedListingStore,
+    account: CurrentAccount,
+    payload: UserSubmittedListingRequest,
+) -> UserSubmittedListingAnalysis:
+    analysis = analyze_user_submitted_listing(repository, payload)
+    if not payload.save_private_draft:
+        return analysis
+
+    draft = draft_store.save_draft(account.user.id, payload, analysis)
+    retention_note = (
+        f"{analysis.retention_note} Private draft expires at "
+        f"{draft.expires_at.date().isoformat()}."
+    )
+    return analysis.model_copy(
+        update={
+            "draft_id": draft.id,
+            "draft_expires_at": draft.expires_at,
+            "retention_note": retention_note,
+        }
+    )
 
 
 @router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])

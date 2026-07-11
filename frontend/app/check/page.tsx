@@ -290,6 +290,14 @@ export default function CheckListingPage() {
                     <span>Source domain</span>
                     <strong>{result.source_domain ?? "manual input"}</strong>
                   </li>
+                  <li>
+                    <span>Private draft</span>
+                    <strong>{result.draft_id ? shortId(result.draft_id) : "not saved"}</strong>
+                  </li>
+                  <li>
+                    <span>Expires</span>
+                    <strong>{result.draft_expires_at ? dateLabel(result.draft_expires_at) : "—"}</strong>
+                  </li>
                 </ul>
                 <ul className="section-list" style={{ marginTop: 12 }}>
                   {result.warnings.map((warning) => (
@@ -416,6 +424,8 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
     building_floors: toOptionalNumber(form.building_floors),
     building_year: toOptionalNumber(form.building_year),
     confirm_private_analysis: form.confirm_private_analysis,
+    save_private_draft: true,
+    retention_days: 30,
   };
 }
 
@@ -452,4 +462,16 @@ function toNumber(value: string) {
 
 function toOptionalNumber(value: string) {
   return value === "" ? null : Number(value);
+}
+
+function shortId(value: string) {
+  return value.slice(0, 8);
+}
+
+function dateLabel(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(new Date(value));
 }

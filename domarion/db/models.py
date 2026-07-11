@@ -244,6 +244,30 @@ class GeneratedReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
+class UserSubmittedListingDraft(Base):
+    __tablename__ = "user_submitted_listing_drafts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    listing_id: Mapped[str] = mapped_column(String(120), index=True)
+    source_url_private: Mapped[str | None] = mapped_column(String(1000))
+    source_domain: Mapped[str | None] = mapped_column(String(255), index=True)
+    address: Mapped[str] = mapped_column(String(255))
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    district: Mapped[str] = mapped_column(String(80), index=True)
+    market_type: Mapped[str] = mapped_column(String(40), index=True)
+    price: Mapped[int] = mapped_column(Integer)
+    area_m2: Mapped[Decimal] = mapped_column(Numeric(8, 2))
+    rooms: Mapped[int] = mapped_column(Integer)
+    data_quality_score: Mapped[int] = mapped_column(Integer)
+    confidence_score: Mapped[int] = mapped_column(Integer)
+    request_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    analysis_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
 

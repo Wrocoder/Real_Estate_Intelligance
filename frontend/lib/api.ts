@@ -223,6 +223,8 @@ export type UserSubmittedListingRequest = {
   schools_within_1km?: number | null;
   planned_investments_within_2km?: number | null;
   confirm_private_analysis: boolean;
+  save_private_draft?: boolean;
+  retention_days?: number;
 };
 
 export type UserSubmittedListingAnalysis = {
@@ -233,6 +235,34 @@ export type UserSubmittedListingAnalysis = {
   warnings: string[];
   comparables_basis: string;
   retention_note: string;
+  draft_id: string | null;
+  draft_expires_at: string | null;
+};
+
+export type UserSubmittedListingDraft = {
+  id: string;
+  owner_id: string;
+  listing_id: string;
+  source_url_private: string | null;
+  source_domain: string | null;
+  address: string;
+  city: string;
+  district: string;
+  market_type: "primary" | "secondary";
+  price: number;
+  area_m2: number;
+  rooms: number;
+  data_quality_score: number;
+  confidence_score: number;
+  request_payload: Record<string, unknown>;
+  analysis_payload: Record<string, unknown>;
+  expires_at: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type UserSubmittedListingDraftPruneResult = {
+  deleted: number;
 };
 
 export type ReportBranding = {
@@ -777,6 +807,19 @@ export const api = {
     request<UserSubmittedListingReport>("/api/v1/user-submitted-listings/report", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+  listUserSubmittedListingDrafts: (params: {
+    include_expired?: boolean;
+    limit?: number;
+  } = {}) =>
+    request<UserSubmittedListingDraft[]>(
+      `/api/v1/user-submitted-listings/drafts${toQueryString(params)}`,
+    ),
+  getUserSubmittedListingDraft: (draftId: string) =>
+    request<UserSubmittedListingDraft>(`/api/v1/user-submitted-listings/drafts/${draftId}`),
+  deleteUserSubmittedListingDraft: (draftId: string) =>
+    fetch(`${API_BASE_URL}/api/v1/user-submitted-listings/drafts/${draftId}`, {
+      method: "DELETE",
     }),
   listAdminIngestionJobs: () =>
     request<IngestionJob[]>("/api/v1/admin/ingestion/jobs", {

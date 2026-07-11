@@ -108,7 +108,7 @@
 
 - [x] Добавить публичный flow “Проверить квартиру”: address-first ввод объекта без необходимости иметь объект в нашей базе.
 - [x] Добавить форму ручных параметров: адрес/район, цена, площадь, комнаты, этаж, год, рынок, URL объявления optional.
-- [x] Добавить transient `UserSubmittedListing` draft response для временного объекта пользователя.
+- [x] Добавить `UserSubmittedListing` draft persistence/report metadata для временного объекта пользователя.
 - [x] Добавить backend endpoint для нормализации user-submitted listing и расчета preliminary score.
 - [x] Добавить приватную обработку `source_url` как internal reference: не показывать в UI/отчетах, не индексировать публично, не экспортировать в SEO.
 - [x] Добавить data-quality score для пользовательского ввода: missing floor/year, approximate location, defaulted infrastructure.
@@ -116,7 +116,7 @@
 - [x] Добавить fallback, если comparables мало: area-level estimate + confidence warning.
 - [ ] Добавить optional URL-assisted parser только после legal review источника и только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
-- [ ] Добавить retention policy для user-submitted drafts и ссылок.
+- [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
 
 ## 5. Ingestion Pipeline
@@ -287,7 +287,7 @@
 - [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.
 - [x] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
-- [ ] Добавить admin view user-submitted listing drafts и source URL references без публичного раскрытия ссылок.
+- [x] Добавить admin view user-submitted listing drafts и source URL references без публичного раскрытия ссылок.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [ ] Добавить moderation workflow для data deletion requests.
 - [ ] Добавить просмотр source errors и retry actions.
@@ -411,6 +411,7 @@
 - [x] Commit 19: price history update pipeline.
 - [x] Commit 20: hybrid user-provided listing analysis flow.
 - [x] Commit 21: user-submitted buyer object-check report.
+- [x] Commit 22: user-submitted draft persistence and retention.
 
 ## Current Sprint
 
@@ -427,9 +428,11 @@
 - [x] Добавить hybrid user-provided listing analysis spec в план.
 - [x] Реализовать first slice: публичная форма проверки квартиры + backend draft/analysis endpoint.
 - [x] Добавить buyer report endpoint и UI для user-submitted draft.
+- [x] Добавить private draft persistence, owner-scoped draft endpoints, admin list/prune и retention metadata.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
 - [x] Сделать Commit 20 и push.
 - [x] Сделать Commit 21 и push.
+- [x] Сделать Commit 22 и push.

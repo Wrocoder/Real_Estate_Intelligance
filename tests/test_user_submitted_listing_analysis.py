@@ -1,8 +1,13 @@
 from fastapi.testclient import TestClient
 
 from domarion.main import app
+from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
+
+
+def setup_function() -> None:
+    memory_user_submitted_listing_store.clear()
 
 
 def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
@@ -35,6 +40,8 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert payload["analysis"]["listing"]["price_per_m2"] == round(675000 / 58.4)
     assert payload["analysis"]["area_statistics"]["area_id"] == "wroclaw-fabryczna"
     assert 0 <= payload["confidence_score"] <= 100
+    assert payload["draft_id"]
+    assert payload["draft_expires_at"]
     assert payload["analysis"]["comparables"]
     assert "legal-first" in payload["comparables_basis"]
     assert any("No live portal data was fetched" in item for item in payload["warnings"])
@@ -83,6 +90,7 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
 
     assert response.status_code == 200
     assert payload["analysis"]["source_url_private"] == source_url
+    assert payload["analysis"]["draft_id"]
     assert payload["analysis"]["analysis"]["listing"]["source_url"] != source_url
     assert payload["report"]["template_code"] == "buyer_object_report_v1"
     assert payload["report"]["listing_id"].startswith("user-submitted-")
@@ -90,6 +98,113 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     section_titles = {section["title"] for section in payload["report"]["sections"]}
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
+
+
+def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
+    owner_a = {"X-Domarion-User-Id": "draft-owner-a"}
+    owner_b = {"X-Domarion-User-Id": "draft-owner-b"}
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=owner_a,
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/demo-owner-a",
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+            "retention_days": 7,
+        },
+    ).json()
+    draft_id = created["draft_id"]
+
+    owner_a_list = client.get("/api/v1/user-submitted-listings/drafts", headers=owner_a)
+    owner_b_list = client.get("/api/v1/user-submitted-listings/drafts", headers=owner_b)
+    owner_b_get = client.get(f"/api/v1/user-submitted-listings/drafts/{draft_id}", headers=owner_b)
+    owner_a_get = client.get(f"/api/v1/user-submitted-listings/drafts/{draft_id}", headers=owner_a)
+    owner_a_delete = client.delete(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}",
+        headers=owner_a,
+    )
+    owner_a_get_deleted = client.get(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}",
+        headers=owner_a,
+    )
+
+    assert owner_a_list.status_code == 200
+    assert owner_a_list.json()[0]["id"] == draft_id
+    assert owner_a_list.json()[0]["source_url_private"].endswith("demo-owner-a")
+    assert owner_b_list.status_code == 200
+    assert owner_b_list.json() == []
+    assert owner_b_get.status_code == 404
+    assert owner_a_get.status_code == 200
+    assert owner_a_get.json()["request_payload"]["retention_days"] == 7
+    assert owner_a_delete.status_code == 204
+    assert owner_a_get_deleted.status_code == 404
+
+
+def test_user_submitted_listing_analysis_can_skip_private_draft() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers={"X-Domarion-User-Id": "draft-skip-owner"},
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+            "save_private_draft": False,
+        },
+    )
+    drafts = client.get(
+        "/api/v1/user-submitted-listings/drafts",
+        headers={"X-Domarion-User-Id": "draft-skip-owner"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["draft_id"] is None
+    assert drafts.json() == []
+
+
+def test_admin_can_list_and_prune_user_submitted_listing_drafts() -> None:
+    client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers={"X-Domarion-User-Id": "draft-admin-source"},
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/demo-admin",
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    )
+    admin_headers = {
+        "X-Domarion-User-Id": "draft-admin",
+        "X-Domarion-Role": "admin",
+        "X-Domarion-Plan": "enterprise",
+    }
+
+    response = client.get("/api/v1/admin/user-submitted-listing-drafts", headers=admin_headers)
+    prune_response = client.post(
+        "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
+        headers=admin_headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()[0]["owner_id"] == "draft-admin-source"
+    assert response.json()[0]["source_domain"] == "otodom.pl"
+    assert prune_response.status_code == 200
+    assert prune_response.json() == {"deleted": 0}
 
 
 def test_user_submitted_listing_analysis_rejects_unknown_area() -> None:

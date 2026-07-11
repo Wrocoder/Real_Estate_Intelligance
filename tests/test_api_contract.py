@@ -24,6 +24,14 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/user-submitted-listings/report",
             "post",
         ): "UserSubmittedListingReport",
+        (
+            "/api/v1/user-submitted-listings/drafts/{draft_id}",
+            "get",
+        ): "UserSubmittedListingDraft",
+        (
+            "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
+            "post",
+        ): "UserSubmittedListingDraftPruneResult",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
     }
@@ -95,6 +103,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",
         "UserSubmittedListingAnalysis",
+        "UserSubmittedListingDraft",
+        "UserSubmittedListingDraftPruneResult",
         "UserSubmittedListingRequest",
         "UserSubmittedListingReport",
         "UserSubmittedListingReportRequest",
@@ -129,4 +139,18 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     ]["schema"]
     assert user_report_request_schema["$ref"] == (
         "#/components/schemas/UserSubmittedListingReportRequest"
+    )
+
+    draft_list_schema = openapi["paths"]["/api/v1/user-submitted-listings/drafts"]["get"][
+        "responses"
+    ]["200"]["content"]["application/json"]["schema"]
+    assert draft_list_schema["type"] == "array"
+    assert draft_list_schema["items"]["$ref"] == "#/components/schemas/UserSubmittedListingDraft"
+
+    admin_draft_list_schema = openapi["paths"]["/api/v1/admin/user-submitted-listing-drafts"][
+        "get"
+    ]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert admin_draft_list_schema["type"] == "array"
+    assert admin_draft_list_schema["items"]["$ref"] == (
+        "#/components/schemas/UserSubmittedListingDraft"
     )
