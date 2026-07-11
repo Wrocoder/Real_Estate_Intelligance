@@ -17,6 +17,9 @@ from domarion.schemas import (
     IngestionJobCreate,
     IngestionJobStatus,
     RawListingSummary,
+    SourceRegistryEntry,
+    SourceRegistryEntryCreate,
+    SourceRegistryEntryUpdate,
 )
 
 
@@ -156,6 +159,55 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         raw, source = row
         return self._raw_listing_to_schema(raw, source)
 
+    def list_sources(self) -> list[SourceRegistryEntry]:
+        rows = self.session.scalars(
+            select(ListingSource).order_by(ListingSource.created_at.desc(), ListingSource.name)
+        ).all()
+        return [self._source_to_schema(row) for row in rows]
+
+    def create_source(self, payload: SourceRegistryEntryCreate) -> SourceRegistryEntry:
+        now = datetime.utcnow()
+        row = ListingSource(
+            name=payload.name,
+            source_type=payload.source_type,
+            base_url=payload.base_url,
+            legal_status=payload.legal_status,
+            refresh_cadence=payload.refresh_cadence,
+            owner=payload.owner,
+            ingestion_method=payload.ingestion_method,
+            allowed_use_json=payload.allowed_use,
+            robots_txt_url=payload.robots_txt_url,
+            terms_url=payload.terms_url,
+            notes=payload.notes,
+            is_active=payload.is_active,
+            created_at=now,
+            updated_at=now,
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._source_to_schema(row)
+
+    def update_source(
+        self,
+        source_id: str,
+        payload: SourceRegistryEntryUpdate,
+    ) -> SourceRegistryEntry | None:
+        if not source_id.isdigit():
+            return None
+        row = self.session.get(ListingSource, int(source_id))
+        if row is None:
+            return None
+        update_data = payload.model_dump(exclude_unset=True)
+        if "allowed_use" in update_data:
+            row.allowed_use_json = update_data.pop("allowed_use") or []
+        for key, value in update_data.items():
+            setattr(row, key, value)
+        row.updated_at = datetime.utcnow()
+        self.session.commit()
+        self.session.refresh(row)
+        return self._source_to_schema(row)
+
     @staticmethod
     def _job_to_schema(row: IngestionJobRow) -> IngestionJob:
         return IngestionJob(
@@ -204,4 +256,24 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             fetched_at=raw.fetched_at,
             payload_hash=raw.payload_hash,
             raw_payload=raw.raw_payload,
+        )
+
+    @staticmethod
+    def _source_to_schema(row: ListingSource) -> SourceRegistryEntry:
+        return SourceRegistryEntry(
+            id=str(row.id),
+            name=row.name,
+            source_type=row.source_type,
+            base_url=row.base_url,
+            legal_status=row.legal_status,
+            refresh_cadence=row.refresh_cadence,
+            owner=row.owner,
+            ingestion_method=row.ingestion_method,
+            allowed_use=row.allowed_use_json or [],
+            robots_txt_url=row.robots_txt_url,
+            terms_url=row.terms_url,
+            notes=row.notes,
+            is_active=row.is_active,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
         )

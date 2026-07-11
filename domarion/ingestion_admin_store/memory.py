@@ -11,6 +11,9 @@ from domarion.schemas import (
     IngestionJobCreate,
     IngestionJobStatus,
     RawListingSummary,
+    SourceRegistryEntry,
+    SourceRegistryEntryCreate,
+    SourceRegistryEntryUpdate,
 )
 
 
@@ -23,12 +26,14 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._jobs: dict[str, IngestionJob] = {}
         self._logs: dict[str, DataQualityLog] = {}
         self._raw_listings: dict[str, RawListingSummary] = {}
+        self._sources: dict[str, SourceRegistryEntry] = {}
         self._seed_demo()
 
     def clear(self) -> None:
         self._jobs.clear()
         self._logs.clear()
         self._raw_listings.clear()
+        self._sources.clear()
 
     def reset_demo(self) -> None:
         self.clear()
@@ -139,8 +144,81 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
     def get_raw_listing(self, raw_listing_id: str) -> RawListingSummary | None:
         return self._raw_listings.get(raw_listing_id)
 
+    def list_sources(self) -> list[SourceRegistryEntry]:
+        return sorted(self._sources.values(), key=lambda item: item.created_at, reverse=True)
+
+    def create_source(self, payload: SourceRegistryEntryCreate) -> SourceRegistryEntry:
+        now = _now()
+        source = SourceRegistryEntry(
+            id=str(uuid4()),
+            name=payload.name,
+            source_type=payload.source_type,
+            base_url=payload.base_url,
+            legal_status=payload.legal_status,
+            refresh_cadence=payload.refresh_cadence,
+            owner=payload.owner,
+            ingestion_method=payload.ingestion_method,
+            allowed_use=payload.allowed_use,
+            robots_txt_url=payload.robots_txt_url,
+            terms_url=payload.terms_url,
+            notes=payload.notes,
+            is_active=payload.is_active,
+            created_at=now,
+            updated_at=now,
+        )
+        self._sources[source.id] = source
+        return source
+
+    def update_source(
+        self,
+        source_id: str,
+        payload: SourceRegistryEntryUpdate,
+    ) -> SourceRegistryEntry | None:
+        source = self._sources.get(source_id)
+        if source is None:
+            return None
+        update_data = payload.model_dump(exclude_unset=True)
+        source = source.model_copy(update={**update_data, "updated_at": _now()})
+        self._sources[source.id] = source
+        return source
+
     def _seed_demo(self) -> None:
         now = _now()
+        self._sources["demo-partner-source"] = SourceRegistryEntry(
+            id="demo-partner-source",
+            name="Demo Partner",
+            source_type="partner_csv",
+            base_url="https://example.com",
+            legal_status="approved",
+            refresh_cadence="manual_upload",
+            owner="demo-admin",
+            ingestion_method="admin_csv_upload",
+            allowed_use=["analytics", "reports", "price_history"],
+            robots_txt_url="https://example.com/robots.txt",
+            terms_url="https://example.com/terms",
+            notes="Demo source that represents a partner-owned CSV feed.",
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+        self._sources["wroclaw-open-data-source"] = SourceRegistryEntry(
+            id="wroclaw-open-data-source",
+            name="wroclaw.pl WPT",
+            source_type="open_data",
+            base_url="https://www.wroclaw.pl",
+            legal_status="approved",
+            refresh_cadence="monthly",
+            owner="city-data",
+            ingestion_method="planned_investments_import",
+            allowed_use=["map_layers", "analytics"],
+            robots_txt_url="https://www.wroclaw.pl/robots.txt",
+            terms_url=None,
+            notes="Used for public planned investment layers, not active flat listings.",
+            is_active=True,
+            created_at=now,
+            updated_at=now,
+        )
+
         job = IngestionJob(
             id="demo-ingestion-job-1",
             source_name="Demo Partner",

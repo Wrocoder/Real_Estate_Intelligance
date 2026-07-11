@@ -24,6 +24,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
+- Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
@@ -72,6 +73,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
+- http://127.0.0.1:8000/api/v1/admin/ingestion/sources
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments

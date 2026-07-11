@@ -242,6 +242,7 @@ export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";
 export type IngestionSourceHealthStatus = "healthy" | "warning" | "failing";
+export type SourceLegalStatus = "unknown" | "approved" | "review_required" | "blocked";
 export type ListingSort =
   | "price_asc"
   | "price_desc"
@@ -437,6 +438,39 @@ export type IngestionSourceHealth = {
   error_count: number;
   last_error_message: string | null;
   updated_at: string;
+};
+
+export type SourceRegistryEntry = {
+  id: string;
+  name: string;
+  source_type: string;
+  base_url: string | null;
+  legal_status: SourceLegalStatus;
+  refresh_cadence: string;
+  owner: string;
+  ingestion_method: string;
+  allowed_use: string[];
+  robots_txt_url: string | null;
+  terms_url: string | null;
+  notes: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SourceRegistryEntryPayload = {
+  name?: string;
+  source_type?: string;
+  base_url?: string | null;
+  legal_status?: SourceLegalStatus;
+  refresh_cadence?: string;
+  owner?: string;
+  ingestion_method?: string;
+  allowed_use?: string[];
+  robots_txt_url?: string | null;
+  terms_url?: string | null;
+  notes?: string | null;
+  is_active?: boolean;
 };
 
 export type DataQualityLog = {
@@ -679,6 +713,22 @@ export const api = {
   listAdminIngestionSourceHealth: () =>
     request<IngestionSourceHealth[]>("/api/v1/admin/ingestion/source-health", {
       headers: ADMIN_HEADERS,
+    }),
+  listAdminIngestionSources: () =>
+    request<SourceRegistryEntry[]>("/api/v1/admin/ingestion/sources", {
+      headers: ADMIN_HEADERS,
+    }),
+  createAdminIngestionSource: (payload: Required<SourceRegistryEntryPayload>) =>
+    request<SourceRegistryEntry>("/api/v1/admin/ingestion/sources", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  updateAdminIngestionSource: (sourceId: string, payload: SourceRegistryEntryPayload) =>
+    request<SourceRegistryEntry>(`/api/v1/admin/ingestion/sources/${sourceId}`, {
+      method: "PATCH",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
     }),
   getAdminScoringBacktest: (params: {
     city?: string;

@@ -32,6 +32,10 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert health_response.status_code == 403
     assert health_response.json()["detail"] == "Admin role required"
 
+    sources_response = client.get("/api/v1/admin/ingestion/sources")
+    assert sources_response.status_code == 403
+    assert sources_response.json()["detail"] == "Admin role required"
+
     backtest_response = client.get("/api/v1/admin/scoring/backtest")
     assert backtest_response.status_code == 403
     assert backtest_response.json()["detail"] == "Admin role required"
@@ -68,6 +72,64 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     assert source_health[0]["source_name"] == "Demo Partner"
     assert source_health[0]["health_status"] == "warning"
     assert source_health[0]["warning_count"] == 1
+
+
+def test_admin_can_manage_source_registry() -> None:
+    sources = client.get("/api/v1/admin/ingestion/sources", headers=ADMIN_HEADERS).json()
+
+    assert {source["name"] for source in sources} == {"Demo Partner", "wroclaw.pl WPT"}
+    demo_source = next(source for source in sources if source["name"] == "Demo Partner")
+    assert demo_source["legal_status"] == "approved"
+    assert demo_source["ingestion_method"] == "admin_csv_upload"
+    assert "price_history" in demo_source["allowed_use"]
+
+    create_response = client.post(
+        "/api/v1/admin/ingestion/sources",
+        headers=ADMIN_HEADERS,
+        json={
+            "name": "Agency Beta Feed",
+            "source_type": "partner_csv",
+            "base_url": "https://agency.example",
+            "legal_status": "review_required",
+            "refresh_cadence": "weekly",
+            "owner": "partnerships",
+            "ingestion_method": "admin_csv_upload",
+            "allowed_use": ["analytics", "reports"],
+            "robots_txt_url": "https://agency.example/robots.txt",
+            "terms_url": "https://agency.example/terms",
+            "notes": "Waiting for signed DPA.",
+            "is_active": True,
+        },
+    )
+    created = create_response.json()
+
+    assert create_response.status_code == 201
+    assert created["name"] == "Agency Beta Feed"
+    assert created["legal_status"] == "review_required"
+    assert created["allowed_use"] == ["analytics", "reports"]
+
+    duplicate_response = client.post(
+        "/api/v1/admin/ingestion/sources",
+        headers=ADMIN_HEADERS,
+        json={"name": "Agency Beta Feed"},
+    )
+    assert duplicate_response.status_code == 409
+
+    update_response = client.patch(
+        f"/api/v1/admin/ingestion/sources/{created['id']}",
+        headers=ADMIN_HEADERS,
+        json={
+            "legal_status": "approved",
+            "allowed_use": ["analytics", "reports", "price_history"],
+            "notes": "DPA signed.",
+        },
+    )
+    updated = update_response.json()
+
+    assert update_response.status_code == 200
+    assert updated["legal_status"] == "approved"
+    assert updated["allowed_use"] == ["analytics", "reports", "price_history"]
+    assert updated["notes"] == "DPA signed."
 
 
 def test_admin_can_run_scoring_backtest() -> None:

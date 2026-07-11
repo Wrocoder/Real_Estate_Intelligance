@@ -15,6 +15,9 @@ import {
   type PlannedInvestmentPayload,
   type RawListingSummary,
   type ScoringBacktestResult,
+  type SourceLegalStatus,
+  type SourceRegistryEntry,
+  type SourceRegistryEntryPayload,
 } from "@/lib/api";
 import { numberValue } from "@/lib/format";
 
@@ -32,6 +35,21 @@ type InvestmentForm = {
   notes: string;
 };
 
+type SourceForm = {
+  name: string;
+  source_type: string;
+  base_url: string;
+  legal_status: SourceLegalStatus;
+  refresh_cadence: string;
+  owner: string;
+  ingestion_method: string;
+  allowed_use: string;
+  robots_txt_url: string;
+  terms_url: string;
+  notes: string;
+  is_active: boolean;
+};
+
 const defaultInvestmentForm: InvestmentForm = {
   name: "New planned investment",
   investment_type: "tram",
@@ -46,16 +64,34 @@ const defaultInvestmentForm: InvestmentForm = {
   notes: "",
 };
 
+const defaultSourceForm: SourceForm = {
+  name: "New Agency Partner",
+  source_type: "partner_csv",
+  base_url: "https://agency.example",
+  legal_status: "review_required",
+  refresh_cadence: "weekly",
+  owner: "partnerships",
+  ingestion_method: "admin_csv_upload",
+  allowed_use: "analytics,reports,price_history",
+  robots_txt_url: "https://agency.example/robots.txt",
+  terms_url: "https://agency.example/terms",
+  notes: "",
+  is_active: true,
+};
+
 export default function AdminPage() {
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [sourceHealth, setSourceHealth] = useState<IngestionSourceHealth[]>([]);
+  const [sources, setSources] = useState<SourceRegistryEntry[]>([]);
   const [scoringBacktest, setScoringBacktest] =
     useState<ScoringBacktestResult | null>(null);
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
+  const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
   const [investmentForm, setInvestmentForm] =
     useState<InvestmentForm>(defaultInvestmentForm);
   const [partnerCsvFile, setPartnerCsvFile] = useState<File | null>(null);
@@ -75,10 +111,19 @@ export default function AdminPage() {
     setError("");
     setStatus("Загрузка ingestion dashboard...");
     try {
-      const [jobData, healthData, backtestData, logData, rawData, investmentData] =
+      const [
+        jobData,
+        healthData,
+        sourceData,
+        backtestData,
+        logData,
+        rawData,
+        investmentData,
+      ] =
         await Promise.all([
           api.listAdminIngestionJobs(),
           api.listAdminIngestionSourceHealth(),
+          api.listAdminIngestionSources(),
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
           api.listAdminRawListings({ limit: 50 }),
@@ -86,6 +131,7 @@ export default function AdminPage() {
         ]);
       setJobs(jobData);
       setSourceHealth(healthData);
+      setSources(sourceData);
       setScoringBacktest(backtestData);
       setLogs(logData);
       setRawListings(rawData);
@@ -107,6 +153,7 @@ export default function AdminPage() {
   const selectedInvestment = plannedInvestments.find(
     (investment) => investment.id === selectedInvestmentId,
   );
+  const selectedSource = sources.find((source) => source.id === selectedSourceId);
   const sourceNames = useMemo(
     () => Array.from(new Set(rawListings.map((item) => item.source_name))),
     [rawListings],
@@ -123,6 +170,28 @@ export default function AdminPage() {
     setSelectedJobId(created.id);
     await load(created.id);
     setStatus(`Job создан: ${created.id}`);
+  }
+
+  async function createSource() {
+    const created = await api.createAdminIngestionSource(sourcePayload(sourceForm));
+    setSelectedSourceId(created.id);
+    setSourceForm(formFromSource(created));
+    await load(selectedJobId);
+    setStatus(`Source создан: ${created.name}`);
+  }
+
+  async function updateSource() {
+    if (!selectedSourceId) {
+      setStatus("Выбери source registry entry для обновления");
+      return;
+    }
+    const updated = await api.updateAdminIngestionSource(
+      selectedSourceId,
+      sourcePayload(sourceForm),
+    );
+    setSourceForm(formFromSource(updated));
+    await load(selectedJobId);
+    setStatus(`Source обновлен: ${updated.name}`);
   }
 
   async function createInvestment() {
@@ -224,7 +293,7 @@ export default function AdminPage() {
       <header className="page-header">
         <div>
           <h1>Internal Admin</h1>
-          <p>Ingestion jobs, data quality logs и raw listing preview для контроля данных.</p>
+          <p>Source registry, ingestion jobs, data quality logs и raw listing preview.</p>
         </div>
         <div className="toolbar">
           <button className="button" type="button" onClick={() => void load(selectedJobId)}>
@@ -392,6 +461,198 @@ export default function AdminPage() {
                   ))}
                 </ul>
               )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Source Registry</h2>
+              <span className="muted">{numberValue(sources.length)} sources</span>
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="table-scroll">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Legal</th>
+                      <th>Method</th>
+                      <th>Cadence</th>
+                      <th>Owner</th>
+                      <th>Active</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sources.map((source) => (
+                      <tr
+                        key={source.id}
+                        className={selectedSourceId === source.id ? "selected-row" : undefined}
+                        onClick={() => {
+                          setSelectedSourceId(source.id);
+                          setSourceForm(formFromSource(source));
+                        }}
+                      >
+                        <td>
+                          <strong>{source.name}</strong>
+                          <small>
+                            {source.source_type}
+                            {source.base_url ? ` · ${source.base_url}` : ""}
+                          </small>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${legalStatusClass(source.legal_status)}`}>
+                            {source.legal_status}
+                          </span>
+                          <small>{source.allowed_use.join(", ") || "no allowed use"}</small>
+                        </td>
+                        <td>{source.ingestion_method}</td>
+                        <td>{source.refresh_cadence}</td>
+                        <td>{source.owner}</td>
+                        <td>
+                          <span className={`status-pill ${source.is_active ? "healthy" : "failed"}`}>
+                            {source.is_active ? "active" : "paused"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>{selectedSource ? "Редактирование" : "Новый источник"}</h3>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setSelectedSourceId("");
+                      setSourceForm(defaultSourceForm);
+                    }}
+                  >
+                    Сброс
+                  </button>
+                </div>
+                <div className="form-grid compact">
+                  <Field
+                    label="Name"
+                    value={sourceForm.name}
+                    onChange={(value) => setSourceForm({ ...sourceForm, name: value })}
+                  />
+                  <Field
+                    label="Type"
+                    value={sourceForm.source_type}
+                    onChange={(value) => setSourceForm({ ...sourceForm, source_type: value })}
+                  />
+                  <label className="field">
+                    <span>Legal status</span>
+                    <select
+                      className="select"
+                      value={sourceForm.legal_status}
+                      onChange={(event) =>
+                        setSourceForm({
+                          ...sourceForm,
+                          legal_status: event.target.value as SourceLegalStatus,
+                        })
+                      }
+                    >
+                      <option value="review_required">review_required</option>
+                      <option value="approved">approved</option>
+                      <option value="unknown">unknown</option>
+                      <option value="blocked">blocked</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Cadence"
+                    value={sourceForm.refresh_cadence}
+                    onChange={(value) =>
+                      setSourceForm({ ...sourceForm, refresh_cadence: value })
+                    }
+                  />
+                  <Field
+                    label="Owner"
+                    value={sourceForm.owner}
+                    onChange={(value) => setSourceForm({ ...sourceForm, owner: value })}
+                  />
+                  <Field
+                    label="Method"
+                    value={sourceForm.ingestion_method}
+                    onChange={(value) =>
+                      setSourceForm({ ...sourceForm, ingestion_method: value })
+                    }
+                  />
+                  <Field
+                    label="Allowed use"
+                    value={sourceForm.allowed_use}
+                    onChange={(value) => setSourceForm({ ...sourceForm, allowed_use: value })}
+                  />
+                  <label className="field checkbox-field">
+                    <span>Active</span>
+                    <input
+                      type="checkbox"
+                      checked={sourceForm.is_active}
+                      onChange={(event) =>
+                        setSourceForm({ ...sourceForm, is_active: event.target.checked })
+                      }
+                    />
+                  </label>
+                </div>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Base URL</span>
+                  <input
+                    className="input"
+                    value={sourceForm.base_url}
+                    onChange={(event) =>
+                      setSourceForm({ ...sourceForm, base_url: event.target.value })
+                    }
+                  />
+                </label>
+                <div className="form-grid compact" style={{ marginTop: 10 }}>
+                  <label className="field">
+                    <span>robots.txt</span>
+                    <input
+                      className="input"
+                      value={sourceForm.robots_txt_url}
+                      onChange={(event) =>
+                        setSourceForm({ ...sourceForm, robots_txt_url: event.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span>Terms URL</span>
+                    <input
+                      className="input"
+                      value={sourceForm.terms_url}
+                      onChange={(event) =>
+                        setSourceForm({ ...sourceForm, terms_url: event.target.value })
+                      }
+                    />
+                  </label>
+                </div>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Notes</span>
+                  <textarea
+                    className="textarea"
+                    value={sourceForm.notes}
+                    onChange={(event) =>
+                      setSourceForm({ ...sourceForm, notes: event.target.value })
+                    }
+                  />
+                </label>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button className="button primary" type="button" onClick={() => void createSource()}>
+                    Create
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedSourceId}
+                    onClick={() => void updateSource()}
+                  >
+                    Update
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -848,6 +1109,43 @@ function Field({
   );
 }
 
+function sourcePayload(form: SourceForm): Required<SourceRegistryEntryPayload> {
+  return {
+    name: form.name,
+    source_type: form.source_type,
+    base_url: blankToNull(form.base_url),
+    legal_status: form.legal_status,
+    refresh_cadence: form.refresh_cadence,
+    owner: form.owner,
+    ingestion_method: form.ingestion_method,
+    allowed_use: form.allowed_use
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    robots_txt_url: blankToNull(form.robots_txt_url),
+    terms_url: blankToNull(form.terms_url),
+    notes: blankToNull(form.notes),
+    is_active: form.is_active,
+  };
+}
+
+function formFromSource(source: SourceRegistryEntry): SourceForm {
+  return {
+    name: source.name,
+    source_type: source.source_type,
+    base_url: source.base_url ?? "",
+    legal_status: source.legal_status,
+    refresh_cadence: source.refresh_cadence,
+    owner: source.owner,
+    ingestion_method: source.ingestion_method,
+    allowed_use: source.allowed_use.join(","),
+    robots_txt_url: source.robots_txt_url ?? "",
+    terms_url: source.terms_url ?? "",
+    notes: source.notes ?? "",
+    is_active: source.is_active,
+  };
+}
+
 function investmentPayload(form: InvestmentForm): PlannedInvestmentPayload {
   return {
     name: form.name,
@@ -878,6 +1176,18 @@ function formFromInvestment(investment: PlannedInvestment): InvestmentForm {
     confidence_score: String(investment.confidence_score),
     notes: investment.notes ?? "",
   };
+}
+
+function blankToNull(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function legalStatusClass(status: SourceLegalStatus) {
+  if (status === "approved") return "healthy";
+  if (status === "blocked") return "failed";
+  if (status === "review_required") return "warning";
+  return "queued";
 }
 
 function formatDate(value: string) {

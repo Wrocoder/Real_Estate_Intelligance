@@ -95,6 +95,9 @@ from domarion.schemas import (
     ReportRequest,
     ReportTemplateDescriptor,
     ScoringBacktestResult,
+    SourceRegistryEntry,
+    SourceRegistryEntryCreate,
+    SourceRegistryEntryUpdate,
     SubscriptionUpdate,
 )
 from domarion.services.alert_delivery import build_alert_delivery_job
@@ -247,6 +250,52 @@ def list_admin_ingestion_source_health(
     jobs = admin_store.list_jobs(limit=limit)
     logs = admin_store.list_quality_logs(limit=500)
     return _build_source_health(jobs, logs)
+
+
+@router.get("/admin/ingestion/sources", response_model=list[SourceRegistryEntry])
+def list_admin_ingestion_sources(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> list[SourceRegistryEntry]:
+    _ensure_admin(account)
+    return admin_store.list_sources()
+
+
+@router.post(
+    "/admin/ingestion/sources",
+    response_model=SourceRegistryEntry,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_ingestion_source(
+    payload: SourceRegistryEntryCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceRegistryEntry:
+    _ensure_admin(account)
+    payload = payload.model_copy(update={"name": payload.name.strip()})
+    if not payload.name:
+        raise HTTPException(status_code=400, detail="Source name is required")
+    _ensure_source_name_available(admin_store, payload.name)
+    return admin_store.create_source(payload)
+
+
+@router.patch("/admin/ingestion/sources/{source_id}", response_model=SourceRegistryEntry)
+def update_admin_ingestion_source(
+    source_id: str,
+    payload: SourceRegistryEntryUpdate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceRegistryEntry:
+    _ensure_admin(account)
+    if payload.name is not None:
+        payload = payload.model_copy(update={"name": payload.name.strip()})
+        if not payload.name:
+            raise HTTPException(status_code=400, detail="Source name is required")
+        _ensure_source_name_available(admin_store, payload.name, ignore_source_id=source_id)
+    source = admin_store.update_source(source_id, payload)
+    if source is None:
+        raise HTTPException(status_code=404, detail="Ingestion source not found")
+    return source
 
 
 @router.get("/admin/scoring/backtest", response_model=ScoringBacktestResult)
@@ -1536,6 +1585,22 @@ def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Fav
 def _ensure_admin(account: CurrentAccount) -> None:
     if account.user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+
+def _ensure_source_name_available(
+    admin_store: IngestionAdminStore,
+    source_name: str,
+    ignore_source_id: str | None = None,
+) -> None:
+    normalized_name = source_name.casefold()
+    for source in admin_store.list_sources():
+        if source.id == ignore_source_id:
+            continue
+        if source.name.casefold() == normalized_name:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Ingestion source name already exists",
+            )
 
 
 def _build_account_summary(

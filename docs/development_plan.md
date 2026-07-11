@@ -41,7 +41,7 @@
 - [ ] Добавить процесс удаления данных по запросу.
 - [ ] Добавить GDPR/RODO data retention policy.
 - [ ] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
-- [ ] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
+- [x] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
 - [ ] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
 
 ## 2. Repository и Backend Foundation
@@ -116,7 +116,7 @@
 - [x] Добавить дедупликацию v1 при импорте.
 - [x] Добавить geocoding pipeline.
 - [x] Добавить source monitoring и error reporting.
-- [ ] Добавить ingestion source registry с legal status и refresh policy.
+- [x] Добавить ingestion source registry с legal status и refresh policy.
 - [ ] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
 - [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
 - [ ] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
@@ -263,7 +263,7 @@
 - [ ] Добавить dedup review queue.
 - [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.
-- [ ] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
+- [x] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [ ] Добавить moderation workflow для data deletion requests.
 - [ ] Добавить просмотр source errors и retry actions.
@@ -383,6 +383,7 @@
 - [x] Commit 15: alert delivery transports.
 - [x] Commit 16: PostGIS staging verifier.
 - [x] Commit 17: planned investments open-data ingestion.
+- [x] Commit 18: source registry and partner onboarding.
 
 ## Current Sprint
 
@@ -393,5 +394,8 @@
 - [x] Добавить JSON/CSV import planned investments.
 - [x] Добавить sample open-data файл по Wrocław transport investments.
 - [x] Добавить тесты dry-run и idempotent upsert.
+- [x] Добавить source registry backend/API/UI.
+- [x] Добавить partner data onboarding format.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
+- [x] Сделать Commit 18 и push.

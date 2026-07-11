@@ -25,7 +25,17 @@ class ListingSource(Base):
     name: Mapped[str] = mapped_column(String(80), unique=True)
     base_url: Mapped[str | None] = mapped_column(String(255))
     source_type: Mapped[str] = mapped_column(String(40), default="portal")
+    legal_status: Mapped[str] = mapped_column(String(40), default="unknown")
+    refresh_cadence: Mapped[str] = mapped_column(String(80), default="manual")
+    owner: Mapped[str] = mapped_column(String(120), default="internal")
+    ingestion_method: Mapped[str] = mapped_column(String(80), default="manual")
+    allowed_use_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    robots_txt_url: Mapped[str | None] = mapped_column(String(500))
+    terms_url: Mapped[str | None] = mapped_column(String(500))
+    notes: Mapped[str | None] = mapped_column(Text)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class IngestionJob(Base):

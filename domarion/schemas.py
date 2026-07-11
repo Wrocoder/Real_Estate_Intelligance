@@ -29,6 +29,7 @@ PaymentWebhookStatus = Literal["processed", "duplicate", "ignored", "rejected"]
 IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
 IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
+SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
@@ -206,6 +207,54 @@ class IngestionSourceHealth(BaseModel):
     error_count: int = Field(ge=0)
     last_error_message: str | None = None
     updated_at: datetime
+
+
+class SourceRegistryEntry(BaseModel):
+    id: str
+    name: str
+    source_type: str
+    base_url: str | None = None
+    legal_status: SourceLegalStatus = "unknown"
+    refresh_cadence: str = "manual"
+    owner: str = "internal"
+    ingestion_method: str = "manual"
+    allowed_use: list[str] = Field(default_factory=list)
+    robots_txt_url: str | None = None
+    terms_url: str | None = None
+    notes: str | None = None
+    is_active: bool = True
+    created_at: datetime
+    updated_at: datetime
+
+
+class SourceRegistryEntryCreate(BaseModel):
+    name: str
+    source_type: str = "partner_csv"
+    base_url: str | None = None
+    legal_status: SourceLegalStatus = "review_required"
+    refresh_cadence: str = "manual"
+    owner: str = "internal"
+    ingestion_method: str = "partner_csv"
+    allowed_use: list[str] = Field(default_factory=list)
+    robots_txt_url: str | None = None
+    terms_url: str | None = None
+    notes: str | None = None
+    is_active: bool = True
+
+
+class SourceRegistryEntryUpdate(BaseModel):
+    name: str | None = None
+    source_type: str | None = None
+    base_url: str | None = None
+    legal_status: SourceLegalStatus | None = None
+    refresh_cadence: str | None = None
+    owner: str | None = None
+    ingestion_method: str | None = None
+    allowed_use: list[str] | None = None
+    robots_txt_url: str | None = None
+    terms_url: str | None = None
+    notes: str | None = None
+    is_active: bool | None = None
 
 
 class PartnerCsvImportResponse(BaseModel):

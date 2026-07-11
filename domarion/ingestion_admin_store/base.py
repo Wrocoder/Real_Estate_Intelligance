@@ -9,6 +9,9 @@ from domarion.schemas import (
     IngestionJobCreate,
     IngestionJobStatus,
     RawListingSummary,
+    SourceRegistryEntry,
+    SourceRegistryEntryCreate,
+    SourceRegistryEntryUpdate,
 )
 
 
@@ -53,4 +56,17 @@ class IngestionAdminStore(Protocol):
         raise NotImplementedError
 
     def get_raw_listing(self, raw_listing_id: str) -> RawListingSummary | None:
+        raise NotImplementedError
+
+    def list_sources(self) -> list[SourceRegistryEntry]:
+        raise NotImplementedError
+
+    def create_source(self, payload: SourceRegistryEntryCreate) -> SourceRegistryEntry:
+        raise NotImplementedError
+
+    def update_source(
+        self,
+        source_id: str,
+        payload: SourceRegistryEntryUpdate,
+    ) -> SourceRegistryEntry | None:
         raise NotImplementedError

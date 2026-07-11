@@ -35,6 +35,30 @@ def test_openapi_exposes_report_templates_as_a_public_contract() -> None:
     assert schema["items"]["$ref"] == "#/components/schemas/ReportTemplateDescriptor"
 
 
+def test_openapi_exposes_source_registry_contract() -> None:
+    openapi = client.get("/openapi.json").json()
+    paths = openapi["paths"]
+
+    list_schema = paths["/api/v1/admin/ingestion/sources"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+    create_schema = paths["/api/v1/admin/ingestion/sources"]["post"]["responses"]["201"][
+        "content"
+    ]["application/json"]["schema"]
+    update_schema = paths["/api/v1/admin/ingestion/sources/{source_id}"]["patch"][
+        "responses"
+    ]["200"]["content"]["application/json"]["schema"]
+    request_schema = paths["/api/v1/admin/ingestion/sources"]["post"]["requestBody"][
+        "content"
+    ]["application/json"]["schema"]
+
+    assert list_schema["type"] == "array"
+    assert list_schema["items"]["$ref"] == "#/components/schemas/SourceRegistryEntry"
+    assert create_schema["$ref"] == "#/components/schemas/SourceRegistryEntry"
+    assert update_schema["$ref"] == "#/components/schemas/SourceRegistryEntry"
+    assert request_schema["$ref"] == "#/components/schemas/SourceRegistryEntryCreate"
+
+
 def test_openapi_exposes_recent_request_and_response_models() -> None:
     openapi = client.get("/openapi.json").json()
     schemas = openapi["components"]["schemas"]
@@ -57,6 +81,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ReportEmailResult",
         "ReportTemplateDescriptor",
         "ScoringBacktestResult",
+        "SourceRegistryEntry",
+        "SourceRegistryEntryCreate",
+        "SourceRegistryEntryUpdate",
     }
 
     assert expected_schemas <= set(schemas)
