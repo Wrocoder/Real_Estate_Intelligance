@@ -607,6 +607,41 @@ button {
   font-size: 13px;
 }
 
+.bar-list {
+  display: grid;
+  gap: 10px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) 34px;
+  gap: 10px;
+  align-items: center;
+  min-height: 28px;
+  font-size: 13px;
+}
+
+.bar-row span {
+  color: var(--muted);
+}
+
+.bar-row strong {
+  text-align: right;
+}
+
+.bar-track {
+  overflow: hidden;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+
 .plan-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -941,6 +976,7 @@ button {
 }
 
 .status-pill.succeeded,
+.status-pill.healthy,
 .status-pill.info {
   background: #edf8f2;
   color: var(--ok);
@@ -954,6 +990,7 @@ button {
 }
 
 .status-pill.failed,
+.status-pill.failing,
 .status-pill.error {
   background: #fff0ed;
   color: var(--risk);

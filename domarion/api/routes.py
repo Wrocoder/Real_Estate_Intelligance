@@ -1,11 +1,36 @@
+import tempfile
+from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Request,
+    UploadFile,
+    status,
+)
 from fastapi.responses import HTMLResponse, Response
 
 from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
+from domarion.core import get_settings
+from domarion.db.session import SessionLocal
+from domarion.ingestion.db_writer import (
+    ImportResult,
+    build_partner_quality_logs,
+    import_partner_records_in_session,
+)
+from domarion.ingestion.partner_csv import PartnerCsvError, read_partner_csv
+from domarion.ingestion.planned_investments import (
+    PlannedInvestmentImportError,
+    PlannedInvestmentImportResult,
+    import_planned_investments,
+)
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
 from domarion.report_order_store.base import ReportOrderStore
@@ -23,6 +48,7 @@ from domarion.schemas import (
     AlertDeliveryRequest,
     AlertPreview,
     AlertUpdate,
+    AreaMarketSnapshotJobResult,
     AreaStatistics,
     CheckoutSession,
     CompareRequest,
@@ -38,32 +64,46 @@ from domarion.schemas import (
     GenerateReportRequest,
     IngestionJob,
     IngestionJobCreate,
+    IngestionSourceHealth,
     Listing,
     ListingAnalysis,
     ListingSearchResponse,
     ListingSort,
     MapFeatureCollection,
+    MarketDashboard,
     MarketType,
+    MortgageCalculationRequest,
+    MortgageCalculationResult,
     ObjectReport,
+    PartnerCsvImportResponse,
     PaymentWebhookEventCreate,
     PaymentWebhookResult,
     PlanLimits,
     PlannedInvestment,
     PlannedInvestmentCreate,
+    PlannedInvestmentImportResponse,
     PlannedInvestmentUpdate,
     RawListingSummary,
     ReportAudience,
+    ReportEmailRequest,
+    ReportEmailResult,
     ReportOrder,
     ReportOrderCreate,
     ReportOrderEvent,
     ReportOrderEventCreate,
     ReportProduct,
     ReportRequest,
+    ReportTemplateDescriptor,
+    ScoringBacktestResult,
     SubscriptionUpdate,
 )
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alerts import build_alert_preview
+from domarion.services.area_snapshots import run_area_market_snapshot_job
+from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
+from domarion.services.market_dashboard import build_market_dashboard
+from domarion.services.mortgage import calculate_mortgage
 from domarion.services.payments import (
     PaymentConfigurationError,
     PaymentWebhookVerificationError,
@@ -72,11 +112,13 @@ from domarion.services.payments import (
     verify_payment_webhook,
 )
 from domarion.services.plans import get_plan_limits, list_plan_limits
+from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
     generate_and_store_object_report,
     generate_object_report_html,
 )
 from domarion.services.report_products import get_report_product, list_report_products
+from domarion.services.report_templates import list_report_templates
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
 from domarion.services.search import ListingSearchError, search_listing_analyses
@@ -90,6 +132,12 @@ ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
+
+MAX_PARTNER_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
+PARTNER_CSV_UPLOAD_EXTENSIONS = {".csv"}
+MAX_PLANNED_INVESTMENTS_UPLOAD_BYTES = 2 * 1024 * 1024
+PLANNED_INVESTMENTS_UPLOAD_EXTENSIONS = {".csv", ".json"}
+SOURCE_HEALTH_PRIORITY = {"failing": 0, "warning": 1, "healthy": 2}
 
 
 @router.get("/listings", response_model=ListingSearchResponse)
@@ -160,6 +208,25 @@ def list_plans() -> list[PlanLimits]:
     return list_plan_limits()
 
 
+@router.get("/market/dashboard", response_model=MarketDashboard)
+def get_market_dashboard(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query()] = None,
+    district: Annotated[str | None, Query()] = None,
+) -> MarketDashboard:
+    return build_market_dashboard(repository, city=city, district=district)
+
+
+@router.post("/mortgage/calculate", response_model=MortgageCalculationResult)
+def calculate_mortgage_budget(
+    payload: MortgageCalculationRequest,
+) -> MortgageCalculationResult:
+    try:
+        return calculate_mortgage(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])
 def list_admin_ingestion_jobs(
     admin_store: IngestionAdminStoreDep,
@@ -168,6 +235,66 @@ def list_admin_ingestion_jobs(
 ) -> list[IngestionJob]:
     _ensure_admin(account)
     return admin_store.list_jobs(limit=limit)
+
+
+@router.get("/admin/ingestion/source-health", response_model=list[IngestionSourceHealth])
+def list_admin_ingestion_source_health(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[IngestionSourceHealth]:
+    _ensure_admin(account)
+    jobs = admin_store.list_jobs(limit=limit)
+    logs = admin_store.list_quality_logs(limit=500)
+    return _build_source_health(jobs, logs)
+
+
+@router.get("/admin/scoring/backtest", response_model=ScoringBacktestResult)
+def get_admin_scoring_backtest(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    city: Annotated[str | None, Query()] = None,
+    district: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> ScoringBacktestResult:
+    _ensure_admin(account)
+    return run_scoring_backtest(
+        repository,
+        city=city,
+        district=district,
+        item_limit=limit,
+    )
+
+
+@router.post("/admin/area-market-snapshots", response_model=AreaMarketSnapshotJobResult)
+def create_admin_area_market_snapshots(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    dry_run: Annotated[bool, Query()] = True,
+) -> AreaMarketSnapshotJobResult:
+    _ensure_admin(account)
+    if dry_run:
+        return run_area_market_snapshot_job(repository, dry_run=True)
+
+    settings = get_settings()
+    if settings.data_repository_backend != "postgres":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Area market snapshot writes require DATA_REPOSITORY_BACKEND=postgres",
+        )
+
+    with SessionLocal() as session:
+        try:
+            result = run_area_market_snapshot_job(
+                repository,
+                session=session,
+                dry_run=False,
+            )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+    return result
 
 
 @router.post(
@@ -248,6 +375,144 @@ def get_admin_raw_listing(
     return raw_listing
 
 
+@router.post(
+    "/admin/listings/import-csv",
+    response_model=PartnerCsvImportResponse,
+)
+async def import_admin_partner_csv(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    file: Annotated[UploadFile, File(description="UTF-8 partner listings CSV file.")],
+    source_name: Annotated[str | None, Form()] = None,
+    source_type: Annotated[str, Form()] = "partner_csv",
+    dry_run: Annotated[bool, Form()] = True,
+) -> PartnerCsvImportResponse:
+    _ensure_admin(account)
+    filename = file.filename or "partner_listings.csv"
+    suffix = Path(filename).suffix.lower()
+    if suffix not in PARTNER_CSV_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supported partner listing upload format: .csv",
+        )
+
+    content = await file.read(MAX_PARTNER_CSV_UPLOAD_BYTES + 1)
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > MAX_PARTNER_CSV_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+
+    source_label = (source_name or Path(filename).stem).strip() or Path(filename).stem
+    source_type_label = source_type.strip() or "partner_csv"
+    job = admin_store.create_job(
+        IngestionJobCreate(
+            source_name=source_label,
+            source_type=source_type_label,
+            status="running",
+            created_by=account.user.id,
+            notes="Partner listings CSV upload from internal admin endpoint.",
+            metadata={
+                "file_name": filename,
+                "dry_run": dry_run,
+                "bytes": len(content),
+            },
+        )
+    )
+    temp_path = _write_upload_to_temp_file(content, suffix)
+    try:
+        records = read_partner_csv(
+            temp_path,
+            default_source_name=source_label,
+            default_source_type=source_type_label,
+        )
+    except PartnerCsvError as exc:
+        failed_job = _fail_import_job(
+            admin_store,
+            job.id,
+            source_label,
+            code="partner_csv_import_failed",
+            message=str(exc),
+            payload={"file_name": filename, "dry_run": dry_run},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Partner CSV import failed",
+                "error": str(exc),
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    listing_ids = [record.source_listing_id for record in records]
+    result = ImportResult(rows_seen=len(records))
+    if not dry_run:
+        settings = get_settings()
+        if settings.ingestion_admin_store_backend != "postgres":
+            failed_job = _fail_import_job(
+                admin_store,
+                job.id,
+                source_label,
+                code="partner_csv_import_requires_postgres",
+                message=(
+                    "Partner CSV writes require INGESTION_ADMIN_STORE_BACKEND=postgres "
+                    "so imported raw listings and ingestion jobs share the same database."
+                ),
+                payload={"backend": settings.ingestion_admin_store_backend, "dry_run": dry_run},
+                result=result,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Partner CSV import requires Postgres ingestion admin store",
+                    "job_id": failed_job.id if failed_job else job.id,
+                },
+            )
+
+        with SessionLocal() as session:
+            try:
+                result = import_partner_records_in_session(session, records)
+                session.commit()
+            except Exception as exc:
+                session.rollback()
+                failed_job = _fail_import_job(
+                    admin_store,
+                    job.id,
+                    source_label,
+                    code="partner_csv_write_failed",
+                    message=str(exc),
+                    payload={"file_name": filename, "exception_type": type(exc).__name__},
+                    result=result,
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail={
+                        "message": "Partner CSV import failed while writing to database",
+                        "job_id": failed_job.id if failed_job else job.id,
+                    },
+                ) from exc
+
+    quality_logs = build_partner_quality_logs(job.id, records)
+    for quality_log in quality_logs:
+        admin_store.create_quality_log(quality_log)
+    finished_job = admin_store.finish_job(
+        job.id,
+        result,
+        status="succeeded",
+        errors_count=len(quality_logs),
+    )
+    if finished_job is None:
+        raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
+    return PartnerCsvImportResponse(
+        **result.as_dict(),
+        dry_run=dry_run,
+        listing_ids=listing_ids,
+        errors=[],
+        job=finished_job,
+    )
+
+
 @router.get("/admin/planned-investments", response_model=list[PlannedInvestment])
 def list_admin_planned_investments(
     repository: RepositoryDep,
@@ -271,6 +536,96 @@ def create_admin_planned_investment(
 ) -> PlannedInvestment:
     _ensure_admin(account)
     return repository.create_planned_investment(payload)
+
+
+@router.post(
+    "/admin/planned-investments/import",
+    response_model=PlannedInvestmentImportResponse,
+)
+async def import_admin_planned_investments(
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    file: Annotated[UploadFile, File(description="UTF-8 JSON or CSV file.")],
+    source_name: Annotated[str | None, Form()] = None,
+    dry_run: Annotated[bool, Form()] = False,
+) -> PlannedInvestmentImportResponse:
+    _ensure_admin(account)
+    filename = file.filename or "planned_investments.json"
+    suffix = Path(filename).suffix.lower()
+    if suffix not in PLANNED_INVESTMENTS_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supported planned investments upload formats: .json, .csv",
+        )
+
+    content = await file.read(MAX_PLANNED_INVESTMENTS_UPLOAD_BYTES + 1)
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > MAX_PLANNED_INVESTMENTS_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+
+    source_label = source_name or Path(filename).stem
+    job = admin_store.create_job(
+        IngestionJobCreate(
+            source_name=source_label,
+            source_type="planned_investments_import",
+            status="running",
+            created_by=account.user.id,
+            notes="Planned investments upload from internal admin endpoint.",
+            metadata={
+                "file_name": filename,
+                "dry_run": dry_run,
+                "bytes": len(content),
+            },
+        )
+    )
+    temp_path = _write_upload_to_temp_file(content, suffix)
+    try:
+        result = import_planned_investments(
+            temp_path,
+            repository,
+            default_source_name=source_label,
+            dry_run=dry_run,
+        )
+    except PlannedInvestmentImportError as exc:
+        admin_store.create_quality_log(
+            DataQualityLogCreate(
+                job_id=job.id,
+                source_name=source_label,
+                severity="error",
+                code="planned_investments_import_failed",
+                message=str(exc),
+                payload={"file_name": filename, "dry_run": dry_run},
+            )
+        )
+        failed_job = admin_store.finish_job(
+            job.id,
+            _planned_import_to_ingestion_result(PlannedInvestmentImportResult()),
+            status="failed",
+            errors_count=1,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Planned investments import failed",
+                "error": str(exc),
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    errors_count = len(result.errors)
+    finished_job = admin_store.finish_job(
+        job.id,
+        _planned_import_to_ingestion_result(result),
+        status="failed" if errors_count else "succeeded",
+        errors_count=errors_count,
+    )
+    if finished_job is None:
+        raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
+    return PlannedInvestmentImportResponse(**result.as_dict(), job=finished_job)
 
 
 @router.get("/admin/planned-investments/{investment_id}", response_model=PlannedInvestment)
@@ -818,7 +1173,12 @@ def create_object_report(payload: ReportRequest, repository: RepositoryDep) -> O
         raise HTTPException(status_code=404, detail="Listing not found")
 
     analysis = build_listing_analysis(repository, listing)
-    return build_object_report(analysis, payload.audience)
+    return build_object_report(analysis, payload.audience, branding=payload.branding)
+
+
+@router.get("/reports/templates", response_model=list[ReportTemplateDescriptor])
+def list_object_report_templates() -> list[ReportTemplateDescriptor]:
+    return list_report_templates()
 
 
 @router.post("/reports/object/generate", response_model=GeneratedReport)
@@ -840,6 +1200,7 @@ def generate_object_report(
         audience=payload.audience,
         report_format=payload.report_format,
         owner_id=account.user.id,
+        branding=payload.branding,
     )
 
 
@@ -868,6 +1229,19 @@ def list_generated_reports(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[GeneratedReportListItem]:
     return report_store.list_reports(limit=limit, owner_id=account.user.id)
+
+
+@router.post("/reports/{report_id}/email", response_model=ReportEmailResult)
+def email_generated_report(
+    report_id: str,
+    payload: ReportEmailRequest,
+    report_store: ReportStoreDep,
+    account: CurrentAccountDep,
+) -> ReportEmailResult:
+    report = report_store.get_report(report_id, owner_id=account.user.id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    return deliver_report_email(report, account.user.email, payload)
 
 
 @router.get("/reports/{report_id}", response_model=GeneratedReport)
@@ -1065,6 +1439,93 @@ def list_alert_delivery_jobs(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[AlertDeliveryJob]:
     return user_store.list_alert_delivery_jobs(account.user.id, limit=limit)
+
+
+def _write_upload_to_temp_file(content: bytes, suffix: str) -> Path:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
+        temp_file.write(content)
+        return Path(temp_file.name)
+
+
+def _build_source_health(
+    jobs: list[IngestionJob],
+    logs: list[DataQualityLog],
+) -> list[IngestionSourceHealth]:
+    latest_jobs: dict[tuple[str, str], IngestionJob] = {}
+    for job in sorted(jobs, key=lambda item: item.updated_at, reverse=True):
+        latest_jobs.setdefault((job.source_name, job.source_type), job)
+
+    health = []
+    for (source_name, source_type), job in latest_jobs.items():
+        source_logs = [log for log in logs if log.source_name == source_name]
+        warning_count = sum(1 for log in source_logs if log.severity == "warning")
+        error_logs = [log for log in source_logs if log.severity == "error"]
+        error_count = len(error_logs)
+        if job.status == "failed" or error_count:
+            health_status = "failing"
+        elif warning_count or job.errors_count:
+            health_status = "warning"
+        else:
+            health_status = "healthy"
+        last_error = (
+            max(error_logs, key=lambda item: item.created_at).message if error_logs else None
+        )
+
+        health.append(
+            IngestionSourceHealth(
+                source_name=source_name,
+                source_type=source_type,
+                health_status=health_status,
+                latest_job_id=job.id,
+                latest_job_status=job.status,
+                rows_seen=job.rows_seen,
+                errors_count=job.errors_count,
+                warning_count=warning_count,
+                error_count=error_count,
+                last_error_message=last_error,
+                updated_at=job.updated_at,
+            )
+        )
+
+    return sorted(
+        health,
+        key=lambda item: (SOURCE_HEALTH_PRIORITY[item.health_status], -item.updated_at.timestamp()),
+    )
+
+
+def _fail_import_job(
+    admin_store: IngestionAdminStore,
+    job_id: str,
+    source_name: str,
+    code: str,
+    message: str,
+    payload: dict[str, object],
+    result: ImportResult | None = None,
+) -> IngestionJob | None:
+    admin_store.create_quality_log(
+        DataQualityLogCreate(
+            job_id=job_id,
+            source_name=source_name,
+            severity="error",
+            code=code,
+            message=message,
+            payload=payload,
+        )
+    )
+    return admin_store.finish_job(
+        job_id,
+        result or ImportResult(),
+        status="failed",
+        errors_count=1,
+    )
+
+
+def _planned_import_to_ingestion_result(result: PlannedInvestmentImportResult) -> ImportResult:
+    return ImportResult(
+        rows_seen=result.rows_seen,
+        properties_created=result.created,
+        properties_updated=result.updated,
+    )
 
 
 def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Favorite:

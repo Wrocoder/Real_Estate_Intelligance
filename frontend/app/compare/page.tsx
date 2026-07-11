@@ -233,6 +233,10 @@ function comparisonRows(items: ListingAnalysis[]) {
       ),
     },
     {
+      label: "Fair price confidence",
+      values: items.map((item) => `${item.scores.fair_price_confidence_score}/100`),
+    },
+    {
       label: "Delta до fair mid",
       values: items.map((item) => percent(item.scores.price_delta_to_fair_mid_pct)),
     },

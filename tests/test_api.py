@@ -85,5 +85,61 @@ def test_object_report() -> None:
 
     assert response.status_code == 200
     assert payload["listing_id"] == "wr-001"
+    assert payload["template_code"] == "buyer_object_report_v1"
+    assert payload["template_name"] == "Buyer decision report v1"
     assert payload["sections"]
+    section_titles = {section["title"] for section in payload["sections"]}
+    assert "Ипотека и бюджет покупки" in section_titles
+    assert "Вопросы продавцу" in section_titles
+    assert "Чеклист проверки перед оффером" in section_titles
     assert "не финансовая" in payload["disclaimer"]
+
+
+def test_object_report_accepts_realtor_branding() -> None:
+    response = client.post(
+        "/api/v1/reports/object",
+        json={
+            "listing_id": "wr-001",
+            "audience": "realtor",
+            "branding": {
+                "agency_name": "Example Realty",
+                "agent_name": "Anna Agent",
+                "agent_email": "anna@example.com",
+            },
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["template_code"] == "realtor_client_report_v1"
+    assert payload["branding"]["agency_name"] == "Example Realty"
+    assert payload["branding"]["agent_name"] == "Anna Agent"
+    section_titles = {section["title"] for section in payload["sections"]}
+    assert "Клиентская аргументация цены" in section_titles
+    assert "Сравнение с аналогами" in section_titles
+    assert "Карта и локация для клиента" in section_titles
+
+
+def test_report_templates_endpoint_returns_audience_templates() -> None:
+    response = client.get("/api/v1/reports/templates")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert {item["audience"] for item in payload} == {"buyer", "realtor", "investor"}
+    assert {item["code"] for item in payload} == {
+        "buyer_object_report_v1",
+        "realtor_client_report_v1",
+        "investor_object_report_v1",
+    }
+    assert all(item["default_sections"] for item in payload)
+    buyer_template = next(item for item in payload if item["audience"] == "buyer")
+    assert "Вопросы продавцу" in buyer_template["default_sections"]
+    assert "Чеклист проверки перед оффером" in buyer_template["default_sections"]
+    realtor_template = next(item for item in payload if item["audience"] == "realtor")
+    assert "Клиентская аргументация цены" in realtor_template["default_sections"]
+    assert "Сравнение с аналогами" in realtor_template["default_sections"]
+    assert "Карта и локация для клиента" in realtor_template["default_sections"]
+    investor_template = next(item for item in payload if item["audience"] == "investor")
+    assert "Арендная доходность" in investor_template["default_sections"]
+    assert "Сравнение с альтернативами" in investor_template["default_sections"]
+    assert "Ликвидность и тезис роста" in investor_template["default_sections"]

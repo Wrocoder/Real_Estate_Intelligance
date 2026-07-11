@@ -50,6 +50,39 @@ export type AreaStatistics = {
   supply_change_90d_pct: number;
 };
 
+export type MarketDistributionBucket = {
+  label: string;
+  count: number;
+  min_value: number | null;
+  max_value: number | null;
+};
+
+export type MarketDashboardArea = AreaStatistics & {
+  liquidity_index: number;
+  overheated_index: number;
+  buyer_market_index: number;
+};
+
+export type MarketDashboard = {
+  city: string | null;
+  district: string | null;
+  listings_count: number;
+  active_listings: number;
+  new_listings_30d: number;
+  removed_listings_30d: number;
+  average_days_on_market: number;
+  median_price: number | null;
+  median_price_per_m2: number | null;
+  average_price_per_m2: number | null;
+  price_change_90d_pct: number | null;
+  supply_change_90d_pct: number | null;
+  price_distribution: MarketDistributionBucket[];
+  price_per_m2_distribution: MarketDistributionBucket[];
+  rooms_distribution: MarketDistributionBucket[];
+  area_distribution: MarketDistributionBucket[];
+  areas: MarketDashboardArea[];
+};
+
 export type PlannedInvestment = {
   id: string;
   name: string;
@@ -79,6 +112,58 @@ export type PlannedInvestmentPayload = {
   notes?: string | null;
 };
 
+export type PlannedInvestmentImportResponse = {
+  rows_seen: number;
+  created: number;
+  updated: number;
+  skipped: number;
+  dry_run: boolean;
+  investment_ids: string[];
+  source_ids: string[];
+  errors: string[];
+  job: IngestionJob;
+};
+
+export type PartnerCsvImportResponse = {
+  rows_seen: number;
+  raw_created: number;
+  raw_updated: number;
+  properties_created: number;
+  properties_updated: number;
+  snapshots_created: number;
+  snapshots_updated: number;
+  dry_run: boolean;
+  listing_ids: string[];
+  errors: string[];
+  job: IngestionJob;
+};
+
+export type ScoringBacktestItem = {
+  listing_id: string;
+  title: string;
+  area_id: string;
+  observed_at: string;
+  target_observed_at: string;
+  predicted_fair_price_mid: number;
+  actual_price: number;
+  absolute_error_pct: number;
+  formula_version: string;
+  weights_profile: string;
+};
+
+export type ScoringBacktestResult = {
+  formula_version: string;
+  weights_profile: string;
+  listings_seen: number;
+  listings_evaluated: number;
+  evaluated_points: number;
+  mean_absolute_error_pct: number | null;
+  median_absolute_error_pct: number | null;
+  within_5_pct: number | null;
+  within_10_pct: number | null;
+  items: ScoringBacktestItem[];
+};
+
 export type PriceHistoryPoint = {
   observed_at: string;
   price: number;
@@ -86,6 +171,8 @@ export type PriceHistoryPoint = {
 };
 
 export type PropertyScores = {
+  formula_version: string;
+  weights_profile: string;
   investment_score: number;
   risk_score: number;
   negotiation_score: number;
@@ -94,6 +181,7 @@ export type PropertyScores = {
   fair_price_low: number;
   fair_price_mid: number;
   fair_price_high: number;
+  fair_price_confidence_score: number;
   price_delta_to_fair_mid_pct: number;
   reasons: string[];
   warnings: string[];
@@ -108,6 +196,25 @@ export type ListingAnalysis = {
   insights: string[];
   negotiation_arguments: string[];
   data_quality_notes: string[];
+};
+
+export type ReportBranding = {
+  agency_name?: string | null;
+  agent_name?: string | null;
+  agent_email?: string | null;
+  agent_phone?: string | null;
+  website_url?: string | null;
+  note?: string | null;
+};
+
+export type ReportEmailResult = {
+  report_id: string;
+  provider: string;
+  status: "dry_run" | "sent" | "skipped" | "failed";
+  target_email: string | null;
+  subject: string;
+  message: string;
+  metadata: Record<string, unknown>;
 };
 
 export type GeneratedReport = {
@@ -133,6 +240,7 @@ export type ReportProductCode = "object_report" | "full_object_analysis" | "inve
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";
+export type IngestionSourceHealthStatus = "healthy" | "warning" | "failing";
 export type ListingSort =
   | "price_asc"
   | "price_desc"
@@ -178,6 +286,71 @@ export type PlanLimits = {
   can_export: boolean;
   can_use_api: boolean;
   can_white_label: boolean;
+};
+
+export type MortgageCalculationRequest = {
+  property_price_pln: number;
+  down_payment_pln: number;
+  loan_years?: number;
+  annual_interest_rate_pct?: number;
+  rate_type?: "fixed" | "variable";
+  market_type?: "primary" | "secondary";
+  monthly_income_pln?: number | null;
+  monthly_existing_debt_pln?: number;
+  monthly_housing_costs_pln?: number;
+  insurance_monthly_pln?: number;
+  notary_fee_pln?: number;
+  court_fees_pln?: number;
+  bank_commission_pct?: number;
+  agent_commission_pct?: number;
+  renovation_budget_pln?: number;
+  include_pcc?: boolean;
+};
+
+export type MortgageCostBreakdown = {
+  property_price_pln: number;
+  down_payment_pln: number;
+  down_payment_pct: number;
+  loan_amount_pln: number;
+  loan_to_value_pct: number;
+  pcc_tax_pln: number;
+  notary_fee_pln: number;
+  court_fees_pln: number;
+  bank_commission_pln: number;
+  agent_commission_pln: number;
+  renovation_budget_pln: number;
+  upfront_cash_needed_pln: number;
+};
+
+export type MortgageScenario = {
+  scenario_code: string;
+  label: string;
+  annual_interest_rate_pct: number;
+  loan_years: number;
+  monthly_principal_interest_pln: number;
+  monthly_total_payment_pln: number;
+  total_interest_pln: number;
+  total_repaid_pln: number;
+  debt_to_income_pct: number | null;
+};
+
+export type MortgageAffordability = {
+  status: "unknown" | "comfortable" | "stretched" | "high_risk";
+  monthly_income_pln: number | null;
+  available_for_mortgage_comfortable_pln: number | null;
+  available_for_mortgage_stretched_pln: number | null;
+  base_debt_to_income_pct: number | null;
+  payment_to_income_pct: number | null;
+  monthly_buffer_after_payment_pln: number | null;
+};
+
+export type MortgageCalculationResult = {
+  costs: MortgageCostBreakdown;
+  base_scenario: MortgageScenario;
+  scenarios: MortgageScenario[];
+  affordability: MortgageAffordability;
+  notes: string[];
+  disclaimer: string;
 };
 
 export type AccountUsage = {
@@ -248,6 +421,20 @@ export type IngestionJob = {
   started_at: string | null;
   finished_at: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+export type IngestionSourceHealth = {
+  source_name: string;
+  source_type: string;
+  health_status: IngestionSourceHealthStatus;
+  latest_job_id: string;
+  latest_job_status: IngestionJobStatus;
+  rows_seen: number;
+  errors_count: number;
+  warning_count: number;
+  error_count: number;
+  last_error_message: string | null;
   updated_at: string;
 };
 
@@ -475,10 +662,29 @@ export const api = {
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  getMarketDashboard: (params: { city?: string; district?: string } = {}) =>
+    request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
+  calculateMortgage: (payload: MortgageCalculationRequest) =>
+    request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   listAdminIngestionJobs: () =>
     request<IngestionJob[]>("/api/v1/admin/ingestion/jobs", {
+      headers: ADMIN_HEADERS,
+    }),
+  listAdminIngestionSourceHealth: () =>
+    request<IngestionSourceHealth[]>("/api/v1/admin/ingestion/source-health", {
+      headers: ADMIN_HEADERS,
+    }),
+  getAdminScoringBacktest: (params: {
+    city?: string;
+    district?: string;
+    limit?: number;
+  } = {}) =>
+    request<ScoringBacktestResult>(`/api/v1/admin/scoring/backtest${toQueryString(params)}`, {
       headers: ADMIN_HEADERS,
     }),
   createAdminIngestionJob: (payload: {
@@ -507,6 +713,30 @@ export const api = {
       `/api/v1/admin/raw-listings${toQueryString(params)}`,
       { headers: ADMIN_HEADERS },
     ),
+  importAdminPartnerCsv: async (payload: {
+    file: File;
+    sourceName?: string;
+    sourceType?: string;
+    dryRun?: boolean;
+  }) => {
+    const form = new FormData();
+    form.set("file", payload.file);
+    if (payload.sourceName) form.set("source_name", payload.sourceName);
+    if (payload.sourceType) form.set("source_type", payload.sourceType);
+    form.set("dry_run", String(payload.dryRun ?? true));
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/listings/import-csv`, {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: form,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+    return response.json() as Promise<PartnerCsvImportResponse>;
+  },
   listAdminPlannedInvestments: (params: { city?: string; district?: string } = {}) =>
     request<PlannedInvestment[]>(
       `/api/v1/admin/planned-investments${toQueryString(params)}`,
@@ -532,6 +762,28 @@ export const api = {
       method: "DELETE",
       headers: ADMIN_HEADERS,
     }),
+  importAdminPlannedInvestments: async (payload: {
+    file: File;
+    sourceName?: string;
+    dryRun?: boolean;
+  }) => {
+    const form = new FormData();
+    form.set("file", payload.file);
+    if (payload.sourceName) form.set("source_name", payload.sourceName);
+    form.set("dry_run", String(payload.dryRun ?? false));
+
+    const response = await fetch(`${API_BASE_URL}/api/v1/admin/planned-investments/import`, {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: form,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+    return response.json() as Promise<PlannedInvestmentImportResponse>;
+  },
   listReportProducts: () => request<ReportProduct[]>("/api/v1/report-products"),
   listReportOrders: () => request<ReportOrder[]>("/api/v1/report-orders"),
   listReportOrderEvents: (orderId: string) =>
@@ -577,10 +829,27 @@ export const api = {
     fetch(`${API_BASE_URL}/api/v1/favorites/${favoriteId}?owner_id=${OWNER_ID}`, {
       method: "DELETE",
     }),
-  generateReport: (listingId: string, audience: "buyer" | "realtor" | "investor" = "buyer") =>
+  generateReport: (
+    listingId: string,
+    audience: "buyer" | "realtor" | "investor" = "buyer",
+    branding?: ReportBranding,
+  ) =>
     request<GeneratedReport>("/api/v1/reports/object/generate", {
       method: "POST",
-      body: JSON.stringify({ listing_id: listingId, audience, report_format: "html" }),
+      body: JSON.stringify({
+        listing_id: listingId,
+        audience,
+        report_format: "html",
+        ...(branding ? { branding } : {}),
+      }),
+    }),
+  emailReport: (reportId: string, payload: { target_email?: string; dry_run?: boolean } = {}) =>
+    request<ReportEmailResult>(`/api/v1/reports/${reportId}/email`, {
+      method: "POST",
+      body: JSON.stringify({
+        dry_run: payload.dry_run ?? true,
+        ...(payload.target_email ? { target_email: payload.target_email } : {}),
+      }),
     }),
   listReports: () => request<GeneratedReportListItem[]>("/api/v1/reports"),
   createAlert: (payload: {

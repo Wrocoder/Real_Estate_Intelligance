@@ -11,7 +11,7 @@
 - [x] Перед коммитом запускать `pytest` и `ruff`.
 - [x] Держать документацию запуска в `README.md`.
 - [x] Добавить CI на GitHub Actions.
-- [ ] Добавить pre-commit hooks после стабилизации форматирования.
+- [x] Добавить pre-commit hooks после стабилизации форматирования.
 - [ ] Вести changelog/release notes после первого deploy.
 
 ## 1. Product и Research
@@ -22,8 +22,27 @@
 - [x] Описать архитектуру, monetization, GTM, SEO, риски, roadmap.
 - [ ] Провести legal review источников данных.
 - [ ] Провести 20 интервью: покупатели, риелторы, инвесторы.
+- [ ] Провести отдельные интервью с ипотечными брокерами и малыми агентствами.
 - [ ] Сформировать список первых 30 агентств/риелторов для paid beta.
 - [ ] Подготовить коммерческий оффер для риелторов.
+- [ ] Подготовить оценку коммерческого потенциала по шкале из `First_prompt_ru.md`.
+- [ ] Подготовить конкурентный анализ Otodom, OLX, Morizon, Gratka, SonarHome, Cenatorium, urban.one и агентских CRM.
+- [ ] Подготовить risk register: юридические, технические и бизнес-риски с mitigation-планом.
+- [ ] Описать moat strategy: история цен, дедупликация, snapshots, геоданные, SEO и агентские партнерства.
+- [ ] Обновить 12-месячный roadmap по фактическому состоянию продукта.
+- [ ] Описать минимальную команду запуска и зоны ответственности.
+- [ ] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
+
+## 1.1 Legal, Compliance и Data Governance
+
+- [ ] Зафиксировать policy по Terms of Service, robots.txt и rate limiting для каждого источника.
+- [ ] Описать правила хранения оригинальных ссылок, raw payload и минимально необходимых данных.
+- [ ] Описать запрет на копирование фото и контактных данных без правового основания.
+- [ ] Добавить процесс удаления данных по запросу.
+- [ ] Добавить GDPR/RODO data retention policy.
+- [ ] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
+- [ ] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
+- [ ] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
 
 ## 2. Repository и Backend Foundation
 
@@ -36,7 +55,7 @@
 - [x] Добавить Dockerfile.
 - [x] Добавить `compose.yaml` с PostGIS и Redis.
 - [x] Добавить GitHub Actions CI.
-- [ ] Добавить Makefile/Taskfile или единый CLI для dev-команд.
+- [x] Добавить Makefile/Taskfile или единый CLI для dev-команд.
 
 ## 3. Database и Repository Layer
 
@@ -51,6 +70,13 @@
 - [ ] Добавить geometry columns и spatial indexes.
 - [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
 - [x] Добавить миграционную проверку в CI.
+- [ ] Добавить таблицы `listing_events` и расширить price history под снятие/републикацию/изменение параметров.
+- [ ] Добавить таблицу `property_deduplication_matches` для review queue и объяснения match decisions.
+- [ ] Добавить справочники `locations`, `districts`, `municipalities`.
+- [ ] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
+- [ ] Добавить `ai_insights` для сохранения AI summaries и object explanations.
+- [ ] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
+- [ ] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
 ## 4. Listings и Search API
 
@@ -66,6 +92,12 @@
 - [x] Добавить фильтры по score, price/m2, days_on_market.
 - [ ] Добавить OpenSearch или PostgreSQL full-text search.
 - [x] Добавить saved searches.
+- [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
+- [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
+- [ ] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
+- [ ] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
+- [ ] Добавить API для поиска объектов ниже рынка и hidden gems.
+- [ ] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
 
 ## 5. Ingestion Pipeline
 
@@ -79,11 +111,19 @@
 - [x] Добавить ingestion jobs table usage.
 - [x] Добавить data quality logs.
 - [x] Добавить JSON/CSV import planned investments для open-data слоев.
-- [ ] Добавить CSV import API endpoint для internal admin.
-- [ ] Добавить planned investments import API endpoint для internal admin.
-- [ ] Добавить дедупликацию v1 при импорте.
-- [ ] Добавить geocoding pipeline.
-- [ ] Добавить source monitoring и error reporting.
+- [x] Добавить CSV import API endpoint для internal admin.
+- [x] Добавить planned investments import API endpoint для internal admin.
+- [x] Добавить дедупликацию v1 при импорте.
+- [x] Добавить geocoding pipeline.
+- [x] Добавить source monitoring и error reporting.
+- [ ] Добавить ingestion source registry с legal status и refresh policy.
+- [ ] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
+- [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
+- [ ] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
+- [ ] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+- [ ] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
+- [ ] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
+- [ ] Добавить source-specific retention и delete-request handling.
 
 ## 6. Scoring и Analytics
 
@@ -94,11 +134,21 @@
 - [x] Добавить Liquidity Score v1.
 - [x] Добавить Rental Potential Score v1.
 - [x] Добавить объяснения, warnings и negotiation arguments.
-- [ ] Вынести веса scoring в конфигурацию.
-- [ ] Добавить версионирование scoring formulas.
-- [ ] Добавить backtesting на historical snapshots.
-- [ ] Добавить area market snapshots job.
-- [ ] Добавить confidence score для fair price estimate.
+- [x] Вынести веса scoring в конфигурацию.
+- [x] Добавить версионирование scoring formulas.
+- [x] Добавить backtesting на historical snapshots.
+- [x] Добавить area market snapshots job.
+- [x] Добавить confidence score для fair price estimate.
+- [ ] Добавить человекочитаемые score labels: good option, overpriced, negotiable, risky, investment potential.
+- [x] Добавить market dashboards: active/new/removed listings, exposure time, price/rooms/area distributions.
+- [ ] Добавить district/city comparison analytics.
+- [ ] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
+- [ ] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
+- [ ] Добавить growth factors: transport, schools, parks, hospitals, retail, offices, universities, population/jobs growth.
+- [ ] Добавить risk factors: noise, flood, pollution, airport/rail/industrial zones, oversupply, weak transport, weak rental yield.
+- [ ] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
+- [x] Добавить mortgage affordability и total purchase cost inputs в buyer analytics.
+- [ ] Добавить backtesting отчеты по drift/ошибке fair price estimate.
 
 ## 7. Reports
 
@@ -109,10 +159,19 @@
 - [x] Добавить XSS escaping для HTML.
 - [x] Добавить `generated_reports` в БД.
 - [x] Добавить `/api/v1/reports` history endpoints.
-- [ ] Добавить report templates для buyer/realtor/investor.
-- [ ] Добавить branded realtor report fields.
+- [x] Добавить report templates для buyer/realtor/investor.
+- [x] Добавить branded realtor report fields.
 - [ ] Добавить native PDF generation.
-- [ ] Добавить email delivery.
+- [x] Добавить email delivery.
+- [x] Добавить mortgage calculation и total purchase cost в buyer report v1.
+- [x] Добавить buyer report секции: mortgage calculation, seller questions, purchase checklist, total cost.
+- [x] Добавить realtor report секции: map, comparable listings table, client-facing price arguments.
+- [x] Добавить investor report секции: rental yield, alternatives comparison, liquidity and growth thesis.
+- [ ] Добавить paid area report product.
+- [ ] Добавить full object analysis report product.
+- [ ] Добавить bundles: package of 5 reports.
+- [ ] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
+- [ ] Добавить export reports в CSV/JSON для realtor/investor workflows.
 
 ## 8. Users, Auth и Payments
 
@@ -127,6 +186,12 @@
 - [ ] Подключить hosted checkout API для Stripe или PayU.
 - [x] Добавить one-time report purchase flow.
 - [x] Добавить audit logging для paid artifacts.
+- [ ] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
+- [ ] Добавить team/agency accounts: несколько агентов под одной организацией.
+- [ ] Добавить роли и права для agency owner/admin/agent.
+- [ ] Добавить report credits и usage quotas для packages.
+- [ ] Добавить invoice/VAT metadata для B2B checkout.
+- [ ] Добавить lead capture для mortgage/legal/renovation partner referrals.
 
 ## 9. Favorites и Alerts
 
@@ -141,6 +206,10 @@
 - [ ] Добавить daily email alerts.
 - [x] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
+- [ ] Добавить advanced investor alerts: below market, price drop, new comparable, high rental potential.
+- [ ] Добавить realtor saved-search digests для клиентов.
+- [ ] Добавить alert frequency controls: instant, daily, weekly.
+- [ ] Добавить unsubscribe/manage preferences flow.
 
 ## 10. Frontend MVP
 
@@ -156,6 +225,15 @@
 - [x] Сделать pricing page.
 - [x] Сделать account page.
 - [x] Подключить auth foundation.
+- [x] Сделать отдельную страницу market/area analytics dashboard.
+- [ ] Сделать страницу сравнения районов.
+- [x] Сделать mortgage calculator page.
+- [ ] Сделать news page.
+- [ ] Сделать public demand-validation landing page для paid beta.
+- [ ] Сделать mobile-friendly QA pass для ключевых страниц.
+- [ ] Добавить charting library и графики price history/market distributions.
+- [ ] Добавить realtor подборки объектов для клиента.
+- [ ] Добавить investor hidden gems view.
 
 ## 11. Map и GIS
 
@@ -168,6 +246,13 @@
 - [ ] Добавить PostGIS distance calculations.
 - [x] Добавить filters by radius.
 - [x] Добавить risk/growth map overlays.
+- [ ] Добавить price-per-m2 heatmap.
+- [ ] Добавить переключаемые слои районов, гмин и воеводства.
+- [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
+- [ ] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
+- [ ] Добавить MPZP/Studium layer.
+- [ ] Добавить future roads, tram lines and bus routes layers.
+- [ ] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 
 ## 12. Admin Panel
 
@@ -178,6 +263,11 @@
 - [ ] Добавить dedup review queue.
 - [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.
+- [ ] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
+- [ ] Добавить ручную загрузку/редактирование listing от риелтора.
+- [ ] Добавить moderation workflow для data deletion requests.
+- [ ] Добавить просмотр source errors и retry actions.
+- [ ] Добавить admin audit log UI.
 
 ## 13. AI Assistant
 
@@ -188,6 +278,11 @@
 - [ ] Добавить hallucination guardrails.
 - [ ] Добавить AI usage logging.
 - [ ] Добавить limited AI endpoint.
+- [ ] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
+- [ ] Добавить compare-A-vs-B AI response template.
+- [ ] Добавить source citations в каждый AI response.
+- [ ] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
+- [ ] Добавить AI summaries для news и area impact.
 
 ## 14. News и SEO
 
@@ -198,6 +293,12 @@
 - [x] Добавить sitemap.
 - [x] Добавить robots.txt.
 - [x] Добавить structured data.
+- [ ] Добавить news categories: market, mortgage, tax, legal, developer, city investment, transport, MPZP.
+- [ ] Добавить area impact fields для news: affected districts, price impact hypothesis, audience relevance.
+- [ ] Добавить SEO pages: Wrocław price per m2, best districts, where to buy near Wrocław, district comparison.
+- [ ] Добавить SEO pages: flats with growth potential, Dolnośląskie market analysis, mortgage calculator Poland.
+- [ ] Добавить SEO pages: purchase checklist, księga wieczysta checklist, total purchase cost in Poland.
+- [ ] Добавить internal linking между SEO pages, area pages, listings и reports.
 
 ## 15. Testing, Quality и Observability
 
@@ -206,11 +307,15 @@
 - [x] Добавить ingestion tests.
 - [x] Добавить report tests.
 - [x] Добавить optional repository integration tests с Postgres.
-- [ ] Добавить contract tests для API.
+- [x] Добавить contract tests для API.
 - [ ] Добавить coverage report.
 - [ ] Добавить structured logging.
 - [ ] Добавить error tracking.
 - [ ] Добавить performance smoke tests.
+- [ ] Добавить data quality acceptance tests для geocoding, dedup и source freshness.
+- [ ] Добавить contract tests для paid artifacts и report metadata.
+- [ ] Добавить frontend smoke tests для search, map, reports, admin и payments.
+- [ ] Добавить load/performance smoke для listings search и map features.
 
 ## 16. Deployment
 
@@ -222,8 +327,44 @@
 - [ ] Добавить backup strategy.
 - [x] Добавить staging environment.
 - [ ] Добавить production deploy.
+- [ ] Добавить S3-compatible bucket для отчетов и generated artifacts.
+- [ ] Добавить background worker deployment для alerts, ingestion и report generation.
+- [ ] Добавить production monitoring: uptime, job failures, source freshness, payment webhooks.
+- [ ] Добавить cost controls для maps, AI и infrastructure.
 
-## 17. Git Commit Milestones
+## 17. Go-to-Market, Sales и Partnerships
+
+- [ ] Сделать demand-validation landing page для “проверка квартиры перед покупкой”.
+- [ ] Сделать landing variant для “аналитика и отчеты для риелторов”.
+- [ ] Подготовить outreach scripts для LinkedIn, Facebook groups и cold emails агентствам.
+- [ ] Запустить список paid beta candidates: риелторы, маленькие агентства, инвесторы, ипотечные брокеры.
+- [ ] Описать manual/semi-automated workflow первого платного отчета.
+- [ ] Подготовить offer для отчетов: object report, area report, realtor report, hidden gems подборка.
+- [ ] Подготовить партнерскую модель: mortgage brokers, banks, insurers, lawyers, notaries, appraisers, renovation/design partners.
+- [ ] Добавить правило явной маркировки рекламы, promoted listings и sponsored reports.
+- [ ] Добавить lead tracking для partner referrals и early sales.
+
+## 18. Agency, Enterprise/API и Data Products
+
+- [ ] Добавить agency workspace model.
+- [ ] Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
+- [ ] Добавить API-lite для agency/enterprise consumers.
+- [ ] Добавить API keys, quotas, usage logs и rate limits.
+- [ ] Добавить export datasets для investor/realtor plans.
+- [ ] Добавить market intelligence reports для banks, developers and funds.
+- [ ] Добавить scoring-as-a-service endpoint design.
+- [ ] Добавить custom dashboard backlog для enterprise clients.
+- [ ] Добавить lead scoring backlog для mortgage/broker partnerships.
+
+## 19. Expansion Roadmap
+
+- [ ] Подготовить критерии масштабирования за пределы Wrocław/Dolnośląskie.
+- [ ] Добавить roadmap для аренды.
+- [ ] Добавить roadmap для домов, земли и commercial real estate.
+- [ ] Подготовить data-source checklist для других городов Польши.
+- [ ] Подготовить country expansion checklist для Czechia, Germany, Spain and EU markets.
+
+## 20. Git Commit Milestones
 
 - [x] Commit 1: product docs, backend foundation, DB, ingestion, HTML reports.
 - [x] Commit 2: report persistence and report history API.

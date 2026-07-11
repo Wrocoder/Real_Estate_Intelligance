@@ -1,15 +1,28 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, RefreshCw } from "lucide-react";
+import { ExternalLink, FileText, Mail, RefreshCw } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, reportContentUrl, type GeneratedReportListItem } from "@/lib/api";
+import {
+  api,
+  reportContentUrl,
+  type GeneratedReportListItem,
+  type ReportBranding,
+} from "@/lib/api";
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<GeneratedReportListItem[]>([]);
   const [listingId, setListingId] = useState("wr-001");
   const [audience, setAudience] = useState<"buyer" | "realtor" | "investor">("buyer");
+  const [branding, setBranding] = useState<ReportBranding>({
+    agency_name: "Domarion Realty",
+    agent_name: "Anna Kowalska",
+    agent_email: "anna@example.com",
+    agent_phone: "+48 500 000 000",
+    website_url: "https://example.com",
+    note: "Prepared for client discussion.",
+  });
   const [status, setStatus] = useState("Загрузка отчетов...");
   const [error, setError] = useState("");
 
@@ -31,7 +44,11 @@ export default function ReportsPage() {
 
   async function generateReport() {
     setStatus("Генерация отчета...");
-    const report = await api.generateReport(listingId, audience);
+    const report = await api.generateReport(
+      listingId,
+      audience,
+      audience === "realtor" ? cleanBranding(branding) : undefined,
+    );
     setReports([report, ...reports]);
     setStatus(`Отчет сохранен: ${report.id}`);
   }
@@ -77,6 +94,40 @@ export default function ReportsPage() {
           <button className="button primary" type="button" onClick={() => void generateReport()}>
             <FileText size={16} /> Сгенерировать
           </button>
+          {audience === "realtor" ? (
+            <>
+              <BrandingField
+                label="Agency"
+                value={branding.agency_name ?? ""}
+                onChange={(value) => setBranding({ ...branding, agency_name: value })}
+              />
+              <BrandingField
+                label="Agent"
+                value={branding.agent_name ?? ""}
+                onChange={(value) => setBranding({ ...branding, agent_name: value })}
+              />
+              <BrandingField
+                label="Email"
+                value={branding.agent_email ?? ""}
+                onChange={(value) => setBranding({ ...branding, agent_email: value })}
+              />
+              <BrandingField
+                label="Phone"
+                value={branding.agent_phone ?? ""}
+                onChange={(value) => setBranding({ ...branding, agent_phone: value })}
+              />
+              <BrandingField
+                label="Website"
+                value={branding.website_url ?? ""}
+                onChange={(value) => setBranding({ ...branding, website_url: value })}
+              />
+              <BrandingField
+                label="Note"
+                value={branding.note ?? ""}
+                onChange={(value) => setBranding({ ...branding, note: value })}
+              />
+            </>
+          ) : null}
         </div>
       </section>
 
@@ -119,6 +170,14 @@ export default function ReportsPage() {
                       >
                         <ExternalLink size={16} /> Открыть
                       </a>
+                      <button
+                        className="button"
+                        type="button"
+                        onClick={() => void emailReport(report.id)}
+                        style={{ marginLeft: 8 }}
+                      >
+                        <Mail size={16} /> Email
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -129,4 +188,32 @@ export default function ReportsPage() {
       </section>
     </>
   );
+}
+
+async function emailReport(reportId: string) {
+  const result = await api.emailReport(reportId, { dry_run: true });
+  window.alert(result.message);
+}
+
+function BrandingField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
+function cleanBranding(branding: ReportBranding): ReportBranding {
+  return Object.fromEntries(
+    Object.entries(branding).map(([key, value]) => [key, value?.trim() || null]),
+  ) as ReportBranding;
 }

@@ -1,16 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Database, Plus, RefreshCw, ShieldAlert } from "lucide-react";
+import { BarChart3, Database, Plus, RefreshCw, ShieldAlert, Upload } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
   type DataQualityLog,
   type IngestionJob,
+  type IngestionSourceHealth,
+  type PartnerCsvImportResponse,
   type PlannedInvestment,
+  type PlannedInvestmentImportResponse,
   type PlannedInvestmentPayload,
   type RawListingSummary,
+  type ScoringBacktestResult,
 } from "@/lib/api";
 import { numberValue } from "@/lib/format";
 
@@ -44,6 +48,9 @@ const defaultInvestmentForm: InvestmentForm = {
 
 export default function AdminPage() {
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
+  const [sourceHealth, setSourceHealth] = useState<IngestionSourceHealth[]>([]);
+  const [scoringBacktest, setScoringBacktest] =
+    useState<ScoringBacktestResult | null>(null);
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
@@ -51,6 +58,16 @@ export default function AdminPage() {
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
   const [investmentForm, setInvestmentForm] =
     useState<InvestmentForm>(defaultInvestmentForm);
+  const [partnerCsvFile, setPartnerCsvFile] = useState<File | null>(null);
+  const [partnerSourceName, setPartnerSourceName] = useState("Demo Partner");
+  const [partnerDryRun, setPartnerDryRun] = useState(true);
+  const [partnerImportResult, setPartnerImportResult] =
+    useState<PartnerCsvImportResponse | null>(null);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importSourceName, setImportSourceName] = useState("wroclaw.pl WPT");
+  const [importDryRun, setImportDryRun] = useState(true);
+  const [importResult, setImportResult] =
+    useState<PlannedInvestmentImportResponse | null>(null);
   const [status, setStatus] = useState("Загрузка ingestion dashboard...");
   const [error, setError] = useState("");
 
@@ -58,13 +75,18 @@ export default function AdminPage() {
     setError("");
     setStatus("Загрузка ingestion dashboard...");
     try {
-      const [jobData, logData, rawData, investmentData] = await Promise.all([
-        api.listAdminIngestionJobs(),
-        api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
-        api.listAdminRawListings({ limit: 50 }),
-        api.listAdminPlannedInvestments({ city: "Wrocław" }),
-      ]);
+      const [jobData, healthData, backtestData, logData, rawData, investmentData] =
+        await Promise.all([
+          api.listAdminIngestionJobs(),
+          api.listAdminIngestionSourceHealth(),
+          api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
+          api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
+          api.listAdminRawListings({ limit: 50 }),
+          api.listAdminPlannedInvestments({ city: "Wrocław" }),
+        ]);
       setJobs(jobData);
+      setSourceHealth(healthData);
+      setScoringBacktest(backtestData);
       setLogs(logData);
       setRawListings(rawData);
       setPlannedInvestments(investmentData);
@@ -140,6 +162,61 @@ export default function AdminPage() {
     setInvestmentForm(defaultInvestmentForm);
     await load(selectedJobId);
     setStatus("Planned investment удален");
+  }
+
+  async function importPartnerCsv(dryRun = partnerDryRun) {
+    if (!partnerCsvFile) {
+      setStatus("Выбери CSV файл partner listings");
+      return;
+    }
+
+    setError("");
+    setStatus(dryRun ? "Проверка partner CSV..." : "Импорт partner CSV...");
+    try {
+      const result = await api.importAdminPartnerCsv({
+        file: partnerCsvFile,
+        sourceName: partnerSourceName,
+        dryRun,
+      });
+      setPartnerImportResult(result);
+      setSelectedJobId(result.job.id);
+      await load(result.job.id);
+      setStatus(
+        `${dryRun ? "Dry-run" : "Import"} partner CSV: ${result.rows_seen} rows, ` +
+          `raw +${result.raw_created}/~${result.raw_updated}, ` +
+          `properties +${result.properties_created}/~${result.properties_updated}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown partner CSV import error");
+      setStatus("Partner CSV import failed");
+    }
+  }
+
+  async function importInvestments(dryRun = importDryRun) {
+    if (!importFile) {
+      setStatus("Выбери JSON или CSV файл planned investments");
+      return;
+    }
+
+    setError("");
+    setStatus(dryRun ? "Проверка planned investments..." : "Импорт planned investments...");
+    try {
+      const result = await api.importAdminPlannedInvestments({
+        file: importFile,
+        sourceName: importSourceName,
+        dryRun,
+      });
+      setImportResult(result);
+      setSelectedJobId(result.job.id);
+      await load(result.job.id);
+      setStatus(
+        `${dryRun ? "Dry-run" : "Import"}: ${result.rows_seen} rows, ` +
+          `+${result.created}, ~${result.updated}, errors ${result.errors.length}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown import error");
+      setStatus("Planned investments import failed");
+    }
   }
 
   return (
@@ -285,6 +362,257 @@ export default function AdminPage() {
               )}
             </div>
           </aside>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Source Health</h2>
+              <Database size={18} />
+            </div>
+            <div className="panel-body">
+              {sourceHealth.length === 0 ? (
+                <EmptyBlock label="Нет ingestion sources." />
+              ) : (
+                <ul className="section-list compact">
+                  {sourceHealth.map((source) => (
+                    <li key={`${source.source_name}-${source.source_type}`}>
+                      <span className={`status-pill ${source.health_status}`}>
+                        {source.health_status}
+                      </span>
+                      <strong>{source.source_name}</strong>
+                      <p className="muted">
+                        {source.source_type} · latest {source.latest_job_status} · rows{" "}
+                        {numberValue(source.rows_seen)}
+                      </p>
+                      <small>
+                        warnings {numberValue(source.warning_count)} · errors{" "}
+                        {numberValue(source.error_count)}
+                        {source.last_error_message ? ` · ${source.last_error_message}` : ""}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Scoring Backtest</h2>
+              <BarChart3 size={18} />
+            </div>
+            <div className="panel-body">
+              {scoringBacktest === null || scoringBacktest.evaluated_points === 0 ? (
+                <EmptyBlock label="Нет historical snapshots для backtest." />
+              ) : (
+                <>
+                  <div className="metric-grid compact">
+                    <div className="metric">
+                      <span>Evaluated points</span>
+                      <strong>{numberValue(scoringBacktest.evaluated_points)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Listings</span>
+                      <strong>
+                        {numberValue(scoringBacktest.listings_evaluated)} /{" "}
+                        {numberValue(scoringBacktest.listings_seen)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Mean error</span>
+                      <strong>{pct(scoringBacktest.mean_absolute_error_pct)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Within 10%</span>
+                      <strong>{pct(scoringBacktest.within_10_pct)}</strong>
+                    </div>
+                  </div>
+                  <div className="table-scroll" style={{ marginTop: 14 }}>
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Listing</th>
+                          <th>Observed</th>
+                          <th>Target</th>
+                          <th>Predicted</th>
+                          <th>Actual</th>
+                          <th>Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {scoringBacktest.items.map((item) => (
+                          <tr key={`${item.listing_id}-${item.observed_at}`}>
+                            <td>
+                              <strong>{item.title}</strong>
+                              <small>{item.weights_profile}</small>
+                            </td>
+                            <td>{item.observed_at}</td>
+                            <td>{item.target_observed_at}</td>
+                            <td>{numberValue(item.predicted_fair_price_mid)} PLN</td>
+                            <td>{numberValue(item.actual_price)} PLN</td>
+                            <td>{pct(item.absolute_error_pct)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Partner CSV Import</h2>
+              <Upload size={18} />
+            </div>
+            <div className="panel-body">
+              <div className="form-grid compact">
+                <label className="field">
+                  <span>File</span>
+                  <input
+                    className="input"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(event) => {
+                      setPartnerCsvFile(event.target.files?.[0] ?? null);
+                      setPartnerImportResult(null);
+                    }}
+                  />
+                </label>
+                <label className="field">
+                  <span>Source name</span>
+                  <input
+                    className="input"
+                    value={partnerSourceName}
+                    onChange={(event) => setPartnerSourceName(event.target.value)}
+                  />
+                </label>
+                <label className="field checkbox-field">
+                  <span>Dry-run</span>
+                  <input
+                    type="checkbox"
+                    checked={partnerDryRun}
+                    onChange={(event) => setPartnerDryRun(event.target.checked)}
+                  />
+                </label>
+              </div>
+              <div className="toolbar" style={{ marginTop: 12 }}>
+                <button className="button primary" type="button" onClick={() => void importPartnerCsv()}>
+                  <Upload size={16} /> {partnerDryRun ? "Check CSV" : "Import CSV"}
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setPartnerDryRun(false);
+                    void importPartnerCsv(false);
+                  }}
+                >
+                  Import now
+                </button>
+              </div>
+              {partnerImportResult ? (
+                <div className="metric-grid compact" style={{ marginTop: 14 }}>
+                  <div className="metric">
+                    <span>Rows</span>
+                    <strong>{numberValue(partnerImportResult.rows_seen)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Raw</span>
+                    <strong>
+                      +{numberValue(partnerImportResult.raw_created)} / ~
+                      {numberValue(partnerImportResult.raw_updated)}
+                    </strong>
+                  </div>
+                  <div className="metric">
+                    <span>Properties</span>
+                    <strong>
+                      +{numberValue(partnerImportResult.properties_created)} / ~
+                      {numberValue(partnerImportResult.properties_updated)}
+                    </strong>
+                  </div>
+                  <div className="metric">
+                    <span>Job</span>
+                    <strong>{partnerImportResult.job.status}</strong>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Planned Investments Import</h2>
+              <Upload size={18} />
+            </div>
+            <div className="panel-body">
+              <div className="form-grid compact">
+                <label className="field">
+                  <span>File</span>
+                  <input
+                    className="input"
+                    type="file"
+                    accept=".json,.csv,application/json,text/csv"
+                    onChange={(event) => {
+                      setImportFile(event.target.files?.[0] ?? null);
+                      setImportResult(null);
+                    }}
+                  />
+                </label>
+                <label className="field">
+                  <span>Source name</span>
+                  <input
+                    className="input"
+                    value={importSourceName}
+                    onChange={(event) => setImportSourceName(event.target.value)}
+                  />
+                </label>
+                <label className="field checkbox-field">
+                  <span>Dry-run</span>
+                  <input
+                    type="checkbox"
+                    checked={importDryRun}
+                    onChange={(event) => setImportDryRun(event.target.checked)}
+                  />
+                </label>
+              </div>
+              <div className="toolbar" style={{ marginTop: 12 }}>
+                <button className="button primary" type="button" onClick={() => void importInvestments()}>
+                  <Upload size={16} /> {importDryRun ? "Check file" : "Import file"}
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setImportDryRun(false);
+                    void importInvestments(false);
+                  }}
+                >
+                  Import now
+                </button>
+              </div>
+              {importResult ? (
+                <div className="metric-grid compact" style={{ marginTop: 14 }}>
+                  <div className="metric">
+                    <span>Rows</span>
+                    <strong>{numberValue(importResult.rows_seen)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Created</span>
+                    <strong>{numberValue(importResult.created)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Updated</span>
+                    <strong>{numberValue(importResult.updated)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Job</span>
+                    <strong>{importResult.job.status}</strong>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </section>
 
           <section className="panel admin-wide">
             <div className="panel-header">
@@ -557,6 +885,10 @@ function formatDate(value: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function pct(value: number | null) {
+  return value === null ? "-" : `${value.toFixed(1)}%`;
 }
 
 function compactPayload(payload: Record<string, unknown>) {

@@ -18,8 +18,13 @@ from domarion.db.models import (
     RawListing,
 )
 from domarion.db.session import SessionLocal
-from domarion.ingestion.partner_csv import PartnerListingRecord, read_partner_csv
-from domarion.schemas import Listing
+from domarion.ingestion.partner_csv import PartnerListingRecord, read_partner_csv, slugify
+from domarion.schemas import DataQualityLogCreate, Listing
+
+DEDUP_AREA_TOLERANCE_M2 = 1.0
+DEDUP_AREA_TOLERANCE_RATIO = 0.02
+DEDUP_COORDINATE_TOLERANCE_DEGREES = 0.0015
+STREET_PREFIX_TOKENS = {"al", "aleja", "pl", "plac", "ul", "ulica"}
 
 
 @dataclass(frozen=True)
@@ -95,6 +100,51 @@ def import_partner_records_in_session(
         )
 
     return result
+
+
+def build_partner_quality_logs(
+    job_id: str,
+    records: list[PartnerListingRecord],
+) -> list[DataQualityLogCreate]:
+    logs = []
+    for record in records:
+        listing = record.listing
+        missing_fields = [
+            field
+            for field in (
+                "nearest_stop_m",
+                "nearest_school_m",
+                "nearest_major_road_m",
+                "nearest_industrial_zone_m",
+                "distance_to_center_km",
+            )
+            if not record.raw_payload.get(field)
+        ]
+
+        if listing.data_quality_score < 80 or missing_fields:
+            logs.append(
+                DataQualityLogCreate(
+                    job_id=job_id,
+                    source_name=record.source_name,
+                    source_listing_id=record.source_listing_id,
+                    severity="warning",
+                    code=(
+                        "low_data_quality"
+                        if listing.data_quality_score < 80
+                        else "missing_optional_fields"
+                    ),
+                    message=(
+                        f"Data quality score is {listing.data_quality_score}/100."
+                        if listing.data_quality_score < 80
+                        else "Optional fields are missing in the source row."
+                    ),
+                    payload={
+                        "data_quality_score": listing.data_quality_score,
+                        "missing_fields": missing_fields,
+                    },
+                )
+            )
+    return logs
 
 
 def payload_hash(payload: dict[str, str]) -> str:
@@ -193,50 +243,23 @@ def _write_data_quality_logs(
     job_id: str,
     records: list[PartnerListingRecord],
 ) -> int:
-    warnings_count = 0
-    for record in records:
-        listing = record.listing
-        missing_fields = [
-            field
-            for field in (
-                "nearest_stop_m",
-                "nearest_school_m",
-                "nearest_major_road_m",
-                "nearest_industrial_zone_m",
-                "distance_to_center_km",
+    logs = build_partner_quality_logs(job_id, records)
+    for payload in logs:
+        session.add(
+            DataQualityLog(
+                id=str(uuid4()),
+                job_id=payload.job_id,
+                source_name=payload.source_name,
+                source_listing_id=payload.source_listing_id,
+                severity=payload.severity,
+                code=payload.code,
+                message=payload.message,
+                payload=payload.payload,
+                created_at=datetime.utcnow(),
             )
-            if not record.raw_payload.get(field)
-        ]
-
-        if listing.data_quality_score < 80 or missing_fields:
-            warnings_count += 1
-            code = (
-                "low_data_quality"
-                if listing.data_quality_score < 80
-                else "missing_optional_fields"
-            )
-            session.add(
-                DataQualityLog(
-                    id=str(uuid4()),
-                    job_id=job_id,
-                    source_name=record.source_name,
-                    source_listing_id=record.source_listing_id,
-                    severity="warning",
-                    code=code,
-                    message=(
-                        f"Data quality score is {listing.data_quality_score}/100."
-                        if listing.data_quality_score < 80
-                        else "Optional fields are missing in the source row."
-                    ),
-                    payload={
-                        "data_quality_score": listing.data_quality_score,
-                        "missing_fields": missing_fields,
-                    },
-                    created_at=datetime.utcnow(),
-                )
-            )
+        )
     session.flush()
-    return warnings_count
+    return len(logs)
 
 
 def _get_or_create_source(session: Session, record: PartnerListingRecord) -> ListingSource:
@@ -305,9 +328,12 @@ def _upsert_property_source(
         session.flush()
         return property_source, False
 
-    property_ = Property()
+    property_ = _find_duplicate_property(session, listing)
+    property_created = property_ is None
+    if property_ is None:
+        property_ = Property()
+        session.add(property_)
     _update_property_from_listing(property_, listing)
-    session.add(property_)
     session.flush()
 
     property_source = PropertySource(
@@ -321,7 +347,38 @@ def _upsert_property_source(
     )
     session.add(property_source)
     session.flush()
-    return property_source, True
+    return property_source, property_created
+
+
+def _find_duplicate_property(session: Session, listing: Listing) -> Property | None:
+    candidates = session.scalars(
+        select(Property).where(
+            Property.city == listing.city,
+            Property.district == listing.district,
+            Property.rooms == listing.rooms,
+            Property.market_type == listing.market_type,
+        )
+    ).all()
+    for candidate in candidates:
+        if _is_duplicate_property_match(candidate, listing):
+            return candidate
+    return None
+
+
+def _is_duplicate_property_match(property_: Property, listing: Listing) -> bool:
+    if not _same_dedup_text(property_.city, listing.city):
+        return False
+    if not _same_dedup_text(property_.district, listing.district):
+        return False
+    if property_.market_type and property_.market_type != listing.market_type:
+        return False
+    if property_.rooms != listing.rooms:
+        return False
+    if not _same_dedup_text(property_.canonical_address, listing.address):
+        return False
+    if not _is_area_close(property_.area_m2, listing.area_m2):
+        return False
+    return _are_coordinates_close(property_.lat, property_.lon, listing.lat, listing.lon)
 
 
 def _upsert_snapshot(
@@ -381,3 +438,38 @@ def _update_property_from_listing(property_: Property, listing: Listing) -> None
 
 def _date_to_datetime(value) -> datetime:
     return datetime.combine(value, time.min)
+
+
+def _same_dedup_text(left: str | None, right: str | None) -> bool:
+    return _dedup_text(left) == _dedup_text(right)
+
+
+def _dedup_text(value: str | None) -> str:
+    if value is None:
+        return ""
+    tokens = [token for token in slugify(value).split("-") if token]
+    if tokens and tokens[0] in STREET_PREFIX_TOKENS:
+        tokens = tokens[1:]
+    return "-".join(tokens)
+
+
+def _is_area_close(left: Decimal | None, right: float) -> bool:
+    if left is None:
+        return False
+    left_value = float(left)
+    tolerance = max(DEDUP_AREA_TOLERANCE_M2, right * DEDUP_AREA_TOLERANCE_RATIO)
+    return abs(left_value - right) <= tolerance
+
+
+def _are_coordinates_close(
+    left_lat: Decimal | None,
+    left_lon: Decimal | None,
+    right_lat: float,
+    right_lon: float,
+) -> bool:
+    if left_lat is None or left_lon is None:
+        return False
+    return (
+        abs(float(left_lat) - right_lat) <= DEDUP_COORDINATE_TOLERANCE_DEGREES
+        and abs(float(left_lon) - right_lon) <= DEDUP_COORDINATE_TOLERANCE_DEGREES
+    )

@@ -4,12 +4,14 @@ import type { ReactNode } from "react";
 import {
   BarChart3,
   Bell,
+  Calculator,
   Columns3,
   CreditCard,
   Database,
   FileText,
   MapPinned,
   Search,
+  TrendingUp,
   UserCircle,
 } from "lucide-react";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -50,6 +52,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/areas">
                 <MapPinned size={18} />
                 Районы
+              </Link>
+              <Link href="/market">
+                <TrendingUp size={18} />
+                Рынок
+              </Link>
+              <Link href="/mortgage">
+                <Calculator size={18} />
+                Ипотека
               </Link>
               <Link href="/pricing">
                 <CreditCard size={18} />

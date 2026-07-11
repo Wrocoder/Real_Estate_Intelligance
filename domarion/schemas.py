@@ -13,6 +13,7 @@ SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
 ReportOrderEventType = Literal[
     "order_created",
@@ -27,7 +28,10 @@ ReportOrderEventType = Literal[
 PaymentWebhookStatus = Literal["processed", "duplicate", "ignored", "rejected"]
 IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
+IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
+MortgageRateType = Literal["fixed", "variable"]
+MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -104,6 +108,18 @@ class AreaStatistics(BaseModel):
     supply_change_90d_pct: float
 
 
+class AreaMarketSnapshot(AreaStatistics):
+    id: int | None = None
+    calculated_at: datetime
+
+
+class AreaMarketSnapshotJobResult(BaseModel):
+    calculated_at: datetime
+    dry_run: bool
+    snapshots_created: int = Field(ge=0)
+    snapshots: list[AreaMarketSnapshot] = Field(default_factory=list)
+
+
 class PlannedInvestment(BaseModel):
     id: str
     name: str
@@ -178,6 +194,46 @@ class IngestionJob(BaseModel):
     updated_at: datetime
 
 
+class IngestionSourceHealth(BaseModel):
+    source_name: str
+    source_type: str
+    health_status: IngestionSourceHealthStatus
+    latest_job_id: str
+    latest_job_status: IngestionJobStatus
+    rows_seen: int = Field(ge=0)
+    errors_count: int = Field(ge=0)
+    warning_count: int = Field(ge=0)
+    error_count: int = Field(ge=0)
+    last_error_message: str | None = None
+    updated_at: datetime
+
+
+class PartnerCsvImportResponse(BaseModel):
+    rows_seen: int = Field(ge=0)
+    raw_created: int = Field(ge=0)
+    raw_updated: int = Field(ge=0)
+    properties_created: int = Field(ge=0)
+    properties_updated: int = Field(ge=0)
+    snapshots_created: int = Field(ge=0)
+    snapshots_updated: int = Field(ge=0)
+    dry_run: bool
+    listing_ids: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    job: IngestionJob
+
+
+class PlannedInvestmentImportResponse(BaseModel):
+    rows_seen: int = Field(ge=0)
+    created: int = Field(ge=0)
+    updated: int = Field(ge=0)
+    skipped: int = Field(ge=0)
+    dry_run: bool
+    investment_ids: list[str] = Field(default_factory=list)
+    source_ids: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    job: IngestionJob
+
+
 class DataQualityLogCreate(BaseModel):
     job_id: str | None = None
     source_name: str
@@ -242,6 +298,8 @@ class ScoreBreakdown(BaseModel):
 
 
 class PropertyScores(BaseModel):
+    formula_version: str
+    weights_profile: str
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
@@ -250,10 +308,37 @@ class PropertyScores(BaseModel):
     fair_price_low: int
     fair_price_mid: int
     fair_price_high: int
+    fair_price_confidence_score: int = Field(ge=0, le=100)
     price_delta_to_fair_mid_pct: float
     breakdown: ScoreBreakdown
     reasons: list[str]
     warnings: list[str]
+
+
+class ScoringBacktestItem(BaseModel):
+    listing_id: str
+    title: str
+    area_id: str
+    observed_at: date
+    target_observed_at: date
+    predicted_fair_price_mid: int
+    actual_price: int
+    absolute_error_pct: float = Field(ge=0)
+    formula_version: str
+    weights_profile: str
+
+
+class ScoringBacktestResult(BaseModel):
+    formula_version: str
+    weights_profile: str
+    listings_seen: int = Field(ge=0)
+    listings_evaluated: int = Field(ge=0)
+    evaluated_points: int = Field(ge=0)
+    mean_absolute_error_pct: float | None = Field(default=None, ge=0)
+    median_absolute_error_pct: float | None = Field(default=None, ge=0)
+    within_5_pct: float | None = Field(default=None, ge=0, le=100)
+    within_10_pct: float | None = Field(default=None, ge=0, le=100)
+    items: list[ScoringBacktestItem] = Field(default_factory=list)
 
 
 class ListingAnalysis(BaseModel):
@@ -285,13 +370,147 @@ class CompareResponse(BaseModel):
     items: list[ListingAnalysis]
 
 
+class MarketDistributionBucket(BaseModel):
+    label: str
+    count: int = Field(ge=0)
+    min_value: float | None = None
+    max_value: float | None = None
+
+
+class MarketDashboardArea(BaseModel):
+    area_id: str
+    name: str
+    city: str
+    median_price_per_m2: int
+    average_price_per_m2: int
+    active_listings: int = Field(ge=0)
+    new_listings_30d: int = Field(ge=0)
+    removed_listings_30d: int = Field(ge=0)
+    average_days_on_market: int = Field(ge=0)
+    price_change_90d_pct: float
+    supply_change_90d_pct: float
+    liquidity_index: int = Field(ge=0, le=100)
+    overheated_index: int = Field(ge=0, le=100)
+    buyer_market_index: int = Field(ge=0, le=100)
+
+
+class MarketDashboard(BaseModel):
+    city: str | None = None
+    district: str | None = None
+    listings_count: int = Field(ge=0)
+    active_listings: int = Field(ge=0)
+    new_listings_30d: int = Field(ge=0)
+    removed_listings_30d: int = Field(ge=0)
+    average_days_on_market: int = Field(ge=0)
+    median_price: int | None = None
+    median_price_per_m2: int | None = None
+    average_price_per_m2: int | None = None
+    price_change_90d_pct: float | None = None
+    supply_change_90d_pct: float | None = None
+    price_distribution: list[MarketDistributionBucket]
+    price_per_m2_distribution: list[MarketDistributionBucket]
+    rooms_distribution: list[MarketDistributionBucket]
+    area_distribution: list[MarketDistributionBucket]
+    areas: list[MarketDashboardArea]
+
+
+class MortgageCalculationRequest(BaseModel):
+    property_price_pln: int = Field(gt=0)
+    down_payment_pln: int = Field(ge=0)
+    loan_years: int = Field(default=25, ge=1, le=35)
+    annual_interest_rate_pct: float = Field(default=7.5, ge=0, le=30)
+    rate_type: MortgageRateType = "fixed"
+    market_type: MarketType = "secondary"
+    monthly_income_pln: int | None = Field(default=None, gt=0)
+    monthly_existing_debt_pln: int = Field(default=0, ge=0)
+    monthly_housing_costs_pln: int = Field(default=0, ge=0)
+    insurance_monthly_pln: int = Field(default=0, ge=0)
+    notary_fee_pln: int = Field(default=5_000, ge=0)
+    court_fees_pln: int = Field(default=400, ge=0)
+    bank_commission_pct: float = Field(default=0, ge=0, le=10)
+    agent_commission_pct: float = Field(default=0, ge=0, le=5)
+    renovation_budget_pln: int = Field(default=0, ge=0)
+    include_pcc: bool = True
+
+
+class MortgageCostBreakdown(BaseModel):
+    property_price_pln: int
+    down_payment_pln: int
+    down_payment_pct: float
+    loan_amount_pln: int
+    loan_to_value_pct: float
+    pcc_tax_pln: int
+    notary_fee_pln: int
+    court_fees_pln: int
+    bank_commission_pln: int
+    agent_commission_pln: int
+    renovation_budget_pln: int
+    upfront_cash_needed_pln: int
+
+
+class MortgageScenario(BaseModel):
+    scenario_code: str
+    label: str
+    annual_interest_rate_pct: float
+    loan_years: int
+    monthly_principal_interest_pln: int
+    monthly_total_payment_pln: int
+    total_interest_pln: int
+    total_repaid_pln: int
+    debt_to_income_pct: float | None = None
+
+
+class MortgageAffordability(BaseModel):
+    status: MortgageAffordabilityStatus
+    monthly_income_pln: int | None = None
+    available_for_mortgage_comfortable_pln: int | None = None
+    available_for_mortgage_stretched_pln: int | None = None
+    base_debt_to_income_pct: float | None = None
+    payment_to_income_pct: float | None = None
+    monthly_buffer_after_payment_pln: int | None = None
+
+
+class MortgageCalculationResult(BaseModel):
+    costs: MortgageCostBreakdown
+    base_scenario: MortgageScenario
+    scenarios: list[MortgageScenario]
+    affordability: MortgageAffordability
+    notes: list[str]
+    disclaimer: str
+
+
+class ReportBranding(BaseModel):
+    agency_name: str | None = None
+    agent_name: str | None = None
+    agent_email: str | None = None
+    agent_phone: str | None = None
+    website_url: str | None = None
+    note: str | None = None
+
+
 class ReportRequest(BaseModel):
     listing_id: str
     audience: ReportAudience = "buyer"
+    branding: ReportBranding | None = None
 
 
 class GenerateReportRequest(ReportRequest):
     report_format: ReportFormat = "html"
+
+
+class ReportEmailRequest(BaseModel):
+    target_email: str | None = None
+    dry_run: bool = True
+
+
+class ReportEmailResult(BaseModel):
+    report_id: str
+    provider: str
+    status: ReportEmailStatus
+    target_email: str | None = None
+    subject: str
+    message: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class ReportProduct(BaseModel):
@@ -393,9 +612,20 @@ class ReportSection(BaseModel):
     items: list[str]
 
 
+class ReportTemplateDescriptor(BaseModel):
+    code: str
+    name: str
+    audience: ReportAudience
+    description: str
+    default_sections: list[str]
+
+
 class ObjectReport(BaseModel):
     listing_id: str
     audience: ReportAudience
+    template_code: str
+    template_name: str
+    branding: ReportBranding | None = None
     summary: str
     sections: list[ReportSection]
     disclaimer: str

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     alert_telegram_bot_name: str = "DomarionBot"
     alert_telegram_bot_token: str | None = None
     alert_telegram_api_base_url: str = "https://api.telegram.org"
+    scoring_weights_json: str | None = None
     demo_user_id: str = "demo-user"
     demo_user_email: str = "demo@domarion.local"
     cors_origins: list[str] = Field(

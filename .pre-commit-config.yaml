@@ -1,0 +1,27 @@
+minimum_pre_commit_version: "3.7.0"
+
+repos:
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: ruff check
+        language: python
+        additional_dependencies:
+          - "ruff>=0.5,<1.0"
+        types_or:
+          - python
+
+      - id: frontend-lint
+        name: frontend lint
+        entry: npm --prefix frontend run lint
+        language: system
+        files: '^frontend/.*\.(js|jsx|mjs|ts|tsx)$'
+        pass_filenames: false
+
+      - id: frontend-typecheck
+        name: frontend typecheck
+        entry: npm --prefix frontend run typecheck
+        language: system
+        files: '^frontend/.*\.(js|jsx|mjs|ts|tsx)$'
+        pass_filenames: false

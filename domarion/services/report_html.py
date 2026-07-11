@@ -6,6 +6,9 @@ from domarion.schemas import ListingAnalysis, ObjectReport
 def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -> str:
     listing = analysis.listing
     scores = analysis.scores
+    branding = report.branding
+    brand_name = branding.agency_name if branding and branding.agency_name else "Domarion Analytics"
+    branding_html = _render_branding(branding)
 
     score_cards = "".join(
         [
@@ -153,7 +156,8 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
   <main class="page">
     <section class="topline">
       <div>
-        <div class="brand">Domarion Analytics</div>
+        <div class="brand">{escape(brand_name)}</div>
+        {branding_html}
         <h1>{escape(listing.title)}</h1>
         <p class="muted">
           {escape(listing.address)} · {escape(listing.district)}, {escape(listing.city)}
@@ -162,6 +166,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       <div class="muted">
         <p>Listing ID: {escape(listing.id)}</p>
         <p>Audience: {escape(report.audience)}</p>
+        <p>Template: {escape(report.template_name)}</p>
         <p>Source: {escape(listing.source_name)}</p>
       </div>
     </section>
@@ -176,6 +181,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       {_metric("Дней на рынке", str(listing.days_on_market))}
       {_metric("Снижений цены", str(listing.price_reductions))}
       {_metric("Fair price mid", _money(scores.fair_price_mid))}
+      {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
       {_metric("Отклонение", f"{scores.price_delta_to_fair_mid_pct:+.1f}%")}
     </section>
 
@@ -227,6 +233,26 @@ def _metric(label: str, value: str) -> str:
         f'<div class="value">{escape(value)}</div>'
         "</div>"
     )
+
+
+def _render_branding(branding) -> str:
+    if branding is None:
+        return ""
+    rows = []
+    if branding.agent_name:
+        rows.append(f"Agent: {escape(branding.agent_name)}")
+    if branding.agent_email:
+        rows.append(f"Email: {escape(branding.agent_email)}")
+    if branding.agent_phone:
+        rows.append(f"Phone: {escape(branding.agent_phone)}")
+    if branding.website_url:
+        rows.append(f"Web: {escape(branding.website_url)}")
+    if branding.note:
+        rows.append(escape(branding.note))
+    if not rows:
+        return ""
+    content = "<br>".join(rows)
+    return f'<p class="muted">{content}<br>Powered by Domarion Analytics</p>'
 
 
 def _money(value: int) -> str:

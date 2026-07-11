@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from domarion.ingestion.geocoding import GeocodingResult, geocode_partner_address
 from domarion.schemas import Listing
 
 REQUIRED_COLUMNS = {
@@ -18,8 +19,6 @@ REQUIRED_COLUMNS = {
     "price",
     "area_m2",
     "rooms",
-    "lat",
-    "lon",
 }
 
 
@@ -84,6 +83,7 @@ def normalize_partner_row(
     source_url = _required_str(row, "source_url", row_number)
     city = _required_str(row, "city", row_number)
     district = _required_str(row, "district", row_number)
+    address = _required_str(row, "address", row_number)
     area_m2 = _required_float(row, "area_m2", row_number)
     price = _required_int(row, "price", row_number)
     rooms = _required_int(row, "rooms", row_number)
@@ -107,6 +107,16 @@ def normalize_partner_row(
     if data_quality_score is None:
         data_quality_score = _estimate_data_quality(row)
 
+    lat, lon, geocoding_result = _coordinates_from_row(
+        row,
+        row_number=row_number,
+        address=address,
+        city=city,
+        district=district,
+    )
+    if geocoding_result is not None:
+        data_quality_score = min(data_quality_score, geocoding_result.confidence_score)
+
     listing = Listing(
         id=source_listing_id,
         title=_required_str(row, "title", row_number),
@@ -116,7 +126,7 @@ def normalize_partner_row(
         district=district,
         area_id=area_id,
         municipality=_optional_str(row, "municipality") or city,
-        address=_required_str(row, "address", row_number),
+        address=address,
         market_type=market_type,
         price=price,
         currency=_optional_str(row, "currency") or "PLN",
@@ -133,8 +143,8 @@ def normalize_partner_row(
         price_reductions=_optional_int(row, "price_reductions") or 0,
         price_increases=_optional_int(row, "price_increases") or 0,
         relisted=_optional_bool(row, "relisted"),
-        lat=_required_float(row, "lat", row_number),
-        lon=_required_float(row, "lon", row_number),
+        lat=lat,
+        lon=lon,
         distance_to_center_km=_optional_float(row, "distance_to_center_km") or 0.0,
         nearest_stop_m=_optional_int(row, "nearest_stop_m") or 9999,
         nearest_school_m=_optional_int(row, "nearest_school_m") or 9999,
@@ -153,7 +163,7 @@ def normalize_partner_row(
         source_listing_id=source_listing_id,
         source_url=source_url,
         observed_at=observed_at,
-        raw_payload={key: value or "" for key, value in row.items()},
+        raw_payload=_raw_payload_with_geocoding(row, geocoding_result),
         listing=listing,
     )
 
@@ -190,6 +200,8 @@ def slugify(value: str) -> str:
 
 def _estimate_data_quality(row: dict[str, str | None]) -> int:
     score = 95
+    if not _optional_str(row, "lat") or not _optional_str(row, "lon"):
+        score -= 10
     for key in ("floor", "building_floors", "building_year"):
         if not _optional_str(row, key):
             score -= 5
@@ -204,6 +216,45 @@ def _estimate_data_quality(row: dict[str, str | None]) -> int:
     if not _optional_str(row, "distance_to_center_km"):
         score -= 5
     return max(score, 35)
+
+
+def _coordinates_from_row(
+    row: dict[str, str | None],
+    row_number: int,
+    address: str,
+    city: str,
+    district: str,
+) -> tuple[float, float, GeocodingResult | None]:
+    lat = _optional_float(row, "lat")
+    lon = _optional_float(row, "lon")
+    if lat is not None and lon is not None:
+        return lat, lon, None
+
+    result = geocode_partner_address(address=address, city=city, district=district)
+    if result is None:
+        raise PartnerCsvError(
+            f"Row {row_number}: columns 'lat' and 'lon' are required "
+            "when offline geocoding cannot resolve the address."
+        )
+    return result.lat, result.lon, result
+
+
+def _raw_payload_with_geocoding(
+    row: dict[str, str | None],
+    geocoding_result: GeocodingResult | None,
+) -> dict[str, str]:
+    payload = {key: value or "" for key, value in row.items()}
+    if geocoding_result is not None:
+        payload.update(
+            {
+                "geocoded_lat": str(geocoding_result.lat),
+                "geocoded_lon": str(geocoding_result.lon),
+                "geocoding_provider": geocoding_result.provider,
+                "geocoding_precision": geocoding_result.precision,
+                "geocoding_confidence_score": str(geocoding_result.confidence_score),
+            }
+        )
+    return payload
 
 
 def _required_str(row: dict[str, str | None], key: str, row_number: int) -> str:

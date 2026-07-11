@@ -22,6 +22,9 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
+- Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
+- Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
+- Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -33,6 +36,27 @@ FastAPI backend для поиска объектов, сравнения, ско
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m uvicorn main:app --reload --reload-dir domarion --reload-dir tests
+```
+
+Если установлен `make`, основные dev-команды доступны через единый интерфейс:
+
+```powershell
+make install
+make test
+make lint
+make backend-dev
+make frontend-lint
+make frontend-typecheck
+make pre-commit-install
+make pre-commit
+make check
+```
+
+Pre-commit hooks запускают `ruff check`, `npm run lint` и `npm run typecheck`.
+Для ручной проверки без `make`:
+
+```powershell
+.\.venv\Scripts\python.exe -m pre_commit run --all-files
 ```
 
 API будет доступен:
@@ -182,10 +206,42 @@ python scripts\smoke_deployment.py
 .\.venv\Scripts\domarion.exe import-partner-csv data\samples\partner_listings_wroclaw.csv --source-name "Demo Partner"
 ```
 
+Проверить тот же CSV через internal admin API без записи:
+
+```powershell
+curl.exe -X POST http://127.0.0.1:8000/api/v1/admin/listings/import-csv `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise" `
+  -F "source_name=Demo Partner" `
+  -F "dry_run=true" `
+  -F "file=@data/samples/partner_listings_wroclaw.csv;type=text/csv"
+```
+
+Запись через API требует `INGESTION_ADMIN_STORE_BACKEND=postgres`, чтобы raw listings,
+ingestion jobs и data-quality logs сохранялись в одной PostgreSQL/PostGIS БД.
+
+Импорт использует geocoding pipeline v1: если `lat`/`lon` пустые, CSV parser
+пытается восстановить координаты через offline Wrocław geocoder по `address`,
+`city` и `district`. Такие координаты помечаются в raw payload полями
+`geocoding_provider`, `geocoding_precision` и `geocoding_confidence_score`, а
+data quality score снижается. Если адрес не покрыт offline geocoder, импорт
+останавливается с ошибкой строки.
+
+Импорт также использует deduplication v1: если новый `source_listing_id` похож
+на уже известный объект по городу, району, normalized address, market type,
+rooms, площади и координатам, создается новый `property_source` для существующей
+`property`, а не новый дубль объекта. В таком случае `properties_created` не
+растет, а обновляется существующая property.
+
 Минимальные обязательные колонки:
 
 `source_listing_id`, `title`, `source_url`, `city`, `district`, `address`,
-`market_type`, `price`, `area_m2`, `rooms`, `lat`, `lon`.
+`market_type`, `price`, `area_m2`, `rooms`.
+
+Рекомендуемые колонки для production quality: `lat`, `lon`, `building_year`,
+`floor`, `building_floors`, инфраструктурные расстояния и quality score.
 
 ## Импорт planned investments
 
@@ -217,7 +273,88 @@ Tramwajowo-Autobusowego:
 Импорт ищет существующую запись по `source_url + name`, затем по `name + city`,
 поэтому повторный запуск обновляет слой, а не создает дубли.
 
+## Scoring weights and versioning
+
+Веса `Risk Score`, `Investment Score` и fair-price mix вынесены в runtime
+конфигурацию. Без настройки используется default profile, который сохраняет
+текущее поведение. Каждый ответ со score содержит `formula_version` и
+`weights_profile`; те же поля сохраняются в metadata сгенерированных отчетов.
+Fair price estimate также содержит `fair_price_confidence_score`, который
+учитывает качество данных, число comparables и глубину статистики района.
+
+Пример override через `.env`:
+
+```env
+SCORING_WEIGHTS_JSON={"investment":{"price_position":0.25,"transport":0.20,"risk_penalty":0.20},"risk":{"pricing":0.30,"market":0.22},"fair_price":{"area_median":0.70,"comparable_median":0.30}}
+```
+
+Запустить backtest fair-price scoring на historical price snapshots:
+
+```powershell
+.\.venv\Scripts\domarion.exe scoring-backtest --city Wrocław --limit 10
+```
+
+Internal admin API:
+
+```powershell
+curl.exe "http://127.0.0.1:8000/api/v1/admin/scoring/backtest?city=Wrocław&limit=10" `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise"
+```
+
+Зафиксировать текущие area market stats как historical snapshots:
+
+```powershell
+.\.venv\Scripts\domarion.exe snapshot-area-markets --dry-run
+```
+
+Запись snapshots требует `DATA_REPOSITORY_BACKEND=postgres` и актуальных Alembic
+миграций:
+
+```powershell
+.\.venv\Scripts\domarion.exe snapshot-area-markets
+```
+
+Internal admin dry-run API:
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/api/v1/admin/area-market-snapshots?dry_run=true" `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise"
+```
+
 ## HTML-отчеты
+
+Отчеты используют явные templates для `buyer`, `realtor` и `investor`.
+Посмотреть доступные шаблоны:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/templates
+```
+
+`ObjectReport` содержит `template_code` и `template_name`; при сохранении отчета
+они попадают в `report_metadata`.
+
+Для realtor-отчета можно передать optional `branding`:
+
+```json
+{
+  "listing_id": "wr-001",
+  "audience": "realtor",
+  "report_format": "html",
+  "branding": {
+    "agency_name": "Example Realty",
+    "agent_name": "Anna Agent",
+    "agent_email": "anna@example.com",
+    "agent_phone": "+48 500 000 000",
+    "website_url": "https://example.com"
+  }
+}
+```
 
 Сгенерировать printable HTML-отчет по demo listing:
 
@@ -250,6 +387,20 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/object/generate `
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports
 ```
+
+Проверить email delivery сохраненного отчета без отправки:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/<report_id>/email `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"dry_run":true,"target_email":"client@example.com"}'
+```
+
+Фактическая отправка использует те же SMTP настройки, что и email alerts:
+`ALERT_EMAIL_ENABLED`, `ALERT_EMAIL_SENDER`, `ALERT_SMTP_HOST`,
+`ALERT_SMTP_PORT`, `ALERT_SMTP_USERNAME`, `ALERT_SMTP_PASSWORD`,
+`ALERT_SMTP_USE_TLS`.
 
 Получить HTML/JSON content сохраненного отчета:
 

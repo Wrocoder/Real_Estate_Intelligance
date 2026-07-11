@@ -88,6 +88,10 @@ export default function ListingDetailPage() {
           <strong>{money(scores.fair_price_mid)}</strong>
         </div>
         <div className="metric">
+          <span>Fair price confidence</span>
+          <strong>{scores.fair_price_confidence_score}/100</strong>
+        </div>
+        <div className="metric">
           <span>Отклонение от fair mid</span>
           <strong>{percent(scores.price_delta_to_fair_mid_pct)}</strong>
         </div>

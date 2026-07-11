@@ -1,13 +1,18 @@
 import argparse
 import json
+import sys
 from contextlib import contextmanager
 
+from domarion.core import get_settings
+from domarion.db.session import SessionLocal
 from domarion.ingestion.db_writer import import_partner_csv
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
 from domarion.repositories.factory import get_repository
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
 from domarion.scripts.seed_demo import seed_demo_data
+from domarion.services.area_snapshots import run_area_market_snapshot_job
+from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.report_generation import write_object_report_html
 
 
@@ -54,12 +59,33 @@ def main() -> None:
         default="buyer",
         help="Report audience variant.",
     )
+    backtest_parser = subparsers.add_parser(
+        "scoring-backtest",
+        help="Run fair-price scoring backtest on repository price history.",
+    )
+    backtest_parser.add_argument("--city", default=None, help="Optional city filter.")
+    backtest_parser.add_argument("--district", default=None, help="Optional district filter.")
+    backtest_parser.add_argument(
+        "--limit",
+        type=int,
+        default=50,
+        help="Maximum number of example backtest rows to print.",
+    )
+    snapshot_parser = subparsers.add_parser(
+        "snapshot-area-markets",
+        help="Persist current area statistics as historical market snapshots.",
+    )
+    snapshot_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Build snapshots without writing to PostgreSQL.",
+    )
 
     args = parser.parse_args()
 
     if args.command == "seed-demo":
         result = seed_demo_data()
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        _print_json(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "import-partner-csv":
         if args.dry_run:
             records = read_partner_csv(args.path, args.source_name, args.source_type)
@@ -70,7 +96,7 @@ def main() -> None:
             }
         else:
             result = import_partner_csv(args.path, args.source_name, args.source_type).as_dict()
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        _print_json(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "import-planned-investments":
         if args.dry_run:
             result = import_planned_investments(
@@ -86,7 +112,7 @@ def main() -> None:
                     repository,
                     default_source_name=args.source_name,
                 ).as_dict()
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+        _print_json(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "generate-report-html":
         repository = InMemoryRealEstateRepository()
         path = write_object_report_html(
@@ -95,7 +121,43 @@ def main() -> None:
             args.output_path,
             args.audience,
         )
-        print(json.dumps({"output_path": str(path), "listing_id": args.listing_id}, indent=2))
+        _print_json(json.dumps({"output_path": str(path), "listing_id": args.listing_id}, indent=2))
+    elif args.command == "scoring-backtest":
+        with contextmanager(get_repository)() as repository:
+            result = run_scoring_backtest(
+                repository,
+                city=args.city,
+                district=args.district,
+                item_limit=args.limit,
+            )
+        _print_json(result.model_dump_json(indent=2))
+    elif args.command == "snapshot-area-markets":
+        with contextmanager(get_repository)() as repository:
+            if args.dry_run:
+                result = run_area_market_snapshot_job(repository, dry_run=True)
+            else:
+                settings = get_settings()
+                if settings.data_repository_backend != "postgres":
+                    raise SystemExit(
+                        "snapshot-area-markets writes require DATA_REPOSITORY_BACKEND=postgres. "
+                        "Use --dry-run for local memory mode."
+                    )
+                with SessionLocal() as session:
+                    result = run_area_market_snapshot_job(
+                        repository,
+                        session=session,
+                        dry_run=False,
+                    )
+                    session.commit()
+        _print_json(result.model_dump_json(indent=2))
+
+
+def _print_json(payload: str) -> None:
+    try:
+        print(payload)
+    except UnicodeEncodeError:
+        sys.stdout.buffer.write(payload.encode("utf-8"))
+        sys.stdout.buffer.write(b"\n")
 
 
 if __name__ == "__main__":

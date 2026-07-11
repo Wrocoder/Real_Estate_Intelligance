@@ -161,6 +161,7 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
             "liquidity_score": scores["liquidity_score"],
             "rental_potential_score": scores["rental_potential_score"],
             "fair_price_mid": scores["fair_price_mid"],
+            "fair_price_confidence_score": scores["fair_price_confidence_score"],
             "price_delta_to_fair_mid_pct": scores["price_delta_to_fair_mid_pct"],
         }
     )

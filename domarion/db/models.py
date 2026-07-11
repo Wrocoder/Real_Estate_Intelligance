@@ -199,6 +199,24 @@ class AreaStatistic(Base):
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class AreaMarketSnapshot(Base):
+    __tablename__ = "area_market_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    area_id: Mapped[str] = mapped_column(String(120), index=True)
+    name: Mapped[str] = mapped_column(String(120))
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    median_price_per_m2: Mapped[int] = mapped_column(Integer)
+    average_price_per_m2: Mapped[int] = mapped_column(Integer)
+    active_listings: Mapped[int] = mapped_column(Integer)
+    new_listings_30d: Mapped[int] = mapped_column(Integer)
+    removed_listings_30d: Mapped[int] = mapped_column(Integer)
+    average_days_on_market: Mapped[int] = mapped_column(Integer)
+    price_change_90d_pct: Mapped[float] = mapped_column(Float)
+    supply_change_90d_pct: Mapped[float] = mapped_column(Float)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class GeneratedReport(Base):
     __tablename__ = "generated_reports"
 
