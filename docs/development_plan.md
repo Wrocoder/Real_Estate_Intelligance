@@ -192,7 +192,7 @@
 - [x] Добавить realtor report секции: map, comparable listings table, client-facing price arguments.
 - [x] Добавить investor report секции: rental yield, alternatives comparison, liquidity and growth thesis.
 - [x] Добавить paid area report product.
-- [ ] Добавить full object analysis report product.
+- [x] Добавить full object analysis report product.
 - [ ] Добавить bundles: package of 5 reports.
 - [ ] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [ ] Добавить export reports в CSV/JSON для realtor/investor workflows.
@@ -419,6 +419,7 @@
 - [x] Commit 24: user-facing private draft history page.
 - [x] Commit 25: paid report orders for user-submitted drafts.
 - [x] Commit 26: paid area report product.
+- [x] Commit 27: distinct paid full object analysis artifact.
 
 ## Current Sprint
 
@@ -440,6 +441,7 @@
 - [x] Добавить user-facing страницу истории private drafts с удалением и генерацией отчетов.
 - [x] Добавить paid checkout/fulfillment из private draft через существующий report order lifecycle.
 - [x] Добавить paid area report product через `area:<area_id>` order reference.
+- [x] Добавить distinct paid artifact для `full_object_analysis`.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -451,3 +453,4 @@
 - [x] Сделать Commit 24 и push.
 - [x] Сделать Commit 25 и push.
 - [x] Сделать Commit 26 и push.
+- [x] Сделать Commit 27 и push.

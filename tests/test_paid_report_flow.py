@@ -118,9 +118,19 @@ def test_paid_order_can_fulfill_after_free_report_limit_is_reached() -> None:
     ).json()["order"]
     client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
     fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers)
+    report = client.get(
+        f"/api/v1/reports/{fulfilled.json()['generated_report_id']}",
+        headers=headers,
+    ).json()
 
     assert fulfilled.status_code == 200
     assert fulfilled.json()["generated_report_id"] is not None
+    assert report["report_metadata"]["report_product_code"] == "full_object_analysis"
+    assert report["report_metadata"]["report_template_code"] == "full_object_analysis_v1"
+    assert report["title"].startswith("Full Object Analysis - ")
+    assert "Full Object Analysis Summary" in report["content"]
+    assert "Due diligence deep dive" in report["content"]
+    assert "Scenario matrix" in report["content"]
     assert len(client.get("/api/v1/reports", headers=headers).json()) == 2
 
 

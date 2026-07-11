@@ -1966,6 +1966,7 @@ def _generate_paid_report_for_order(
             audience=order.audience,
             report_format=order.report_format,
             owner_id=order.owner_id,
+            product_code=order.product_code,
         )
 
     return generate_and_store_object_report(
@@ -1975,6 +1976,7 @@ def _generate_paid_report_for_order(
         audience=order.audience,
         report_format=order.report_format,
         owner_id=order.owner_id,
+        product_code=order.product_code,
     )
 
 

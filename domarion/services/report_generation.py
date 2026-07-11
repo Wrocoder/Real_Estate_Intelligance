@@ -6,10 +6,14 @@ from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import (
     GeneratedReport,
     GeneratedReportCreate,
+    ListingAnalysis,
     MarketDashboardArea,
+    ObjectReport,
     ReportAudience,
     ReportBranding,
     ReportFormat,
+    ReportProductCode,
+    ReportSection,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
 )
@@ -46,6 +50,7 @@ def generate_and_store_object_report(
     report_format: ReportFormat = "html",
     owner_id: str = "demo-user",
     branding: ReportBranding | None = None,
+    product_code: ReportProductCode = "object_report",
 ) -> GeneratedReport:
     listing = repository.get_listing(listing_id)
     if listing is None:
@@ -53,6 +58,7 @@ def generate_and_store_object_report(
 
     analysis = build_listing_analysis(repository, listing)
     report = build_object_report(analysis, audience, branding=branding)
+    report = _apply_paid_object_report_variant(report, analysis, product_code)
 
     if report_format == "html":
         content = render_object_report_html(report, analysis)
@@ -67,10 +73,11 @@ def generate_and_store_object_report(
         audience=audience,
         report_format=report_format,
         content_type=content_type,
-        title=listing.title,
+        title=_object_report_title(listing.title, product_code),
         summary=report.summary,
         content=content,
         report_metadata={
+            "report_product_code": product_code,
             "area_id": listing.area_id,
             "city": listing.city,
             "district": listing.district,
@@ -97,11 +104,13 @@ def generate_and_store_user_submitted_draft_report(
     report_format: ReportFormat = "html",
     owner_id: str = "demo-user",
     branding: ReportBranding | None = None,
+    product_code: ReportProductCode = "object_report",
 ) -> GeneratedReport:
     analysis_wrapper = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
     analysis = analysis_wrapper.analysis
     listing = analysis.listing
     report = build_object_report(analysis, audience, branding=branding)
+    report = _apply_paid_object_report_variant(report, analysis, product_code)
 
     if report_format == "html":
         content = render_object_report_html(report, analysis)
@@ -116,10 +125,11 @@ def generate_and_store_user_submitted_draft_report(
         audience=audience,
         report_format=report_format,
         content_type=content_type,
-        title=listing.title,
+        title=_object_report_title(listing.title, product_code),
         summary=report.summary,
         content=content,
         report_metadata={
+            "report_product_code": product_code,
             "user_submitted_draft_id": draft.id,
             "source_domain": draft.source_domain,
             "private_source_reference_present": draft.source_url_private is not None,
@@ -254,3 +264,155 @@ def _area_report_disclaimer() -> str:
 
 def _format_int(value: int) -> str:
     return f"{value:,}".replace(",", " ")
+
+
+def _apply_paid_object_report_variant(
+    report: ObjectReport,
+    analysis: ListingAnalysis,
+    product_code: ReportProductCode,
+) -> ObjectReport:
+    if product_code != "full_object_analysis":
+        return report
+
+    sections = [
+        _full_analysis_summary_section(analysis),
+        *report.sections,
+        _full_analysis_due_diligence_section(analysis),
+        _full_analysis_offer_strategy_section(analysis),
+        _full_analysis_scenarios_section(analysis),
+    ]
+    return report.model_copy(
+        update={
+            "template_code": "full_object_analysis_v1",
+            "template_name": "Full Object Analysis v1",
+            "summary": f"Full Object Analysis: {report.summary}",
+            "sections": sections,
+        }
+    )
+
+
+def _object_report_title(listing_title: str, product_code: ReportProductCode) -> str:
+    if product_code == "full_object_analysis":
+        return f"Full Object Analysis - {listing_title}"
+    if product_code == "investor_report":
+        return f"Investor Report - {listing_title}"
+    return listing_title
+
+
+def _full_analysis_summary_section(analysis: ListingAnalysis) -> ReportSection:
+    listing = analysis.listing
+    scores = analysis.scores
+    return ReportSection(
+        title="Full Object Analysis Summary",
+        items=[
+            f"Listing: {listing.address}, {listing.district}, {listing.city}.",
+            f"Fair price range: {_money_range(scores.fair_price_low, scores.fair_price_high)}.",
+            f"Price delta to fair mid: {scores.price_delta_to_fair_mid_pct:+.1f}%.",
+            f"Fair price confidence: {scores.fair_price_confidence_score}/100.",
+            (
+                "Decision posture: "
+                f"{_decision_posture(scores.risk_score, scores.negotiation_score)}."
+            ),
+        ],
+    )
+
+
+def _full_analysis_due_diligence_section(analysis: ListingAnalysis) -> ReportSection:
+    listing = analysis.listing
+    items = [
+        "Validate księga wieczysta: owner, mortgage, claims, easements and land use.",
+        "Compare usable area, floor, storage, parking and included fixtures against documents.",
+        "Request building/community documents: fees, renovation fund, planned repairs and debts.",
+        "Check technical state: windows, electrical, plumbing, heating, ventilation and moisture.",
+        (
+            f"Location checks: stop {listing.nearest_stop_m} m, "
+            f"school {listing.nearest_school_m} m, "
+            f"major road {listing.nearest_major_road_m} m, industrial zone "
+            f"{listing.nearest_industrial_zone_m} m."
+        ),
+    ]
+    if listing.market_type == "primary":
+        items.append("Primary market: check developer escrow, handover date and prospekt.")
+    else:
+        items.append("Secondary market: include PCC 2%, notary costs and building repair reserves.")
+    if analysis.scores.risk_score >= 60:
+        items.append("Risk Score is elevated; require extra evidence or price discount.")
+    return ReportSection(title="Due diligence deep dive", items=items)
+
+
+def _full_analysis_offer_strategy_section(analysis: ListingAnalysis) -> ReportSection:
+    listing = analysis.listing
+    scores = analysis.scores
+    opening_offer = _opening_offer(listing.price, scores.price_delta_to_fair_mid_pct)
+    walkaway = min(scores.fair_price_high, round(listing.price * 1.01))
+    items = [
+        f"Suggested opening anchor: {_money(opening_offer)}.",
+        f"Walk-away guardrail before extra due diligence: {_money(walkaway)}.",
+        f"Use fair price confidence {scores.fair_price_confidence_score}/100 to size discount.",
+        f"Negotiation Score: {scores.negotiation_score}/100.",
+        *analysis.negotiation_arguments[:4],
+    ]
+    if listing.days_on_market > analysis.area_statistics.average_days_on_market:
+        items.append(
+            "Days on market is above area average; use exposure as a negotiation argument."
+        )
+    if listing.price_reductions:
+        items.append(f"Price was already reduced {listing.price_reductions} time(s).")
+    return ReportSection(title="Offer and negotiation plan", items=items)
+
+
+def _full_analysis_scenarios_section(analysis: ListingAnalysis) -> ReportSection:
+    listing = analysis.listing
+    scores = analysis.scores
+    area = analysis.area_statistics
+    return ReportSection(
+        title="Scenario matrix",
+        items=[
+            (
+                "Conservative: negotiate near "
+                f"{_money(scores.fair_price_low)} if legal/technical checks reveal issues."
+            ),
+            (
+                f"Base case: fair mid {_money(scores.fair_price_mid)} with "
+                f"{scores.fair_price_confidence_score}/100 confidence."
+            ),
+            (
+                "Upside case: paying toward "
+                f"{_money(scores.fair_price_high)} needs clean due diligence and strong demand."
+            ),
+            (
+                f"Area trend context: price 90d {area.price_change_90d_pct:+.1f}%, "
+                f"supply 90d {area.supply_change_90d_pct:+.1f}%."
+            ),
+            (
+                f"Liquidity context: object {listing.days_on_market} days on market vs "
+                f"area average {area.average_days_on_market}."
+            ),
+        ],
+    )
+
+
+def _decision_posture(risk_score: int, negotiation_score: int) -> str:
+    if risk_score >= 70:
+        return "high scrutiny before offer"
+    if negotiation_score >= 65:
+        return "negotiation-friendly"
+    if risk_score <= 35:
+        return "standard diligence"
+    return "balanced, verify object-specific facts"
+
+
+def _opening_offer(price: int, price_delta_pct: float) -> int:
+    if price_delta_pct > 7:
+        return round(price * 0.93)
+    if price_delta_pct > 0:
+        return round(price * 0.96)
+    return round(price * 0.98)
+
+
+def _money(value: int) -> str:
+    return f"{_format_int(value)} PLN"
+
+
+def _money_range(low: int, high: int) -> str:
+    return f"{_money(low)}-{_money(high)}"
