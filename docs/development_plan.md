@@ -142,7 +142,7 @@
 - [ ] Добавить человекочитаемые score labels: good option, overpriced, negotiable, risky, investment potential.
 - [x] Добавить market dashboards: active/new/removed listings, exposure time, price/rooms/area distributions.
 - [ ] Добавить district/city comparison analytics.
-- [ ] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
+- [x] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
 - [ ] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
 - [ ] Добавить growth factors: transport, schools, parks, hospitals, retail, offices, universities, population/jobs growth.
 - [ ] Добавить risk factors: noise, flood, pollution, airport/rail/industrial zones, oversupply, weak transport, weak rental yield.

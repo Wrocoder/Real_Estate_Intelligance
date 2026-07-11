@@ -61,6 +61,7 @@ export type MarketDashboardArea = AreaStatistics & {
   liquidity_index: number;
   overheated_index: number;
   buyer_market_index: number;
+  seller_market_index: number;
 };
 
 export type MarketDashboard = {

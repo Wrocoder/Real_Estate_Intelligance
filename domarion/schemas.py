@@ -392,6 +392,7 @@ class MarketDashboardArea(BaseModel):
     liquidity_index: int = Field(ge=0, le=100)
     overheated_index: int = Field(ge=0, le=100)
     buyer_market_index: int = Field(ge=0, le=100)
+    seller_market_index: int = Field(ge=0, le=100)
 
 
 class MarketDashboard(BaseModel):

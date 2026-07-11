@@ -130,6 +130,7 @@ export default function MarketDashboardPage() {
                   <th>Price 90d</th>
                   <th>Liquidity</th>
                   <th>Buyer market</th>
+                  <th>Seller market</th>
                   <th>Overheated</th>
                 </tr>
               </thead>
@@ -146,6 +147,7 @@ export default function MarketDashboardPage() {
                     <td>{percent(area.price_change_90d_pct)}</td>
                     <td>{area.liquidity_index}/100</td>
                     <td>{area.buyer_market_index}/100</td>
+                    <td>{area.seller_market_index}/100</td>
                     <td>{area.overheated_index}/100</td>
                   </tr>
                 ))}

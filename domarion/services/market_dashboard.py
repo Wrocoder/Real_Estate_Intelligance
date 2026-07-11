@@ -88,6 +88,7 @@ def _area_dashboard_item(area: AreaStatistics) -> MarketDashboardArea:
         liquidity_index=_liquidity_index(area),
         overheated_index=_overheated_index(area),
         buyer_market_index=_buyer_market_index(area),
+        seller_market_index=_seller_market_index(area),
     )
 
 
@@ -110,6 +111,14 @@ def _buyer_market_index(area: AreaStatistics) -> int:
     long_exposure = min(area.average_days_on_market, 180) / 180 * 35
     removed_pressure = min(area.removed_listings_30d, 50) / 50 * 15
     return _clamp_score(supply_growth + price_softness + long_exposure + removed_pressure)
+
+
+def _seller_market_index(area: AreaStatistics) -> int:
+    price_growth = max(area.price_change_90d_pct, 0) * 8
+    supply_tightness = max(-area.supply_change_90d_pct, 0) * 3
+    short_exposure = max(120 - area.average_days_on_market, 0) / 120 * 35
+    absorption = min(area.removed_listings_30d, 80) / 80 * 20
+    return _clamp_score(price_growth + supply_tightness + short_exposure + absorption)
 
 
 def _bucket_values(

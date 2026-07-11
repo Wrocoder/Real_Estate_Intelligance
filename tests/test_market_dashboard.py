@@ -26,6 +26,7 @@ def test_market_dashboard_builds_city_summary_and_distributions() -> None:
     assert all(0 <= area.liquidity_index <= 100 for area in dashboard.areas)
     assert all(0 <= area.overheated_index <= 100 for area in dashboard.areas)
     assert all(0 <= area.buyer_market_index <= 100 for area in dashboard.areas)
+    assert all(0 <= area.seller_market_index <= 100 for area in dashboard.areas)
 
 
 def test_market_dashboard_filters_by_district() -> None:
@@ -53,6 +54,7 @@ def test_market_dashboard_api_returns_public_dashboard() -> None:
     assert payload["listings_count"] >= 1
     assert payload["price_distribution"]
     assert payload["areas"][0]["name"] == "Fabryczna"
+    assert 0 <= payload["areas"][0]["seller_market_index"] <= 100
 
 
 def test_market_dashboard_api_handles_empty_market() -> None:
