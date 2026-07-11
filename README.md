@@ -27,6 +27,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
+- Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, а оценка строится на legal-first базе без live scraping порталов.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -73,6 +74,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
@@ -112,6 +114,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 Основные страницы:
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
+- http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам и optional private URL reference.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
@@ -535,6 +538,22 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
   -ContentType "application/json" `
   -Body '{"listing_ids":["wr-001","wr-002"]}'
 ```
+
+## Проверка квартиры по адресу/URL
+
+Публичный endpoint анализирует объект, который пользователь ввел вручную. Если
+передан `source_url`, он возвращается только как private reference текущего
+запроса и не попадает в `analysis.listing.source_url`, UI, SEO или отчеты.
+Live scraping портала в этом flow не выполняется.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"source_url":"https://www.otodom.pl/pl/oferta/demo","confirm_private_analysis":true}'
+```
+
+Frontend flow доступен на `http://127.0.0.1:3000/check`.
 
 ## Paid report flow MVP
 

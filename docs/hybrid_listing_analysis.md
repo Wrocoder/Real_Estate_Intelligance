@@ -56,6 +56,21 @@
 - buyer questions/checklist;
 - mortgage/total purchase cost section.
 
+## MVP First Slice
+
+Реализовано:
+
+- `POST /api/v1/user-submitted-listings/analyze`;
+- frontend page `/check`;
+- transient draft listing внутри response без сохранения в публичную базу объектов;
+- private handling of `source_url`: реальная ссылка не попадает в `analysis.listing.source_url`;
+- data-quality/confidence score для ручного ввода и approximate geocoding;
+- comparables из текущего repository, area statistics и open-data/planned investments слоя;
+- предупреждение, если используется area-level fallback или district-level defaults.
+
+Следующие шаги: persistence/retention policy для drafts, paid buyer object-check
+report из draft и optional URL-assisted parser после legal review источника.
+
 ## Non-Goals For MVP
 
 - Массовый crawler Otodom/OLX/Morizon.

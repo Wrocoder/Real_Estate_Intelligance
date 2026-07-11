@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   Calculator,
+  ClipboardCheck,
   Columns3,
   CreditCard,
   Database,
@@ -40,6 +41,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/">
                 <Search size={18} />
                 Подбор
+              </Link>
+              <Link href="/check">
+                <ClipboardCheck size={18} />
+                Проверка
               </Link>
               <Link href="/reports">
                 <FileText size={18} />

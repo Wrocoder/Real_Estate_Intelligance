@@ -16,6 +16,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/price-history/rebuild", "post"): "PriceHistoryRebuildResult",
         ("/api/v1/market/dashboard", "get"): "MarketDashboard",
         ("/api/v1/mortgage/calculate", "post"): "MortgageCalculationResult",
+        (
+            "/api/v1/user-submitted-listings/analyze",
+            "post",
+        ): "UserSubmittedListingAnalysis",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
     }
@@ -86,6 +90,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "SourceRegistryEntry",
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",
+        "UserSubmittedListingAnalysis",
+        "UserSubmittedListingRequest",
     }
 
     assert expected_schemas <= set(schemas)
@@ -104,3 +110,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "schema"
     ]
     assert mortgage_request_schema["$ref"] == "#/components/schemas/MortgageCalculationRequest"
+
+    user_listing_operation = openapi["paths"]["/api/v1/user-submitted-listings/analyze"]["post"]
+    user_listing_request_schema = user_listing_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert user_listing_request_schema["$ref"] == "#/components/schemas/UserSubmittedListingRequest"

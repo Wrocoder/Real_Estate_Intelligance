@@ -199,6 +199,42 @@ export type ListingAnalysis = {
   data_quality_notes: string[];
 };
 
+export type UserSubmittedListingRequest = {
+  title?: string | null;
+  source_url?: string | null;
+  address: string;
+  city?: string;
+  district: string;
+  market_type?: "primary" | "secondary";
+  price: number;
+  area_m2: number;
+  rooms: number;
+  floor?: number | null;
+  building_floors?: number | null;
+  building_year?: number | null;
+  lat?: number | null;
+  lon?: number | null;
+  distance_to_center_km?: number | null;
+  nearest_stop_m?: number | null;
+  nearest_school_m?: number | null;
+  nearest_major_road_m?: number | null;
+  nearest_industrial_zone_m?: number | null;
+  parks_within_1km?: number | null;
+  schools_within_1km?: number | null;
+  planned_investments_within_2km?: number | null;
+  confirm_private_analysis: boolean;
+};
+
+export type UserSubmittedListingAnalysis = {
+  analysis: ListingAnalysis;
+  confidence_score: number;
+  source_url_private: string | null;
+  source_domain: string | null;
+  warnings: string[];
+  comparables_basis: string;
+  retention_note: string;
+};
+
 export type ReportBranding = {
   agency_name?: string | null;
   agent_name?: string | null;
@@ -703,6 +739,11 @@ export const api = {
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
   calculateMortgage: (payload: MortgageCalculationRequest) =>
     request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  analyzeUserSubmittedListing: (payload: UserSubmittedListingRequest) =>
+    request<UserSubmittedListingAnalysis>("/api/v1/user-submitted-listings/analyze", {
       method: "POST",
       body: JSON.stringify(payload),
     }),

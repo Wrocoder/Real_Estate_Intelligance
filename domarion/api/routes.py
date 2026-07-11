@@ -101,6 +101,8 @@ from domarion.schemas import (
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
     SubscriptionUpdate,
+    UserSubmittedListingAnalysis,
+    UserSubmittedListingRequest,
 )
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alerts import build_alert_preview
@@ -127,6 +129,7 @@ from domarion.services.report_templates import list_report_templates
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
 from domarion.services.search import ListingSearchError, search_listing_analyses
+from domarion.services.user_submitted_listings import analyze_user_submitted_listing
 from domarion.user_store.base import UserStore
 from domarion.user_store.factory import get_user_store
 
@@ -228,6 +231,20 @@ def calculate_mortgage_budget(
 ) -> MortgageCalculationResult:
     try:
         return calculate_mortgage(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/user-submitted-listings/analyze",
+    response_model=UserSubmittedListingAnalysis,
+)
+def analyze_user_submitted_listing_endpoint(
+    payload: UserSubmittedListingRequest,
+    repository: RepositoryDep,
+) -> UserSubmittedListingAnalysis:
+    try:
+        return analyze_user_submitted_listing(repository, payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

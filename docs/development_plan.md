@@ -106,18 +106,18 @@
 
 Стратегия описана в `docs/hybrid_listing_analysis.md`: не строить MVP на массовом скрапинге порталов. Пользователь сам приносит объект: вводит адрес, цену, площадь, комнаты и опционально URL объявления. URL хранится как приватный reference/evidence, не показывается другим пользователям и не используется для массового scheduled crawling без legal approval по конкретному источнику.
 
-- [ ] Добавить публичный flow “Проверить квартиру”: address-first ввод объекта без необходимости иметь объект в нашей базе.
-- [ ] Добавить форму ручных параметров: адрес/район, цена, площадь, комнаты, этаж, год, рынок, состояние, URL объявления optional.
-- [ ] Добавить `UserSubmittedListing`/draft model или report metadata для временного объекта пользователя.
-- [ ] Добавить backend endpoint для нормализации user-submitted listing и расчета preliminary score.
-- [ ] Добавить приватное хранение `source_url` как internal reference: не показывать в UI/отчетах, не индексировать публично, не экспортировать в SEO.
-- [ ] Добавить data-quality score для пользовательского ввода: missing address, missing floor/year, approximate location, stale price.
-- [ ] Строить comparables не из URL, а из наших legal-first listings, партнерских snapshots, area statistics и open-data слоев.
-- [ ] Добавить fallback, если comparables мало: area-level estimate + confidence warning + ручной отчет.
+- [x] Добавить публичный flow “Проверить квартиру”: address-first ввод объекта без необходимости иметь объект в нашей базе.
+- [x] Добавить форму ручных параметров: адрес/район, цена, площадь, комнаты, этаж, год, рынок, URL объявления optional.
+- [x] Добавить transient `UserSubmittedListing` draft response для временного объекта пользователя.
+- [x] Добавить backend endpoint для нормализации user-submitted listing и расчета preliminary score.
+- [x] Добавить приватную обработку `source_url` как internal reference: не показывать в UI/отчетах, не индексировать публично, не экспортировать в SEO.
+- [x] Добавить data-quality score для пользовательского ввода: missing floor/year, approximate location, defaulted infrastructure.
+- [x] Строить comparables не из URL, а из наших legal-first listings, партнерских snapshots, area statistics и open-data слоев.
+- [x] Добавить fallback, если comparables мало: area-level estimate + confidence warning.
 - [ ] Добавить optional URL-assisted parser только после legal review источника и только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
-- [ ] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
+- [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [ ] Добавить retention policy для user-submitted drafts и ссылок.
-- [ ] Покрыть API contract tests и frontend smoke для address-first flow.
+- [x] Покрыть API contract tests и frontend typecheck для address-first flow.
 
 ## 5. Ingestion Pipeline
 
@@ -250,7 +250,7 @@
 - [x] Сделать отдельную страницу market/area analytics dashboard.
 - [ ] Сделать страницу сравнения районов.
 - [x] Сделать mortgage calculator page.
-- [ ] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
+- [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
@@ -409,7 +409,7 @@
 - [x] Commit 17: planned investments open-data ingestion.
 - [x] Commit 18: source registry and partner onboarding.
 - [x] Commit 19: price history update pipeline.
-- [ ] Commit 20: hybrid user-provided listing analysis flow.
+- [x] Commit 20: hybrid user-provided listing analysis flow.
 
 ## Current Sprint
 
@@ -424,9 +424,9 @@
 - [x] Добавить partner data onboarding format.
 - [x] Добавить price history update pipeline и backfill command/API.
 - [x] Добавить hybrid user-provided listing analysis spec в план.
-- [ ] Реализовать first slice: публичная форма проверки квартиры + backend draft/analysis endpoint.
+- [x] Реализовать first slice: публичная форма проверки квартиры + backend draft/analysis endpoint.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
-- [ ] Сделать Commit 20 и push.
+- [x] Сделать Commit 20 и push.

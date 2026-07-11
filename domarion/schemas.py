@@ -407,6 +407,42 @@ class ListingAnalysis(BaseModel):
     data_quality_notes: list[str]
 
 
+class UserSubmittedListingRequest(BaseModel):
+    title: str | None = None
+    source_url: str | None = None
+    address: str
+    city: str = "Wrocław"
+    district: str
+    market_type: MarketType = "secondary"
+    price: int = Field(gt=0)
+    area_m2: float = Field(gt=0)
+    rooms: int = Field(ge=1, le=10)
+    floor: int | None = Field(default=None, ge=0, le=80)
+    building_floors: int | None = Field(default=None, ge=1, le=120)
+    building_year: int | None = Field(default=None, ge=1800, le=2100)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    distance_to_center_km: float | None = Field(default=None, ge=0)
+    nearest_stop_m: int | None = Field(default=None, ge=0)
+    nearest_school_m: int | None = Field(default=None, ge=0)
+    nearest_major_road_m: int | None = Field(default=None, ge=0)
+    nearest_industrial_zone_m: int | None = Field(default=None, ge=0)
+    parks_within_1km: int | None = Field(default=None, ge=0)
+    schools_within_1km: int | None = Field(default=None, ge=0)
+    planned_investments_within_2km: int | None = Field(default=None, ge=0)
+    confirm_private_analysis: bool
+
+
+class UserSubmittedListingAnalysis(BaseModel):
+    analysis: ListingAnalysis
+    confidence_score: int = Field(ge=0, le=100)
+    source_url_private: str | None = None
+    source_domain: str | None = None
+    warnings: list[str] = Field(default_factory=list)
+    comparables_basis: str
+    retention_note: str
+
+
 class ListingSearchResponse(BaseModel):
     items: list[ListingAnalysis]
     total: int = Field(ge=0)
