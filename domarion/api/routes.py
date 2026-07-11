@@ -63,6 +63,7 @@ from domarion.schemas import (
     GeneratedReport,
     GeneratedReportListItem,
     GenerateReportRequest,
+    GenerateUserSubmittedDraftReportRequest,
     IngestionJob,
     IngestionJobCreate,
     IngestionSourceHealth,
@@ -126,6 +127,7 @@ from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
     generate_and_store_object_report,
+    generate_and_store_user_submitted_draft_report,
     generate_object_report_html,
 )
 from domarion.services.report_products import get_report_product, list_report_products
@@ -336,6 +338,32 @@ def delete_user_submitted_listing_draft(
     if not deleted:
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
     return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/user-submitted-listings/drafts/{draft_id}/reports/generate",
+    response_model=GeneratedReport,
+)
+def generate_user_submitted_listing_draft_report(
+    draft_id: str,
+    payload: GenerateUserSubmittedDraftReportRequest,
+    draft_store: UserSubmittedListingStoreDep,
+    report_store: ReportStoreDep,
+    account: CurrentAccountDep,
+) -> GeneratedReport:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+
+    _ensure_report_limit(account, report_store)
+    return generate_and_store_user_submitted_draft_report(
+        report_store=report_store,
+        draft=draft,
+        audience=payload.audience,
+        report_format=payload.report_format,
+        owner_id=account.user.id,
+        branding=payload.branding,
+    )
 
 
 @router.get(

@@ -187,6 +187,7 @@
 - [x] Добавить mortgage calculation и total purchase cost в buyer report v1.
 - [x] Добавить buyer report секции: mortgage calculation, seller questions, purchase checklist, total cost.
 - [x] Добавить buyer object-check report из user-submitted listing draft.
+- [x] Добавить сохранение buyer object-check report из user-submitted draft в report history.
 - [x] Добавить realtor report секции: map, comparable listings table, client-facing price arguments.
 - [x] Добавить investor report секции: rental yield, alternatives comparison, liquidity and growth thesis.
 - [ ] Добавить paid area report product.
@@ -412,6 +413,7 @@
 - [x] Commit 20: hybrid user-provided listing analysis flow.
 - [x] Commit 21: user-submitted buyer object-check report.
 - [x] Commit 22: user-submitted draft persistence and retention.
+- [x] Commit 23: saved report generation from user-submitted draft.
 
 ## Current Sprint
 
@@ -429,6 +431,7 @@
 - [x] Реализовать first slice: публичная форма проверки квартиры + backend draft/analysis endpoint.
 - [x] Добавить buyer report endpoint и UI для user-submitted draft.
 - [x] Добавить private draft persistence, owner-scoped draft endpoints, admin list/prune и retention metadata.
+- [x] Добавить генерацию saved report из user-submitted draft в существующую историю отчетов.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -436,3 +439,4 @@
 - [x] Сделать Commit 20 и push.
 - [x] Сделать Commit 21 и push.
 - [x] Сделать Commit 22 и push.
+- [x] Сделать Commit 23 и push.

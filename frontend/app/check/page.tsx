@@ -2,11 +2,13 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { ClipboardCheck, FileText, RefreshCw, ShieldCheck } from "lucide-react";
+import { ClipboardCheck, ExternalLink, FileText, RefreshCw, Save, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
+  reportContentUrl,
+  type GeneratedReport,
   type UserSubmittedListingAnalysis,
   type UserSubmittedListingReport,
   type UserSubmittedListingRequest,
@@ -49,8 +51,10 @@ export default function CheckListingPage() {
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
+  const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
   const [status, setStatus] = useState("Готово к проверке");
   const [reportStatus, setReportStatus] = useState("Отчет не создан");
+  const [saveStatus, setSaveStatus] = useState("Не сохранен");
   const [error, setError] = useState("");
 
   async function analyze(event?: FormEvent<HTMLFormElement>) {
@@ -61,8 +65,10 @@ export default function CheckListingPage() {
       const payload = await api.analyzeUserSubmittedListing(buildListingPayload(form));
       setResult(payload);
       setReportResult(null);
+      setSavedReport(null);
       setStatus("Проверка готова");
       setReportStatus("Отчет не создан");
+      setSaveStatus("Не сохранен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setStatus("Ошибка проверки");
@@ -79,11 +85,30 @@ export default function CheckListingPage() {
       });
       setResult(payload.analysis);
       setReportResult(payload);
+      setSavedReport(null);
       setStatus("Проверка готова");
       setReportStatus("Отчет готов");
+      setSaveStatus("Не сохранен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setReportStatus("Ошибка отчета");
+    }
+  }
+
+  async function saveReportToHistory() {
+    if (!result?.draft_id) return;
+    setError("");
+    setSaveStatus("Сохранение...");
+    try {
+      const payload = await api.generateUserSubmittedDraftReport(result.draft_id, {
+        audience: "buyer",
+        report_format: "html",
+      });
+      setSavedReport(payload);
+      setSaveStatus("Сохранен");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown error");
+      setSaveStatus("Ошибка сохранения");
     }
   }
 
@@ -256,6 +281,7 @@ export default function CheckListingPage() {
             </label>
             <p className="status-line">{status}</p>
             <p className="status-line">{reportStatus}</p>
+            <p className="status-line">{saveStatus}</p>
           </div>
         </form>
 
@@ -384,7 +410,27 @@ export default function CheckListingPage() {
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
             <h2>Buyer report</h2>
-            <span className="status-pill info">{reportResult.report.template_name}</span>
+            <div className="button-row">
+              {savedReport ? (
+                <a
+                  className="button"
+                  href={reportContentUrl(savedReport.id)}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <ExternalLink size={16} /> HTML
+                </a>
+              ) : null}
+              <button
+                className="button"
+                disabled={!result?.draft_id}
+                type="button"
+                onClick={() => void saveReportToHistory()}
+              >
+                <Save size={16} /> Сохранить
+              </button>
+              <span className="status-pill info">{reportResult.report.template_name}</span>
+            </div>
           </div>
           <div className="panel-body">
             <p className="empty-state">{reportResult.report.summary}</p>

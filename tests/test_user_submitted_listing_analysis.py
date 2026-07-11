@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from domarion.main import app
+from domarion.report_store.factory import memory_report_store
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
@@ -8,6 +9,7 @@ client = TestClient(app)
 
 def setup_function() -> None:
     memory_user_submitted_listing_store.clear()
+    memory_report_store.clear()
 
 
 def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
@@ -205,6 +207,73 @@ def test_admin_can_list_and_prune_user_submitted_listing_drafts() -> None:
     assert response.json()[0]["source_domain"] == "otodom.pl"
     assert prune_response.status_code == 200
     assert prune_response.json() == {"deleted": 0}
+
+
+def test_user_submitted_listing_draft_can_generate_saved_report_without_url_leak() -> None:
+    headers = {"X-Domarion-User-Id": "draft-report-owner"}
+    source_url = "https://www.otodom.pl/pl/oferta/demo-draft-report"
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{created['draft_id']}/reports/generate",
+        headers=headers,
+        json={"audience": "buyer", "report_format": "html"},
+    )
+    payload = response.json()
+    reports = client.get("/api/v1/reports", headers=headers).json()
+
+    assert response.status_code == 200
+    assert payload["owner_id"] == "draft-report-owner"
+    assert payload["listing_id"].startswith("user-submitted-")
+    assert payload["content_type"].startswith("text/html")
+    assert source_url not in payload["content"]
+    assert payload["report_metadata"]["user_submitted_draft_id"] == created["draft_id"]
+    assert payload["report_metadata"]["source_domain"] == "otodom.pl"
+    assert payload["report_metadata"]["private_source_reference_present"] is True
+    assert "source_url_private" not in payload["report_metadata"]
+    assert reports[0]["id"] == payload["id"]
+
+
+def test_user_submitted_listing_draft_report_generation_is_owner_scoped() -> None:
+    owner_a = {"X-Domarion-User-Id": "draft-report-owner-a"}
+    owner_b = {"X-Domarion-User-Id": "draft-report-owner-b"}
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=owner_a,
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{created['draft_id']}/reports/generate",
+        headers=owner_b,
+        json={"audience": "buyer", "report_format": "html"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User-submitted listing draft not found"
 
 
 def test_user_submitted_listing_analysis_rejects_unknown_area() -> None:

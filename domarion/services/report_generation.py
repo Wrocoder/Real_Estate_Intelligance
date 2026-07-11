@@ -8,6 +8,8 @@ from domarion.schemas import (
     ReportAudience,
     ReportBranding,
     ReportFormat,
+    UserSubmittedListingAnalysis,
+    UserSubmittedListingDraft,
 )
 from domarion.services.report_html import render_object_report_html
 from domarion.services.reports import build_object_report
@@ -66,6 +68,58 @@ def generate_and_store_object_report(
         summary=report.summary,
         content=content,
         report_metadata={
+            "area_id": listing.area_id,
+            "city": listing.city,
+            "district": listing.district,
+            "investment_score": analysis.scores.investment_score,
+            "risk_score": analysis.scores.risk_score,
+            "negotiation_score": analysis.scores.negotiation_score,
+            "fair_price_confidence_score": analysis.scores.fair_price_confidence_score,
+            "report_template_code": report.template_code,
+            "report_template_name": report.template_name,
+            "report_branding": (
+                report.branding.model_dump(exclude_none=True) if report.branding else None
+            ),
+            "scoring_formula_version": analysis.scores.formula_version,
+            "scoring_weights_profile": analysis.scores.weights_profile,
+        },
+    )
+    return report_store.save_report(payload)
+
+
+def generate_and_store_user_submitted_draft_report(
+    report_store: ReportStore,
+    draft: UserSubmittedListingDraft,
+    audience: ReportAudience = "buyer",
+    report_format: ReportFormat = "html",
+    owner_id: str = "demo-user",
+    branding: ReportBranding | None = None,
+) -> GeneratedReport:
+    analysis_wrapper = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
+    analysis = analysis_wrapper.analysis
+    listing = analysis.listing
+    report = build_object_report(analysis, audience, branding=branding)
+
+    if report_format == "html":
+        content = render_object_report_html(report, analysis)
+        content_type = "text/html; charset=utf-8"
+    else:
+        content = report.model_dump_json(indent=2)
+        content_type = "application/json"
+
+    payload = GeneratedReportCreate(
+        owner_id=owner_id,
+        listing_id=listing.id,
+        audience=audience,
+        report_format=report_format,
+        content_type=content_type,
+        title=listing.title,
+        summary=report.summary,
+        content=content,
+        report_metadata={
+            "user_submitted_draft_id": draft.id,
+            "source_domain": draft.source_domain,
+            "private_source_reference_present": draft.source_url_private is not None,
             "area_id": listing.area_id,
             "city": listing.city,
             "district": listing.district,

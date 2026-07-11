@@ -569,6 +569,18 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/report `
   -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"audience":"buyer","confirm_private_analysis":true}'
 ```
 
+Сохранить report из существующего private draft в `/reports` history:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/drafts/<draft_id>/reports/generate `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"audience":"buyer","report_format":"html"}'
+```
+
+Saved report metadata содержит `user_submitted_draft_id` и `source_domain`, но не
+содержит полный `source_url_private`.
+
 Посмотреть private drafts текущего пользователя:
 
 ```powershell

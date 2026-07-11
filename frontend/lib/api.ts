@@ -300,6 +300,12 @@ export type UserSubmittedListingReport = {
   report: ObjectReport;
 };
 
+export type GenerateUserSubmittedDraftReportRequest = {
+  audience?: "buyer" | "realtor" | "investor";
+  report_format?: "json" | "html";
+  branding?: ReportBranding | null;
+};
+
 export type ReportEmailResult = {
   report_id: string;
   provider: string;
@@ -821,6 +827,21 @@ export const api = {
     fetch(`${API_BASE_URL}/api/v1/user-submitted-listings/drafts/${draftId}`, {
       method: "DELETE",
     }),
+  generateUserSubmittedDraftReport: (
+    draftId: string,
+    payload: GenerateUserSubmittedDraftReportRequest = {},
+  ) =>
+    request<GeneratedReport>(
+      `/api/v1/user-submitted-listings/drafts/${draftId}/reports/generate`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          audience: payload.audience ?? "buyer",
+          report_format: payload.report_format ?? "html",
+          ...(payload.branding ? { branding: payload.branding } : {}),
+        }),
+      },
+    ),
   listAdminIngestionJobs: () =>
     request<IngestionJob[]>("/api/v1/admin/ingestion/jobs", {
       headers: ADMIN_HEADERS,

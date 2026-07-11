@@ -620,6 +620,12 @@ class GenerateReportRequest(ReportRequest):
     report_format: ReportFormat = "html"
 
 
+class GenerateUserSubmittedDraftReportRequest(BaseModel):
+    audience: ReportAudience = "buyer"
+    report_format: ReportFormat = "html"
+    branding: ReportBranding | None = None
+
+
 class ReportEmailRequest(BaseModel):
     target_email: str | None = None
     dry_run: bool = True

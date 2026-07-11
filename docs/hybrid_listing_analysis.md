@@ -63,6 +63,7 @@
 - `POST /api/v1/user-submitted-listings/analyze`;
 - `POST /api/v1/user-submitted-listings/report`;
 - `GET /api/v1/user-submitted-listings/drafts`;
+- `POST /api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate`;
 - `GET /api/v1/admin/user-submitted-listing-drafts`;
 - `POST /api/v1/admin/user-submitted-listing-drafts/prune-expired`;
 - frontend page `/check`;
@@ -72,10 +73,11 @@
 - comparables из текущего repository, area statistics и open-data/planned investments слоя;
 - предупреждение, если используется area-level fallback или district-level defaults;
 - buyer object-check report из текущих report templates без сохранения private URL в отчете;
-- owner-scoped draft access, manual deletion, `expires_at` и admin prune для retention.
+- owner-scoped draft access, manual deletion, `expires_at` и admin prune для retention;
+- saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content.
 
-Следующие шаги: paid fulfillment/report history из draft, user-facing draft history page и optional
-URL-assisted parser после legal review источника.
+Следующие шаги: paid fulfillment из draft, user-facing draft history page и optional URL-assisted
+parser после legal review источника.
 
 ## Non-Goals For MVP
 

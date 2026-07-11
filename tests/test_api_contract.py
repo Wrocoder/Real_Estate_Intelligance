@@ -29,6 +29,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "get",
         ): "UserSubmittedListingDraft",
         (
+            "/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate",
+            "post",
+        ): "GeneratedReport",
+        (
             "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
             "post",
         ): "UserSubmittedListingDraftPruneResult",
@@ -82,6 +86,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
 
     expected_schemas = {
         "AreaMarketSnapshotJobResult",
+        "GenerateUserSubmittedDraftReportRequest",
         "MarketDashboard",
         "MarketDashboardArea",
         "MarketDistributionBucket",
@@ -153,4 +158,14 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     assert admin_draft_list_schema["type"] == "array"
     assert admin_draft_list_schema["items"]["$ref"] == (
         "#/components/schemas/UserSubmittedListingDraft"
+    )
+
+    draft_report_operation = openapi["paths"][
+        "/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate"
+    ]["post"]
+    draft_report_request_schema = draft_report_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert draft_report_request_schema["$ref"] == (
+        "#/components/schemas/GenerateUserSubmittedDraftReportRequest"
     )
