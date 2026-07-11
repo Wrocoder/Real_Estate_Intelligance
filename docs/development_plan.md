@@ -252,6 +252,7 @@
 - [ ] Сделать страницу сравнения районов.
 - [x] Сделать mortgage calculator page.
 - [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
+- [x] Сделать страницу истории user-submitted private drafts.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
@@ -414,6 +415,7 @@
 - [x] Commit 21: user-submitted buyer object-check report.
 - [x] Commit 22: user-submitted draft persistence and retention.
 - [x] Commit 23: saved report generation from user-submitted draft.
+- [x] Commit 24: user-facing private draft history page.
 
 ## Current Sprint
 
@@ -432,6 +434,7 @@
 - [x] Добавить buyer report endpoint и UI для user-submitted draft.
 - [x] Добавить private draft persistence, owner-scoped draft endpoints, admin list/prune и retention metadata.
 - [x] Добавить генерацию saved report из user-submitted draft в существующую историю отчетов.
+- [x] Добавить user-facing страницу истории private drafts с удалением и генерацией отчетов.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -440,3 +443,4 @@
 - [x] Сделать Commit 21 и push.
 - [x] Сделать Commit 22 и push.
 - [x] Сделать Commit 23 и push.
+- [x] Сделать Commit 24 и push.

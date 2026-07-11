@@ -118,6 +118,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам и optional private URL reference.
+- http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.

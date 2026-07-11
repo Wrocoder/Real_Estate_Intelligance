@@ -2,7 +2,15 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
-import { ClipboardCheck, ExternalLink, FileText, RefreshCw, Save, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import {
+  ClipboardCheck,
+  ExternalLink,
+  FileText,
+  RefreshCw,
+  Save,
+  ShieldCheck,
+} from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
@@ -126,6 +134,9 @@ export default function CheckListingPage() {
           <p>Адрес, параметры объекта, fair price, риски, торг и ближайшие аналоги.</p>
         </div>
         <div className="button-row">
+          <Link className="button" href="/check/drafts">
+            <FileText size={16} /> История
+          </Link>
           <button
             className="button"
             disabled={!form.confirm_private_analysis}
