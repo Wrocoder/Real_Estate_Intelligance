@@ -129,6 +129,7 @@ from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
     generate_and_store_area_report,
     generate_and_store_object_report,
+    generate_and_store_report_bundle_receipt,
     generate_and_store_user_submitted_draft_report,
     generate_object_report_html,
 )
@@ -351,13 +352,14 @@ def generate_user_submitted_listing_draft_report(
     payload: GenerateUserSubmittedDraftReportRequest,
     draft_store: UserSubmittedListingStoreDep,
     report_store: ReportStoreDep,
+    order_store: ReportOrderStoreDep,
     account: CurrentAccountDep,
 ) -> GeneratedReport:
     draft = draft_store.get_draft(account.user.id, draft_id)
     if draft is None:
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
 
-    _ensure_report_limit(account, report_store)
+    credit_source_order_id = _ensure_report_limit(account, report_store, order_store)
     return generate_and_store_user_submitted_draft_report(
         report_store=report_store,
         draft=draft,
@@ -365,6 +367,7 @@ def generate_user_submitted_listing_draft_report(
         report_format=payload.report_format,
         owner_id=account.user.id,
         branding=payload.branding,
+        report_metadata_extra=_report_credit_metadata(credit_source_order_id),
     )
 
 
@@ -937,8 +940,9 @@ def get_me(
     account: CurrentAccountDep,
     user_store: UserStoreDep,
     report_store: ReportStoreDep,
+    order_store: ReportOrderStoreDep,
 ) -> AccountSummary:
-    return _build_account_summary(account, user_store, report_store)
+    return _build_account_summary(account, user_store, report_store, order_store)
 
 
 @router.patch("/me/subscription", response_model=AccountSummary)
@@ -948,6 +952,7 @@ def update_my_subscription(
     auth_store: AuthStoreDep,
     user_store: UserStoreDep,
     report_store: ReportStoreDep,
+    order_store: ReportOrderStoreDep,
 ) -> AccountSummary:
     subscription = auth_store.update_subscription(account.user.id, payload)
     updated_account = CurrentAccount(
@@ -955,7 +960,7 @@ def update_my_subscription(
         subscription=subscription,
         limits=get_plan_limits(subscription.plan),
     )
-    return _build_account_summary(updated_account, user_store, report_store)
+    return _build_account_summary(updated_account, user_store, report_store, order_store)
 
 
 @router.post(
@@ -1449,13 +1454,14 @@ def generate_object_report(
     payload: GenerateReportRequest,
     repository: RepositoryDep,
     report_store: ReportStoreDep,
+    order_store: ReportOrderStoreDep,
     account: CurrentAccountDep,
 ) -> GeneratedReport:
     listing = repository.get_listing(payload.listing_id)
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
 
-    _ensure_report_limit(account, report_store)
+    credit_source_order_id = _ensure_report_limit(account, report_store, order_store)
     return generate_and_store_object_report(
         repository=repository,
         report_store=report_store,
@@ -1464,6 +1470,7 @@ def generate_object_report(
         report_format=payload.report_format,
         owner_id=account.user.id,
         branding=payload.branding,
+        report_metadata_extra=_report_credit_metadata(credit_source_order_id),
     )
 
 
@@ -1821,11 +1828,17 @@ def _build_account_summary(
     account: CurrentAccount,
     user_store: UserStore,
     report_store: ReportStore,
+    order_store: ReportOrderStore,
 ) -> AccountSummary:
+    credit_balance = _report_credit_balance(account.user.id, report_store, order_store)
     usage = AccountUsage(
         favorites=len(user_store.list_favorites(account.user.id)),
         alerts=len(user_store.list_alerts(account.user.id)),
-        reports_this_month=len(report_store.list_reports(limit=10_000, owner_id=account.user.id)),
+        reports_this_month=_count_reports_against_subscription_limit(
+            report_store,
+            account.user.id,
+        ),
+        report_credits_available=credit_balance,
     )
     return AccountSummary(
         user=account.user,
@@ -1869,22 +1882,111 @@ def _ensure_alert_limit(account: CurrentAccount, user_store: UserStore) -> None:
         )
 
 
-def _ensure_report_limit(account: CurrentAccount, report_store: ReportStore) -> None:
-    reports = report_store.list_reports(limit=10_000, owner_id=account.user.id)
-    if len(reports) >= account.limits.monthly_reports:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "plan_limit_reached",
-                "resource": "reports",
-                "plan": account.subscription.plan,
-                "limit": account.limits.monthly_reports,
-            },
-        )
+def _ensure_report_limit(
+    account: CurrentAccount,
+    report_store: ReportStore,
+    order_store: ReportOrderStore,
+) -> str | None:
+    reports_count = _count_reports_against_subscription_limit(report_store, account.user.id)
+    if reports_count < account.limits.monthly_reports:
+        return None
+
+    credit_source_order_id = _available_report_credit_source_order_id(
+        account.user.id,
+        report_store,
+        order_store,
+    )
+    if credit_source_order_id is not None:
+        return credit_source_order_id
+
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "reports",
+            "plan": account.subscription.plan,
+            "limit": account.limits.monthly_reports,
+            "report_credits_available": 0,
+        },
+    )
+
+
+REPORT_BUNDLE_5_REFERENCE = "bundle:reports-5"
+REPORT_BUNDLE_5_CREDITS = 5
+REPORT_CREDIT_CONSUMED_KEY = "report_credit_source_order_id"
+
+
+def _report_credit_metadata(credit_source_order_id: str | None) -> dict:
+    if credit_source_order_id is None:
+        return {}
+    return {
+        "report_credit_consumed": 1,
+        REPORT_CREDIT_CONSUMED_KEY: credit_source_order_id,
+    }
+
+
+def _count_reports_against_subscription_limit(report_store: ReportStore, owner_id: str) -> int:
+    reports = report_store.list_reports_with_metadata(limit=10_000, owner_id=owner_id)
+    return sum(1 for report in reports if _counts_against_subscription_limit(report))
+
+
+def _counts_against_subscription_limit(report: GeneratedReport) -> bool:
+    metadata = report.report_metadata
+    return not (
+        metadata.get("paid_order_id")
+        or metadata.get("report_bundle_receipt")
+        or metadata.get("report_credit_consumed")
+    )
+
+
+def _report_credit_balance(
+    owner_id: str,
+    report_store: ReportStore,
+    order_store: ReportOrderStore,
+) -> int:
+    return sum(_available_credits_by_order(owner_id, report_store, order_store).values())
+
+
+def _available_report_credit_source_order_id(
+    owner_id: str,
+    report_store: ReportStore,
+    order_store: ReportOrderStore,
+) -> str | None:
+    for order_id, available in _available_credits_by_order(
+        owner_id,
+        report_store,
+        order_store,
+    ).items():
+        if available > 0:
+            return order_id
+    return None
+
+
+def _available_credits_by_order(
+    owner_id: str,
+    report_store: ReportStore,
+    order_store: ReportOrderStore,
+) -> dict[str, int]:
+    bundle_orders = [
+        order
+        for order in order_store.list_orders(owner_id, limit=10_000)
+        if order.product_code == "report_bundle_5" and order.status == "fulfilled"
+    ]
+    credits_by_order = {order.id: REPORT_BUNDLE_5_CREDITS for order in bundle_orders}
+    if not credits_by_order:
+        return {}
+
+    reports = report_store.list_reports_with_metadata(limit=10_000, owner_id=owner_id)
+    for report in reports:
+        source_order_id = report.report_metadata.get(REPORT_CREDIT_CONSUMED_KEY)
+        if source_order_id in credits_by_order:
+            credits_by_order[source_order_id] -= 1
+    return {order_id: max(available, 0) for order_id, available in credits_by_order.items()}
 
 
 DRAFT_REPORT_LISTING_PREFIX = "draft:"
 AREA_REPORT_LISTING_PREFIX = "area:"
+BUNDLE_REPORT_LISTING_PREFIX = "bundle:"
 
 
 def _validate_report_order_listing_reference(
@@ -1893,7 +1995,21 @@ def _validate_report_order_listing_reference(
     repository: RealEstateRepository,
     draft_store: UserSubmittedListingStore,
     owner_id: str,
-) -> dict[str, str | None]:
+) -> dict[str, str | int | None]:
+    if product_code == "report_bundle_5":
+        _bundle_reference_from_report_listing_id(listing_id)
+        return {
+            "listing_reference_type": "report_bundle",
+            "bundle_code": "reports-5",
+            "report_credits": REPORT_BUNDLE_5_CREDITS,
+        }
+
+    if _is_bundle_report_listing_id(listing_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Bundle references require report_bundle_5 product",
+        )
+
     if product_code == "area_report":
         area_id = _area_id_from_report_listing_id(listing_id)
         area = repository.get_area_statistics(area_id)
@@ -1935,6 +2051,22 @@ def _generate_paid_report_for_order(
     report_store: ReportStore,
     order: ReportOrder,
 ) -> GeneratedReport:
+    if order.product_code == "report_bundle_5":
+        _bundle_reference_from_report_listing_id(order.listing_id)
+        return generate_and_store_report_bundle_receipt(
+            report_store=report_store,
+            owner_id=order.owner_id,
+            order_id=order.id,
+            credits=REPORT_BUNDLE_5_CREDITS,
+            report_format=order.report_format,
+        )
+
+    if _is_bundle_report_listing_id(order.listing_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Bundle references require report_bundle_5 product",
+        )
+
     if order.product_code == "area_report":
         area_id = _area_id_from_report_listing_id(order.listing_id)
         area = repository.get_area_statistics(area_id)
@@ -1947,6 +2079,7 @@ def _generate_paid_report_for_order(
             audience=order.audience,
             report_format=order.report_format,
             owner_id=order.owner_id,
+            report_metadata_extra={"paid_order_id": order.id},
         )
 
     if _is_area_report_listing_id(order.listing_id):
@@ -1967,6 +2100,7 @@ def _generate_paid_report_for_order(
             report_format=order.report_format,
             owner_id=order.owner_id,
             product_code=order.product_code,
+            report_metadata_extra={"paid_order_id": order.id},
         )
 
     return generate_and_store_object_report(
@@ -1977,6 +2111,7 @@ def _generate_paid_report_for_order(
         report_format=order.report_format,
         owner_id=order.owner_id,
         product_code=order.product_code,
+        report_metadata_extra={"paid_order_id": order.id},
     )
 
 
@@ -2006,6 +2141,19 @@ def _area_id_from_report_listing_id(listing_id: str) -> str:
     if not area_id:
         raise HTTPException(status_code=400, detail="Area listing reference is empty")
     return area_id
+
+
+def _is_bundle_report_listing_id(listing_id: str) -> bool:
+    return listing_id.startswith(BUNDLE_REPORT_LISTING_PREFIX)
+
+
+def _bundle_reference_from_report_listing_id(listing_id: str) -> str:
+    if listing_id != REPORT_BUNDLE_5_REFERENCE:
+        raise HTTPException(
+            status_code=400,
+            detail="Report bundle orders require listing_id bundle:reports-5",
+        )
+    return "reports-5"
 
 
 def _record_order_event(

@@ -339,7 +339,8 @@ export type ReportProductCode =
   | "object_report"
   | "full_object_analysis"
   | "investor_report"
-  | "area_report";
+  | "area_report"
+  | "report_bundle_5";
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";
@@ -461,6 +462,7 @@ export type AccountUsage = {
   favorites: number;
   alerts: number;
   reports_this_month: number;
+  report_credits_available: number;
 };
 
 export type AccountSummary = {

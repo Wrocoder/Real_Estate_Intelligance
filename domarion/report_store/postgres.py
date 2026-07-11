@@ -36,13 +36,30 @@ class PostgresReportStore:
         limit: int = 50,
         owner_id: str | None = None,
     ) -> list[GeneratedReportListItem]:
+        rows = self._list_report_rows(limit=limit, owner_id=owner_id)
+        return [self._row_to_list_item(row) for row in rows]
+
+    def list_reports_with_metadata(
+        self,
+        limit: int = 50,
+        owner_id: str | None = None,
+    ) -> list[GeneratedReport]:
+        rows = self._list_report_rows(limit=limit, owner_id=owner_id)
+        return [self._row_to_report(row) for row in rows]
+
+    def _list_report_rows(
+        self,
+        limit: int = 50,
+        owner_id: str | None = None,
+    ) -> list[GeneratedReportModel]:
         statement = select(GeneratedReportModel)
         if owner_id is not None:
             statement = statement.where(GeneratedReportModel.owner_id == owner_id)
-        rows = self.session.scalars(
-            statement.order_by(GeneratedReportModel.created_at.desc()).limit(limit)
-        ).all()
-        return [self._row_to_list_item(row) for row in rows]
+        return list(
+            self.session.scalars(
+                statement.order_by(GeneratedReportModel.created_at.desc()).limit(limit)
+            ).all()
+        )
 
     def get_report(
         self,

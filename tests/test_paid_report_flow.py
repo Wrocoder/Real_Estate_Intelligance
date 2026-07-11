@@ -28,6 +28,7 @@ def test_report_products_are_available() -> None:
         "object_report",
         "full_object_analysis",
         "investor_report",
+        "report_bundle_5",
     }
     assert payload[0]["amount_grosz"] > 0
 
@@ -198,6 +199,67 @@ def test_area_reference_requires_area_report_product() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Area references require area_report product"
+
+
+def test_report_bundle_grants_and_consumes_report_credits() -> None:
+    headers = {"X-Domarion-User-Id": "bundle-buyer"}
+    included = client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-001", "audience": "buyer", "report_format": "html"},
+    )
+    blocked_before_bundle = client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-002", "audience": "buyer", "report_format": "html"},
+    )
+
+    checkout = client.post(
+        "/api/v1/report-orders",
+        headers=headers,
+        json={"listing_id": "bundle:reports-5", "product_code": "report_bundle_5"},
+    )
+    order = checkout.json()["order"]
+    client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
+    fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers)
+    receipt = client.get(
+        f"/api/v1/reports/{fulfilled.json()['generated_report_id']}",
+        headers=headers,
+    ).json()
+    account_after_purchase = client.get("/api/v1/me", headers=headers).json()
+
+    assert included.status_code == 200
+    assert blocked_before_bundle.status_code == 403
+    assert checkout.status_code == 201
+    assert order["listing_id"] == "bundle:reports-5"
+    assert fulfilled.status_code == 200
+    assert receipt["report_metadata"]["report_bundle_receipt"] is True
+    assert receipt["report_metadata"]["report_credits_granted"] == 5
+    assert account_after_purchase["usage"]["reports_this_month"] == 1
+    assert account_after_purchase["usage"]["report_credits_available"] == 5
+
+    for _ in range(5):
+        generated = client.post(
+            "/api/v1/reports/object/generate",
+            headers=headers,
+            json={"listing_id": "wr-002", "audience": "buyer", "report_format": "html"},
+        )
+        payload = generated.json()
+        assert generated.status_code == 200
+        assert payload["report_metadata"]["report_credit_consumed"] == 1
+        assert payload["report_metadata"]["report_credit_source_order_id"] == order["id"]
+
+    account_after_consumption = client.get("/api/v1/me", headers=headers).json()
+    blocked_after_credits = client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-003", "audience": "buyer", "report_format": "html"},
+    )
+
+    assert account_after_consumption["usage"]["reports_this_month"] == 1
+    assert account_after_consumption["usage"]["report_credits_available"] == 0
+    assert blocked_after_credits.status_code == 403
+    assert blocked_after_credits.json()["detail"]["report_credits_available"] == 0
 
 
 def test_user_submitted_draft_report_order_mock_payment_and_fulfillment() -> None:

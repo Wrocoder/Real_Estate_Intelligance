@@ -22,14 +22,21 @@ class InMemoryReportStore:
         limit: int = 50,
         owner_id: str | None = None,
     ) -> list[GeneratedReportListItem]:
+        reports = self.list_reports_with_metadata(limit=limit, owner_id=owner_id)
+        return [
+            GeneratedReportListItem(**report.model_dump(exclude={"content", "report_metadata"}))
+            for report in reports
+        ]
+
+    def list_reports_with_metadata(
+        self,
+        limit: int = 50,
+        owner_id: str | None = None,
+    ) -> list[GeneratedReport]:
         reports = list(self._items.values())
         if owner_id is not None:
             reports = [report for report in reports if report.owner_id == owner_id]
-        reports = sorted(reports, key=lambda item: item.created_at, reverse=True)
-        return [
-            GeneratedReportListItem(**report.model_dump(exclude={"content", "report_metadata"}))
-            for report in reports[:limit]
-        ]
+        return sorted(reports, key=lambda item: item.created_at, reverse=True)[:limit]
 
     def get_report(
         self,

@@ -99,6 +99,10 @@ export default function AccountPage() {
           </strong>
         </div>
         <div className="metric">
+          <span>Credits</span>
+          <strong>{numberValue(account.usage.report_credits_available)}</strong>
+        </div>
+        <div className="metric">
           <span>Alerts</span>
           <strong>
             {account.usage.alerts}/{account.limits.max_alerts}
@@ -163,6 +167,9 @@ export default function AccountPage() {
               value={account.usage.reports_this_month}
               limit={account.limits.monthly_reports}
             />
+            <p className="muted">
+              Report credits: {numberValue(account.usage.report_credits_available)}
+            </p>
 
             <h2>Capabilities</h2>
             <div className="capability-list">

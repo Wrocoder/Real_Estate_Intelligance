@@ -16,6 +16,7 @@ ReportProductCode = Literal[
     "full_object_analysis",
     "investor_report",
     "area_report",
+    "report_bundle_5",
 ]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
@@ -851,6 +852,7 @@ class AccountUsage(BaseModel):
     favorites: int
     alerts: int
     reports_this_month: int
+    report_credits_available: int = 0
 
 
 class AccountSummary(BaseModel):

@@ -655,6 +655,17 @@ $checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
   -Body '{"listing_id":"area:wroclaw-fabryczna","product_code":"area_report","report_format":"html"}'
 ```
 
+Пакет 5 report credits покупается как отдельный order. После fulfillment credits видны в
+`/api/v1/me` как `usage.report_credits_available` и списываются, когда monthly report limit уже
+исчерпан:
+
+```powershell
+$checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"bundle:reports-5","product_code":"report_bundle_5","report_format":"html"}'
+```
+
 Оплатить через mock checkout:
 
 ```powershell

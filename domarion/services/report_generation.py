@@ -1,4 +1,5 @@
 import json
+from html import escape
 from pathlib import Path
 
 from domarion.report_store.base import ReportStore
@@ -51,6 +52,7 @@ def generate_and_store_object_report(
     owner_id: str = "demo-user",
     branding: ReportBranding | None = None,
     product_code: ReportProductCode = "object_report",
+    report_metadata_extra: dict | None = None,
 ) -> GeneratedReport:
     listing = repository.get_listing(listing_id)
     if listing is None:
@@ -92,6 +94,7 @@ def generate_and_store_object_report(
             ),
             "scoring_formula_version": analysis.scores.formula_version,
             "scoring_weights_profile": analysis.scores.weights_profile,
+            **(report_metadata_extra or {}),
         },
     )
     return report_store.save_report(payload)
@@ -105,6 +108,7 @@ def generate_and_store_user_submitted_draft_report(
     owner_id: str = "demo-user",
     branding: ReportBranding | None = None,
     product_code: ReportProductCode = "object_report",
+    report_metadata_extra: dict | None = None,
 ) -> GeneratedReport:
     analysis_wrapper = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
     analysis = analysis_wrapper.analysis
@@ -147,6 +151,7 @@ def generate_and_store_user_submitted_draft_report(
             ),
             "scoring_formula_version": analysis.scores.formula_version,
             "scoring_weights_profile": analysis.scores.weights_profile,
+            **(report_metadata_extra or {}),
         },
     )
     return report_store.save_report(payload)
@@ -159,6 +164,7 @@ def generate_and_store_area_report(
     audience: ReportAudience = "realtor",
     report_format: ReportFormat = "html",
     owner_id: str = "demo-user",
+    report_metadata_extra: dict | None = None,
 ) -> GeneratedReport:
     area = repository.get_area_statistics(area_id)
     if area is None:
@@ -209,7 +215,54 @@ def generate_and_store_area_report(
             "buyer_market_index": market_area.buyer_market_index if market_area else None,
             "seller_market_index": market_area.seller_market_index if market_area else None,
             "overheated_index": market_area.overheated_index if market_area else None,
+            **(report_metadata_extra or {}),
         },
+    )
+    return report_store.save_report(payload)
+
+
+def generate_and_store_report_bundle_receipt(
+    report_store: ReportStore,
+    owner_id: str,
+    order_id: str,
+    credits: int,
+    report_format: ReportFormat = "html",
+) -> GeneratedReport:
+    title = f"{credits} Report Credits Bundle"
+    summary = f"Paid bundle fulfilled: {credits} report credits granted to this account."
+    metadata = {
+        "report_product_code": "report_bundle_5",
+        "report_bundle_receipt": True,
+        "report_credits_granted": credits,
+        "report_credit_bundle_order_id": order_id,
+    }
+
+    if report_format == "json":
+        content = json.dumps(
+            {
+                "template_code": "report_bundle_receipt_v1",
+                "order_id": order_id,
+                "credits_granted": credits,
+                "summary": summary,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+        content_type = "application/json"
+    else:
+        content = _render_report_bundle_receipt_html(order_id, credits, summary)
+        content_type = "text/html; charset=utf-8"
+
+    payload = GeneratedReportCreate(
+        owner_id=owner_id,
+        listing_id="bundle:reports-5",
+        audience="buyer",
+        report_format=report_format,
+        content_type=content_type,
+        title=title,
+        summary=summary,
+        content=content,
+        report_metadata=metadata,
     )
     return report_store.save_report(payload)
 
@@ -264,6 +317,51 @@ def _area_report_disclaimer() -> str:
 
 def _format_int(value: int) -> str:
     return f"{value:,}".replace(",", " ")
+
+
+def _render_report_bundle_receipt_html(order_id: str, credits: int, summary: str) -> str:
+    return f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{credits} Report Credits Bundle</title>
+  <style>
+    body {{ margin: 0; background: #eef2f5; color: #17202a; font: 14px/1.5 Arial, sans-serif; }}
+    main {{
+      width: min(760px, calc(100% - 32px));
+      margin: 24px auto;
+      background: #fff;
+      border: 1px solid #d9dee6;
+      padding: 28px;
+    }}
+    h1 {{ margin: 0 0 10px; font-size: 26px; }}
+    .summary {{
+      border-left: 4px solid #0f766e;
+      background: #f5f7fa;
+      padding: 14px 16px;
+      margin: 18px 0;
+    }}
+    .metric {{ border: 1px solid #d9dee6; padding: 12px; display: inline-block; min-width: 180px; }}
+    .metric strong {{ display: block; font-size: 28px; color: #0f766e; }}
+    .muted {{ color: #5f6b7a; }}
+  </style>
+</head>
+<body>
+  <main>
+    <p class="muted">Domarion Analytics</p>
+    <h1>{credits} Report Credits Bundle</h1>
+    <p class="summary">{escape(summary)}</p>
+    <div class="metric"><span>Credits granted</span><strong>{credits}</strong></div>
+    <p class="muted">Order ID: {escape(order_id)}</p>
+    <p class="muted">
+      Credits are owner-scoped and consumed when reports are generated beyond the monthly
+      plan limit.
+    </p>
+  </main>
+</body>
+</html>
+"""
 
 
 def _apply_paid_object_report_variant(

@@ -14,6 +14,13 @@ class ReportStore(Protocol):
     ) -> list[GeneratedReportListItem]:
         raise NotImplementedError
 
+    def list_reports_with_metadata(
+        self,
+        limit: int = 50,
+        owner_id: str | None = None,
+    ) -> list[GeneratedReport]:
+        raise NotImplementedError
+
     def get_report(
         self,
         report_id: str,

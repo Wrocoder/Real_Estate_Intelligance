@@ -63,6 +63,20 @@ REPORT_PRODUCTS: dict[ReportProductCode, ReportProduct] = {
             "Inventory distributions for client-facing context",
         ],
     ),
+    "report_bundle_5": ReportProduct(
+        code="report_bundle_5",
+        title="5 Report Credits",
+        audience="buyer",
+        amount_grosz=19900,
+        currency="PLN",
+        description="Pakiet 5 credits na raporty obiektowe poza limitem miesięcznym.",
+        features=[
+            "5 additional object report credits",
+            "Works after monthly plan limit is reached",
+            "Credits are owner-scoped",
+            "Audit receipt in report history",
+        ],
+    ),
 }
 
 

@@ -193,7 +193,7 @@
 - [x] Добавить investor report секции: rental yield, alternatives comparison, liquidity and growth thesis.
 - [x] Добавить paid area report product.
 - [x] Добавить full object analysis report product.
-- [ ] Добавить bundles: package of 5 reports.
+- [x] Добавить bundles: package of 5 reports.
 - [ ] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [ ] Добавить export reports в CSV/JSON для realtor/investor workflows.
 
@@ -213,7 +213,7 @@
 - [ ] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
 - [ ] Добавить team/agency accounts: несколько агентов под одной организацией.
 - [ ] Добавить роли и права для agency owner/admin/agent.
-- [ ] Добавить report credits и usage quotas для packages.
+- [x] Добавить report credits и usage quotas для packages.
 - [ ] Добавить invoice/VAT metadata для B2B checkout.
 - [ ] Добавить lead capture для mortgage/legal/renovation partner referrals.
 
@@ -420,6 +420,7 @@
 - [x] Commit 25: paid report orders for user-submitted drafts.
 - [x] Commit 26: paid area report product.
 - [x] Commit 27: distinct paid full object analysis artifact.
+- [x] Commit 28: report bundle credits package.
 
 ## Current Sprint
 
@@ -442,6 +443,7 @@
 - [x] Добавить paid checkout/fulfillment из private draft через существующий report order lifecycle.
 - [x] Добавить paid area report product через `area:<area_id>` order reference.
 - [x] Добавить distinct paid artifact для `full_object_analysis`.
+- [x] Добавить `report_bundle_5` paid package и списание credits сверх monthly limit.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -454,3 +456,4 @@
 - [x] Сделать Commit 25 и push.
 - [x] Сделать Commit 26 и push.
 - [x] Сделать Commit 27 и push.
+- [x] Сделать Commit 28 и push.

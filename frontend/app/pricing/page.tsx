@@ -53,7 +53,7 @@ export default function PricingPage() {
 
   async function createAndPay(product: ReportProduct) {
     setStatus(`Создание заказа: ${product.title}...`);
-    const listingReference = product.code === "area_report" ? `area:${areaId}` : listingId;
+    const listingReference = reportOrderReference(product, listingId, areaId);
     const checkout = await api.createReportOrder({
       listing_id: listingReference,
       product_code: product.code,
@@ -262,4 +262,10 @@ export default function PricingPage() {
 
 function formatGrosz(value: number) {
   return `${new Intl.NumberFormat("pl-PL").format(value / 100)} PLN`;
+}
+
+function reportOrderReference(product: ReportProduct, listingId: string, areaId: string) {
+  if (product.code === "area_report") return `area:${areaId}`;
+  if (product.code === "report_bundle_5") return "bundle:reports-5";
+  return listingId;
 }

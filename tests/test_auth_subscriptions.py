@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from domarion.auth_store.factory import memory_auth_store
 from domarion.main import app
+from domarion.report_order_store.factory import memory_report_order_store
 from domarion.report_store.factory import memory_report_store
 from domarion.user_store.factory import memory_user_store
 
@@ -10,6 +11,7 @@ client = TestClient(app)
 
 def setup_function() -> None:
     memory_auth_store.clear()
+    memory_report_order_store.clear()
     memory_user_store.clear()
     memory_report_store.clear()
 
@@ -23,7 +25,12 @@ def test_default_demo_account_summary() -> None:
     assert payload["user"]["role"] == "buyer"
     assert payload["subscription"]["plan"] == "free"
     assert payload["limits"]["monthly_reports"] == 1
-    assert payload["usage"] == {"favorites": 0, "alerts": 0, "reports_this_month": 0}
+    assert payload["usage"] == {
+        "favorites": 0,
+        "alerts": 0,
+        "reports_this_month": 0,
+        "report_credits_available": 0,
+    }
 
 
 def test_header_identity_creates_realtor_account() -> None:
