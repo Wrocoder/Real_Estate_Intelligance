@@ -22,6 +22,7 @@ export default function PricingPage() {
   const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [events, setEvents] = useState<ReportOrderEvent[]>([]);
   const [listingId, setListingId] = useState("wr-001");
+  const [areaId, setAreaId] = useState("wroclaw-fabryczna");
   const [status, setStatus] = useState("Загрузка тарифов...");
   const [error, setError] = useState("");
 
@@ -52,8 +53,9 @@ export default function PricingPage() {
 
   async function createAndPay(product: ReportProduct) {
     setStatus(`Создание заказа: ${product.title}...`);
+    const listingReference = product.code === "area_report" ? `area:${areaId}` : listingId;
     const checkout = await api.createReportOrder({
-      listing_id: listingId,
+      listing_id: listingReference,
       product_code: product.code,
       audience: product.audience,
     });
@@ -117,14 +119,24 @@ export default function PricingPage() {
           <span className="muted">mock checkout без реального PSP</span>
         </div>
         <div className="panel-body">
-          <label className="field pricing-listing-field">
-            <span>Listing ID</span>
-            <input
-              className="input"
-              value={listingId}
-              onChange={(event) => setListingId(event.target.value)}
-            />
-          </label>
+          <div className="pricing-reference-grid">
+            <label className="field">
+              <span>Listing ID</span>
+              <input
+                className="input"
+                value={listingId}
+                onChange={(event) => setListingId(event.target.value)}
+              />
+            </label>
+            <label className="field">
+              <span>Area ID</span>
+              <input
+                className="input"
+                value={areaId}
+                onChange={(event) => setAreaId(event.target.value)}
+              />
+            </label>
+          </div>
 
           <div className="pricing-grid">
             {products.map((product) => (

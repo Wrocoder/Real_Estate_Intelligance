@@ -669,14 +669,16 @@ button {
   gap: 10px;
 }
 
-.pricing-listing-field {
-  max-width: 340px;
+.pricing-reference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 340px));
+  gap: 12px;
   margin-bottom: 12px;
 }
 
 .pricing-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 10px;
 }
 

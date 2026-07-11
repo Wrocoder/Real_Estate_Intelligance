@@ -95,6 +95,7 @@ from domarion.schemas import (
     ReportOrderEvent,
     ReportOrderEventCreate,
     ReportProduct,
+    ReportProductCode,
     ReportRequest,
     ReportTemplateDescriptor,
     ScoringBacktestResult,
@@ -126,6 +127,7 @@ from domarion.services.payments import (
 from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
+    generate_and_store_area_report,
     generate_and_store_object_report,
     generate_and_store_user_submitted_draft_report,
     generate_object_report_html,
@@ -968,14 +970,15 @@ def create_report_order(
     order_store: ReportOrderStoreDep,
     account: CurrentAccountDep,
 ) -> CheckoutSession:
+    product = get_report_product(payload.product_code)
     order_metadata = _validate_report_order_listing_reference(
         payload.listing_id,
+        product_code=payload.product_code,
         repository=repository,
         draft_store=draft_store,
         owner_id=account.user.id,
     )
 
-    product = get_report_product(payload.product_code)
     order = order_store.create_order(account.user.id, payload, product)
     _record_order_event(
         order_store,
@@ -1881,14 +1884,34 @@ def _ensure_report_limit(account: CurrentAccount, report_store: ReportStore) -> 
 
 
 DRAFT_REPORT_LISTING_PREFIX = "draft:"
+AREA_REPORT_LISTING_PREFIX = "area:"
 
 
 def _validate_report_order_listing_reference(
     listing_id: str,
+    product_code: ReportProductCode,
     repository: RealEstateRepository,
     draft_store: UserSubmittedListingStore,
     owner_id: str,
 ) -> dict[str, str | None]:
+    if product_code == "area_report":
+        area_id = _area_id_from_report_listing_id(listing_id)
+        area = repository.get_area_statistics(area_id)
+        if area is None:
+            raise HTTPException(status_code=404, detail="Area not found")
+        return {
+            "listing_reference_type": "area",
+            "area_id": area.area_id,
+            "city": area.city,
+            "district": area.name,
+        }
+
+    if _is_area_report_listing_id(listing_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Area references require area_report product",
+        )
+
     if _is_draft_report_listing_id(listing_id):
         draft_id = _draft_id_from_report_listing_id(listing_id)
         draft = draft_store.get_draft(owner_id, draft_id)
@@ -1912,6 +1935,26 @@ def _generate_paid_report_for_order(
     report_store: ReportStore,
     order: ReportOrder,
 ) -> GeneratedReport:
+    if order.product_code == "area_report":
+        area_id = _area_id_from_report_listing_id(order.listing_id)
+        area = repository.get_area_statistics(area_id)
+        if area is None:
+            raise HTTPException(status_code=404, detail="Area not found")
+        return generate_and_store_area_report(
+            repository=repository,
+            report_store=report_store,
+            area_id=area_id,
+            audience=order.audience,
+            report_format=order.report_format,
+            owner_id=order.owner_id,
+        )
+
+    if _is_area_report_listing_id(order.listing_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Area references require area_report product",
+        )
+
     if _is_draft_report_listing_id(order.listing_id):
         draft_id = _draft_id_from_report_listing_id(order.listing_id)
         draft = draft_store.get_draft(order.owner_id, draft_id)
@@ -1944,6 +1987,23 @@ def _draft_id_from_report_listing_id(listing_id: str) -> str:
     if not draft_id:
         raise HTTPException(status_code=400, detail="Draft listing reference is empty")
     return draft_id
+
+
+def _is_area_report_listing_id(listing_id: str) -> bool:
+    return listing_id.startswith(AREA_REPORT_LISTING_PREFIX)
+
+
+def _area_id_from_report_listing_id(listing_id: str) -> str:
+    if not _is_area_report_listing_id(listing_id):
+        raise HTTPException(
+            status_code=400,
+            detail="Area report orders require listing_id in area:<area_id> format",
+        )
+
+    area_id = listing_id.removeprefix(AREA_REPORT_LISTING_PREFIX).strip()
+    if not area_id:
+        raise HTTPException(status_code=400, detail="Area listing reference is empty")
+    return area_id
 
 
 def _record_order_event(

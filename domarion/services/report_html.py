@@ -1,6 +1,13 @@
 from html import escape
 
-from domarion.schemas import ListingAnalysis, ObjectReport
+from domarion.schemas import (
+    AreaStatistics,
+    ListingAnalysis,
+    MarketDashboard,
+    MarketDashboardArea,
+    MarketDistributionBucket,
+    ObjectReport,
+)
 
 
 def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -> str:
@@ -216,6 +223,193 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
 """
 
 
+def render_area_report_html(area: AreaStatistics, dashboard: MarketDashboard, summary: str) -> str:
+    market_area = _dashboard_area_for_report(area, dashboard)
+    index_cards = (
+        "".join(
+            [
+                _area_index_card("Liquidity", market_area.liquidity_index),
+                _area_index_card("Buyer market", market_area.buyer_market_index),
+                _area_index_card("Seller market", market_area.seller_market_index),
+                _area_index_card("Overheated", market_area.overheated_index),
+            ]
+        )
+        if market_area
+        else '<p class="muted">Market indices are unavailable for this area.</p>'
+    )
+
+    return f"""<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escape(area.name)} - Area Market Report</title>
+  <style>
+    :root {{
+      color-scheme: light;
+      --ink: #17202a;
+      --muted: #5f6b7a;
+      --line: #d9dee6;
+      --soft: #f5f7fa;
+      --accent: #0f766e;
+      --warn: #b45309;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{
+      margin: 0;
+      background: #eef2f5;
+      color: var(--ink);
+      font: 14px/1.5 Arial, Helvetica, sans-serif;
+    }}
+    .page {{
+      width: min(1040px, calc(100% - 32px));
+      margin: 24px auto;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 32px;
+    }}
+    .topline {{
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      border-bottom: 2px solid var(--ink);
+      padding-bottom: 18px;
+      margin-bottom: 22px;
+    }}
+    .brand {{ font-weight: 700; color: var(--accent); }}
+    h1 {{ margin: 8px 0 8px; font-size: 28px; line-height: 1.15; }}
+    h2 {{ margin: 28px 0 10px; font-size: 18px; }}
+    p {{ margin: 0 0 10px; }}
+    .muted {{ color: var(--muted); }}
+    .summary {{
+      font-size: 16px;
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 14px 16px;
+      margin: 18px 0 20px;
+    }}
+    .grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }}
+    .metric {{
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      min-height: 72px;
+    }}
+    .metric .label {{ color: var(--muted); font-size: 12px; }}
+    .metric .value {{ font-size: 20px; font-weight: 700; margin-top: 4px; }}
+    .indices {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin: 16px 0 20px;
+    }}
+    .index {{
+      border: 1px solid var(--line);
+      padding: 12px;
+      text-align: center;
+    }}
+    .index strong {{ display: block; font-size: 24px; color: var(--accent); }}
+    .index.warn strong {{ color: var(--warn); }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 13px;
+    }}
+    th, td {{
+      border: 1px solid var(--line);
+      padding: 8px;
+      text-align: left;
+      vertical-align: top;
+    }}
+    th {{ background: var(--soft); }}
+    .footer {{
+      border-top: 1px solid var(--line);
+      margin-top: 28px;
+      padding-top: 12px;
+      color: var(--muted);
+      font-size: 12px;
+    }}
+    @media print {{
+      body {{ background: #fff; }}
+      .page {{ width: 100%; margin: 0; border: 0; padding: 18mm; }}
+      h2 {{ break-after: avoid; }}
+      table, .metric, .index {{ break-inside: avoid; }}
+    }}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="topline">
+      <div>
+        <div class="brand">Domarion Analytics</div>
+        <h1>Area Market Report: {escape(area.name)}</h1>
+        <p class="muted">{escape(area.city)} · Area ID: {escape(area.area_id)}</p>
+      </div>
+      <div class="muted">
+        <p>Template: Area Market Report v1</p>
+        <p>Listings in sample: {dashboard.listings_count}</p>
+        <p>Audience: realtor / buyer context</p>
+      </div>
+    </section>
+
+    <p class="summary">{escape(summary)}</p>
+
+    <section class="grid">
+      {_metric("Median PLN/m2", f"{_money(area.median_price_per_m2)}/m2")}
+      {_metric("Average PLN/m2", f"{_money(area.average_price_per_m2)}/m2")}
+      {_metric("Active listings", str(area.active_listings))}
+      {_metric("Avg days on market", f"{area.average_days_on_market} d")}
+      {_metric("New 30d", str(area.new_listings_30d))}
+      {_metric("Removed 30d", str(area.removed_listings_30d))}
+      {_metric("Price 90d", _percent(area.price_change_90d_pct))}
+      {_metric("Supply 90d", _percent(area.supply_change_90d_pct))}
+    </section>
+
+    <section>
+      <h2>Market indices</h2>
+      <div class="indices">{index_cards}</div>
+    </section>
+
+    <section>
+      <h2>Inventory distributions</h2>
+      <table>
+        <thead><tr><th>Bucket</th><th>Price</th><th>PLN/m2</th><th>Area</th></tr></thead>
+        <tbody>{_area_distribution_rows(dashboard)}</tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Interpretation</h2>
+      <table>
+        <tbody>
+          <tr><th>Buyer signal</th><td>{escape(_buyer_signal(market_area))}</td></tr>
+          <tr><th>Seller signal</th><td>{escape(_seller_signal(market_area))}</td></tr>
+          <tr><th>Liquidity signal</th><td>{escape(_liquidity_signal(market_area))}</td></tr>
+          <tr>
+            <th>Data note</th>
+            <td>
+              Report uses current Domarion area statistics and listing sample. It is analytical
+              context, not legal, tax or investment advice.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="footer">
+      This report is generated from Domarion market data. Validate source data, legal status,
+      financing and technical condition before making a transaction decision.
+    </p>
+  </main>
+</body>
+</html>
+"""
+
+
 def _render_section(title: str, items: list[str]) -> str:
     rows = "\n".join(f"<li>{escape(item)}</li>" for item in items)
     return f"<section><h2>{escape(title)}</h2><ul>{rows}</ul></section>"
@@ -257,3 +451,87 @@ def _render_branding(branding) -> str:
 
 def _money(value: int) -> str:
     return f"{value:,} PLN".replace(",", " ")
+
+
+def _dashboard_area_for_report(
+    area: AreaStatistics,
+    dashboard: MarketDashboard,
+) -> MarketDashboardArea | None:
+    for item in dashboard.areas:
+        if item.area_id == area.area_id:
+            return item
+    return None
+
+
+def _area_index_card(label: str, value: int) -> str:
+    css_class = "index warn" if label == "Overheated" else "index"
+    return f'<div class="{css_class}"><span>{escape(label)}</span><strong>{value}</strong></div>'
+
+
+def _area_distribution_rows(dashboard: MarketDashboard) -> str:
+    max_len = max(
+        len(dashboard.price_distribution),
+        len(dashboard.price_per_m2_distribution),
+        len(dashboard.area_distribution),
+        0,
+    )
+    if max_len == 0:
+        return '<tr><td colspan="4">No listing distribution data.</td></tr>'
+
+    rows = []
+    for index in range(max_len):
+        price = _bucket_cell(dashboard.price_distribution, index)
+        price_per_m2 = _bucket_cell(dashboard.price_per_m2_distribution, index)
+        area = _bucket_cell(dashboard.area_distribution, index)
+        rows.append(
+            "<tr>"
+            f"<td>{index + 1}</td>"
+            f"<td>{price}</td>"
+            f"<td>{price_per_m2}</td>"
+            f"<td>{area}</td>"
+            "</tr>"
+        )
+    return "\n".join(rows)
+
+
+def _bucket_cell(buckets: list[MarketDistributionBucket], index: int) -> str:
+    if index >= len(buckets):
+        return "-"
+    bucket = buckets[index]
+    return f"{escape(bucket.label)}: {bucket.count}"
+
+
+def _percent(value: float | None) -> str:
+    if value is None:
+        return "-"
+    return f"{value:+.1f}%"
+
+
+def _buyer_signal(area: MarketDashboardArea | None) -> str:
+    if area is None:
+        return "Not enough data for buyer market signal."
+    if area.buyer_market_index >= 65:
+        return "Buyer has stronger negotiation context: softer price or longer exposure signals."
+    if area.seller_market_index >= 65:
+        return "Seller position is stronger: use comparables and risk checks before negotiating."
+    return "Balanced market context; compare concrete listings and days-on-market."
+
+
+def _seller_signal(area: MarketDashboardArea | None) -> str:
+    if area is None:
+        return "Not enough data for seller market signal."
+    if area.seller_market_index >= 65:
+        return "Seller market pressure is high; attractive listings may require faster decisions."
+    if area.buyer_market_index >= 65:
+        return "Supply or exposure supports more patient negotiation."
+    return "No dominant seller pressure in the current area sample."
+
+
+def _liquidity_signal(area: MarketDashboardArea | None) -> str:
+    if area is None:
+        return "Not enough data for liquidity signal."
+    if area.liquidity_index >= 70:
+        return "Liquidity looks strong relative to the current Domarion sample."
+    if area.liquidity_index <= 35:
+        return "Liquidity looks weak; validate exit scenarios and rental demand."
+    return "Liquidity is moderate and should be checked against object-level quality."

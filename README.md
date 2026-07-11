@@ -642,6 +642,15 @@ $checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
   -Body '{"listing_id":"wr-001","product_code":"object_report","report_format":"html"}'
 ```
 
+Создать платный отчет по району можно тем же lifecycle, передав area reference:
+
+```powershell
+$checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"area:wroclaw-fabryczna","product_code":"area_report","report_format":"html"}'
+```
+
 Оплатить через mock checkout:
 
 ```powershell

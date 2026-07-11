@@ -335,7 +335,11 @@ export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_
 export type UserRole = "buyer" | "realtor" | "agency_admin" | "admin";
 export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "enterprise";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
-export type ReportProductCode = "object_report" | "full_object_analysis" | "investor_report";
+export type ReportProductCode =
+  | "object_report"
+  | "full_object_analysis"
+  | "investor_report"
+  | "area_report";
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";

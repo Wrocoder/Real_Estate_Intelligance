@@ -46,6 +46,23 @@ REPORT_PRODUCTS: dict[ReportProductCode, ReportProduct] = {
             "Инвестиционный вывод без финансовой рекомендации",
         ],
     ),
+    "area_report": ReportProduct(
+        code="area_report",
+        title="Area Market Report",
+        audience="realtor",
+        amount_grosz=7900,
+        currency="PLN",
+        description=(
+            "Платный отчет по району: динамика цен, ликвидность, "
+            "спрос/предложение и market indices."
+        ),
+        features=[
+            "Median and average PLN/m2",
+            "Liquidity, buyer/seller and overheated indices",
+            "Supply and price movement 90d",
+            "Inventory distributions for client-facing context",
+        ],
+    ),
 }
 
 

@@ -24,6 +24,7 @@ def test_report_products_are_available() -> None:
 
     assert response.status_code == 200
     assert {item["code"] for item in payload} == {
+        "area_report",
         "object_report",
         "full_object_analysis",
         "investor_report",
@@ -131,6 +132,62 @@ def test_report_order_rejects_missing_listing() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "Listing not found"
+
+
+def test_area_report_order_mock_payment_and_fulfillment() -> None:
+    headers = {"X-Domarion-User-Id": "paid-area-buyer"}
+
+    checkout = client.post(
+        "/api/v1/report-orders",
+        headers=headers,
+        json={
+            "listing_id": "area:wroclaw-fabryczna",
+            "product_code": "area_report",
+            "report_format": "html",
+        },
+    )
+    order = checkout.json()["order"]
+    client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
+    fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers)
+    report = client.get(
+        f"/api/v1/reports/{fulfilled.json()['generated_report_id']}",
+        headers=headers,
+    ).json()
+
+    assert checkout.status_code == 201
+    assert order["listing_id"] == "area:wroclaw-fabryczna"
+    assert order["product_code"] == "area_report"
+    assert order["audience"] == "realtor"
+    assert fulfilled.status_code == 200
+    assert fulfilled.json()["status"] == "fulfilled"
+    assert report["listing_id"] == "area:wroclaw-fabryczna"
+    assert report["content_type"].startswith("text/html")
+    assert "Area Market Report" in report["content"]
+    assert report["report_metadata"]["report_template_code"] == "area_market_report_v1"
+    assert report["report_metadata"]["area_id"] == "wroclaw-fabryczna"
+    assert report["report_metadata"]["liquidity_index"] >= 0
+
+
+def test_area_report_order_rejects_missing_area() -> None:
+    response = client.post(
+        "/api/v1/report-orders",
+        headers={"X-Domarion-User-Id": "missing-area-order"},
+        json={"listing_id": "area:not-found", "product_code": "area_report"},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Area not found"
+
+
+def test_area_reference_requires_area_report_product() -> None:
+    response = client.post(
+        "/api/v1/report-orders",
+        headers={"X-Domarion-User-Id": "wrong-area-product"},
+        json={"listing_id": "area:wroclaw-fabryczna", "product_code": "object_report"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Area references require area_report product"
 
 
 def test_user_submitted_draft_report_order_mock_payment_and_fulfillment() -> None:

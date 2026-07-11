@@ -11,7 +11,12 @@ AlertFrequency = Literal["instant", "daily", "weekly"]
 UserRole = Literal["buyer", "realtor", "agency_admin", "admin"]
 SubscriptionPlan = Literal["free", "buyer_pro", "realtor", "agency", "enterprise"]
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
-ReportProductCode = Literal["object_report", "full_object_analysis", "investor_report"]
+ReportProductCode = Literal[
+    "object_report",
+    "full_object_analysis",
+    "investor_report",
+    "area_report",
+]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
