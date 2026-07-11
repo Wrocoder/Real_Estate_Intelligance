@@ -44,6 +44,10 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert snapshot_response.status_code == 403
     assert snapshot_response.json()["detail"] == "Admin role required"
 
+    rebuild_response = client.post("/api/v1/admin/price-history/rebuild")
+    assert rebuild_response.status_code == 403
+    assert rebuild_response.json()["detail"] == "Admin role required"
+
     import_response = client.post(
         "/api/v1/admin/listings/import-csv",
         data={"source_name": "Unauthorized Partner", "dry_run": "true"},
@@ -175,6 +179,18 @@ def test_area_market_snapshot_write_requires_postgres_in_memory_mode() -> None:
     assert (
         response.json()["detail"]
         == "Area market snapshot writes require DATA_REPOSITORY_BACKEND=postgres"
+    )
+
+
+def test_price_history_rebuild_requires_postgres_in_memory_mode() -> None:
+    response = client.post(
+        "/api/v1/admin/price-history/rebuild",
+        headers=ADMIN_HEADERS,
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Price history rebuild requires DATA_REPOSITORY_BACKEND=postgres"
     )
 
 

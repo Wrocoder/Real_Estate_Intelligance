@@ -19,7 +19,13 @@ from domarion.db.models import (
 )
 from domarion.db.session import SessionLocal
 from domarion.ingestion.partner_csv import PartnerListingRecord, read_partner_csv, slugify
-from domarion.schemas import DataQualityLogCreate, Listing
+from domarion.schemas import (
+    DataQualityLogCreate,
+    Listing,
+    PriceHistoryPoint,
+    PriceHistoryRebuildResult,
+)
+from domarion.services.price_history import listing_with_price_history_metrics
 
 DEDUP_AREA_TOLERANCE_M2 = 1.0
 DEDUP_AREA_TOLERANCE_RATIO = 0.02
@@ -88,6 +94,7 @@ def import_partner_records_in_session(
         raw_created = _upsert_raw_listing(session, source, record)
         property_source, property_created = _upsert_property_source(session, source, record)
         snapshot_created, snapshot_updated = _upsert_snapshot(session, property_source, record)
+        _refresh_price_history_metrics(session, property_source)
 
         result = ImportResult(
             rows_seen=result.rows_seen,
@@ -100,6 +107,23 @@ def import_partner_records_in_session(
         )
 
     return result
+
+
+def rebuild_price_history_metrics_in_session(session: Session) -> PriceHistoryRebuildResult:
+    property_sources = session.scalars(select(PropertySource).order_by(PropertySource.id)).all()
+    snapshots_seen = 0
+    snapshots_updated = 0
+
+    for property_source in property_sources:
+        seen, updated = _refresh_price_history_metrics(session, property_source)
+        snapshots_seen += seen
+        snapshots_updated += updated
+
+    return PriceHistoryRebuildResult(
+        property_sources_seen=len(property_sources),
+        snapshots_seen=snapshots_seen,
+        snapshots_updated=snapshots_updated,
+    )
 
 
 def build_partner_quality_logs(
@@ -409,6 +433,49 @@ def _upsert_snapshot(
     snapshot.normalized_payload = listing.model_dump(mode="json")
     session.flush()
     return created, not created
+
+
+def _refresh_price_history_metrics(
+    session: Session,
+    property_source: PropertySource,
+) -> tuple[int, int]:
+    snapshots = session.scalars(
+        select(ListingSnapshot)
+        .where(ListingSnapshot.property_source_id == property_source.id)
+        .order_by(ListingSnapshot.observed_at)
+    ).all()
+    if not snapshots:
+        return 0, 0
+
+    history = [_snapshot_to_price_history_point(snapshot) for snapshot in snapshots]
+    property_source.first_seen_at = _date_to_datetime(history[0].observed_at)
+    property_source.last_seen_at = _date_to_datetime(history[-1].observed_at)
+
+    updated = 0
+    for index, snapshot in enumerate(snapshots):
+        listing = Listing.model_validate(snapshot.normalized_payload)
+        enriched_listing = listing_with_price_history_metrics(
+            listing,
+            history,
+            current_index=index,
+        )
+        enriched_payload = enriched_listing.model_dump(mode="json")
+        if snapshot.normalized_payload != enriched_payload:
+            snapshot.normalized_payload = enriched_payload
+            updated += 1
+
+    session.flush()
+    return len(snapshots), updated
+
+
+def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryPoint:
+    payload = snapshot.normalized_payload
+    area_m2 = float(snapshot.area_m2 or payload["area_m2"])
+    return PriceHistoryPoint(
+        observed_at=snapshot.observed_at.date(),
+        price=snapshot.price,
+        price_per_m2=int(round(snapshot.price / area_m2)),
+    )
 
 
 def _update_property_from_listing(property_: Property, listing: Listing) -> None:

@@ -5,7 +5,10 @@ from contextlib import contextmanager
 
 from domarion.core import get_settings
 from domarion.db.session import SessionLocal
-from domarion.ingestion.db_writer import import_partner_csv
+from domarion.ingestion.db_writer import (
+    import_partner_csv,
+    rebuild_price_history_metrics_in_session,
+)
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
 from domarion.repositories.factory import get_repository
@@ -80,6 +83,10 @@ def main() -> None:
         action="store_true",
         help="Build snapshots without writing to PostgreSQL.",
     )
+    subparsers.add_parser(
+        "rebuild-price-history",
+        help="Recalculate listing first/last seen and price move metrics from snapshots.",
+    )
 
     args = parser.parse_args()
 
@@ -149,6 +156,16 @@ def main() -> None:
                         dry_run=False,
                     )
                     session.commit()
+        _print_json(result.model_dump_json(indent=2))
+    elif args.command == "rebuild-price-history":
+        settings = get_settings()
+        if settings.data_repository_backend != "postgres":
+            raise SystemExit(
+                "rebuild-price-history requires DATA_REPOSITORY_BACKEND=postgres."
+            )
+        with SessionLocal() as session:
+            result = rebuild_price_history_metrics_in_session(session)
+            session.commit()
         _print_json(result.model_dump_json(indent=2))
 
 

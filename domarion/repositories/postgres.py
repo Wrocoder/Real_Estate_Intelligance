@@ -18,6 +18,7 @@ from domarion.schemas import (
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
 )
+from domarion.services.price_history import listing_with_price_history_metrics
 
 
 class PostgresRealEstateRepository:
@@ -138,15 +139,7 @@ class PostgresRealEstateRepository:
             if payload.get("id") != listing_id:
                 continue
 
-            area_m2 = float(snapshot.area_m2 or payload["area_m2"])
-            price_per_m2 = int(round(snapshot.price / area_m2))
-            history.append(
-                PriceHistoryPoint(
-                    observed_at=snapshot.observed_at.date(),
-                    price=snapshot.price,
-                    price_per_m2=price_per_m2,
-                )
-            )
+            history.append(self._snapshot_to_price_history_point(snapshot))
 
         return history
 
@@ -170,19 +163,27 @@ class PostgresRealEstateRepository:
 
     def _latest_listings(self) -> list[Listing]:
         snapshots = self.session.scalars(
-            select(ListingSnapshot).order_by(ListingSnapshot.observed_at.desc())
+            select(ListingSnapshot).order_by(ListingSnapshot.observed_at)
         ).all()
 
-        listings = []
-        seen_ids = set()
+        snapshots_by_listing_id: dict[str, list[ListingSnapshot]] = {}
         for snapshot in snapshots:
-            listing = Listing.model_validate(snapshot.normalized_payload)
-            if listing.id in seen_ids:
+            listing_id = snapshot.normalized_payload.get("id")
+            if listing_id is None:
                 continue
-            listings.append(listing)
-            seen_ids.add(listing.id)
+            snapshots_by_listing_id.setdefault(listing_id, []).append(snapshot)
 
-        return listings
+        listings = []
+        for listing_snapshots in snapshots_by_listing_id.values():
+            latest_snapshot = listing_snapshots[-1]
+            listing = Listing.model_validate(latest_snapshot.normalized_payload)
+            history = [
+                self._snapshot_to_price_history_point(snapshot)
+                for snapshot in listing_snapshots
+            ]
+            listings.append(listing_with_price_history_metrics(listing, history))
+
+        return sorted(listings, key=lambda listing: listing.last_seen_at, reverse=True)
 
     @staticmethod
     def _area_to_schema(row: AreaStatistic) -> AreaStatistics:
@@ -237,3 +238,13 @@ class PostgresRealEstateRepository:
                 setattr(row, key, Decimal(str(value)))
             else:
                 setattr(row, key, value)
+
+    @staticmethod
+    def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryPoint:
+        payload = snapshot.normalized_payload
+        area_m2 = float(snapshot.area_m2 or payload["area_m2"])
+        return PriceHistoryPoint(
+            observed_at=snapshot.observed_at.date(),
+            price=snapshot.price,
+            price_per_m2=int(round(snapshot.price / area_m2)),
+        )

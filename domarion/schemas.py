@@ -271,6 +271,12 @@ class PartnerCsvImportResponse(BaseModel):
     job: IngestionJob
 
 
+class PriceHistoryRebuildResult(BaseModel):
+    property_sources_seen: int = Field(ge=0)
+    snapshots_seen: int = Field(ge=0)
+    snapshots_updated: int = Field(ge=0)
+
+
 class PlannedInvestmentImportResponse(BaseModel):
     rows_seen: int = Field(ge=0)
     created: int = Field(ge=0)

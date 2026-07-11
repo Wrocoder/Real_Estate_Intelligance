@@ -24,6 +24,7 @@ from domarion.ingestion.db_writer import (
     ImportResult,
     build_partner_quality_logs,
     import_partner_records_in_session,
+    rebuild_price_history_metrics_in_session,
 )
 from domarion.ingestion.partner_csv import PartnerCsvError, read_partner_csv
 from domarion.ingestion.planned_investments import (
@@ -83,6 +84,7 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentImportResponse,
     PlannedInvestmentUpdate,
+    PriceHistoryRebuildResult,
     RawListingSummary,
     ReportAudience,
     ReportEmailRequest,
@@ -339,6 +341,28 @@ def create_admin_area_market_snapshots(
                 session=session,
                 dry_run=False,
             )
+            session.commit()
+        except Exception:
+            session.rollback()
+            raise
+    return result
+
+
+@router.post("/admin/price-history/rebuild", response_model=PriceHistoryRebuildResult)
+def rebuild_admin_price_history(
+    account: CurrentAccountDep,
+) -> PriceHistoryRebuildResult:
+    _ensure_admin(account)
+    settings = get_settings()
+    if settings.data_repository_backend != "postgres":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Price history rebuild requires DATA_REPOSITORY_BACKEND=postgres",
+        )
+
+    with SessionLocal() as session:
+        try:
+            result = rebuild_price_history_metrics_in_session(session)
             session.commit()
         except Exception:
             session.rollback()

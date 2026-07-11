@@ -25,6 +25,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
+- Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
@@ -236,6 +237,26 @@ data quality score снижается. Если адрес не покрыт off
 rooms, площади и координатам, создается новый `property_source` для существующей
 `property`, а не новый дубль объекта. В таком случае `properties_created` не
 растет, а обновляется существующая property.
+
+После записи snapshot importer пересчитывает price history metrics по всей
+истории конкретного объявления: `first_seen_at`, `last_seen_at`,
+`days_on_market`, `price_reductions`, `price_increases`, текущую цену и
+`price_per_m2`. Для уже существующих PostgreSQL snapshots можно выполнить
+backfill:
+
+```powershell
+.\.venv\Scripts\domarion.exe rebuild-price-history
+```
+
+Internal admin API для того же backfill:
+
+```powershell
+curl.exe -X POST http://127.0.0.1:8000/api/v1/admin/price-history/rebuild `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise"
+```
 
 Минимальные обязательные колонки:
 

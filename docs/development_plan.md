@@ -117,7 +117,7 @@
 - [x] Добавить geocoding pipeline.
 - [x] Добавить source monitoring и error reporting.
 - [x] Добавить ingestion source registry с legal status и refresh policy.
-- [ ] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
+- [x] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
 - [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
 - [ ] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [ ] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
@@ -384,6 +384,7 @@
 - [x] Commit 16: PostGIS staging verifier.
 - [x] Commit 17: planned investments open-data ingestion.
 - [x] Commit 18: source registry and partner onboarding.
+- [x] Commit 19: price history update pipeline.
 
 ## Current Sprint
 
@@ -396,6 +397,8 @@
 - [x] Добавить тесты dry-run и idempotent upsert.
 - [x] Добавить source registry backend/API/UI.
 - [x] Добавить partner data onboarding format.
+- [x] Добавить price history update pipeline и backfill command/API.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
+- [x] Сделать Commit 19 и push.

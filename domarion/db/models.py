@@ -141,6 +141,7 @@ class PropertySource(Base):
 
 class ListingSnapshot(Base):
     __tablename__ = "listing_snapshots"
+    __table_args__ = (UniqueConstraint("property_source_id", "observed_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     property_source_id: Mapped[int] = mapped_column(ForeignKey("property_sources.id"))
