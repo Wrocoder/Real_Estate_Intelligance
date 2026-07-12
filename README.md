@@ -32,6 +32,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
 - Добавлен infrastructure enrichment pipeline: PostGIS пересчитывает расстояния до центра, остановок, школ, industrial zones и counts для парков/школ/planned investments.
 - Добавлены AI insights: generated reports сохраняют owner-scoped summaries, area summaries и object explanations через `/api/v1/ai-insights`.
+- Добавлен S3-compatible report artifact storage abstraction: HTML/JSON отчеты можно дублировать в local/S3 backend без изменения report API.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -790,6 +791,34 @@ Invoke-WebRequest "http://127.0.0.1:8000/api/v1/reports/export?format=csv" `
   -OutFile domarion-reports.csv
 ```
 
+Report artifact storage можно включить отдельно от основного `REPORT_STORE_BACKEND`.
+По умолчанию `REPORT_ARTIFACT_STORAGE_BACKEND=disabled`, поэтому существующий режим
+хранения отчета в БД не меняется. Для local artifact mirror:
+
+```env
+REPORT_ARTIFACT_STORAGE_BACKEND=local
+REPORT_ARTIFACT_LOCAL_DIR=.domarion/report-artifacts
+REPORT_ARTIFACT_PUBLIC_BASE_URL=
+```
+
+Для S3-compatible bucket (AWS S3, MinIO, Cloudflare R2 и аналоги):
+
+```env
+REPORT_ARTIFACT_STORAGE_BACKEND=s3
+REPORT_ARTIFACT_S3_ENDPOINT_URL=https://s3.example.com
+REPORT_ARTIFACT_S3_REGION=eu-central-1
+REPORT_ARTIFACT_S3_BUCKET=domarion-artifacts
+REPORT_ARTIFACT_S3_PREFIX=domarion/reports
+REPORT_ARTIFACT_S3_ACCESS_KEY_ID=...
+REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY=...
+REPORT_ARTIFACT_PUBLIC_BASE_URL=https://cdn.example.com
+```
+
+После сохранения отчета `report_metadata` получает `artifact_storage_backend`,
+`artifact_storage_key`, `artifact_content_sha256`, `artifact_size_bytes` и optional
+`artifact_public_url`. `/api/v1/reports/{report_id}/content` остается owner-scoped и
+продолжает работать через существующий report API.
+
 Webhook endpoints:
 
 - `POST /api/v1/payment-webhooks/stripe` проверяет `Stripe-Signature` через `STRIPE_WEBHOOK_SECRET`.
@@ -919,8 +948,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
-2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-3. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
-4. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
+1. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+2. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+3. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
+4. Добавить native PDF generation.
 5. Добавить deployment workflow после выбора hosting.

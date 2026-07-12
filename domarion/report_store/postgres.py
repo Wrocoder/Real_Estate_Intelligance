@@ -14,7 +14,7 @@ class PostgresReportStore:
 
     def save_report(self, payload: GeneratedReportCreate) -> GeneratedReport:
         row = GeneratedReportModel(
-            id=str(uuid4()),
+            id=payload.id or str(uuid4()),
             owner_id=payload.owner_id,
             listing_id=payload.listing_id,
             audience=payload.audience,

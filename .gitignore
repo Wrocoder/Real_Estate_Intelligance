@@ -38,10 +38,10 @@ coverage/
 *.db
 tmp/
 logs/
+.domarion/
 data/raw/
 data/exports/
 
 # OS
 .DS_Store
 Thumbs.db
-

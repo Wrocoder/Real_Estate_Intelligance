@@ -18,6 +18,15 @@ class Settings(BaseSettings):
     user_submitted_listing_store_backend: str = "memory"
     partner_referral_store_backend: str = "memory"
     ai_insight_store_backend: str = "memory"
+    report_artifact_storage_backend: str = "disabled"
+    report_artifact_local_dir: str = ".domarion/report-artifacts"
+    report_artifact_public_base_url: str | None = None
+    report_artifact_s3_endpoint_url: str | None = None
+    report_artifact_s3_region: str = "eu-central-1"
+    report_artifact_s3_bucket: str | None = None
+    report_artifact_s3_prefix: str = "domarion/reports"
+    report_artifact_s3_access_key_id: str | None = None
+    report_artifact_s3_secret_access_key: str | None = None
     payment_provider: str = "mock"
     payment_checkout_base_url: str | None = None
     payment_webhook_tolerance_seconds: int = 300

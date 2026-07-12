@@ -79,7 +79,7 @@
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
 - [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
-- [ ] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
+- [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
 ## 4. Listings и Search API
 
@@ -442,6 +442,7 @@
 - [x] Commit 45: source check jobs and source error retry queue.
 - [x] Commit 46: infrastructure enrichment pipeline.
 - [x] Commit 47: district and city comparison analytics.
+- [x] Commit 48: S3-compatible report artifact storage abstraction.
 
 ## Current Sprint
 
@@ -484,6 +485,7 @@
 - [x] Добавить `source_check_jobs`/`source_errors` для legal source checks, sanitized URL import failures и retry queue.
 - [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [x] Добавить district/city comparison analytics и страницу сравнения районов.
+- [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -515,3 +517,4 @@
 - [x] Сделать Commit 45 и push.
 - [x] Сделать Commit 46 и push.
 - [x] Сделать Commit 47 и push.
+- [x] Сделать Commit 48 и push.

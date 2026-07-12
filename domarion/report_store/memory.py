@@ -10,9 +10,9 @@ class InMemoryReportStore:
 
     def save_report(self, payload: GeneratedReportCreate) -> GeneratedReport:
         report = GeneratedReport(
-            id=str(uuid4()),
+            id=payload.id or str(uuid4()),
             created_at=datetime.now(UTC),
-            **payload.model_dump(),
+            **payload.model_dump(exclude={"id"}),
         )
         self._items[report.id] = report
         return report

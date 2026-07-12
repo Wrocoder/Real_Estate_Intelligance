@@ -1338,6 +1338,7 @@ class UserSubmittedListingReport(BaseModel):
 
 
 class GeneratedReportCreate(BaseModel):
+    id: str | None = None
     owner_id: str = "demo-user"
     listing_id: str
     audience: ReportAudience
