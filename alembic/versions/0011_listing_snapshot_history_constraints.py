@@ -1,7 +1,7 @@
 """Add listing snapshot history constraints.
 
 Revision ID: 0011_listing_snapshot_history_constraints
-Revises: 0010_source_registry_metadata
+Revises: 0010b_version_len
 Create Date: 2026-07-11
 """
 
@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from alembic import op
 
 revision: str = "0011_listing_snapshot_history_constraints"
-down_revision: str | None = "0010_source_registry_metadata"
+down_revision: str | None = "0010b_version_len"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

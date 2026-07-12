@@ -69,7 +69,7 @@
 - [x] Добавить `memory` и `postgres` repository backend.
 - [x] Добавить repository factory через `DATA_REPOSITORY_BACKEND`.
 - [x] Добавить demo seed command.
-- [ ] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
+- [x] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
 - [ ] Добавить geometry columns и spatial indexes.
 - [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
 - [x] Добавить миграционную проверку в CI.
@@ -431,6 +431,7 @@
 - [x] Commit 34: one-off URL import for private listing checks.
 - [x] Commit 35: human-readable score labels.
 - [x] Commit 36: user-submitted reference source telemetry.
+- [x] Commit 37: live PostGIS migration verification.
 
 ## Current Sprint
 
@@ -462,7 +463,7 @@
 - [x] Добавить one-off URL import для автозаполнения `/check` по user-submitted Otodom/OLX URL.
 - [x] Добавить человекочитаемые score labels в API/UI/report metadata.
 - [x] Добавить `user_submitted_reference` source type и sanitized telemetry для private URL import.
-- [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
+- [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -483,3 +484,4 @@
 - [x] Сделать Commit 34 и push.
 - [x] Сделать Commit 35 и push.
 - [x] Сделать Commit 36 и push.
+- [x] Сделать Commit 37 и push.

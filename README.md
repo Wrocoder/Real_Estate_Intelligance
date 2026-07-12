@@ -23,6 +23,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен daily email alert batch runner: admin API и CLI для cron/background worker.
 - Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
+- Проверены Alembic migrations на живой PostgreSQL/PostGIS БД через staging verifier.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -875,8 +876,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Запустить `scripts\verify_postgres_staging.py` на живой PostGIS БД после стабилизации Docker Desktop.
-2. Подключить CSV/JSON import planned investments к internal admin endpoint.
-3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-4. Добавить SEO structured content для следующих городов.
-5. Добавить deployment workflow после выбора hosting.
+1. Добавить geometry columns и spatial indexes.
+2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+3. Добавить SEO structured content для следующих городов.
+4. Добавить deployment workflow после выбора hosting.
+5. Добавить background worker deployment для alerts, ingestion и report generation.

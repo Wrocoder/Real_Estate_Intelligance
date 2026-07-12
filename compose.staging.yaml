@@ -35,7 +35,7 @@ x-api-env: &api-env
 
 services:
   db:
-    image: postgis/postgis:16-3.4
+    image: postgis/postgis:16-3.5
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-domarion}
       POSTGRES_USER: ${POSTGRES_USER:-domarion}
