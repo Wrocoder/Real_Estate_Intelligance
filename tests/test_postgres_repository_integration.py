@@ -41,6 +41,16 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["location_references"]["municipality_count"] >= 1
     assert payload["checks"]["location_references"]["district_count"] >= 3
     assert payload["checks"]["location_references"]["query_count"] >= 1
+    assert payload["checks"]["infrastructure"]["transport_stop_count"] >= 2
+    assert payload["checks"]["infrastructure"]["transport_route_count"] >= 2
+    assert payload["checks"]["infrastructure"]["school_count"] >= 1
+    assert payload["checks"]["infrastructure"]["kindergarten_count"] >= 2
+    assert payload["checks"]["infrastructure"]["amenity_count"] >= 1
+    assert payload["checks"]["infrastructure"]["industrial_zone_count"] >= 1
+    assert (
+        payload["checks"]["infrastructure"]["spatial"]["infrastructure_spatial_index_count"]
+        == 5
+    )
     assert payload["checks"]["spatial"]["properties_with_geom"] >= 3
     assert payload["checks"]["spatial"]["planned_investments_with_geom"] >= 4
     assert payload["checks"]["spatial"]["spatial_index_count"] == 2

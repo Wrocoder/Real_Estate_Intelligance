@@ -7,8 +7,11 @@ from uuid import uuid4
 
 from domarion.repositories.base import BBox
 from domarion.schemas import (
+    AmenityReference,
     AreaStatistics,
     DistrictReference,
+    IndustrialZoneReference,
+    KindergartenReference,
     Listing,
     ListingEvent,
     LocationReference,
@@ -18,6 +21,9 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    SchoolReference,
+    TransportRouteReference,
+    TransportStopReference,
 )
 from domarion.services.listing_events import ListingEventInput, derive_listing_events
 
@@ -241,6 +247,172 @@ class InMemoryRealEstateRepository:
             ),
         }
 
+        self._transport_stops = [
+            TransportStopReference(
+                id="stop-wroclaw-nowy-dwor-pr",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                name="Nowy Dwór P+R",
+                stop_type="tram_bus",
+                lat=51.1125,
+                lon=16.9671,
+                lines=["13", "23", "142"],
+                source_url="https://example.com/open-data/transport-stops/nowy-dwor-pr",
+                metadata={"source": "demo_seed", "status": "planned"},
+            ),
+            TransportStopReference(
+                id="stop-wroclaw-jagodno-buforowa",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-krzyki",
+                district_name="Krzyki",
+                name="Jagodno Buforowa",
+                stop_type="bus",
+                lat=51.0574,
+                lon=17.0619,
+                lines=["110", "145"],
+                source_url="https://example.com/open-data/transport-stops/jagodno-buforowa",
+                metadata={"source": "demo_seed", "status": "active"},
+            ),
+        ]
+        self._transport_routes = [
+            TransportRouteReference(
+                id="route-wroclaw-tram-13",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                route_number="13",
+                route_name="Nowy Dwór - Centrum",
+                route_type="tram",
+                operator="MPK Wrocław",
+                status="planned",
+                stop_ids=["stop-wroclaw-nowy-dwor-pr"],
+                metadata={"source": "demo_seed"},
+            ),
+            TransportRouteReference(
+                id="route-wroclaw-bus-145",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-krzyki",
+                district_name="Krzyki",
+                route_number="145",
+                route_name="Jagodno - Dworzec Główny",
+                route_type="bus",
+                operator="MPK Wrocław",
+                status="active",
+                stop_ids=["stop-wroclaw-jagodno-buforowa"],
+                metadata={"source": "demo_seed"},
+            ),
+        ]
+        self._schools = [
+            SchoolReference(
+                id="school-wroclaw-sp-fabryczna-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                name="Demo Primary School Fabryczna",
+                school_type="primary",
+                operator_type="public",
+                lat=51.1141,
+                lon=16.9608,
+                source_url="https://example.com/open-data/schools/fabryczna-demo",
+                metadata={"source": "demo_seed"},
+            ),
+            SchoolReference(
+                id="school-wroclaw-sp-psie-pole-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-psie-pole",
+                district_name="Psie Pole",
+                name="Demo Primary School Psie Pole",
+                school_type="primary",
+                operator_type="public",
+                lat=51.1535,
+                lon=17.0621,
+                source_url="https://example.com/open-data/schools/psie-pole-demo",
+                metadata={"source": "demo_seed"},
+            ),
+        ]
+        self._kindergartens = [
+            KindergartenReference(
+                id="kindergarten-wroclaw-nowy-dwor-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                name="Demo Kindergarten Nowy Dwór",
+                kindergarten_type="preschool",
+                operator_type="public",
+                lat=51.1104,
+                lon=16.9639,
+                source_url="https://example.com/open-data/kindergartens/nowy-dwor-demo",
+                metadata={"source": "demo_seed"},
+            ),
+            KindergartenReference(
+                id="kindergarten-wroclaw-jagodno-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-krzyki",
+                district_name="Krzyki",
+                name="Demo Kindergarten Jagodno",
+                kindergarten_type="preschool",
+                operator_type="public",
+                lat=51.0589,
+                lon=17.0588,
+                source_url="https://example.com/open-data/kindergartens/jagodno-demo",
+                metadata={"source": "demo_seed"},
+            ),
+        ]
+        self._amenities = [
+            AmenityReference(
+                id="amenity-wroclaw-nowy-dwor-park-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                name="Demo Pocket Park Nowy Dwór",
+                amenity_type="park",
+                lat=51.1096,
+                lon=16.9691,
+                source_url="https://example.com/open-data/amenities/nowy-dwor-park-demo",
+                metadata={"source": "demo_seed"},
+            ),
+            AmenityReference(
+                id="amenity-wroclaw-psie-pole-services-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-psie-pole",
+                district_name="Psie Pole",
+                name="Demo Public Services Hub Psie Pole",
+                amenity_type="public_services",
+                lat=51.1542,
+                lon=17.0656,
+                source_url="https://example.com/open-data/amenities/psie-pole-services-demo",
+                metadata={"source": "demo_seed"},
+            ),
+        ]
+        self._industrial_zones = [
+            IndustrialZoneReference(
+                id="industrial-zone-wroclaw-fabryczna-demo",
+                municipality_id="wroclaw",
+                municipality_name="Wrocław",
+                district_id="wroclaw-fabryczna",
+                district_name="Fabryczna",
+                name="Demo Fabryczna Industrial Edge",
+                zone_type="light_industrial",
+                risk_level="moderate",
+                impact_radius_m=1800,
+                lat=51.1239,
+                lon=16.9424,
+                source_url="https://example.com/open-data/industrial-zones/fabryczna-demo",
+                metadata={"source": "demo_seed"},
+            )
+        ]
+
         self._history = {
             "wr-001": [
                 PriceHistoryPoint(observed_at=date(2026, 4, 12), price=725000, price_per_m2=12247),
@@ -408,6 +580,100 @@ class InMemoryRealEstateRepository:
             ]
 
         return sorted(references, key=lambda item: item.name)[:limit]
+
+    def list_transport_stops(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportStopReference]:
+        return _filter_infrastructure(
+            self._transport_stops,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
+
+    def list_transport_routes(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportRouteReference]:
+        return _filter_infrastructure(
+            self._transport_routes,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
+
+    def list_schools(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[SchoolReference]:
+        return _filter_infrastructure(
+            self._schools,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
+
+    def list_kindergartens(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[KindergartenReference]:
+        return _filter_infrastructure(
+            self._kindergartens,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
+
+    def list_amenities(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        amenity_type: str | None = None,
+        limit: int = 100,
+    ) -> list[AmenityReference]:
+        items = _filter_infrastructure(
+            self._amenities,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
+        if amenity_type:
+            items = [item for item in items if item.amenity_type == amenity_type]
+        return items[:limit]
+
+    def list_industrial_zones(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[IndustrialZoneReference]:
+        return _filter_infrastructure(
+            self._industrial_zones,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            limit=limit,
+        )
 
     def list_planned_investments(
         self,
@@ -586,3 +852,26 @@ def _centroid(points: Iterable[tuple[float, float]]) -> tuple[float | None, floa
 def _slug(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+
+
+def _filter_infrastructure(
+    items: Iterable,
+    *,
+    municipality_id: str | None,
+    district_id: str | None,
+    city: str | None,
+    limit: int,
+) -> list:
+    if city and city.casefold() != "Wrocław".casefold():
+        return []
+
+    filtered = list(items)
+    if municipality_id:
+        filtered = [item for item in filtered if item.municipality_id == municipality_id]
+    if district_id:
+        filtered = [item for item in filtered if item.district_id == district_id]
+
+    return sorted(
+        filtered,
+        key=lambda item: getattr(item, "name", getattr(item, "route_name", "")),
+    )[:limit]

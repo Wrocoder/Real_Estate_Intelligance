@@ -64,6 +64,7 @@ from domarion.schemas import (
     AlertDeliveryRequest,
     AlertPreview,
     AlertUpdate,
+    AmenityReference,
     AreaMarketSnapshotJobResult,
     AreaStatistics,
     CheckoutSession,
@@ -80,9 +81,11 @@ from domarion.schemas import (
     GeneratedReportListItem,
     GenerateReportRequest,
     GenerateUserSubmittedDraftReportRequest,
+    IndustrialZoneReference,
     IngestionJob,
     IngestionJobCreate,
     IngestionSourceHealth,
+    KindergartenReference,
     Listing,
     ListingAnalysis,
     ListingSearchResponse,
@@ -125,6 +128,7 @@ from domarion.schemas import (
     ReportProductCode,
     ReportRequest,
     ReportTemplateDescriptor,
+    SchoolReference,
     ScoringBacktestResult,
     SourceReferencePreview,
     SourceReferencePreviewRequest,
@@ -134,6 +138,8 @@ from domarion.schemas import (
     SourceUrlImportRequest,
     SourceUrlImportResult,
     SubscriptionUpdate,
+    TransportRouteReference,
+    TransportStopReference,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
     UserSubmittedListingDraftPruneResult,
@@ -291,6 +297,104 @@ def list_location_references(
         district_id=district_id,
         location_type=location_type,
         query=query,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/transport-stops", response_model=list[TransportStopReference])
+def list_transport_stops(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[TransportStopReference]:
+    return repository.list_transport_stops(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/transport-routes", response_model=list[TransportRouteReference])
+def list_transport_routes(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[TransportRouteReference]:
+    return repository.list_transport_routes(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/schools", response_model=list[SchoolReference])
+def list_schools(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[SchoolReference]:
+    return repository.list_schools(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/kindergartens", response_model=list[KindergartenReference])
+def list_kindergartens(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[KindergartenReference]:
+    return repository.list_kindergartens(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/amenities", response_model=list[AmenityReference])
+def list_amenities(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    amenity_type: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[AmenityReference]:
+    return repository.list_amenities(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
+        amenity_type=amenity_type,
+        limit=limit,
+    )
+
+
+@router.get("/infrastructure/industrial-zones", response_model=list[IndustrialZoneReference])
+def list_industrial_zones(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[IndustrialZoneReference]:
+    return repository.list_industrial_zones(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        city=city,
         limit=limit,
     )
 

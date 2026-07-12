@@ -94,6 +94,96 @@ export type LocationReference = {
   metadata: Record<string, unknown>;
 };
 
+export type TransportStopReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  stop_type: string;
+  lat: number | null;
+  lon: number | null;
+  lines: string[];
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type TransportRouteReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  route_number: string;
+  route_name: string;
+  route_type: string;
+  operator: string | null;
+  status: string;
+  stop_ids: string[];
+  metadata: Record<string, unknown>;
+};
+
+export type SchoolReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  school_type: string;
+  operator_type: string | null;
+  lat: number | null;
+  lon: number | null;
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type KindergartenReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  kindergarten_type: string;
+  operator_type: string | null;
+  lat: number | null;
+  lon: number | null;
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type AmenityReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  amenity_type: string;
+  lat: number | null;
+  lon: number | null;
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export type IndustrialZoneReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  zone_type: string;
+  risk_level: string;
+  impact_radius_m: number | null;
+  lat: number | null;
+  lon: number | null;
+  source_url: string | null;
+  metadata: Record<string, unknown>;
+};
+
 export type MarketDistributionBucket = {
   label: string;
   count: number;
@@ -1065,6 +1155,57 @@ export const api = {
     limit?: number;
   } = {}) =>
     request<LocationReference[]>(`/api/v1/locations${toQueryString(params)}`),
+  listTransportStops: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    limit?: number;
+  } = {}) =>
+    request<TransportStopReference[]>(
+      `/api/v1/infrastructure/transport-stops${toQueryString(params)}`,
+    ),
+  listTransportRoutes: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    limit?: number;
+  } = {}) =>
+    request<TransportRouteReference[]>(
+      `/api/v1/infrastructure/transport-routes${toQueryString(params)}`,
+    ),
+  listSchools: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    limit?: number;
+  } = {}) =>
+    request<SchoolReference[]>(`/api/v1/infrastructure/schools${toQueryString(params)}`),
+  listKindergartens: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    limit?: number;
+  } = {}) =>
+    request<KindergartenReference[]>(
+      `/api/v1/infrastructure/kindergartens${toQueryString(params)}`,
+    ),
+  listAmenities: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    amenity_type?: string;
+    limit?: number;
+  } = {}) =>
+    request<AmenityReference[]>(`/api/v1/infrastructure/amenities${toQueryString(params)}`),
+  listIndustrialZones: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    city?: string;
+    limit?: number;
+  } = {}) =>
+    request<IndustrialZoneReference[]>(
+      `/api/v1/infrastructure/industrial-zones${toQueryString(params)}`,
+    ),
   getMarketDashboard: (params: { city?: string; district?: string } = {}) =>
     request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
   getMe: () => request<AccountSummary>("/api/v1/me"),

@@ -29,6 +29,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен `listing_events` timeline из snapshots: first seen, price moves, parameter/status changes и relist events.
 - Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
 - Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
+- Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -881,8 +882,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
-2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-3. Добавить SEO structured content для следующих городов.
-4. Добавить deployment workflow после выбора hosting.
-5. Добавить background worker deployment для alerts, ingestion и report generation.
+1. Добавить `ai_insights` для сохранения AI summaries и object explanations.
+2. Добавить data enrichment pipeline для infrastructure matching и distance calculations.
+3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+4. Добавить SEO structured content для следующих городов.
+5. Добавить deployment workflow после выбора hosting.

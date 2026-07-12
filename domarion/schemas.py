@@ -199,6 +199,96 @@ class LocationReference(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class TransportStopReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    stop_type: str
+    lat: float | None = None
+    lon: float | None = None
+    lines: list[str] = Field(default_factory=list)
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class TransportRouteReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    route_number: str
+    route_name: str
+    route_type: str
+    operator: str | None = None
+    status: str = "active"
+    stop_ids: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SchoolReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    school_type: str
+    operator_type: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class KindergartenReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    kindergarten_type: str
+    operator_type: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AmenityReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    amenity_type: str
+    lat: float | None = None
+    lon: float | None = None
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class IndustrialZoneReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    zone_type: str
+    risk_level: str = "unknown"
+    impact_radius_m: int | None = Field(default=None, ge=0)
+    lat: float | None = None
+    lon: float | None = None
+    source_url: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class AreaMarketSnapshot(AreaStatistics):
     id: int | None = None
     calculated_at: datetime

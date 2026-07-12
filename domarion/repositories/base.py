@@ -1,8 +1,11 @@
 from typing import Protocol
 
 from domarion.schemas import (
+    AmenityReference,
     AreaStatistics,
     DistrictReference,
+    IndustrialZoneReference,
+    KindergartenReference,
     Listing,
     ListingEvent,
     LocationReference,
@@ -12,6 +15,9 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    SchoolReference,
+    TransportRouteReference,
+    TransportStopReference,
 )
 
 BBox = tuple[float, float, float, float]
@@ -59,6 +65,61 @@ class RealEstateRepository(Protocol):
         query: str | None = None,
         limit: int = 100,
     ) -> list[LocationReference]:
+        raise NotImplementedError
+
+    def list_transport_stops(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportStopReference]:
+        raise NotImplementedError
+
+    def list_transport_routes(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportRouteReference]:
+        raise NotImplementedError
+
+    def list_schools(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[SchoolReference]:
+        raise NotImplementedError
+
+    def list_kindergartens(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[KindergartenReference]:
+        raise NotImplementedError
+
+    def list_amenities(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        amenity_type: str | None = None,
+        limit: int = 100,
+    ) -> list[AmenityReference]:
+        raise NotImplementedError
+
+    def list_industrial_zones(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[IndustrialZoneReference]:
         raise NotImplementedError
 
     def list_planned_investments(

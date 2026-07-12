@@ -96,9 +96,12 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     schemas = openapi["components"]["schemas"]
 
     expected_schemas = {
+        "AmenityReference",
         "AreaMarketSnapshotJobResult",
         "DistrictReference",
         "GenerateUserSubmittedDraftReportRequest",
+        "IndustrialZoneReference",
+        "KindergartenReference",
         "LocationReference",
         "MarketDashboard",
         "MarketDashboardArea",
@@ -123,12 +126,15 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ReportEmailRequest",
         "ReportEmailResult",
         "ReportTemplateDescriptor",
+        "SchoolReference",
         "ScoringBacktestResult",
         "SourceReferencePreview",
         "SourceReferencePreviewRequest",
         "SourceUrlImportFields",
         "SourceUrlImportRequest",
         "SourceUrlImportResult",
+        "TransportRouteReference",
+        "TransportStopReference",
         "SourceRegistryEntry",
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",

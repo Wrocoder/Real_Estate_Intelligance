@@ -108,6 +108,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
 
     deduplication_check = _run_deduplication_check(repository, listing)
     location_reference_check = _run_location_reference_check(repository)
+    infrastructure_check = _run_infrastructure_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -148,6 +149,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "comparable_count": len(comparables),
         "deduplication": deduplication_check,
         "location_references": location_reference_check,
+        "infrastructure": infrastructure_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -155,6 +157,92 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             "nearby_planned_investment_count": len(nearby_planned_investments),
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
+        },
+    }
+
+
+def _run_infrastructure_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    stops = repository.list_transport_stops(city="Wrocław")
+    routes = repository.list_transport_routes(city="Wrocław")
+    schools = repository.list_schools(district_id="wroclaw-fabryczna")
+    kindergartens = repository.list_kindergartens(city="Wrocław")
+    amenities = repository.list_amenities(amenity_type="park")
+    industrial_zones = repository.list_industrial_zones(city="Wrocław")
+    if not any(item.id == "stop-wroclaw-nowy-dwor-pr" for item in stops):
+        raise RuntimeError("Expected seeded Nowy Dwór transport stop.")
+    if not any(item.route_number == "13" for item in routes):
+        raise RuntimeError("Expected seeded transport route 13.")
+    if not schools:
+        raise RuntimeError("Expected seeded Fabryczna school.")
+    if not kindergartens:
+        raise RuntimeError("Expected seeded kindergartens.")
+    if not amenities:
+        raise RuntimeError("Expected seeded park amenity.")
+    if not industrial_zones:
+        raise RuntimeError("Expected seeded industrial zone.")
+
+    spatial = repository.session.execute(
+        text(
+            """
+            select
+                (
+                    select count(*)
+                    from transport_stops
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as transport_stops_with_geom,
+                (
+                    select count(*)
+                    from schools
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as schools_with_geom,
+                (
+                    select count(*)
+                    from kindergartens
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as kindergartens_with_geom,
+                (
+                    select count(*)
+                    from amenities
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as amenities_with_geom,
+                (
+                    select count(*)
+                    from industrial_zones
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as industrial_zones_with_geom,
+                (
+                    select count(*)
+                    from pg_indexes
+                    where schemaname = 'public'
+                      and indexname in (
+                        'ix_transport_stops_geom_gist',
+                        'ix_schools_geom_gist',
+                        'ix_kindergartens_geom_gist',
+                        'ix_amenities_geom_gist',
+                        'ix_industrial_zones_geom_gist'
+                      )
+                ) as infrastructure_spatial_index_count
+            """
+        )
+    ).one()
+    if spatial.infrastructure_spatial_index_count != 5:
+        raise RuntimeError("Expected GiST indexes for infrastructure point tables.")
+    return {
+        "transport_stop_count": len(stops),
+        "transport_route_count": len(routes),
+        "school_count": len(schools),
+        "kindergarten_count": len(kindergartens),
+        "amenity_count": len(amenities),
+        "industrial_zone_count": len(industrial_zones),
+        "spatial": {
+            "transport_stops_with_geom": spatial.transport_stops_with_geom,
+            "schools_with_geom": spatial.schools_with_geom,
+            "kindergartens_with_geom": spatial.kindergartens_with_geom,
+            "amenities_with_geom": spatial.amenities_with_geom,
+            "industrial_zones_with_geom": spatial.industrial_zones_with_geom,
+            "infrastructure_spatial_index_count": (
+                spatial.infrastructure_spatial_index_count
+            ),
         },
     }
 

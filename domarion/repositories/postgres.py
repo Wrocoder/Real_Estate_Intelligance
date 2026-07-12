@@ -5,10 +5,16 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from domarion.db.models import (
+    Amenity,
     AreaStatistic,
     District,
+    IndustrialZone,
+    Kindergarten,
     ListingSnapshot,
     Municipality,
+    School,
+    TransportRoute,
+    TransportStop,
 )
 from domarion.db.models import (
     ListingEvent as ListingEventRow,
@@ -21,8 +27,11 @@ from domarion.db.models import (
 )
 from domarion.repositories.base import BBox
 from domarion.schemas import (
+    AmenityReference,
     AreaStatistics,
     DistrictReference,
+    IndustrialZoneReference,
+    KindergartenReference,
     Listing,
     ListingEvent,
     LocationReference,
@@ -32,6 +41,9 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    SchoolReference,
+    TransportRouteReference,
+    TransportStopReference,
 )
 from domarion.services.price_history import listing_with_price_history_metrics
 
@@ -143,6 +155,111 @@ class PostgresRealEstateRepository:
 
         rows = self.session.scalars(statement.limit(limit)).all()
         return [self._location_reference_to_schema(row) for row in rows]
+
+    def list_transport_stops(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportStopReference]:
+        statement = self._infrastructure_statement(
+            TransportStop,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=TransportStop.name,
+        )
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._transport_stop_to_schema(row) for row in rows]
+
+    def list_transport_routes(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[TransportRouteReference]:
+        statement = self._infrastructure_statement(
+            TransportRoute,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=TransportRoute.route_name,
+        )
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._transport_route_to_schema(row) for row in rows]
+
+    def list_schools(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[SchoolReference]:
+        statement = self._infrastructure_statement(
+            School,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=School.name,
+        )
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._school_to_schema(row) for row in rows]
+
+    def list_kindergartens(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[KindergartenReference]:
+        statement = self._infrastructure_statement(
+            Kindergarten,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=Kindergarten.name,
+        )
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._kindergarten_to_schema(row) for row in rows]
+
+    def list_amenities(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        amenity_type: str | None = None,
+        limit: int = 100,
+    ) -> list[AmenityReference]:
+        statement = self._infrastructure_statement(
+            Amenity,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=Amenity.name,
+        )
+        if amenity_type:
+            statement = statement.where(Amenity.amenity_type == amenity_type)
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._amenity_to_schema(row) for row in rows]
+
+    def list_industrial_zones(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        city: str | None = None,
+        limit: int = 100,
+    ) -> list[IndustrialZoneReference]:
+        statement = self._infrastructure_statement(
+            IndustrialZone,
+            municipality_id=municipality_id,
+            district_id=district_id,
+            city=city,
+            order_column=IndustrialZone.name,
+        )
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._industrial_zone_to_schema(row) for row in rows]
 
     def list_planned_investments(
         self,
@@ -434,6 +551,24 @@ class PostgresRealEstateRepository:
 
         return sorted(listings, key=lambda listing: listing.last_seen_at, reverse=True)
 
+    def _infrastructure_statement(
+        self,
+        row_model,
+        *,
+        municipality_id: str | None,
+        district_id: str | None,
+        city: str | None,
+        order_column,
+    ):
+        statement = select(row_model).join(Municipality).order_by(Municipality.name, order_column)
+        if municipality_id:
+            statement = statement.where(row_model.municipality_id == municipality_id)
+        if district_id:
+            statement = statement.where(row_model.district_id == district_id)
+        if city:
+            statement = statement.where(Municipality.name.ilike(city))
+        return statement
+
     @staticmethod
     def _area_to_schema(row: AreaStatistic) -> AreaStatistics:
         return AreaStatistics(
@@ -490,6 +625,108 @@ class PostgresRealEstateRepository:
             lat=_optional_decimal_float(row.lat),
             lon=_optional_decimal_float(row.lon),
             aliases=row.aliases_json,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _transport_stop_to_schema(row: TransportStop) -> TransportStopReference:
+        return TransportStopReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            stop_type=row.stop_type,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            lines=row.lines_json,
+            source_url=row.source_url,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _transport_route_to_schema(row: TransportRoute) -> TransportRouteReference:
+        return TransportRouteReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            route_number=row.route_number,
+            route_name=row.route_name,
+            route_type=row.route_type,
+            operator=row.operator,
+            status=row.status,
+            stop_ids=row.stop_ids_json,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _school_to_schema(row: School) -> SchoolReference:
+        return SchoolReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            school_type=row.school_type,
+            operator_type=row.operator_type,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            source_url=row.source_url,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _kindergarten_to_schema(row: Kindergarten) -> KindergartenReference:
+        return KindergartenReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            kindergarten_type=row.kindergarten_type,
+            operator_type=row.operator_type,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            source_url=row.source_url,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _amenity_to_schema(row: Amenity) -> AmenityReference:
+        return AmenityReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            amenity_type=row.amenity_type,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            source_url=row.source_url,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _industrial_zone_to_schema(row: IndustrialZone) -> IndustrialZoneReference:
+        return IndustrialZoneReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            zone_type=row.zone_type,
+            risk_level=row.risk_level,
+            impact_radius_m=row.impact_radius_m,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            source_url=row.source_url,
             metadata=row.metadata_json,
         )
 

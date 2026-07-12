@@ -82,6 +82,37 @@ def test_location_reference_endpoints() -> None:
     assert locations[0]["district_id"] == "wroclaw-fabryczna"
 
 
+def test_infrastructure_reference_endpoints() -> None:
+    stops_response = client.get(
+        "/api/v1/infrastructure/transport-stops",
+        params={"city": "Wrocław"},
+    )
+    routes_response = client.get("/api/v1/infrastructure/transport-routes")
+    schools_response = client.get(
+        "/api/v1/infrastructure/schools",
+        params={"district_id": "wroclaw-fabryczna"},
+    )
+    kindergartens_response = client.get("/api/v1/infrastructure/kindergartens")
+    amenities_response = client.get(
+        "/api/v1/infrastructure/amenities",
+        params={"amenity_type": "park"},
+    )
+    industrial_response = client.get("/api/v1/infrastructure/industrial-zones")
+
+    assert stops_response.status_code == 200
+    assert stops_response.json()[0]["name"] == "Jagodno Buforowa"
+    assert routes_response.status_code == 200
+    assert {route["route_number"] for route in routes_response.json()} >= {"13", "145"}
+    assert schools_response.status_code == 200
+    assert schools_response.json()[0]["district_id"] == "wroclaw-fabryczna"
+    assert kindergartens_response.status_code == 200
+    assert len(kindergartens_response.json()) >= 2
+    assert amenities_response.status_code == 200
+    assert amenities_response.json()[0]["amenity_type"] == "park"
+    assert industrial_response.status_code == 200
+    assert industrial_response.json()[0]["risk_level"] == "moderate"
+
+
 def test_listing_analysis() -> None:
     response = client.get("/api/v1/listings/wr-001/analysis")
     payload = response.json()
