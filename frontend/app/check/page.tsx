@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ExternalLink,
   FileText,
+  Link2,
   RefreshCw,
   Save,
   ShieldCheck,
@@ -17,6 +18,7 @@ import {
   api,
   reportContentUrl,
   type GeneratedReport,
+  type SourceReferencePreview,
   type UserSubmittedListingAnalysis,
   type UserSubmittedListingReport,
   type UserSubmittedListingRequest,
@@ -24,6 +26,7 @@ import {
 import { money, numberValue } from "@/lib/format";
 
 type CheckFormState = {
+  title: string;
   source_url: string;
   address: string;
   city: string;
@@ -39,6 +42,7 @@ type CheckFormState = {
 };
 
 const DEFAULT_FORM: CheckFormState = {
+  title: "",
   source_url: "",
   address: "Nowy Dwór, Wrocław",
   city: "Wrocław",
@@ -58,9 +62,12 @@ const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
 export default function CheckListingPage() {
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
+  const [referencePreview, setReferencePreview] =
+    useState<SourceReferencePreview | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
   const [status, setStatus] = useState("Готово к проверке");
+  const [referenceStatus, setReferenceStatus] = useState("Ссылка не добавлена");
   const [reportStatus, setReportStatus] = useState("Отчет не создан");
   const [saveStatus, setSaveStatus] = useState("Не сохранен");
   const [error, setError] = useState("");
@@ -80,6 +87,22 @@ export default function CheckListingPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setStatus("Ошибка проверки");
+    }
+  }
+
+  async function previewReference() {
+    setError("");
+    setReferenceStatus("Проверка ссылки...");
+    try {
+      const preview = await api.previewUserSubmittedListingReference(form.source_url);
+      setReferencePreview(preview);
+      setReferenceStatus(`${preview.provider_label}: ссылка принята как private reference`);
+      if (preview.suggested_title && !form.title.trim()) {
+        setForm((current) => ({ ...current, title: preview.suggested_title ?? "" }));
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown error");
+      setReferenceStatus("Ошибка ссылки");
     }
   }
 
@@ -143,7 +166,7 @@ export default function CheckListingPage() {
             type="button"
             onClick={() => void createReport()}
           >
-            <FileText size={16} /> Отчет
+            <FileText size={16} /> Получить отчет
           </button>
           <button
             className="button primary"
@@ -157,6 +180,74 @@ export default function CheckListingPage() {
       </header>
 
       {error ? <ErrorBlock message={error} /> : null}
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Ссылка объявления</h2>
+          <span className="status-line">{referenceStatus}</span>
+        </div>
+        <div className="panel-body">
+          <div className="form-grid compact">
+            <label className="field">
+              <span>Otodom / OLX URL</span>
+              <input
+                className="input"
+                placeholder="https://www.otodom.pl/..."
+                type="url"
+                value={form.source_url}
+                onChange={(event) => {
+                  updateField("source_url", event.target.value);
+                  setReferencePreview(null);
+                  setReferenceStatus("Ссылка не проверена");
+                }}
+              />
+            </label>
+            <button
+              className="button"
+              disabled={!form.source_url.trim()}
+              type="button"
+              onClick={() => void previewReference()}
+            >
+              <Link2 size={16} /> Принять ссылку
+            </button>
+            <button
+              className="button primary"
+              disabled={!form.confirm_private_analysis}
+              type="button"
+              onClick={() => void createReport()}
+            >
+              <FileText size={16} /> Ссылка + параметры → отчет
+            </button>
+          </div>
+          {referencePreview ? (
+            <div className="metric-grid compact" style={{ marginTop: 12 }}>
+              <div className="metric">
+                <span>Provider</span>
+                <strong>{referencePreview.provider_label}</strong>
+              </div>
+              <div className="metric">
+                <span>Domain</span>
+                <strong>{referencePreview.source_domain ?? "manual"}</strong>
+              </div>
+              <div className="metric">
+                <span>Reference</span>
+                <strong>{referencePreview.listing_reference_id ?? "—"}</strong>
+              </div>
+              <div className="metric">
+                <span>Required fields</span>
+                <strong>{referencePreview.manual_fields_required.length}</strong>
+              </div>
+            </div>
+          ) : null}
+          {referencePreview ? (
+            <ul className="section-list compact" style={{ marginTop: 12 }}>
+              {referencePreview.warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
 
       <section className="metric-grid">
         <div className="metric">
@@ -192,13 +283,12 @@ export default function CheckListingPage() {
           <div className="panel-body">
             <div className="form-grid">
               <label className="field">
-                <span>URL объявления</span>
+                <span>Название</span>
                 <input
                   className="input"
                   placeholder="optional"
-                  type="url"
-                  value={form.source_url}
-                  onChange={(event) => updateField("source_url", event.target.value)}
+                  value={form.title}
+                  onChange={(event) => updateField("title", event.target.value)}
                 />
               </label>
               <label className="field">
@@ -469,6 +559,7 @@ export default function CheckListingPage() {
 
 function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest {
   return {
+    title: form.title.trim() || null,
     source_url: form.source_url.trim() || null,
     address: form.address.trim(),
     city: form.city.trim() || "Wrocław",

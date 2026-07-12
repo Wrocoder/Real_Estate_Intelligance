@@ -111,6 +111,8 @@ from domarion.schemas import (
     ReportRequest,
     ReportTemplateDescriptor,
     ScoringBacktestResult,
+    SourceReferencePreview,
+    SourceReferencePreviewRequest,
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
@@ -151,7 +153,10 @@ from domarion.services.report_templates import list_report_templates
 from domarion.services.reports import build_object_report
 from domarion.services.scoring import build_listing_analysis
 from domarion.services.search import ListingSearchError, search_listing_analyses
-from domarion.services.user_submitted_listings import analyze_user_submitted_listing
+from domarion.services.user_submitted_listings import (
+    analyze_user_submitted_listing,
+    build_source_reference_preview,
+)
 from domarion.user_store.base import UserStore
 from domarion.user_store.factory import get_user_store
 from domarion.user_submitted_listing_store.base import UserSubmittedListingStore
@@ -327,6 +332,19 @@ def update_admin_partner_referral(
     if referral is None:
         raise HTTPException(status_code=404, detail="Partner referral not found")
     return referral
+
+
+@router.post(
+    "/user-submitted-listings/reference-preview",
+    response_model=SourceReferencePreview,
+)
+def preview_user_submitted_listing_reference(
+    payload: SourceReferencePreviewRequest,
+) -> SourceReferencePreview:
+    try:
+        return build_source_reference_preview(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post(

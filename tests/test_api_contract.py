@@ -17,6 +17,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/market/dashboard", "get"): "MarketDashboard",
         ("/api/v1/mortgage/calculate", "post"): "MortgageCalculationResult",
         (
+            "/api/v1/user-submitted-listings/reference-preview",
+            "post",
+        ): "SourceReferencePreview",
+        (
             "/api/v1/user-submitted-listings/analyze",
             "post",
         ): "UserSubmittedListingAnalysis",
@@ -113,6 +117,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ReportEmailResult",
         "ReportTemplateDescriptor",
         "ScoringBacktestResult",
+        "SourceReferencePreview",
+        "SourceReferencePreviewRequest",
         "SourceRegistryEntry",
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",
@@ -140,6 +146,16 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "schema"
     ]
     assert mortgage_request_schema["$ref"] == "#/components/schemas/MortgageCalculationRequest"
+
+    reference_operation = openapi["paths"][
+        "/api/v1/user-submitted-listings/reference-preview"
+    ]["post"]
+    reference_request_schema = reference_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert reference_request_schema["$ref"] == (
+        "#/components/schemas/SourceReferencePreviewRequest"
+    )
 
     user_listing_operation = openapi["paths"]["/api/v1/user-submitted-listings/analyze"]["post"]
     user_listing_request_schema = user_listing_operation["requestBody"]["content"][

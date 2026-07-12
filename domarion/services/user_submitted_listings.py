@@ -9,6 +9,8 @@ from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import (
     AreaStatistics,
     Listing,
+    SourceReferencePreview,
+    SourceReferencePreviewRequest,
     UserSubmittedListingAnalysis,
     UserSubmittedListingRequest,
 )
@@ -52,6 +54,9 @@ DISTRICT_DEFAULTS = {
         "schools_within_1km": 1,
     },
 }
+
+MANUAL_FIELDS_REQUIRED = ["address", "district", "price", "area_m2", "rooms"]
+MANUAL_FIELDS_RECOMMENDED = ["floor", "building_floors", "building_year", "market_type"]
 
 
 def analyze_user_submitted_listing(
@@ -125,6 +130,43 @@ def analyze_user_submitted_listing(
         warnings=warnings,
         comparables_basis=COMPARABLES_BASIS,
         retention_note=RETENTION_NOTE,
+    )
+
+
+def build_source_reference_preview(
+    payload: SourceReferencePreviewRequest,
+) -> SourceReferencePreview:
+    source_url = _clean_optional(payload.source_url)
+    if source_url is None:
+        raise ValueError("Source URL is required")
+
+    normalized_url = _normalize_source_url(source_url)
+    parsed = urlparse(normalized_url)
+    source_domain = _source_domain(normalized_url)
+    provider, provider_label = _source_provider(source_domain)
+    source_slug = _source_slug(parsed.path)
+    listing_reference_id = _listing_reference_id(source_slug)
+    warnings = [
+        "No portal page was fetched; only the URL string was parsed.",
+        "Confirm price, area, rooms and address manually before generating a report.",
+    ]
+    if provider == "other":
+        warnings.append(
+            "Provider is not recognized as Otodom or OLX; analysis still works manually."
+        )
+
+    return SourceReferencePreview(
+        source_url_private=normalized_url,
+        source_domain=source_domain,
+        provider=provider,
+        provider_label=provider_label,
+        listing_reference_id=listing_reference_id,
+        source_slug=source_slug,
+        suggested_title=_suggested_title(source_slug),
+        manual_fields_required=MANUAL_FIELDS_REQUIRED,
+        manual_fields_recommended=MANUAL_FIELDS_RECOMMENDED,
+        privacy_note=RETENTION_NOTE,
+        warnings=warnings,
     )
 
 
@@ -365,6 +407,58 @@ def _source_domain(source_url: str | None) -> str | None:
         parsed = urlparse(f"https://{source_url}")
     domain = parsed.netloc.casefold()
     return domain.removeprefix("www.") or None
+
+
+def _normalize_source_url(source_url: str) -> str:
+    value = source_url.strip()
+    parsed = urlparse(value)
+    if parsed.scheme:
+        return value
+    return f"https://{value}"
+
+
+def _source_provider(source_domain: str | None) -> tuple[str, str]:
+    if source_domain is None:
+        return "other", "Manual URL"
+    if source_domain == "otodom.pl" or source_domain.endswith(".otodom.pl"):
+        return "otodom", "Otodom"
+    if source_domain == "olx.pl" or source_domain.endswith(".olx.pl"):
+        return "olx", "OLX"
+    return "other", source_domain
+
+
+def _source_slug(path: str) -> str | None:
+    segments = [segment for segment in path.split("/") if segment]
+    if not segments:
+        return None
+    for segment in reversed(segments):
+        if segment.casefold() not in {"pl", "oferta", "d"}:
+            return segment.removesuffix(".html")
+    return segments[-1].removesuffix(".html")
+
+
+def _listing_reference_id(source_slug: str | None) -> str | None:
+    if source_slug is None:
+        return None
+    candidates = re.findall(r"(ID[a-zA-Z0-9]+|[A-Z0-9]{8,})", source_slug)
+    if candidates:
+        return candidates[-1]
+    return source_slug[:120]
+
+
+def _suggested_title(source_slug: str | None) -> str | None:
+    if source_slug is None:
+        return None
+    without_id = re.sub(r"[-_]?ID[a-zA-Z0-9]+$", "", source_slug)
+    words = re.split(r"[-_]+", without_id)
+    useful_words = [
+        word
+        for word in words
+        if word and not re.fullmatch(r"[A-Z0-9]{8,}", word)
+    ]
+    if not useful_words:
+        return None
+    return " ".join(useful_words[:10]).capitalize()
 
 
 def _clean_optional(value: str | None) -> str | None:

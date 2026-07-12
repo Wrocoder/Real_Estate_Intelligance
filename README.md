@@ -30,6 +30,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
+- Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -77,6 +78,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/report
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/drafts
@@ -559,6 +561,15 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
 Live scraping портала в этом flow не выполняется. По умолчанию создается
 private draft на 30 дней; это можно отключить через `save_private_draft=false`
 или изменить через `retention_days`.
+
+Проверить ссылку как private reference без загрузки страницы портала:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"source_url":"https://www.otodom.pl/pl/oferta/demo-ID4abc123"}'
+```
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze `

@@ -227,6 +227,20 @@ export type UserSubmittedListingRequest = {
   retention_days?: number;
 };
 
+export type SourceReferencePreview = {
+  source_url_private: string;
+  source_domain: string | null;
+  provider: "otodom" | "olx" | "other";
+  provider_label: string;
+  listing_reference_id: string | null;
+  source_slug: string | null;
+  suggested_title: string | null;
+  manual_fields_required: string[];
+  manual_fields_recommended: string[];
+  privacy_note: string;
+  warnings: string[];
+};
+
 export type UserSubmittedListingAnalysis = {
   analysis: ListingAnalysis;
   confidence_score: number;
@@ -887,6 +901,11 @@ export const api = {
     request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
       method: "POST",
       body: JSON.stringify(payload),
+    }),
+  previewUserSubmittedListingReference: (sourceUrl: string) =>
+    request<SourceReferencePreview>("/api/v1/user-submitted-listings/reference-preview", {
+      method: "POST",
+      body: JSON.stringify({ source_url: sourceUrl }),
     }),
   createPartnerReferral: (payload: PartnerReferralPayload) =>
     request<PartnerReferral>("/api/v1/partner-referrals", {

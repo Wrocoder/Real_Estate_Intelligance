@@ -49,6 +49,43 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert any("No live portal data was fetched" in item for item in payload["warnings"])
 
 
+def test_user_submitted_listing_reference_preview_for_otodom_url() -> None:
+    source_url = "www.otodom.pl/pl/oferta/mieszkanie-3-pokoje-wroclaw-ID4abc123"
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/reference-preview",
+        json={"source_url": source_url},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["source_url_private"] == f"https://{source_url}"
+    assert payload["source_domain"] == "otodom.pl"
+    assert payload["provider"] == "otodom"
+    assert payload["provider_label"] == "Otodom"
+    assert payload["listing_reference_id"] == "ID4abc123"
+    assert payload["suggested_title"] == "Mieszkanie 3 pokoje wroclaw"
+    assert "price" in payload["manual_fields_required"]
+    assert any("No portal page was fetched" in item for item in payload["warnings"])
+
+
+def test_user_submitted_listing_reference_preview_for_olx_url() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/reference-preview",
+        json={
+            "source_url": "https://www.olx.pl/d/oferta/kawalerka-wroclaw-krzyki-IDabc987.html"
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["source_domain"] == "olx.pl"
+    assert payload["provider"] == "olx"
+    assert payload["provider_label"] == "OLX"
+    assert payload["listing_reference_id"] == "IDabc987"
+    assert payload["source_slug"] == "kawalerka-wroclaw-krzyki-IDabc987"
+
+
 def test_user_submitted_listing_analysis_requires_private_confirmation() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/analyze",

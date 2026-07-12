@@ -39,6 +39,7 @@ DataQualitySeverity = Literal["info", "warning", "error"]
 IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
 SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
+SourceReferenceProvider = Literal["otodom", "olx", "other"]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
@@ -413,6 +414,24 @@ class ListingAnalysis(BaseModel):
     insights: list[str]
     negotiation_arguments: list[str]
     data_quality_notes: list[str]
+
+
+class SourceReferencePreviewRequest(BaseModel):
+    source_url: str = Field(min_length=3, max_length=1000)
+
+
+class SourceReferencePreview(BaseModel):
+    source_url_private: str
+    source_domain: str | None = None
+    provider: SourceReferenceProvider
+    provider_label: str
+    listing_reference_id: str | None = None
+    source_slug: str | None = None
+    suggested_title: str | None = None
+    manual_fields_required: list[str]
+    manual_fields_recommended: list[str]
+    privacy_note: str
+    warnings: list[str] = Field(default_factory=list)
 
 
 class UserSubmittedListingRequest(BaseModel):

@@ -114,7 +114,7 @@
 - [x] Добавить data-quality score для пользовательского ввода: missing floor/year, approximate location, defaulted infrastructure.
 - [x] Строить comparables не из URL, а из наших legal-first listings, партнерских snapshots, area statistics и open-data слоев.
 - [x] Добавить fallback, если comparables мало: area-level estimate + confidence warning.
-- [ ] Добавить optional URL-assisted parser только после legal review источника и только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
+- [x] Добавить optional URL-assisted reference preview только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
@@ -426,6 +426,7 @@
 - [x] Commit 30: Investor plan limits.
 - [x] Commit 31: partner referral lead capture.
 - [x] Commit 32: daily email alert batch delivery.
+- [x] Commit 33: URL-assisted private listing check.
 
 ## Current Sprint
 
@@ -453,6 +454,7 @@
 - [x] Добавить Investor plan limits в тарифную сетку.
 - [x] Добавить partner referral lead capture API/store/UI и admin review queue.
 - [x] Добавить daily email alert batch delivery для cron/admin запуска.
+- [x] Добавить URL-assisted private listing check: reference preview + быстрый отчет на `/check`.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -470,3 +472,4 @@
 - [x] Сделать Commit 30 и push.
 - [x] Сделать Commit 31 и push.
 - [x] Сделать Commit 32 и push.
+- [x] Сделать Commit 33 и push.
