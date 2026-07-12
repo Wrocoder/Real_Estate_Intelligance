@@ -47,6 +47,13 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["infrastructure"]["kindergarten_count"] >= 2
     assert payload["checks"]["infrastructure"]["amenity_count"] >= 1
     assert payload["checks"]["infrastructure"]["industrial_zone_count"] >= 1
+    assert payload["checks"]["ai_insights"]["created_count"] == 2
+    assert payload["checks"]["ai_insights"]["listed_count"] == 2
+    assert payload["checks"]["ai_insights"]["insight_types"] == [
+        "object_explanation",
+        "report_summary",
+    ]
+    assert payload["checks"]["ai_insights"]["index_count"] == 7
     assert (
         payload["checks"]["infrastructure"]["spatial"]["infrastructure_spatial_index_count"]
         == 5

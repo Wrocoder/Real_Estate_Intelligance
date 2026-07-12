@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from domarion.ai_insight_store.factory import memory_ai_insight_store
 from domarion.auth_store.factory import memory_auth_store
 from domarion.main import app
 from domarion.report_order_store.factory import memory_report_order_store
@@ -11,6 +12,7 @@ client = TestClient(app)
 
 
 def setup_function() -> None:
+    memory_ai_insight_store.clear()
     memory_auth_store.clear()
     memory_report_order_store.clear()
     memory_report_store.clear()
@@ -177,6 +179,14 @@ def test_area_report_order_mock_payment_and_fulfillment() -> None:
     assert report["report_metadata"]["report_template_code"] == "area_market_report_v1"
     assert report["report_metadata"]["area_id"] == "wroclaw-fabryczna"
     assert report["report_metadata"]["liquidity_index"] >= 0
+
+    insights = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={"subject_type": "area", "subject_id": "wroclaw-fabryczna"},
+    ).json()
+    assert [item["insight_type"] for item in insights] == ["area_summary"]
+    assert insights[0]["source_report_id"] == fulfilled.json()["generated_report_id"]
 
 
 def test_area_report_order_rejects_missing_area() -> None:

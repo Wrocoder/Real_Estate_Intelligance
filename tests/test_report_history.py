@@ -3,6 +3,7 @@ import io
 
 from fastapi.testclient import TestClient
 
+from domarion.ai_insight_store.factory import memory_ai_insight_store
 from domarion.core import get_settings
 from domarion.main import app
 from domarion.report_store.factory import memory_report_store
@@ -13,6 +14,7 @@ client = TestClient(app)
 
 def test_generate_and_list_saved_html_report() -> None:
     memory_report_store.clear()
+    memory_ai_insight_store.clear()
 
     response = client.post(
         "/api/v1/reports/object/generate",
@@ -42,6 +44,47 @@ def test_generate_and_list_saved_html_report() -> None:
     assert len(reports) == 1
     assert reports[0]["id"] == payload["id"]
     assert "content" not in reports[0]
+
+
+def test_generated_object_report_persists_ai_insights() -> None:
+    memory_report_store.clear()
+    memory_ai_insight_store.clear()
+    headers = {"X-Domarion-User-Id": "insight-owner"}
+
+    response = client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-001", "audience": "buyer", "report_format": "html"},
+    )
+    report = response.json()
+
+    insights_response = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={"subject_id": "wr-001"},
+    )
+    insights = insights_response.json()
+    insight_types = {item["insight_type"] for item in insights}
+    explanation = next(item for item in insights if item["insight_type"] == "object_explanation")
+    detail = client.get(f"/api/v1/ai-insights/{explanation['id']}", headers=headers).json()
+    other_owner_list = client.get(
+        "/api/v1/ai-insights",
+        headers={"X-Domarion-User-Id": "other-insight-owner"},
+    ).json()
+    other_owner_detail = client.get(
+        f"/api/v1/ai-insights/{explanation['id']}",
+        headers={"X-Domarion-User-Id": "other-insight-owner"},
+    )
+
+    assert response.status_code == 200
+    assert insights_response.status_code == 200
+    assert insight_types == {"report_summary", "object_explanation"}
+    assert all(item["source_report_id"] == report["id"] for item in insights)
+    assert detail["content"].startswith(report["summary"])
+    assert "investment" in detail["content"]
+    assert detail["metadata"]["report_template_code"] == "buyer_object_report_v1"
+    assert other_owner_list == []
+    assert other_owner_detail.status_code == 404
 
 
 def test_get_saved_report_and_content() -> None:

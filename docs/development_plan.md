@@ -77,7 +77,7 @@
 - [x] Добавить таблицу `property_deduplication_matches` для review queue и объяснения match decisions.
 - [x] Добавить справочники `locations`, `districts`, `municipalities`.
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
-- [ ] Добавить `ai_insights` для сохранения AI summaries и object explanations.
+- [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
 - [ ] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [ ] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
@@ -438,6 +438,7 @@
 - [x] Commit 41: property deduplication review queue.
 - [x] Commit 42: location reference tables and API.
 - [x] Commit 43: infrastructure reference tables and API.
+- [x] Commit 44: AI insight persistence for generated reports.
 
 ## Current Sprint
 
@@ -476,6 +477,7 @@
 - [x] Добавить `property_deduplication_matches` review queue с match score, reasons и admin API/UI.
 - [x] Добавить справочники `municipalities`, `districts`, `location_references` с public API.
 - [x] Добавить infrastructure reference tables/API для transport, education, amenities и industrial zones.
+- [x] Добавить `ai_insights` table/store/API и сохранение report summaries/object explanations для generated reports.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -503,3 +505,4 @@
 - [x] Сделать Commit 41 и push.
 - [x] Сделать Commit 42 и push.
 - [x] Сделать Commit 43 и push.
+- [x] Сделать Commit 44 и push.

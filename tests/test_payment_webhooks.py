@@ -5,6 +5,7 @@ import time
 
 from fastapi.testclient import TestClient
 
+from domarion.ai_insight_store.factory import memory_ai_insight_store
 from domarion.auth_store.factory import memory_auth_store
 from domarion.core.config import get_settings
 from domarion.main import app
@@ -18,6 +19,7 @@ client = TestClient(app)
 
 def setup_function() -> None:
     get_settings.cache_clear()
+    memory_ai_insight_store.clear()
     memory_auth_store.clear()
     memory_report_order_store.clear()
     memory_report_store.clear()

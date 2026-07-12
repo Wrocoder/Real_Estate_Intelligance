@@ -19,6 +19,8 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy import select
 
+from domarion.ai_insight_store.base import AIInsightStore
+from domarion.ai_insight_store.factory import get_ai_insight_store
 from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
@@ -56,6 +58,10 @@ from domarion.repositories.factory import get_repository
 from domarion.schemas import (
     AccountSummary,
     AccountUsage,
+    AIInsight,
+    AIInsightListItem,
+    AIInsightSubjectType,
+    AIInsightType,
     Alert,
     AlertCreate,
     AlertDeliveryBatchRequest,
@@ -147,6 +153,7 @@ from domarion.schemas import (
     UserSubmittedListingReportRequest,
     UserSubmittedListingRequest,
 )
+from domarion.services.ai_insights import persist_generated_report_insights
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
@@ -188,6 +195,7 @@ from domarion.user_submitted_listing_store.factory import get_user_submitted_lis
 
 router = APIRouter(prefix="/api/v1")
 RepositoryDep = Annotated[RealEstateRepository, Depends(get_repository)]
+AIInsightStoreDep = Annotated[AIInsightStore, Depends(get_ai_insight_store)]
 IngestionAdminStoreDep = Annotated[IngestionAdminStore, Depends(get_ingestion_admin_store)]
 ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store)]
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
@@ -621,6 +629,7 @@ def generate_user_submitted_listing_draft_report(
     draft_store: UserSubmittedListingStoreDep,
     report_store: ReportStoreDep,
     order_store: ReportOrderStoreDep,
+    ai_insight_store: AIInsightStoreDep,
     account: CurrentAccountDep,
 ) -> GeneratedReport:
     draft = draft_store.get_draft(account.user.id, draft_id)
@@ -628,7 +637,7 @@ def generate_user_submitted_listing_draft_report(
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
 
     credit_source_order_id = _ensure_report_limit(account, report_store, order_store)
-    return generate_and_store_user_submitted_draft_report(
+    report = generate_and_store_user_submitted_draft_report(
         report_store=report_store,
         draft=draft,
         audience=payload.audience,
@@ -637,6 +646,8 @@ def generate_user_submitted_listing_draft_report(
         branding=payload.branding,
         report_metadata_extra=_report_credit_metadata(credit_source_order_id),
     )
+    _save_report_ai_insights(ai_insight_store, report)
+    return report
 
 
 @router.get(
@@ -1485,6 +1496,7 @@ def fulfill_report_order(
     draft_store: UserSubmittedListingStoreDep,
     order_store: ReportOrderStoreDep,
     report_store: ReportStoreDep,
+    ai_insight_store: AIInsightStoreDep,
     account: CurrentAccountDep,
 ) -> ReportOrder:
     order = order_store.get_order(account.user.id, order_id)
@@ -1513,6 +1525,7 @@ def fulfill_report_order(
         repository=repository,
         draft_store=draft_store,
         report_store=report_store,
+        ai_insight_store=ai_insight_store,
         order=order,
     )
     fulfilled = order_store.mark_fulfilled(account.user.id, order.id, report.id)
@@ -1540,6 +1553,7 @@ async def receive_payment_webhook(
     draft_store: UserSubmittedListingStoreDep,
     order_store: ReportOrderStoreDep,
     report_store: ReportStoreDep,
+    ai_insight_store: AIInsightStoreDep,
 ) -> PaymentWebhookResult:
     body = await request.body()
     try:
@@ -1668,6 +1682,7 @@ async def receive_payment_webhook(
             repository=repository,
             draft_store=draft_store,
             report_store=report_store,
+            ai_insight_store=ai_insight_store,
             order=paid_order,
         )
         fulfilled = order_store.mark_fulfilled(paid_order.owner_id, paid_order.id, report.id)
@@ -1828,6 +1843,7 @@ def generate_object_report(
     repository: RepositoryDep,
     report_store: ReportStoreDep,
     order_store: ReportOrderStoreDep,
+    ai_insight_store: AIInsightStoreDep,
     account: CurrentAccountDep,
 ) -> GeneratedReport:
     listing = repository.get_listing(payload.listing_id)
@@ -1835,7 +1851,7 @@ def generate_object_report(
         raise HTTPException(status_code=404, detail="Listing not found")
 
     credit_source_order_id = _ensure_report_limit(account, report_store, order_store)
-    return generate_and_store_object_report(
+    report = generate_and_store_object_report(
         repository=repository,
         report_store=report_store,
         listing_id=payload.listing_id,
@@ -1845,6 +1861,8 @@ def generate_object_report(
         branding=payload.branding,
         report_metadata_extra=_report_credit_metadata(credit_source_order_id),
     )
+    _save_report_ai_insights(ai_insight_store, report)
+    return report
 
 
 @router.get("/reports/object/{listing_id}.html", response_class=HTMLResponse)
@@ -1872,6 +1890,36 @@ def list_generated_reports(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[GeneratedReportListItem]:
     return report_store.list_reports(limit=limit, owner_id=account.user.id)
+
+
+@router.get("/ai-insights", response_model=list[AIInsightListItem])
+def list_ai_insights(
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+    subject_type: Annotated[AIInsightSubjectType | None, Query()] = None,
+    subject_id: Annotated[str | None, Query()] = None,
+    insight_type: Annotated[AIInsightType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[AIInsightListItem]:
+    return ai_insight_store.list_insights(
+        owner_id=account.user.id,
+        subject_type=subject_type,
+        subject_id=subject_id,
+        insight_type=insight_type,
+        limit=limit,
+    )
+
+
+@router.get("/ai-insights/{insight_id}", response_model=AIInsight)
+def get_ai_insight(
+    insight_id: str,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> AIInsight:
+    insight = ai_insight_store.get_insight(insight_id, owner_id=account.user.id)
+    if insight is None:
+        raise HTTPException(status_code=404, detail="AI insight not found")
+    return insight
 
 
 @router.get("/reports/export")
@@ -2603,17 +2651,19 @@ def _generate_paid_report_for_order(
     repository: RealEstateRepository,
     draft_store: UserSubmittedListingStore,
     report_store: ReportStore,
+    ai_insight_store: AIInsightStore,
     order: ReportOrder,
 ) -> GeneratedReport:
     if order.product_code == "report_bundle_5":
         _bundle_reference_from_report_listing_id(order.listing_id)
-        return generate_and_store_report_bundle_receipt(
+        report = generate_and_store_report_bundle_receipt(
             report_store=report_store,
             owner_id=order.owner_id,
             order_id=order.id,
             credits=REPORT_BUNDLE_5_CREDITS,
             report_format=order.report_format,
         )
+        return _save_report_ai_insights(ai_insight_store, report)
 
     if _is_bundle_report_listing_id(order.listing_id):
         raise HTTPException(
@@ -2626,7 +2676,7 @@ def _generate_paid_report_for_order(
         area = repository.get_area_statistics(area_id)
         if area is None:
             raise HTTPException(status_code=404, detail="Area not found")
-        return generate_and_store_area_report(
+        report = generate_and_store_area_report(
             repository=repository,
             report_store=report_store,
             area_id=area_id,
@@ -2635,6 +2685,7 @@ def _generate_paid_report_for_order(
             owner_id=order.owner_id,
             report_metadata_extra={"paid_order_id": order.id},
         )
+        return _save_report_ai_insights(ai_insight_store, report)
 
     if _is_area_report_listing_id(order.listing_id):
         raise HTTPException(
@@ -2647,7 +2698,7 @@ def _generate_paid_report_for_order(
         draft = draft_store.get_draft(order.owner_id, draft_id)
         if draft is None:
             raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
-        return generate_and_store_user_submitted_draft_report(
+        report = generate_and_store_user_submitted_draft_report(
             report_store=report_store,
             draft=draft,
             audience=order.audience,
@@ -2656,8 +2707,9 @@ def _generate_paid_report_for_order(
             product_code=order.product_code,
             report_metadata_extra={"paid_order_id": order.id},
         )
+        return _save_report_ai_insights(ai_insight_store, report)
 
-    return generate_and_store_object_report(
+    report = generate_and_store_object_report(
         repository=repository,
         report_store=report_store,
         listing_id=order.listing_id,
@@ -2667,6 +2719,15 @@ def _generate_paid_report_for_order(
         product_code=order.product_code,
         report_metadata_extra={"paid_order_id": order.id},
     )
+    return _save_report_ai_insights(ai_insight_store, report)
+
+
+def _save_report_ai_insights(
+    ai_insight_store: AIInsightStore,
+    report: GeneratedReport,
+) -> GeneratedReport:
+    persist_generated_report_insights(ai_insight_store, report)
+    return report
 
 
 def _is_draft_report_listing_id(listing_id: str) -> bool:

@@ -536,6 +536,29 @@ export type GeneratedReport = {
 };
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
+export type AIInsightSubjectType = "listing" | "user_submitted_draft" | "area" | "report";
+export type AIInsightType = "report_summary" | "object_explanation" | "area_summary";
+
+export type AIInsightListItem = {
+  id: string;
+  owner_id: string;
+  subject_type: AIInsightSubjectType;
+  subject_id: string;
+  insight_type: AIInsightType;
+  provider: string;
+  model_name: string;
+  prompt_version: string;
+  source_report_id: string | null;
+  title: string;
+  summary: string;
+  created_at: string;
+};
+
+export type AIInsight = AIInsightListItem & {
+  content: string;
+  input_hash: string;
+  metadata: Record<string, unknown>;
+};
 
 export type UserRole = "buyer" | "realtor" | "agency_admin" | "admin";
 export type SubscriptionPlan =
@@ -1514,6 +1537,13 @@ export const api = {
     }),
   listReports: () => request<GeneratedReportListItem[]>("/api/v1/reports"),
   getGeneratedReport: (reportId: string) => request<GeneratedReport>(`/api/v1/reports/${reportId}`),
+  listAIInsights: (params: {
+    subject_type?: AIInsightSubjectType;
+    subject_id?: string;
+    insight_type?: AIInsightType;
+    limit?: number;
+  } = {}) => request<AIInsightListItem[]>(`/api/v1/ai-insights${toQueryString(params)}`),
+  getAIInsight: (insightId: string) => request<AIInsight>(`/api/v1/ai-insights/${insightId}`),
   createAlert: (payload: {
     name: string;
     filters: AlertFilters;

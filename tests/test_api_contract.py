@@ -40,6 +40,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate",
             "post",
         ): "GeneratedReport",
+        ("/api/v1/ai-insights/{insight_id}", "get"): "AIInsight",
         (
             "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
             "post",
@@ -96,6 +97,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     schemas = openapi["components"]["schemas"]
 
     expected_schemas = {
+        "AIInsight",
+        "AIInsightListItem",
         "AmenityReference",
         "AreaMarketSnapshotJobResult",
         "DistrictReference",
@@ -147,6 +150,12 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     }
 
     assert expected_schemas <= set(schemas)
+
+    ai_insights_list_schema = openapi["paths"]["/api/v1/ai-insights"]["get"]["responses"][
+        "200"
+    ]["content"]["application/json"]["schema"]
+    assert ai_insights_list_schema["type"] == "array"
+    assert ai_insights_list_schema["items"]["$ref"] == "#/components/schemas/AIInsightListItem"
 
     report_request = schemas["ReportRequest"]
     assert report_request["properties"]["branding"]["anyOf"][0]["$ref"] == (

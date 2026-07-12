@@ -9,12 +9,14 @@ import {
   reportExportUrl,
   reportContentUrl,
   type AccountSummary,
+  type AIInsightListItem,
   type GeneratedReportListItem,
   type ReportBranding,
 } from "@/lib/api";
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<GeneratedReportListItem[]>([]);
+  const [insights, setInsights] = useState<AIInsightListItem[]>([]);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [listingId, setListingId] = useState("wr-001");
   const [audience, setAudience] = useState<"buyer" | "realtor" | "investor">("buyer");
@@ -32,9 +34,14 @@ export default function ReportsPage() {
   async function load() {
     setError("");
     try {
-      const [accountData, data] = await Promise.all([api.getMe(), api.listReports()]);
+      const [accountData, data, insightData] = await Promise.all([
+        api.getMe(),
+        api.listReports(),
+        api.listAIInsights({ limit: 200 }),
+      ]);
       setAccount(accountData);
       setReports(data);
+      setInsights(insightData);
       setStatus(`Отчетов: ${data.length}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
@@ -53,7 +60,9 @@ export default function ReportsPage() {
       audience,
       audience === "realtor" ? cleanBranding(branding) : undefined,
     );
+    const insightData = await api.listAIInsights({ limit: 200 });
     setReports([report, ...reports]);
+    setInsights(insightData);
     setStatus(`Отчет сохранен: ${report.id}`);
   }
 
@@ -168,37 +177,51 @@ export default function ReportsPage() {
                   <th>Отчет</th>
                   <th>Объект</th>
                   <th>Аудитория</th>
+                  <th>Insight</th>
                   <th>Дата</th>
                   <th>Content</th>
                 </tr>
               </thead>
               <tbody>
-                {reports.map((report) => (
-                  <tr key={report.id}>
-                    <td>{report.title}</td>
-                    <td>{report.listing_id}</td>
-                    <td>{report.audience}</td>
-                    <td>{new Date(report.created_at).toLocaleString("pl-PL")}</td>
-                    <td>
-                      <a
-                        className="button"
-                        href={reportContentUrl(report.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <ExternalLink size={16} /> Открыть
-                      </a>
-                      <button
-                        className="button"
-                        type="button"
-                        onClick={() => void emailReport(report.id)}
-                        style={{ marginLeft: 8 }}
-                      >
-                        <Mail size={16} /> Email
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {reports.map((report) => {
+                  const insight = insightForReport(insights, report.id);
+                  return (
+                    <tr key={report.id}>
+                      <td>{report.title}</td>
+                      <td>{report.listing_id}</td>
+                      <td>{report.audience}</td>
+                      <td>
+                        {insight ? (
+                          <>
+                            <strong>{insightLabel(insight)}</strong>
+                            <small>{insight.summary}</small>
+                          </>
+                        ) : (
+                          <span className="muted">Нет сохраненного summary</span>
+                        )}
+                      </td>
+                      <td>{new Date(report.created_at).toLocaleString("pl-PL")}</td>
+                      <td>
+                        <a
+                          className="button"
+                          href={reportContentUrl(report.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <ExternalLink size={16} /> Открыть
+                        </a>
+                        <button
+                          className="button"
+                          type="button"
+                          onClick={() => void emailReport(report.id)}
+                          style={{ marginLeft: 8 }}
+                        >
+                          <Mail size={16} /> Email
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
@@ -211,6 +234,25 @@ export default function ReportsPage() {
 async function emailReport(reportId: string) {
   const result = await api.emailReport(reportId, { dry_run: true });
   window.alert(result.message);
+}
+
+function insightForReport(insights: AIInsightListItem[], reportId: string) {
+  return (
+    insights.find(
+      (insight) =>
+        insight.source_report_id === reportId && insight.insight_type === "object_explanation",
+    ) ?? insights.find((insight) => insight.source_report_id === reportId)
+  );
+}
+
+function insightLabel(insight: AIInsightListItem) {
+  if (insight.insight_type === "object_explanation") {
+    return "Object explanation";
+  }
+  if (insight.insight_type === "area_summary") {
+    return "Area summary";
+  }
+  return "Report summary";
 }
 
 function BrandingField({

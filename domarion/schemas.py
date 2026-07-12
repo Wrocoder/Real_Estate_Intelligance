@@ -23,6 +23,8 @@ ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
 PartnerReferralType = Literal["mortgage", "legal", "renovation"]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
+AIInsightSubjectType = Literal["listing", "user_submitted_draft", "area", "report"]
+AIInsightType = Literal["report_summary", "object_explanation", "area_summary"]
 ReportOrderEventType = Literal[
     "order_created",
     "checkout_created",
@@ -1211,6 +1213,43 @@ class GeneratedReportListItem(BaseModel):
 class GeneratedReport(GeneratedReportListItem):
     content: str
     report_metadata: dict
+
+
+class AIInsightCreate(BaseModel):
+    owner_id: str = "demo-user"
+    subject_type: AIInsightSubjectType
+    subject_id: str
+    insight_type: AIInsightType
+    provider: str = "domarion_rule_based"
+    model_name: str = "domarion-deterministic-v1"
+    prompt_version: str = "report-insight-v1"
+    source_report_id: str | None = None
+    title: str
+    summary: str
+    content: str
+    input_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AIInsightListItem(BaseModel):
+    id: str
+    owner_id: str
+    subject_type: AIInsightSubjectType
+    subject_id: str
+    insight_type: AIInsightType
+    provider: str
+    model_name: str
+    prompt_version: str
+    source_report_id: str | None = None
+    title: str
+    summary: str
+    created_at: datetime
+
+
+class AIInsight(AIInsightListItem):
+    content: str
+    input_hash: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class UserAccount(BaseModel):

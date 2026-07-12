@@ -465,6 +465,31 @@ class GeneratedReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
+class AIInsight(Base):
+    __tablename__ = "ai_insights"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    subject_type: Mapped[str] = mapped_column(String(60), index=True)
+    subject_id: Mapped[str] = mapped_column(String(160), index=True)
+    insight_type: Mapped[str] = mapped_column(String(80), index=True)
+    provider: Mapped[str] = mapped_column(String(80), default="domarion_rule_based")
+    model_name: Mapped[str] = mapped_column(String(120), default="domarion-deterministic-v1")
+    prompt_version: Mapped[str] = mapped_column(String(120), default="report-insight-v1")
+    source_report_id: Mapped[str | None] = mapped_column(
+        ForeignKey("generated_reports.id"),
+        index=True,
+    )
+    title: Mapped[str] = mapped_column(String(255))
+    summary: Mapped[str] = mapped_column(Text)
+    content: Mapped[str] = mapped_column(Text)
+    input_hash: Mapped[str] = mapped_column(String(128), index=True)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    source_report: Mapped[GeneratedReport | None] = relationship()
+
+
 class UserSubmittedListingDraft(Base):
     __tablename__ = "user_submitted_listing_drafts"
 

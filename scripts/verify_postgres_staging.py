@@ -11,12 +11,19 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from alembic import command
+from domarion.ai_insight_store.postgres import PostgresAIInsightStore
 from domarion.core.config import get_settings
 from domarion.ingestion.db_writer import import_partner_records_in_session
 from domarion.ingestion.partner_csv import PartnerListingRecord
+from domarion.report_store.postgres import PostgresReportStore
 from domarion.repositories.postgres import PostgresRealEstateRepository
-from domarion.schemas import PlannedInvestmentCreate, PlannedInvestmentUpdate
+from domarion.schemas import (
+    GeneratedReportCreate,
+    PlannedInvestmentCreate,
+    PlannedInvestmentUpdate,
+)
 from domarion.scripts.seed_demo import seed_demo_data_in_session
+from domarion.services.ai_insights import persist_generated_report_insights
 
 
 def main() -> int:
@@ -109,6 +116,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     deduplication_check = _run_deduplication_check(repository, listing)
     location_reference_check = _run_location_reference_check(repository)
     infrastructure_check = _run_infrastructure_check(repository)
+    ai_insight_check = _run_ai_insight_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -150,6 +158,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "deduplication": deduplication_check,
         "location_references": location_reference_check,
         "infrastructure": infrastructure_check,
+        "ai_insights": ai_insight_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -244,6 +253,84 @@ def _run_infrastructure_check(repository: PostgresRealEstateRepository) -> dict[
                 spatial.infrastructure_spatial_index_count
             ),
         },
+    }
+
+
+def _run_ai_insight_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    owner_id = "staging-ai-insight-owner"
+    report_store = PostgresReportStore(repository.session)
+    ai_insight_store = PostgresAIInsightStore(repository.session)
+    report = report_store.save_report(
+        GeneratedReportCreate(
+            owner_id=owner_id,
+            listing_id="wr-001",
+            audience="buyer",
+            report_format="html",
+            content_type="text/html; charset=utf-8",
+            title="Staging verifier object report",
+            summary="Staging verifier summary for wr-001.",
+            content="<html><body>Staging verifier object report</body></html>",
+            report_metadata={
+                "report_product_code": "object_report",
+                "report_template_code": "buyer_object_report_v1",
+                "report_template_name": "Buyer Object Report v1",
+                "area_id": "wroclaw-fabryczna",
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "investment_score": 72,
+                "risk_score": 31,
+                "negotiation_score": 66,
+                "decision_label": "good_option",
+                "price_label": "fair",
+                "risk_label": "moderate_risk",
+                "negotiation_label": "negotiable",
+                "fair_price_confidence_score": 74,
+                "scoring_formula_version": "staging-verifier",
+                "scoring_weights_profile": "default",
+            },
+        )
+    )
+    created = persist_generated_report_insights(ai_insight_store, report)
+    repeated = persist_generated_report_insights(ai_insight_store, report)
+    insights = ai_insight_store.list_insights(owner_id=owner_id, subject_id="wr-001")
+    detail = ai_insight_store.get_insight(created[0].id, owner_id=owner_id)
+    other_owner_detail = ai_insight_store.get_insight(created[0].id, owner_id="other-owner")
+    index_count = repository.session.scalar(
+        text(
+            """
+            select count(*)
+            from pg_indexes
+            where schemaname = 'public'
+              and indexname in (
+                'ix_ai_insights_owner_id',
+                'ix_ai_insights_subject_type',
+                'ix_ai_insights_subject_id',
+                'ix_ai_insights_insight_type',
+                'ix_ai_insights_source_report_id',
+                'ix_ai_insights_input_hash',
+                'ix_ai_insights_created_at'
+              )
+            """
+        )
+    )
+
+    insight_types = {item.insight_type for item in insights}
+    if insight_types != {"report_summary", "object_explanation"}:
+        raise RuntimeError("Expected report_summary and object_explanation AI insights.")
+    if len(created) != 2 or [item.id for item in repeated] != [item.id for item in created]:
+        raise RuntimeError("Expected AI insight persistence to be idempotent per report.")
+    if detail is None or detail.source_report_id != report.id:
+        raise RuntimeError("Expected owner-scoped AI insight detail by id.")
+    if other_owner_detail is not None:
+        raise RuntimeError("Expected AI insight detail to be owner-scoped.")
+    if index_count != 7:
+        raise RuntimeError("Expected seven AI insight lookup indexes.")
+
+    return {
+        "created_count": len(created),
+        "listed_count": len(insights),
+        "insight_types": sorted(insight_types),
+        "index_count": index_count,
     }
 
 

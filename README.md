@@ -30,6 +30,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
 - Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
 - Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
+- Добавлены AI insights: generated reports сохраняют owner-scoped summaries, area summaries и object explanations через `/api/v1/ai-insights`.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -92,6 +93,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/report
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/drafts
+- http://127.0.0.1:8000/api/v1/ai-insights
 - http://127.0.0.1:8000/api/v1/admin/user-submitted-listing-drafts
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
@@ -882,8 +884,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить `ai_insights` для сохранения AI summaries и object explanations.
+1. Добавить `scraping_jobs`/`source_errors` для legal source checks, ошибок источников и retry actions без bulk scraping lock-in.
 2. Добавить data enrichment pipeline для infrastructure matching и distance calculations.
-3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-4. Добавить SEO structured content для следующих городов.
+3. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
+4. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 5. Добавить deployment workflow после выбора hosting.
