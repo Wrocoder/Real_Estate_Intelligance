@@ -13,10 +13,13 @@ from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
 from domarion.repositories.factory import get_repository
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
+from domarion.schemas import AlertDeliveryBatchRequest
 from domarion.scripts.seed_demo import seed_demo_data
+from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.report_generation import write_object_report_html
+from domarion.user_store.factory import get_user_store
 
 
 def main() -> None:
@@ -86,6 +89,32 @@ def main() -> None:
     subparsers.add_parser(
         "rebuild-price-history",
         help="Recalculate listing first/last seen and price move metrics from snapshots.",
+    )
+    daily_alert_parser = subparsers.add_parser(
+        "deliver-daily-email-alerts",
+        help="Run due daily email alerts. Dry-run by default; pass --send for live attempts.",
+    )
+    daily_alert_parser.add_argument(
+        "--send",
+        action="store_true",
+        help="Persist delivery jobs and use configured email transport.",
+    )
+    daily_alert_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Ignore the 24-hour cooldown window.",
+    )
+    daily_alert_parser.add_argument(
+        "--max-matches",
+        type=int,
+        default=10,
+        help="Maximum matches included in each alert delivery.",
+    )
+    daily_alert_parser.add_argument(
+        "--limit",
+        type=int,
+        default=500,
+        help="Maximum active daily email alerts to scan.",
     )
 
     args = parser.parse_args()
@@ -166,6 +195,20 @@ def main() -> None:
         with SessionLocal() as session:
             result = rebuild_price_history_metrics_in_session(session)
             session.commit()
+        _print_json(result.model_dump_json(indent=2))
+    elif args.command == "deliver-daily-email-alerts":
+        with contextmanager(get_repository)() as repository:
+            with contextmanager(get_user_store)() as user_store:
+                result = run_daily_email_alert_delivery(
+                    repository,
+                    user_store,
+                    AlertDeliveryBatchRequest(
+                        dry_run=not args.send,
+                        force=args.force,
+                        max_matches=args.max_matches,
+                        limit=args.limit,
+                    ),
+                )
         _print_json(result.model_dump_json(indent=2))
 
 

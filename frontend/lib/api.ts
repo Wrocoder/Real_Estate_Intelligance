@@ -760,6 +760,37 @@ export type AlertDeliveryJob = {
   created_at: string;
 };
 
+export type AlertDeliveryBatchRequest = {
+  dry_run?: boolean;
+  max_matches?: number;
+  limit?: number;
+  force?: boolean;
+};
+
+export type AlertDeliveryBatchSkip = {
+  owner_id: string;
+  alert_id: string;
+  reason: string;
+  last_delivery_job_id: string | null;
+  last_delivery_at: string | null;
+};
+
+export type AlertDeliveryBatchResult = {
+  frequency: "instant" | "daily" | "weekly";
+  channel: "email" | "telegram";
+  dry_run: boolean;
+  force: boolean;
+  alerts_seen: number;
+  jobs_prepared: number;
+  jobs_persisted: number;
+  delivered_count: number;
+  sent_count: number;
+  skipped_count: number;
+  failed_count: number;
+  jobs: AlertDeliveryJob[];
+  skipped: AlertDeliveryBatchSkip[];
+};
+
 export type MapFeatureType = "listing" | "planned_investment";
 
 export type MapFeatureProperties = {
@@ -984,6 +1015,17 @@ export const api = {
       `/api/v1/admin/raw-listings${toQueryString(params)}`,
       { headers: ADMIN_HEADERS },
     ),
+  deliverAdminDailyEmailAlerts: (payload: AlertDeliveryBatchRequest = {}) =>
+    request<AlertDeliveryBatchResult>("/api/v1/admin/alerts/deliver-daily-email", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify({
+        dry_run: payload.dry_run ?? true,
+        max_matches: payload.max_matches ?? 10,
+        limit: payload.limit ?? 500,
+        force: payload.force ?? false,
+      }),
+    }),
   importAdminPartnerCsv: async (payload: {
     file: File;
     sourceName?: string;

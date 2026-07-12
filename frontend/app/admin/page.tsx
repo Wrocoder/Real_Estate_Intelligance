@@ -5,6 +5,7 @@ import {
   BarChart3,
   Database,
   Handshake,
+  Mail,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -14,6 +15,7 @@ import {
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  type AlertDeliveryBatchResult,
   type DataQualityLog,
   type IngestionJob,
   type IngestionSourceHealth,
@@ -99,6 +101,8 @@ export default function AdminPage() {
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
   const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
+  const [dailyAlertRun, setDailyAlertRun] =
+    useState<AlertDeliveryBatchResult | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
@@ -273,6 +277,27 @@ export default function AdminPage() {
     setReferralNotes(updated.notes ?? "");
     await load(selectedJobId);
     setStatus(`Partner referral обновлен: ${updated.id}`);
+  }
+
+  async function deliverDailyEmailAlerts(dryRun: boolean) {
+    setError("");
+    setStatus(dryRun ? "Daily email alerts dry-run..." : "Daily email alerts delivery...");
+    try {
+      const result = await api.deliverAdminDailyEmailAlerts({
+        dry_run: dryRun,
+        max_matches: 10,
+        limit: 500,
+        force: false,
+      });
+      setDailyAlertRun(result);
+      setStatus(
+        `Daily email alerts: ${result.jobs_prepared} prepared, ` +
+          `${result.jobs_persisted} persisted, ${result.skipped_count} skipped`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown daily alerts error");
+      setStatus("Daily email alerts failed");
+    }
   }
 
   async function importPartnerCsv(dryRun = partnerDryRun) {
@@ -477,6 +502,96 @@ export default function AdminPage() {
               )}
             </div>
           </aside>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Daily Email Alerts</h2>
+              <Mail size={18} />
+            </div>
+            <div className="panel-body">
+              <div className="toolbar">
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => void deliverDailyEmailAlerts(true)}
+                >
+                  Dry run
+                </button>
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={() => void deliverDailyEmailAlerts(false)}
+                >
+                  Send due
+                </button>
+              </div>
+              {dailyAlertRun ? (
+                <>
+                  <div className="metric-grid" style={{ marginTop: 14 }}>
+                    <div className="metric">
+                      <span>Alerts seen</span>
+                      <strong>{numberValue(dailyAlertRun.alerts_seen)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Prepared</span>
+                      <strong>{numberValue(dailyAlertRun.jobs_prepared)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Persisted</span>
+                      <strong>{numberValue(dailyAlertRun.jobs_persisted)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Skipped</span>
+                      <strong>{numberValue(dailyAlertRun.skipped_count)}</strong>
+                    </div>
+                  </div>
+                  {dailyAlertRun.jobs.length ? (
+                    <div className="table-scroll" style={{ marginTop: 14 }}>
+                      <table className="table">
+                        <thead>
+                          <tr>
+                            <th>Owner</th>
+                            <th>Status</th>
+                            <th>Matches</th>
+                            <th>Message</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dailyAlertRun.jobs.map((job) => (
+                            <tr key={job.id}>
+                              <td>{job.owner_id}</td>
+                              <td>
+                                <span className={`status-pill ${job.status}`}>
+                                  {job.status}
+                                </span>
+                              </td>
+                              <td>{job.total_matches}</td>
+                              <td>{job.message}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : null}
+                  {dailyAlertRun.skipped.length ? (
+                    <ul className="section-list compact" style={{ marginTop: 14 }}>
+                      {dailyAlertRun.skipped.map((item) => (
+                        <li key={`${item.owner_id}-${item.alert_id}`}>
+                          <span className="status-pill warning">{item.reason}</span>
+                          <strong>{item.alert_id}</strong>
+                          <small>
+                            {item.last_delivery_at
+                              ? formatDate(item.last_delivery_at)
+                              : "no previous delivery"}
+                          </small>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+          </section>
 
           <section className="panel admin-wide">
             <div className="panel-header">

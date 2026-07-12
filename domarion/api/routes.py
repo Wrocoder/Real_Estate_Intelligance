@@ -50,6 +50,8 @@ from domarion.schemas import (
     AccountUsage,
     Alert,
     AlertCreate,
+    AlertDeliveryBatchRequest,
+    AlertDeliveryBatchResult,
     AlertDeliveryJob,
     AlertDeliveryRequest,
     AlertPreview,
@@ -121,6 +123,7 @@ from domarion.schemas import (
     UserSubmittedListingRequest,
 )
 from domarion.services.alert_delivery import build_alert_delivery_job
+from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
@@ -1818,6 +1821,21 @@ def list_alert_delivery_jobs(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[AlertDeliveryJob]:
     return user_store.list_alert_delivery_jobs(account.user.id, limit=limit)
+
+
+@router.post("/admin/alerts/deliver-daily-email", response_model=AlertDeliveryBatchResult)
+def deliver_daily_email_alerts(
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    payload: AlertDeliveryBatchRequest | None = None,
+) -> AlertDeliveryBatchResult:
+    _ensure_admin(account)
+    return run_daily_email_alert_delivery(
+        repository=repository,
+        user_store=user_store,
+        request=payload or AlertDeliveryBatchRequest(),
+    )
 
 
 def _write_upload_to_temp_file(content: bytes, suffix: str) -> Path:

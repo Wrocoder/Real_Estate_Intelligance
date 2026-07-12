@@ -9,9 +9,11 @@ from domarion.db.models import UserAlert as UserAlertModel
 from domarion.db.models import UserFavorite as UserFavoriteModel
 from domarion.schemas import (
     Alert,
+    AlertChannel,
     AlertCreate,
     AlertDeliveryJob,
     AlertFilters,
+    AlertFrequency,
     AlertUpdate,
     Favorite,
     FavoriteCreate,
@@ -109,6 +111,26 @@ class PostgresUserStore:
         ).all()
         return [self._alert_from_row(row) for row in rows]
 
+    def list_all_alerts(
+        self,
+        frequency: AlertFrequency | None = None,
+        channel: AlertChannel | None = None,
+        active_only: bool = True,
+        limit: int = 500,
+    ) -> list[Alert]:
+        statement = select(UserAlertModel)
+        if frequency is not None:
+            statement = statement.where(UserAlertModel.frequency == frequency)
+        if channel is not None:
+            statement = statement.where(UserAlertModel.channel == channel)
+        if active_only:
+            statement = statement.where(UserAlertModel.is_active.is_(True))
+
+        rows = self.session.scalars(
+            statement.order_by(UserAlertModel.created_at.desc()).limit(limit)
+        ).all()
+        return [self._alert_from_row(row) for row in rows]
+
     def get_alert(self, owner_id: str, alert_id: str) -> Alert | None:
         row = self.session.get(UserAlertModel, alert_id)
         if row is None or row.owner_id != owner_id:
@@ -179,6 +201,26 @@ class PostgresUserStore:
             .limit(limit)
         ).all()
         return [self._delivery_job_from_row(row) for row in rows]
+
+    def get_latest_alert_delivery_job(
+        self,
+        owner_id: str,
+        alert_id: str,
+        include_dry_run: bool = False,
+    ) -> AlertDeliveryJob | None:
+        statement = select(AlertDeliveryJobModel).where(
+            AlertDeliveryJobModel.owner_id == owner_id,
+            AlertDeliveryJobModel.alert_id == alert_id,
+        )
+        if not include_dry_run:
+            statement = statement.where(AlertDeliveryJobModel.status != "dry_run")
+
+        row = self.session.scalar(
+            statement.order_by(AlertDeliveryJobModel.created_at.desc()).limit(1)
+        )
+        if row is None:
+            return None
+        return self._delivery_job_from_row(row)
 
     @staticmethod
     def _favorite_from_row(row: UserFavoriteModel) -> Favorite:

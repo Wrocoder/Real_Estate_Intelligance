@@ -3,8 +3,10 @@ from uuid import uuid4
 
 from domarion.schemas import (
     Alert,
+    AlertChannel,
     AlertCreate,
     AlertDeliveryJob,
+    AlertFrequency,
     AlertUpdate,
     Favorite,
     FavoriteCreate,
@@ -89,6 +91,22 @@ class InMemoryUserStore:
         alerts = [item for item in self._alerts.values() if item.owner_id == owner_id]
         return sorted(alerts, key=lambda item: item.created_at, reverse=True)
 
+    def list_all_alerts(
+        self,
+        frequency: AlertFrequency | None = None,
+        channel: AlertChannel | None = None,
+        active_only: bool = True,
+        limit: int = 500,
+    ) -> list[Alert]:
+        alerts = list(self._alerts.values())
+        if frequency is not None:
+            alerts = [item for item in alerts if item.frequency == frequency]
+        if channel is not None:
+            alerts = [item for item in alerts if item.channel == channel]
+        if active_only:
+            alerts = [item for item in alerts if item.is_active]
+        return sorted(alerts, key=lambda item: item.created_at, reverse=True)[:limit]
+
     def get_alert(self, owner_id: str, alert_id: str) -> Alert | None:
         alert = self._alerts.get(alert_id)
         if alert is None or alert.owner_id != owner_id:
@@ -127,6 +145,23 @@ class InMemoryUserStore:
     ) -> list[AlertDeliveryJob]:
         jobs = [job for job in self._delivery_jobs.values() if job.owner_id == owner_id]
         return sorted(jobs, key=lambda item: item.created_at, reverse=True)[:limit]
+
+    def get_latest_alert_delivery_job(
+        self,
+        owner_id: str,
+        alert_id: str,
+        include_dry_run: bool = False,
+    ) -> AlertDeliveryJob | None:
+        jobs = [
+            job
+            for job in self._delivery_jobs.values()
+            if job.owner_id == owner_id and job.alert_id == alert_id
+        ]
+        if not include_dry_run:
+            jobs = [job for job in jobs if job.status != "dry_run"]
+        if not jobs:
+            return None
+        return sorted(jobs, key=lambda item: item.created_at, reverse=True)[0]
 
     def clear(self) -> None:
         self._favorites.clear()

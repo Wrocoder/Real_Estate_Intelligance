@@ -2,8 +2,10 @@ from typing import Protocol
 
 from domarion.schemas import (
     Alert,
+    AlertChannel,
     AlertCreate,
     AlertDeliveryJob,
+    AlertFrequency,
     AlertUpdate,
     Favorite,
     FavoriteCreate,
@@ -38,6 +40,15 @@ class UserStore(Protocol):
     def list_alerts(self, owner_id: str) -> list[Alert]:
         raise NotImplementedError
 
+    def list_all_alerts(
+        self,
+        frequency: AlertFrequency | None = None,
+        channel: AlertChannel | None = None,
+        active_only: bool = True,
+        limit: int = 500,
+    ) -> list[Alert]:
+        raise NotImplementedError
+
     def get_alert(self, owner_id: str, alert_id: str) -> Alert | None:
         raise NotImplementedError
 
@@ -55,4 +66,12 @@ class UserStore(Protocol):
         owner_id: str,
         limit: int = 50,
     ) -> list[AlertDeliveryJob]:
+        raise NotImplementedError
+
+    def get_latest_alert_delivery_job(
+        self,
+        owner_id: str,
+        alert_id: str,
+        include_dry_run: bool = False,
+    ) -> AlertDeliveryJob | None:
         raise NotImplementedError

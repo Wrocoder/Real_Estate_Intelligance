@@ -19,6 +19,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
 - Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
+- Добавлен daily email alert batch runner: admin API и CLI для cron/background worker.
 - Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
@@ -86,6 +87,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals
+- http://127.0.0.1:8000/api/v1/admin/alerts/deliver-daily-email
 - http://127.0.0.1:8000/api/v1/alert-delivery-jobs
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
@@ -790,6 +792,32 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/alerts/{alert_id}/deliver?owner_i
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/alert-delivery-jobs?owner_id=buyer-1
+```
+
+Запустить daily email alerts batch dry-run для всех due alerts:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/alerts/deliver-daily-email `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin"} `
+  -ContentType "application/json" `
+  -Body '{"dry_run":true,"max_matches":10,"limit":500}'
+```
+
+Live-run пишет delivery jobs и не повторяет тот же daily email alert в течение 24 часов:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/admin/alerts/deliver-daily-email `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin"} `
+  -ContentType "application/json" `
+  -Body '{"dry_run":false,"max_matches":10,"limit":500}'
+```
+
+CLI для cron/background worker:
+
+```powershell
+.\.venv\Scripts\domarion.exe deliver-daily-email-alerts --send --max-matches 10 --limit 500
 ```
 
 ## Git workflow

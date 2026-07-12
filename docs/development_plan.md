@@ -227,7 +227,7 @@
 - [x] Добавить Telegram alerts delivery skeleton.
 - [x] Добавить фактическую SMTP delivery отправку.
 - [x] Добавить фактическую Telegram Bot API delivery отправку.
-- [ ] Добавить daily email alerts.
+- [x] Добавить daily email alerts.
 - [x] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
 - [ ] Добавить advanced investor alerts: below market, price drop, new comparable, high rental potential.
@@ -425,6 +425,7 @@
 - [x] Commit 29: CSV/JSON report history exports.
 - [x] Commit 30: Investor plan limits.
 - [x] Commit 31: partner referral lead capture.
+- [x] Commit 32: daily email alert batch delivery.
 
 ## Current Sprint
 
@@ -451,6 +452,7 @@
 - [x] Добавить owner-scoped CSV/JSON export saved reports для планов с `can_export`.
 - [x] Добавить Investor plan limits в тарифную сетку.
 - [x] Добавить partner referral lead capture API/store/UI и admin review queue.
+- [x] Добавить daily email alert batch delivery для cron/admin запуска.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -467,3 +469,4 @@
 - [x] Сделать Commit 29 и push.
 - [x] Сделать Commit 30 и push.
 - [x] Сделать Commit 31 и push.
+- [x] Сделать Commit 32 и push.

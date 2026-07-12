@@ -986,6 +986,13 @@ class AlertDeliveryRequest(BaseModel):
     max_matches: int = Field(default=10, ge=1, le=50)
 
 
+class AlertDeliveryBatchRequest(BaseModel):
+    dry_run: bool = True
+    max_matches: int = Field(default=10, ge=1, le=50)
+    limit: int = Field(default=500, ge=1, le=1000)
+    force: bool = False
+
+
 class AlertDeliveryJob(BaseModel):
     id: str
     owner_id: str
@@ -999,3 +1006,27 @@ class AlertDeliveryJob(BaseModel):
     listing_ids: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
+
+
+class AlertDeliveryBatchSkip(BaseModel):
+    owner_id: str
+    alert_id: str
+    reason: str
+    last_delivery_job_id: str | None = None
+    last_delivery_at: datetime | None = None
+
+
+class AlertDeliveryBatchResult(BaseModel):
+    frequency: AlertFrequency
+    channel: AlertChannel
+    dry_run: bool
+    force: bool
+    alerts_seen: int = Field(ge=0)
+    jobs_prepared: int = Field(ge=0)
+    jobs_persisted: int = Field(ge=0)
+    delivered_count: int = Field(ge=0)
+    sent_count: int = Field(ge=0)
+    skipped_count: int = Field(ge=0)
+    failed_count: int = Field(ge=0)
+    jobs: list[AlertDeliveryJob] = Field(default_factory=list)
+    skipped: list[AlertDeliveryBatchSkip] = Field(default_factory=list)

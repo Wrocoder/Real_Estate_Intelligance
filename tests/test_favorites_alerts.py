@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 import domarion.services.alert_delivery as alert_delivery
+from domarion.auth_store.factory import memory_auth_store
 from domarion.core.config import get_settings
 from domarion.main import app
 from domarion.user_store.factory import memory_user_store
@@ -157,6 +158,128 @@ def test_alert_delivery_dry_run_is_persisted() -> None:
 
     jobs = client.get("/api/v1/alert-delivery-jobs", headers=headers).json()
     assert jobs[0]["id"] == job["id"]
+
+
+def test_admin_daily_email_alert_batch_dry_run_does_not_persist_jobs() -> None:
+    memory_auth_store.clear()
+    memory_user_store.clear()
+    buyer_headers = {
+        "X-Domarion-User-Id": "daily-owner",
+        "X-Domarion-Email": "daily@example.com",
+    }
+    admin_headers = {"X-Domarion-User-Id": "admin-1", "X-Domarion-Role": "admin"}
+
+    daily_alert = client.post(
+        "/api/v1/alerts",
+        headers=buyer_headers,
+        json={
+            "name": "Daily email",
+            "channel": "email",
+            "frequency": "daily",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+    client.post(
+        "/api/v1/alerts",
+        headers=buyer_headers,
+        json={
+            "name": "Instant email",
+            "channel": "email",
+            "frequency": "instant",
+            "filters": {"city": "Wrocław"},
+        },
+    )
+    client.post(
+        "/api/v1/alerts",
+        headers=buyer_headers,
+        json={
+            "name": "Daily telegram",
+            "channel": "telegram",
+            "frequency": "daily",
+            "delivery_target": "123",
+            "filters": {"city": "Wrocław"},
+        },
+    )
+
+    response = client.post(
+        "/api/v1/admin/alerts/deliver-daily-email",
+        headers=admin_headers,
+        json={"dry_run": True, "max_matches": 2},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["alerts_seen"] == 1
+    assert payload["jobs_prepared"] == 1
+    assert payload["jobs_persisted"] == 0
+    assert payload["jobs"][0]["alert_id"] == daily_alert["id"]
+    assert payload["jobs"][0]["status"] == "dry_run"
+
+    jobs = client.get("/api/v1/alert-delivery-jobs", headers=buyer_headers).json()
+    assert jobs == []
+
+
+def test_admin_daily_email_alert_batch_live_run_uses_cooldown() -> None:
+    memory_auth_store.clear()
+    memory_user_store.clear()
+    buyer_headers = {
+        "X-Domarion-User-Id": "daily-live-owner",
+        "X-Domarion-Email": "daily-live@example.com",
+    }
+    admin_headers = {"X-Domarion-User-Id": "admin-1", "X-Domarion-Role": "admin"}
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=buyer_headers,
+        json={
+            "name": "Daily live",
+            "channel": "email",
+            "frequency": "daily",
+            "filters": {"city": "Wrocław", "district": "Fabryczna"},
+        },
+    ).json()
+
+    first = client.post(
+        "/api/v1/admin/alerts/deliver-daily-email",
+        headers=admin_headers,
+        json={"dry_run": False, "max_matches": 2},
+    ).json()
+    second = client.post(
+        "/api/v1/admin/alerts/deliver-daily-email",
+        headers=admin_headers,
+        json={"dry_run": False, "max_matches": 2},
+    ).json()
+
+    assert first["alerts_seen"] == 1
+    assert first["jobs_prepared"] == 1
+    assert first["jobs_persisted"] == 1
+    assert first["jobs"][0]["alert_id"] == created["id"]
+    assert first["jobs"][0]["status"] == "skipped"
+    assert "Email delivery is not configured" in first["jobs"][0]["message"]
+
+    assert second["alerts_seen"] == 1
+    assert second["jobs_prepared"] == 0
+    assert second["jobs_persisted"] == 0
+    assert second["skipped_count"] == 1
+    assert second["skipped"][0]["reason"] == "cooldown"
+    assert second["skipped"][0]["alert_id"] == created["id"]
+
+    jobs = client.get("/api/v1/alert-delivery-jobs", headers=buyer_headers).json()
+    assert len(jobs) == 1
+
+
+def test_admin_daily_email_alert_batch_requires_admin_role() -> None:
+    memory_auth_store.clear()
+    memory_user_store.clear()
+
+    response = client.post(
+        "/api/v1/admin/alerts/deliver-daily-email",
+        headers={"X-Domarion-User-Id": "buyer-1"},
+        json={"dry_run": True},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
 
 
 def test_telegram_delivery_without_target_is_skipped() -> None:

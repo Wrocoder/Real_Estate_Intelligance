@@ -38,6 +38,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ): "UserSubmittedListingDraftPruneResult",
         ("/api/v1/partner-referrals/{referral_id}", "get"): "PartnerReferral",
         ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
+        ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
     }
@@ -98,6 +99,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "MortgageCostBreakdown",
         "MortgageScenario",
         "ObjectReport",
+        "AlertDeliveryBatchRequest",
+        "AlertDeliveryBatchResult",
+        "AlertDeliveryBatchSkip",
         "PartnerReferral",
         "PartnerReferralCreate",
         "PartnerReferralUpdate",
@@ -204,4 +208,14 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     ]["patch"]["requestBody"]["content"]["application/json"]["schema"]
     assert admin_partner_referral_update_schema["$ref"] == (
         "#/components/schemas/PartnerReferralUpdate"
+    )
+
+    daily_email_alert_operation = openapi["paths"][
+        "/api/v1/admin/alerts/deliver-daily-email"
+    ]["post"]
+    daily_email_alert_request_schema = daily_email_alert_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert daily_email_alert_request_schema["anyOf"][0]["$ref"] == (
+        "#/components/schemas/AlertDeliveryBatchRequest"
     )
