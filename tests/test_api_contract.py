@@ -108,6 +108,12 @@ def test_openapi_exposes_source_registry_contract() -> None:
     assert update_schema["$ref"] == "#/components/schemas/SourceRegistryEntry"
     assert request_schema["$ref"] == "#/components/schemas/SourceRegistryEntryCreate"
 
+    roadmap_schema = paths["/api/v1/admin/ingestion/open-data-roadmap"]["get"]["responses"][
+        "200"
+    ]["content"]["application/json"]["schema"]
+    assert roadmap_schema["type"] == "array"
+    assert roadmap_schema["items"]["$ref"] == "#/components/schemas/OpenDataRoadmapItem"
+
     checks_schema = paths["/api/v1/admin/ingestion/source-checks"]["get"]["responses"]["200"][
         "content"
     ]["application/json"]["schema"]
@@ -148,6 +154,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "MortgageScenario",
         "MunicipalityReference",
         "ObjectReport",
+        "OpenDataRoadmapItem",
         "AlertDeliveryBatchRequest",
         "AlertDeliveryBatchResult",
         "AlertDeliveryBatchSkip",

@@ -51,6 +51,13 @@ SourceCheckType = Literal[
 SourceCheckJobStatus = Literal["queued", "running", "succeeded", "failed", "blocked"]
 SourceErrorStatus = Literal["open", "retry_scheduled", "resolved", "ignored"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
+OpenDataRoadmapStatus = Literal[
+    "candidate",
+    "ready_for_import",
+    "active",
+    "blocked",
+    "needs_legal_review",
+]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
 PropertyDeduplicationDecision = Literal["matched", "review_required", "rejected"]
@@ -586,6 +593,30 @@ class SourceRegistryEntryUpdate(BaseModel):
     terms_url: str | None = None
     notes: str | None = None
     is_active: bool | None = None
+
+
+class OpenDataRoadmapItem(BaseModel):
+    id: str
+    name: str
+    provider: str
+    country_code: str = "PL"
+    region: str | None = None
+    domains: list[str] = Field(default_factory=list)
+    source_type: str = "official_open_data"
+    access_method: str
+    ingestion_method: str
+    documentation_url: str
+    data_url: str | None = None
+    license: str | None = None
+    legal_status: SourceLegalStatus = "review_required"
+    legal_notes: str | None = None
+    refresh_cadence: str
+    priority: int = Field(ge=1, le=100)
+    status: OpenDataRoadmapStatus
+    target_tables: list[str] = Field(default_factory=list)
+    next_step: str
+    risks: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class PartnerCsvImportResponse(BaseModel):

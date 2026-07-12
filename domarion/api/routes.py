@@ -108,6 +108,8 @@ from domarion.schemas import (
     MortgageCalculationResult,
     MunicipalityReference,
     ObjectReport,
+    OpenDataRoadmapItem,
+    OpenDataRoadmapStatus,
     PartnerCsvImportResponse,
     PartnerReferral,
     PartnerReferralCreate,
@@ -175,6 +177,7 @@ from domarion.services.geo import MapQueryError, build_map_feature_collection, p
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.mortgage import calculate_mortgage
+from domarion.services.open_data_roadmap import list_open_data_roadmap
 from domarion.services.payments import (
     PaymentConfigurationError,
     PaymentWebhookVerificationError,
@@ -984,6 +987,16 @@ def list_admin_ingestion_sources(
 ) -> list[SourceRegistryEntry]:
     _ensure_admin(account)
     return admin_store.list_sources()
+
+
+@router.get("/admin/ingestion/open-data-roadmap", response_model=list[OpenDataRoadmapItem])
+def list_admin_open_data_roadmap(
+    account: CurrentAccountDep,
+    domain: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
+    roadmap_status: Annotated[OpenDataRoadmapStatus | None, Query(alias="status")] = None,
+) -> list[OpenDataRoadmapItem]:
+    _ensure_admin(account)
+    return list_open_data_roadmap(domain=domain, status=roadmap_status)
 
 
 @router.post(

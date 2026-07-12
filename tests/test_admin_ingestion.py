@@ -48,6 +48,10 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert sources_response.status_code == 403
     assert sources_response.json()["detail"] == "Admin role required"
 
+    open_data_response = client.get("/api/v1/admin/ingestion/open-data-roadmap")
+    assert open_data_response.status_code == 403
+    assert open_data_response.json()["detail"] == "Admin role required"
+
     backtest_response = client.get("/api/v1/admin/scoring/backtest")
     assert backtest_response.status_code == 403
     assert backtest_response.json()["detail"] == "Admin role required"
@@ -184,6 +188,45 @@ def test_admin_can_manage_source_registry() -> None:
     assert updated["legal_status"] == "approved"
     assert updated["allowed_use"] == ["analytics", "reports", "price_history"]
     assert updated["notes"] == "DPA signed."
+
+
+def test_admin_can_list_and_filter_open_data_roadmap() -> None:
+    response = client.get("/api/v1/admin/ingestion/open-data-roadmap", headers=ADMIN_HEADERS)
+    items = response.json()
+
+    assert response.status_code == 200
+    assert [item["priority"] for item in items] == sorted(item["priority"] for item in items)
+    assert {item["id"] for item in items} >= {
+        "gus-bdl",
+        "gugik-geoportal-services",
+        "gugik-rcn",
+        "wroclaw-sip",
+        "wroclaw-open-data",
+        "openstreetmap",
+    }
+
+    rcn = next(item for item in items if item["id"] == "gugik-rcn")
+    assert rcn["status"] == "needs_legal_review"
+    assert rcn["data_url"] == "https://mapy.geoportal.gov.pl/wss/service/rcn"
+    assert "transaction_prices" in rcn["domains"]
+    assert "area_market_snapshots" in rcn["target_tables"]
+
+    transport_response = client.get(
+        "/api/v1/admin/ingestion/open-data-roadmap",
+        headers=ADMIN_HEADERS,
+        params={"domain": "transport"},
+    )
+    assert {item["id"] for item in transport_response.json()} == {
+        "wroclaw-open-data",
+        "openstreetmap",
+    }
+
+    ready_response = client.get(
+        "/api/v1/admin/ingestion/open-data-roadmap",
+        headers=ADMIN_HEADERS,
+        params={"status": "ready_for_import"},
+    )
+    assert {item["status"] for item in ready_response.json()} == {"ready_for_import"}
 
 
 def test_admin_can_run_scoring_backtest() -> None:

@@ -38,6 +38,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
+- Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
@@ -332,6 +333,24 @@ open-data layer.
 
 Рекомендуемые колонки для production quality: `lat`, `lon`, `building_year`,
 `floor`, `building_floors`, инфраструктурные расстояния и quality score.
+
+## Official open-data roadmap
+
+Admin API `GET /api/v1/admin/ingestion/open-data-roadmap` возвращает structured
+catalog для legal-first источников: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData
+Wrocław и OpenStreetMap. Каждый item содержит `domains`, `access_method`,
+`ingestion_method`, `documentation_url`, `legal_status`, `refresh_cadence`,
+`target_tables`, `next_step` и `risks`.
+
+Фильтры:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/ingestion/open-data-roadmap?domain=transport" `
+  -Headers @{"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"}
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/ingestion/open-data-roadmap?status=ready_for_import" `
+  -Headers @{"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"}
+```
 
 ## Импорт planned investments
 
@@ -977,8 +996,7 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
-2. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
-3. Добавить native PDF generation.
-4. Добавить invoice/VAT metadata для B2B checkout.
-5. Добавить deployment workflow после выбора hosting.
+1. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
+2. Добавить native PDF generation.
+3. Добавить invoice/VAT metadata для B2B checkout.
+4. Добавить deployment workflow после выбора hosting.

@@ -141,7 +141,7 @@
 - [x] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
 - [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
 - [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
-- [ ] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+- [x] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [ ] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
 - [ ] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
@@ -444,6 +444,7 @@
 - [x] Commit 47: district and city comparison analytics.
 - [x] Commit 48: S3-compatible report artifact storage abstraction.
 - [x] Commit 49: Stripe/PayU hosted checkout API adapters.
+- [x] Commit 50: official open-data roadmap API.
 
 ## Current Sprint
 
@@ -488,6 +489,7 @@
 - [x] Добавить district/city comparison analytics и страницу сравнения районов.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 - [x] Подключить hosted checkout API для Stripe и PayU.
+- [x] Добавить official open-data ingestion roadmap API.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -521,3 +523,4 @@
 - [x] Сделать Commit 47 и push.
 - [x] Сделать Commit 48 и push.
 - [x] Сделать Commit 49 и push.
+- [x] Сделать Commit 50 и push.
