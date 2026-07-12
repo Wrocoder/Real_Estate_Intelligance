@@ -72,6 +72,7 @@ from domarion.schemas import (
     AlertPreview,
     AlertUpdate,
     AmenityReference,
+    AreaComparison,
     AreaMarketSnapshotJobResult,
     AreaStatistics,
     CheckoutSession,
@@ -167,6 +168,7 @@ from domarion.services.ai_insights import persist_generated_report_insights
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
+from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
@@ -286,6 +288,19 @@ def list_listings(
 @router.get("/areas", response_model=list[AreaStatistics])
 def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
     return repository.list_area_statistics()
+
+
+@router.get("/areas/compare", response_model=AreaComparison)
+def compare_areas(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query()] = "Wrocław",
+    sort: Annotated[str, Query()] = "value",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AreaComparison:
+    try:
+        return build_area_comparison(repository, city=city, sort=sort, limit=limit)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/locations/municipalities", response_model=list[MunicipalityReference])

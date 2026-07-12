@@ -163,7 +163,7 @@
 - [x] Добавить confidence score для fair price estimate.
 - [x] Добавить человекочитаемые score labels: good option, overpriced, negotiable, risky, investment potential.
 - [x] Добавить market dashboards: active/new/removed listings, exposure time, price/rooms/area distributions.
-- [ ] Добавить district/city comparison analytics.
+- [x] Добавить district/city comparison analytics.
 - [x] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
 - [ ] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
 - [ ] Добавить growth factors: transport, schools, parks, hospitals, retail, offices, universities, population/jobs growth.
@@ -251,7 +251,7 @@
 - [x] Сделать account page.
 - [x] Подключить auth foundation.
 - [x] Сделать отдельную страницу market/area analytics dashboard.
-- [ ] Сделать страницу сравнения районов.
+- [x] Сделать страницу сравнения районов.
 - [x] Сделать mortgage calculator page.
 - [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
 - [x] Сделать страницу истории user-submitted private drafts.
@@ -441,6 +441,7 @@
 - [x] Commit 44: AI insight persistence for generated reports.
 - [x] Commit 45: source check jobs and source error retry queue.
 - [x] Commit 46: infrastructure enrichment pipeline.
+- [x] Commit 47: district and city comparison analytics.
 
 ## Current Sprint
 
@@ -482,6 +483,7 @@
 - [x] Добавить `ai_insights` table/store/API и сохранение report summaries/object explanations для generated reports.
 - [x] Добавить `source_check_jobs`/`source_errors` для legal source checks, sanitized URL import failures и retry queue.
 - [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
+- [x] Добавить district/city comparison analytics и страницу сравнения районов.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -512,3 +514,4 @@
 - [x] Сделать Commit 44 и push.
 - [x] Сделать Commit 45 и push.
 - [x] Сделать Commit 46 и push.
+- [x] Сделать Commit 47 и push.

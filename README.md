@@ -40,6 +40,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
+- Добавлена аналитика сравнения районов: city baseline, value/growth индексы, buyer/seller market и public `/areas/compare`.
 - Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
 - Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
 - Добавлен one-off URL import: пользовательская Otodom/OLX ссылка может автозаполнить минимальные поля без фото, контактов, raw HTML и bulk crawling.
@@ -90,6 +91,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/areas/compare
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/import-from-url
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
@@ -148,6 +150,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам, private URL reference и one-off автозаполнение из Otodom/OLX.
 - http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
+- http://127.0.0.1:3000/areas/compare — сравнение районов по city baseline, value/growth и market pressure.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
@@ -918,6 +921,6 @@ git push -u origin feature/mvp-api-foundation
 
 1. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-3. Добавить district/city comparison analytics.
-4. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+3. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+4. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 5. Добавить deployment workflow после выбора hosting.

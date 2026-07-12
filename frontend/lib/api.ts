@@ -198,6 +198,30 @@ export type MarketDashboardArea = AreaStatistics & {
   seller_market_index: number;
 };
 
+export type AreaComparisonItem = MarketDashboardArea & {
+  value_index: number;
+  growth_index: number;
+  price_per_m2_vs_city_pct: number | null;
+  days_on_market_vs_city_pct: number | null;
+  active_share_pct: number;
+  market_label: string;
+  summary: string;
+};
+
+export type AreaComparison = {
+  city: string | null;
+  sort: string;
+  area_count: number;
+  city_median_price_per_m2: number | null;
+  city_average_days_on_market: number | null;
+  city_active_listings: number;
+  top_value_area_id: string | null;
+  top_growth_area_id: string | null;
+  top_buyer_market_area_id: string | null;
+  top_liquidity_area_id: string | null;
+  areas: AreaComparisonItem[];
+};
+
 export type MarketDashboard = {
   city: string | null;
   district: string | null;
@@ -1282,6 +1306,8 @@ export const api = {
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
+    request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),
   listMunicipalities: () =>
     request<MunicipalityReference[]>("/api/v1/locations/municipalities"),
   listDistrictReferences: (params: { municipality_id?: string; city?: string } = {}) =>

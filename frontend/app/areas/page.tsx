@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, MapPinned } from "lucide-react";
+import { ArrowRight, BarChart3, MapPinned } from "lucide-react";
 
 import { money, numberValue, percent } from "@/lib/format";
 import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
@@ -25,9 +25,14 @@ export default function AreasPage() {
             выводами для покупки квартиры.
           </p>
         </div>
-        <Link className="button primary" href="/">
-          <MapPinned size={16} /> Открыть подбор
-        </Link>
+        <div className="toolbar">
+          <Link className="button" href="/areas/compare">
+            <BarChart3 size={16} /> Сравнить
+          </Link>
+          <Link className="button primary" href="/">
+            <MapPinned size={16} /> Открыть подбор
+          </Link>
+        </div>
       </header>
 
       <section className="seo-area-grid">

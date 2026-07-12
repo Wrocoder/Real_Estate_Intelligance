@@ -174,6 +174,34 @@ class AreaStatistics(BaseModel):
     supply_change_90d_pct: float
 
 
+class AreaComparisonItem(AreaStatistics):
+    liquidity_index: int = Field(ge=0, le=100)
+    buyer_market_index: int = Field(ge=0, le=100)
+    seller_market_index: int = Field(ge=0, le=100)
+    overheated_index: int = Field(ge=0, le=100)
+    value_index: int = Field(ge=0, le=100)
+    growth_index: int = Field(ge=0, le=100)
+    price_per_m2_vs_city_pct: float | None = None
+    days_on_market_vs_city_pct: float | None = None
+    active_share_pct: float = Field(ge=0)
+    market_label: str
+    summary: str
+
+
+class AreaComparison(BaseModel):
+    city: str | None = None
+    sort: str
+    area_count: int = Field(ge=0)
+    city_median_price_per_m2: int | None = None
+    city_average_days_on_market: int | None = None
+    city_active_listings: int = Field(ge=0)
+    top_value_area_id: str | None = None
+    top_growth_area_id: str | None = None
+    top_buyer_market_area_id: str | None = None
+    top_liquidity_area_id: str | None = None
+    areas: list[AreaComparisonItem] = Field(default_factory=list)
+
+
 class MunicipalityReference(BaseModel):
     id: str
     name: str
