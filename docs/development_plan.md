@@ -70,7 +70,7 @@
 - [x] Добавить repository factory через `DATA_REPOSITORY_BACKEND`.
 - [x] Добавить demo seed command.
 - [x] Проверить миграции на живой PostGIS БД после запуска Docker Desktop.
-- [ ] Добавить geometry columns и spatial indexes.
+- [x] Добавить geometry columns и spatial indexes.
 - [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
 - [x] Добавить миграционную проверку в CI.
 - [ ] Добавить таблицы `listing_events` и расширить price history под снятие/републикацию/изменение параметров.
@@ -432,6 +432,7 @@
 - [x] Commit 35: human-readable score labels.
 - [x] Commit 36: user-submitted reference source telemetry.
 - [x] Commit 37: live PostGIS migration verification.
+- [x] Commit 38: PostGIS geometry columns and spatial indexes.
 
 ## Current Sprint
 
@@ -464,6 +465,7 @@
 - [x] Добавить человекочитаемые score labels в API/UI/report metadata.
 - [x] Добавить `user_submitted_reference` source type и sanitized telemetry для private URL import.
 - [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
+- [x] Добавить geometry columns и GiST spatial indexes для `properties` и `planned_investments`.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -485,3 +487,4 @@
 - [x] Сделать Commit 35 и push.
 - [x] Сделать Commit 36 и push.
 - [x] Сделать Commit 37 и push.
+- [x] Сделать Commit 38 и push.

@@ -103,10 +103,12 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             notes="Created by scripts/verify_postgres_staging.py",
         )
     )
+    created_spatial = _planned_investment_spatial_check(repository, created.id)
     updated = repository.update_planned_investment(
         created.id,
-        PlannedInvestmentUpdate(status="verified", confidence_score=77),
+        PlannedInvestmentUpdate(status="verified", confidence_score=77, lat=51.12, lon=16.98),
     )
+    updated_spatial = _planned_investment_spatial_check(repository, created.id)
     deleted = repository.delete_planned_investment(created.id)
     missing_after_delete = repository.get_planned_investment(created.id)
 
@@ -122,7 +124,75 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "price_history_points": len(price_history),
         "comparable_count": len(comparables),
         "planned_investment_crud": "ok",
+        "spatial": {
+            **_spatial_schema_checks(repository),
+            "created_planned_investment_geom": created_spatial,
+            "updated_planned_investment_geom": updated_spatial,
+        },
     }
+
+
+def _spatial_schema_checks(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    rows = repository.session.execute(
+        text(
+            """
+            select
+                (
+                    select count(*)
+                    from properties
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as properties_with_geom,
+                (
+                    select count(*)
+                    from planned_investments
+                    where geom is not null and ST_SRID(geom) = 4326
+                ) as planned_investments_with_geom,
+                (
+                    select count(*)
+                    from pg_indexes
+                    where schemaname = 'public'
+                      and indexname in (
+                        'ix_properties_geom_gist',
+                        'ix_planned_investments_geom_gist'
+                      )
+                ) as spatial_index_count
+            """
+        )
+    ).one()
+    if rows.properties_with_geom <= 0:
+        raise RuntimeError("Expected generated geometry on seeded properties.")
+    if rows.planned_investments_with_geom <= 0:
+        raise RuntimeError("Expected generated geometry on seeded planned investments.")
+    if rows.spatial_index_count != 2:
+        raise RuntimeError("Expected GiST indexes for properties and planned investments.")
+    return {
+        "properties_with_geom": rows.properties_with_geom,
+        "planned_investments_with_geom": rows.planned_investments_with_geom,
+        "spatial_index_count": rows.spatial_index_count,
+    }
+
+
+def _planned_investment_spatial_check(
+    repository: PostgresRealEstateRepository,
+    investment_id: str,
+) -> dict[str, Any]:
+    row_id = investment_id.removeprefix("planned-")
+    row = repository.session.execute(
+        text(
+            """
+            select
+                ST_SRID(geom) as srid,
+                round(ST_Y(geom)::numeric, 6) as lat,
+                round(ST_X(geom)::numeric, 6) as lon
+            from planned_investments
+            where id = :row_id
+            """
+        ),
+        {"row_id": int(row_id)},
+    ).one()
+    if row.srid != 4326:
+        raise RuntimeError("Expected generated planned investment geometry SRID 4326.")
+    return {"srid": row.srid, "lat": row.lat, "lon": row.lon}
 
 
 if __name__ == "__main__":
