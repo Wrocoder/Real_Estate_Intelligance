@@ -1,6 +1,7 @@
 from decimal import Decimal
+from math import cos, radians
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from domarion.db.models import (
@@ -10,6 +11,7 @@ from domarion.db.models import (
 from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
 )
+from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
     Listing,
@@ -32,8 +34,27 @@ class PostgresRealEstateRepository:
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[Listing]:
+        self._validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
+        spatial_listing_ids = None
+        if bbox is not None or radius_km is not None:
+            spatial_listing_ids = self._listing_ids_matching_spatial_window(
+                bbox=bbox,
+                lat=lat,
+                lon=lon,
+                radius_km=radius_km,
+            )
+            if not spatial_listing_ids:
+                return []
+
         listings = self._latest_listings()
+        if spatial_listing_ids is not None:
+            allowed_ids = set(spatial_listing_ids)
+            listings = [item for item in listings if item.id in allowed_ids]
 
         if city:
             listings = [item for item in listings if item.city.lower() == city.lower()]
@@ -68,7 +89,25 @@ class PostgresRealEstateRepository:
         self,
         city: str | None = None,
         district: str | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[PlannedInvestment]:
+        self._validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
+        spatial_investment_ids = None
+        if bbox is not None or radius_km is not None:
+            spatial_investment_ids = self._planned_investment_ids_matching_spatial_window(
+                city=city,
+                district=district,
+                bbox=bbox,
+                lat=lat,
+                lon=lon,
+                radius_km=radius_km,
+            )
+            if not spatial_investment_ids:
+                return []
+
         statement = select(PlannedInvestmentRow).where(
             PlannedInvestmentRow.lat.is_not(None),
             PlannedInvestmentRow.lon.is_not(None),
@@ -77,8 +116,13 @@ class PostgresRealEstateRepository:
             statement = statement.where(PlannedInvestmentRow.city.ilike(city))
         if district:
             statement = statement.where(PlannedInvestmentRow.district.ilike(district))
+        if spatial_investment_ids is not None:
+            statement = statement.where(PlannedInvestmentRow.id.in_(spatial_investment_ids))
 
         rows = self.session.scalars(statement.order_by(PlannedInvestmentRow.name)).all()
+        if spatial_investment_ids is not None:
+            sort_order = {row_id: index for index, row_id in enumerate(spatial_investment_ids)}
+            rows = sorted(rows, key=lambda row: sort_order[row.id])
         return [self._planned_investment_to_schema(row) for row in rows]
 
     def get_planned_investment(self, investment_id: str) -> PlannedInvestment | None:
@@ -161,6 +205,135 @@ class PostgresRealEstateRepository:
             ),
         )[:limit]
 
+    def _listing_ids_matching_spatial_window(
+        self,
+        *,
+        bbox: BBox | None,
+        lat: float | None,
+        lon: float | None,
+        radius_km: float | None,
+    ) -> list[str]:
+        clauses, params = self._spatial_window_clauses(
+            "p",
+            bbox=bbox,
+            lat=lat,
+            lon=lon,
+            radius_km=radius_km,
+        )
+        where_sql = " and ".join(["p.geom is not null", "snap.normalized_payload ? 'id'", *clauses])
+        distance_sql = self._distance_sql("p") if lat is not None and lon is not None else "NULL"
+        rows = self.session.execute(
+            text(
+                f"""
+                with latest as (
+                    select distinct on (snap.normalized_payload ->> 'id')
+                        snap.normalized_payload ->> 'id' as listing_id,
+                        {distance_sql} as distance_m
+                    from listing_snapshots snap
+                    join property_sources ps on ps.id = snap.property_source_id
+                    join properties p on p.id = ps.property_id
+                    where {where_sql}
+                    order by snap.normalized_payload ->> 'id', snap.observed_at desc
+                )
+                select listing_id
+                from latest
+                order by distance_m nulls last, listing_id
+                """
+            ),
+            params,
+        ).all()
+        return [row.listing_id for row in rows]
+
+    def _planned_investment_ids_matching_spatial_window(
+        self,
+        *,
+        city: str | None,
+        district: str | None,
+        bbox: BBox | None,
+        lat: float | None,
+        lon: float | None,
+        radius_km: float | None,
+    ) -> list[int]:
+        clauses, params = self._spatial_window_clauses(
+            "pi",
+            bbox=bbox,
+            lat=lat,
+            lon=lon,
+            radius_km=radius_km,
+        )
+        if city:
+            clauses.append("pi.city ilike :city")
+            params["city"] = city
+        if district:
+            clauses.append("pi.district ilike :district")
+            params["district"] = district
+
+        where_sql = " and ".join(["pi.geom is not null", *clauses])
+        distance_sql = self._distance_sql("pi") if lat is not None and lon is not None else "NULL"
+        rows = self.session.execute(
+            text(
+                f"""
+                select pi.id, {distance_sql} as distance_m
+                from planned_investments pi
+                where {where_sql}
+                order by distance_m nulls last, pi.name
+                """
+            ),
+            params,
+        ).all()
+        return [row.id for row in rows]
+
+    @staticmethod
+    def _spatial_window_clauses(
+        table_alias: str,
+        *,
+        bbox: BBox | None,
+        lat: float | None,
+        lon: float | None,
+        radius_km: float | None,
+    ) -> tuple[list[str], dict[str, object]]:
+        clauses: list[str] = []
+        params: dict[str, object] = {}
+
+        if bbox is not None:
+            min_lon, min_lat, max_lon, max_lat = bbox
+            params.update(
+                {
+                    "min_lon": min_lon,
+                    "min_lat": min_lat,
+                    "max_lon": max_lon,
+                    "max_lat": max_lat,
+                }
+            )
+            envelope = "ST_MakeEnvelope(:min_lon, :min_lat, :max_lon, :max_lat, 4326)"
+            clauses.append(f"{table_alias}.geom && {envelope}")
+            clauses.append(f"ST_Intersects({table_alias}.geom, {envelope})")
+
+        if radius_km is not None:
+            if lat is None or lon is None:
+                raise ValueError("radius_km requires lat and lon")
+            radius_m = radius_km * 1000
+            params.update(
+                {
+                    "center_lat": lat,
+                    "center_lon": lon,
+                    "radius_m": radius_m,
+                    "radius_degrees": _radius_degrees(radius_km, lat),
+                }
+            )
+            center_geom = "ST_SetSRID(ST_MakePoint(:center_lon, :center_lat), 4326)"
+            clauses.append(f"ST_DWithin({table_alias}.geom, {center_geom}, :radius_degrees)")
+            clauses.append(
+                f"ST_DWithin({table_alias}.geom::geography, {center_geom}::geography, :radius_m)"
+            )
+
+        return clauses, params
+
+    @staticmethod
+    def _distance_sql(table_alias: str) -> str:
+        center_geom = "ST_SetSRID(ST_MakePoint(:center_lon, :center_lat), 4326)"
+        return f"ST_Distance({table_alias}.geom::geography, {center_geom}::geography)"
+
     def _latest_listings(self) -> list[Listing]:
         snapshots = self.session.scalars(
             select(ListingSnapshot).order_by(ListingSnapshot.observed_at)
@@ -229,6 +402,16 @@ class PostgresRealEstateRepository:
         return int(raw_id)
 
     @staticmethod
+    def _validate_spatial_args(
+        *,
+        lat: float | None,
+        lon: float | None,
+        radius_km: float | None,
+    ) -> None:
+        if radius_km is not None and (lat is None or lon is None):
+            raise ValueError("radius_km requires lat and lon")
+
+    @staticmethod
     def _apply_planned_investment_payload(
         row: PlannedInvestmentRow,
         payload: dict,
@@ -248,3 +431,10 @@ class PostgresRealEstateRepository:
             price=snapshot.price,
             price_per_m2=int(round(snapshot.price / area_m2)),
         )
+
+
+def _radius_degrees(radius_km: float, lat: float) -> float:
+    latitude_degrees = radius_km / 111.32
+    longitude_scale = 111.32 * max(cos(radians(abs(lat))), 0.2)
+    longitude_degrees = radius_km / longitude_scale
+    return max(latitude_degrees, longitude_degrees)

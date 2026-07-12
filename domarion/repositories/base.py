@@ -9,6 +9,8 @@ from domarion.schemas import (
     PriceHistoryPoint,
 )
 
+BBox = tuple[float, float, float, float]
+
 
 class RealEstateRepository(Protocol):
     def list_listings(
@@ -18,6 +20,10 @@ class RealEstateRepository(Protocol):
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[Listing]:
         raise NotImplementedError
 
@@ -34,6 +40,10 @@ class RealEstateRepository(Protocol):
         self,
         city: str | None = None,
         district: str | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[PlannedInvestment]:
         raise NotImplementedError
 

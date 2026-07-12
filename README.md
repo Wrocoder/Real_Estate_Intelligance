@@ -25,6 +25,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Проверены Alembic migrations на живой PostgreSQL/PostGIS БД через staging verifier.
 - Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
+- Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -877,7 +878,7 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить PostGIS distance calculations для поиска ближайшей инфраструктуры и planned investments.
+1. Добавить таблицы `listing_events` и расширить price history под снятие/републикацию/изменение параметров.
 2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
 3. Добавить SEO structured content для следующих городов.
 4. Добавить deployment workflow после выбора hosting.

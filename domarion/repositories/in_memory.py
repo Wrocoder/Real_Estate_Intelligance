@@ -1,6 +1,8 @@
 from datetime import date
+from math import asin, cos, radians, sin, sqrt
 from uuid import uuid4
 
+from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
     Listing,
@@ -255,7 +257,12 @@ class InMemoryRealEstateRepository:
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[Listing]:
+        _validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
         listings = list(self._listings.values())
 
         if city:
@@ -268,6 +275,19 @@ class InMemoryRealEstateRepository:
             listings = [item for item in listings if item.price <= max_price]
         if min_area_m2:
             listings = [item for item in listings if item.area_m2 >= min_area_m2]
+        if bbox is not None or radius_km is not None:
+            listings = [
+                item
+                for item in listings
+                if _is_inside_spatial_window(
+                    item.lat,
+                    item.lon,
+                    bbox=bbox,
+                    center_lat=lat,
+                    center_lon=lon,
+                    radius_km=radius_km,
+                )
+            ]
 
         return listings
 
@@ -284,7 +304,12 @@ class InMemoryRealEstateRepository:
         self,
         city: str | None = None,
         district: str | None = None,
+        bbox: BBox | None = None,
+        lat: float | None = None,
+        lon: float | None = None,
+        radius_km: float | None = None,
     ) -> list[PlannedInvestment]:
+        _validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
         investments = list(self._planned_investments.values())
 
         if city:
@@ -294,6 +319,19 @@ class InMemoryRealEstateRepository:
                 item
                 for item in investments
                 if item.district is not None and item.district.lower() == district.lower()
+            ]
+        if bbox is not None or radius_km is not None:
+            investments = [
+                item
+                for item in investments
+                if _is_inside_spatial_window(
+                    item.lat,
+                    item.lon,
+                    bbox=bbox,
+                    center_lat=lat,
+                    center_lon=lon,
+                    radius_km=radius_km,
+                )
             ]
 
         return investments
@@ -348,3 +386,46 @@ class InMemoryRealEstateRepository:
                 abs(candidate.price_per_m2 - listing.price_per_m2),
             ),
         )[:limit]
+
+
+def _validate_spatial_args(
+    *,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> None:
+    if radius_km is not None and (lat is None or lon is None):
+        raise ValueError("radius_km requires lat and lon")
+
+
+def _is_inside_spatial_window(
+    lat: float,
+    lon: float,
+    *,
+    bbox: BBox | None,
+    center_lat: float | None,
+    center_lon: float | None,
+    radius_km: float | None,
+) -> bool:
+    if bbox is not None:
+        min_lon, min_lat, max_lon, max_lat = bbox
+        if not (min_lon <= lon <= max_lon and min_lat <= lat <= max_lat):
+            return False
+
+    if radius_km is not None:
+        distance_km = _haversine_km(center_lat or 0, center_lon or 0, lat, lon)
+        if distance_km > radius_km:
+            return False
+
+    return True
+
+
+def _haversine_km(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
+    radius = 6371.0
+    delta_lat = radians(lat_2 - lat_1)
+    delta_lon = radians(lon_2 - lon_1)
+    a = (
+        sin(delta_lat / 2) ** 2
+        + cos(radians(lat_1)) * cos(radians(lat_2)) * sin(delta_lon / 2) ** 2
+    )
+    return 2 * radius * asin(sqrt(a))

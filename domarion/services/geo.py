@@ -61,8 +61,19 @@ def build_map_feature_collection(
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
     )
-    planned_investments = repository.list_planned_investments(city=city, district=district)
+    planned_investments = repository.list_planned_investments(
+        city=city,
+        district=district,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
 
     features: list[MapFeature] = []
     skipped_listings = 0

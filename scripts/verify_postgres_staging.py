@@ -87,6 +87,18 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
 
     price_history = repository.get_price_history("wr-001")
     comparables = repository.find_comparables(listing)
+    nearby_listing_ids = [
+        item.id for item in repository.list_listings(lat=51.1117, lon=16.9653, radius_km=1)
+    ]
+    nearby_planned_investments = repository.list_planned_investments(
+        lat=51.1117,
+        lon=16.9653,
+        radius_km=1,
+    )
+    if nearby_listing_ids != ["wr-001"]:
+        raise RuntimeError("Expected PostGIS radius listing query to return only wr-001.")
+    if not any("Nowy Dwór tram corridor" in item.name for item in nearby_planned_investments):
+        raise RuntimeError("Expected PostGIS radius planned investment query near wr-001.")
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -126,6 +138,8 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
+            "nearby_listing_ids": nearby_listing_ids,
+            "nearby_planned_investment_count": len(nearby_planned_investments),
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
         },

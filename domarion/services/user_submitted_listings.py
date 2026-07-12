@@ -321,15 +321,16 @@ def _build_listing(
 ) -> Listing:
     area_id = area_statistics.area_id
     defaults = DISTRICT_DEFAULTS.get(area_id, {})
-    planned_investments = repository.list_planned_investments(
-        city=payload.city,
-        district=payload.district,
-    )
     today = date.today()
     listing_id = _listing_id(payload)
     price_per_m2 = round(payload.price / payload.area_m2)
     lat = payload.lat if payload.lat is not None else geocoding.lat if geocoding else 0
     lon = payload.lon if payload.lon is not None else geocoding.lon if geocoding else 0
+    planned_investments = (
+        []
+        if payload.planned_investments_within_2km is not None
+        else repository.list_planned_investments(city=payload.city, lat=lat, lon=lon, radius_km=2)
+    )
 
     return Listing(
         id=listing_id,

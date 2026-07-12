@@ -51,6 +51,9 @@ def search_listing_analyses(
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
     )
 
     analyses: list[ListingAnalysis] = []

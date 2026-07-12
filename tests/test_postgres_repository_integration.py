@@ -35,5 +35,7 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["spatial"]["properties_with_geom"] >= 3
     assert payload["checks"]["spatial"]["planned_investments_with_geom"] >= 4
     assert payload["checks"]["spatial"]["spatial_index_count"] == 2
+    assert payload["checks"]["spatial"]["nearby_listing_ids"] == ["wr-001"]
+    assert payload["checks"]["spatial"]["nearby_planned_investment_count"] >= 1
     assert payload["checks"]["spatial"]["created_planned_investment_geom"]["srid"] == 4326
     assert payload["checks"]["spatial"]["updated_planned_investment_geom"]["srid"] == 4326

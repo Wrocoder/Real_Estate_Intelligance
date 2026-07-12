@@ -270,7 +270,7 @@
 - [x] Добавить infrastructure layers.
 - [x] Добавить planned investments layer.
 - [x] Добавить sample open-data слой Wrocław planned transport investments.
-- [ ] Добавить PostGIS distance calculations.
+- [x] Добавить PostGIS distance calculations.
 - [x] Добавить filters by radius.
 - [x] Добавить risk/growth map overlays.
 - [ ] Добавить price-per-m2 heatmap.
@@ -433,6 +433,7 @@
 - [x] Commit 36: user-submitted reference source telemetry.
 - [x] Commit 37: live PostGIS migration verification.
 - [x] Commit 38: PostGIS geometry columns and spatial indexes.
+- [x] Commit 39: PostGIS distance calculations for radius queries.
 
 ## Current Sprint
 
@@ -466,6 +467,7 @@
 - [x] Добавить `user_submitted_reference` source type и sanitized telemetry для private URL import.
 - [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Добавить geometry columns и GiST spatial indexes для `properties` и `planned_investments`.
+- [x] Добавить PostGIS distance calculations для listing/map radius queries и private draft scoring.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -488,3 +490,4 @@
 - [x] Сделать Commit 36 и push.
 - [x] Сделать Commit 37 и push.
 - [x] Сделать Commit 38 и push.
+- [x] Сделать Commit 39 и push.
