@@ -28,6 +28,7 @@ from domarion.schemas import (
 )
 from domarion.scripts.seed_demo import seed_demo_data_in_session
 from domarion.services.ai_insights import persist_generated_report_insights
+from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 
 
 def main() -> int:
@@ -122,6 +123,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     infrastructure_check = _run_infrastructure_check(repository)
     ai_insight_check = _run_ai_insight_check(repository)
     source_error_check = _run_source_error_check(repository)
+    enrichment_check = _run_infrastructure_enrichment_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -165,6 +167,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "infrastructure": infrastructure_check,
         "ai_insights": ai_insight_check,
         "source_errors": source_error_check,
+        "infrastructure_enrichment": enrichment_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -423,6 +426,60 @@ def _run_source_error_check(repository: PostgresRealEstateRepository) -> dict[st
         "retry_count": retry_result.error.retry_count,
         "resolved_status": resolved.status,
         "index_count": index_count,
+    }
+
+
+def _run_infrastructure_enrichment_check(
+    repository: PostgresRealEstateRepository,
+) -> dict[str, Any]:
+    dry_run = run_infrastructure_enrichment_job(repository.session, dry_run=True, limit=100)
+    write_result = run_infrastructure_enrichment_job(repository.session, dry_run=False, limit=100)
+    repository.session.commit()
+    latest_payload_row = repository.session.execute(
+        text(
+            """
+            select
+                p.nearest_stop_m as property_nearest_stop_m,
+                p.nearest_school_m as property_nearest_school_m,
+                p.parks_within_1km as property_parks_within_1km,
+                (snap.normalized_payload ->> 'nearest_stop_m')::int
+                    as snapshot_nearest_stop_m,
+                (snap.normalized_payload ->> 'nearest_school_m')::int
+                    as snapshot_nearest_school_m,
+                (snap.normalized_payload ->> 'parks_within_1km')::int
+                    as snapshot_parks_within_1km
+            from property_sources ps
+            join properties p on p.id = ps.property_id
+            join listing_snapshots snap on snap.property_source_id = ps.id
+            where snap.normalized_payload ->> 'id' = 'wr-001'
+            order by snap.observed_at desc
+            limit 1
+            """
+        )
+    ).one()
+    if dry_run.properties_seen < 3:
+        raise RuntimeError("Expected infrastructure enrichment to see seeded properties.")
+    if dry_run.properties_with_changes <= 0:
+        raise RuntimeError("Expected infrastructure enrichment dry-run to detect changes.")
+    if write_result.properties_updated != dry_run.properties_with_changes:
+        raise RuntimeError("Expected infrastructure enrichment write count to match dry-run.")
+    if write_result.snapshots_updated <= 0:
+        raise RuntimeError("Expected infrastructure enrichment to update snapshot payloads.")
+    if latest_payload_row.property_nearest_stop_m != latest_payload_row.snapshot_nearest_stop_m:
+        raise RuntimeError("Expected nearest stop enrichment in property and snapshot payload.")
+    if latest_payload_row.property_nearest_school_m != latest_payload_row.snapshot_nearest_school_m:
+        raise RuntimeError("Expected nearest school enrichment in property and snapshot payload.")
+    if latest_payload_row.property_parks_within_1km != latest_payload_row.snapshot_parks_within_1km:
+        raise RuntimeError("Expected park count enrichment in property and snapshot payload.")
+
+    return {
+        "properties_seen": write_result.properties_seen,
+        "properties_with_changes": dry_run.properties_with_changes,
+        "properties_updated": write_result.properties_updated,
+        "snapshots_updated": write_result.snapshots_updated,
+        "wr_001_nearest_stop_m": latest_payload_row.property_nearest_stop_m,
+        "wr_001_nearest_school_m": latest_payload_row.property_nearest_school_m,
+        "wr_001_parks_within_1km": latest_payload_row.property_parks_within_1km,
     }
 
 

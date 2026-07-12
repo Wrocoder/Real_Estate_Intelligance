@@ -89,6 +89,7 @@ from domarion.schemas import (
     GenerateReportRequest,
     GenerateUserSubmittedDraftReportRequest,
     IndustrialZoneReference,
+    InfrastructureEnrichmentJobResult,
     IngestionJob,
     IngestionJobCreate,
     IngestionSourceHealth,
@@ -169,6 +170,7 @@ from domarion.services.alerts import build_alert_preview
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
+from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.mortgage import calculate_mortgage
 from domarion.services.payments import (
@@ -1070,6 +1072,40 @@ def rebuild_admin_price_history(
         try:
             result = rebuild_price_history_metrics_in_session(session)
             session.commit()
+        except Exception:
+            session.rollback()
+            raise
+    return result
+
+
+@router.post(
+    "/admin/infrastructure/enrich",
+    response_model=InfrastructureEnrichmentJobResult,
+)
+def enrich_admin_infrastructure(
+    account: CurrentAccountDep,
+    dry_run: Annotated[bool, Query()] = True,
+    limit: Annotated[int, Query(ge=1, le=10_000)] = 1_000,
+) -> InfrastructureEnrichmentJobResult:
+    _ensure_admin(account)
+    settings = get_settings()
+    if settings.data_repository_backend != "postgres":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Infrastructure enrichment requires DATA_REPOSITORY_BACKEND=postgres",
+        )
+
+    with SessionLocal() as session:
+        try:
+            result = run_infrastructure_enrichment_job(
+                session,
+                dry_run=dry_run,
+                limit=limit,
+            )
+            if dry_run:
+                session.rollback()
+            else:
+                session.commit()
         except Exception:
             session.rollback()
             raise

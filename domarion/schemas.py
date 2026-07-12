@@ -313,6 +313,31 @@ class AreaMarketSnapshotJobResult(BaseModel):
     snapshots: list[AreaMarketSnapshot] = Field(default_factory=list)
 
 
+class InfrastructureEnrichmentItem(BaseModel):
+    property_id: int
+    listing_id: str | None = None
+    city: str
+    district: str | None = None
+    distance_to_center_km: float | None = Field(default=None, ge=0)
+    nearest_stop_m: int | None = Field(default=None, ge=0)
+    nearest_school_m: int | None = Field(default=None, ge=0)
+    nearest_industrial_zone_m: int | None = Field(default=None, ge=0)
+    parks_within_1km: int = Field(default=0, ge=0)
+    schools_within_1km: int = Field(default=0, ge=0)
+    planned_investments_within_2km: int = Field(default=0, ge=0)
+    changed_fields: list[str] = Field(default_factory=list)
+
+
+class InfrastructureEnrichmentJobResult(BaseModel):
+    calculated_at: datetime
+    dry_run: bool
+    properties_seen: int = Field(ge=0)
+    properties_with_changes: int = Field(ge=0)
+    properties_updated: int = Field(ge=0)
+    snapshots_updated: int = Field(ge=0)
+    items: list[InfrastructureEnrichmentItem] = Field(default_factory=list)
+
+
 class PlannedInvestment(BaseModel):
     id: str
     name: str

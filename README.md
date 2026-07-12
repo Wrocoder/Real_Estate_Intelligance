@@ -30,6 +30,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
 - Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
 - Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
+- Добавлен infrastructure enrichment pipeline: PostGIS пересчитывает расстояния до центра, остановок, школ, industrial zones и counts для парков/школ/planned investments.
 - Добавлены AI insights: generated reports сохраняют owner-scoped summaries, area summaries и object explanations через `/api/v1/ai-insights`.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
@@ -100,6 +101,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
 - http://127.0.0.1:8000/api/v1/admin/ingestion/source-checks
 - http://127.0.0.1:8000/api/v1/admin/ingestion/source-errors
+- http://127.0.0.1:8000/api/v1/admin/infrastructure/enrich
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
@@ -188,7 +190,7 @@ docker compose up -d db redis
 ```
 
 Проверить живую PostgreSQL/PostGIS БД: Alembic migrations, demo seed,
-repository search и planned investments CRUD:
+repository search, infrastructure enrichment и planned investments CRUD:
 
 ```powershell
 $env:TEST_DATABASE_URL="postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
@@ -291,6 +293,33 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/admin/price-history/rebuild `
   -H "X-Domarion-Role: admin" `
   -H "X-Domarion-Plan: enterprise"
 ```
+
+PostGIS infrastructure enrichment пересчитывает для объектов с `geom` поля
+`distance_to_center_km`, `nearest_stop_m`, `nearest_school_m`,
+`nearest_industrial_zone_m`, `parks_within_1km`, `schools_within_1km` и
+`planned_investments_within_2km`, затем синхронизирует эти значения в listing
+snapshots. Dry-run показывает diff без записи:
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/api/v1/admin/infrastructure/enrich?dry_run=true&limit=1000" `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise"
+```
+
+Применить пересчет:
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/api/v1/admin/infrastructure/enrich?dry_run=false&limit=1000" `
+  -H "X-Domarion-User-Id: demo-admin" `
+  -H "X-Domarion-Email: admin@domarion.local" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise"
+```
+
+`nearest_major_road_m` пока не пересчитывается: для него нужен отдельный roads/noise
+open-data layer.
 
 Минимальные обязательные колонки:
 
@@ -887,8 +916,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить data enrichment pipeline для infrastructure matching и distance calculations.
-2. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
-3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-4. Добавить district/city comparison analytics.
+1. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
+2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+3. Добавить district/city comparison analytics.
+4. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 5. Добавить deployment workflow после выбора hosting.

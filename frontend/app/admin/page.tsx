@@ -19,6 +19,7 @@ import {
   type DataQualityLog,
   type IngestionJob,
   type IngestionSourceHealth,
+  type InfrastructureEnrichmentJobResult,
   type PartnerCsvImportResponse,
   type PartnerReferral,
   type PartnerReferralStatus,
@@ -109,6 +110,8 @@ export default function AdminPage() {
   const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
   const [dailyAlertRun, setDailyAlertRun] =
     useState<AlertDeliveryBatchResult | null>(null);
+  const [enrichmentRun, setEnrichmentRun] =
+    useState<InfrastructureEnrichmentJobResult | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
@@ -358,6 +361,23 @@ export default function AdminPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown daily alerts error");
       setStatus("Daily email alerts failed");
+    }
+  }
+
+  async function runInfrastructureEnrichment(dryRun: boolean) {
+    setError("");
+    setStatus(dryRun ? "Infrastructure enrichment dry-run..." : "Infrastructure enrichment...");
+    try {
+      const result = await api.enrichAdminInfrastructure({ dry_run: dryRun, limit: 1000 });
+      setEnrichmentRun(result);
+      await load(selectedJobId);
+      setStatus(
+        `Infrastructure enrichment: ${result.properties_with_changes} with changes, ` +
+          `${result.properties_updated} updated`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown enrichment error");
+      setStatus("Infrastructure enrichment failed");
     }
   }
 
@@ -859,6 +879,42 @@ export default function AdminPage() {
               <Database size={18} />
             </div>
             <div className="panel-body">
+              <div className="toolbar" style={{ marginBottom: 14 }}>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => void runInfrastructureEnrichment(true)}
+                >
+                  Enrichment dry-run
+                </button>
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={() => void runInfrastructureEnrichment(false)}
+                >
+                  Apply enrichment
+                </button>
+              </div>
+              {enrichmentRun ? (
+                <div className="metric-grid compact" style={{ marginBottom: 14 }}>
+                  <div className="metric">
+                    <span>Properties seen</span>
+                    <strong>{numberValue(enrichmentRun.properties_seen)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>With changes</span>
+                    <strong>{numberValue(enrichmentRun.properties_with_changes)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Updated</span>
+                    <strong>{numberValue(enrichmentRun.properties_updated)}</strong>
+                  </div>
+                  <div className="metric">
+                    <span>Snapshots</span>
+                    <strong>{numberValue(enrichmentRun.snapshots_updated)}</strong>
+                  </div>
+                </div>
+              ) : null}
               {sourceHealth.length === 0 ? (
                 <EmptyBlock label="Нет ingestion sources." />
               ) : (

@@ -140,7 +140,7 @@
 - [x] Добавить ingestion source registry с legal status и refresh policy.
 - [x] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
 - [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
-- [ ] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
+- [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [ ] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [ ] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
@@ -440,6 +440,7 @@
 - [x] Commit 43: infrastructure reference tables and API.
 - [x] Commit 44: AI insight persistence for generated reports.
 - [x] Commit 45: source check jobs and source error retry queue.
+- [x] Commit 46: infrastructure enrichment pipeline.
 
 ## Current Sprint
 
@@ -480,6 +481,7 @@
 - [x] Добавить infrastructure reference tables/API для transport, education, amenities и industrial zones.
 - [x] Добавить `ai_insights` table/store/API и сохранение report summaries/object explanations для generated reports.
 - [x] Добавить `source_check_jobs`/`source_errors` для legal source checks, sanitized URL import failures и retry queue.
+- [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -509,3 +511,4 @@
 - [x] Сделать Commit 43 и push.
 - [x] Сделать Commit 44 и push.
 - [x] Сделать Commit 45 и push.
+- [x] Сделать Commit 46 и push.

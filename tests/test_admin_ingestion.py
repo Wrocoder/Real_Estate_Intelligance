@@ -60,6 +60,10 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert rebuild_response.status_code == 403
     assert rebuild_response.json()["detail"] == "Admin role required"
 
+    enrichment_response = client.post("/api/v1/admin/infrastructure/enrich")
+    assert enrichment_response.status_code == 403
+    assert enrichment_response.json()["detail"] == "Admin role required"
+
     import_response = client.post(
         "/api/v1/admin/listings/import-csv",
         data={"source_name": "Unauthorized Partner", "dry_run": "true"},
@@ -237,6 +241,19 @@ def test_price_history_rebuild_requires_postgres_in_memory_mode() -> None:
     assert response.status_code == 409
     assert response.json()["detail"] == (
         "Price history rebuild requires DATA_REPOSITORY_BACKEND=postgres"
+    )
+
+
+def test_infrastructure_enrichment_requires_postgres_in_memory_mode() -> None:
+    response = client.post(
+        "/api/v1/admin/infrastructure/enrich",
+        headers=ADMIN_HEADERS,
+        params={"dry_run": "true"},
+    )
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == (
+        "Infrastructure enrichment requires DATA_REPOSITORY_BACKEND=postgres"
     )
 
 

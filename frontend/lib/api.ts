@@ -912,6 +912,31 @@ export type SourceErrorRetryResult = {
   retry_job: SourceCheckJob;
 };
 
+export type InfrastructureEnrichmentItem = {
+  property_id: number;
+  listing_id: string | null;
+  city: string;
+  district: string | null;
+  distance_to_center_km: number | null;
+  nearest_stop_m: number | null;
+  nearest_school_m: number | null;
+  nearest_industrial_zone_m: number | null;
+  parks_within_1km: number;
+  schools_within_1km: number;
+  planned_investments_within_2km: number;
+  changed_fields: string[];
+};
+
+export type InfrastructureEnrichmentJobResult = {
+  calculated_at: string;
+  dry_run: boolean;
+  properties_seen: number;
+  properties_with_changes: number;
+  properties_updated: number;
+  snapshots_updated: number;
+  items: InfrastructureEnrichmentItem[];
+};
+
 export type SourceRegistryEntry = {
   id: string;
   name: string;
@@ -1484,6 +1509,11 @@ export const api = {
     request<ScoringBacktestResult>(`/api/v1/admin/scoring/backtest${toQueryString(params)}`, {
       headers: ADMIN_HEADERS,
     }),
+  enrichAdminInfrastructure: (params: { dry_run?: boolean; limit?: number } = {}) =>
+    request<InfrastructureEnrichmentJobResult>(
+      `/api/v1/admin/infrastructure/enrich${toQueryString(params)}`,
+      { method: "POST", headers: ADMIN_HEADERS },
+    ),
   createAdminIngestionJob: (payload: {
     source_name: string;
     source_type?: string;

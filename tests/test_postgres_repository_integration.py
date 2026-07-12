@@ -59,6 +59,19 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["source_errors"]["retry_count"] == 1
     assert payload["checks"]["source_errors"]["resolved_status"] == "resolved"
     assert payload["checks"]["source_errors"]["index_count"] == 8
+    assert payload["checks"]["infrastructure_enrichment"]["properties_seen"] >= 3
+    assert payload["checks"]["infrastructure_enrichment"]["properties_with_changes"] >= 1
+    assert (
+        payload["checks"]["infrastructure_enrichment"]["properties_updated"]
+        == payload["checks"]["infrastructure_enrichment"]["properties_with_changes"]
+    )
+    assert (
+        payload["checks"]["infrastructure_enrichment"]["snapshots_updated"]
+        >= payload["checks"]["infrastructure_enrichment"]["properties_updated"]
+    )
+    assert payload["checks"]["infrastructure_enrichment"]["wr_001_nearest_stop_m"] >= 0
+    assert payload["checks"]["infrastructure_enrichment"]["wr_001_nearest_school_m"] >= 0
+    assert payload["checks"]["infrastructure_enrichment"]["wr_001_parks_within_1km"] >= 0
     assert (
         payload["checks"]["infrastructure"]["spatial"]["infrastructure_spatial_index_count"]
         == 5
