@@ -913,9 +913,10 @@ function toQueryString<T extends object>(params: T) {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const apiBaseUrl = currentApiBaseUrl();
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -926,7 +927,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (caught) {
     const detail = caught instanceof Error ? caught.message : "network error";
     throw new Error(
-      `Backend API недоступен: ${API_BASE_URL}. Проверь, что backend запущен и ` +
+      `Backend API недоступен: ${apiBaseUrl}. Проверь, что backend запущен и ` +
         `NEXT_PUBLIC_API_BASE_URL указывает на правильный порт. Детали: ${detail}`,
     );
   }
@@ -937,6 +938,34 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+function currentApiBaseUrl() {
+  if (typeof window === "undefined") {
+    return API_BASE_URL;
+  }
+  if (isLocalFrontendHost(window.location.hostname) && isLocalApiBaseUrl(API_BASE_URL)) {
+    return "http://127.0.0.1:8000";
+  }
+  return API_BASE_URL;
+}
+
+function isLocalFrontendHost(hostname: string) {
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+function isLocalApiBaseUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return (
+      url.hostname === "localhost" ||
+      url.hostname === "127.0.0.1" ||
+      url.hostname === "::1" ||
+      url.hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
 }
 
 export const api = {
@@ -1013,7 +1042,7 @@ export const api = {
   getUserSubmittedListingDraft: (draftId: string) =>
     request<UserSubmittedListingDraft>(`/api/v1/user-submitted-listings/drafts/${draftId}`),
   deleteUserSubmittedListingDraft: (draftId: string) =>
-    fetch(`${API_BASE_URL}/api/v1/user-submitted-listings/drafts/${draftId}`, {
+    fetch(`${currentApiBaseUrl()}/api/v1/user-submitted-listings/drafts/${draftId}`, {
       method: "DELETE",
     }),
   generateUserSubmittedDraftReport: (
@@ -1112,7 +1141,7 @@ export const api = {
     if (payload.sourceType) form.set("source_type", payload.sourceType);
     form.set("dry_run", String(payload.dryRun ?? true));
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/listings/import-csv`, {
+    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/listings/import-csv`, {
       method: "POST",
       headers: ADMIN_HEADERS,
       body: form,
@@ -1145,7 +1174,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteAdminPlannedInvestment: (investmentId: string) =>
-    fetch(`${API_BASE_URL}/api/v1/admin/planned-investments/${investmentId}`, {
+    fetch(`${currentApiBaseUrl()}/api/v1/admin/planned-investments/${investmentId}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
     }),
@@ -1159,7 +1188,7 @@ export const api = {
     if (payload.sourceName) form.set("source_name", payload.sourceName);
     form.set("dry_run", String(payload.dryRun ?? false));
 
-    const response = await fetch(`${API_BASE_URL}/api/v1/admin/planned-investments/import`, {
+    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/planned-investments/import`, {
       method: "POST",
       headers: ADMIN_HEADERS,
       body: form,
@@ -1213,7 +1242,7 @@ export const api = {
     }),
   listFavorites: () => request<Favorite[]>(`/api/v1/favorites?owner_id=${OWNER_ID}`),
   deleteFavorite: (favoriteId: string) =>
-    fetch(`${API_BASE_URL}/api/v1/favorites/${favoriteId}?owner_id=${OWNER_ID}`, {
+    fetch(`${currentApiBaseUrl()}/api/v1/favorites/${favoriteId}?owner_id=${OWNER_ID}`, {
       method: "DELETE",
     }),
   generateReport: (
@@ -1270,13 +1299,13 @@ export const api = {
 };
 
 export function reportContentUrl(reportId: string) {
-  return `${API_BASE_URL}/api/v1/reports/${reportId}/content`;
+  return `${currentApiBaseUrl()}/api/v1/reports/${reportId}/content`;
 }
 
 export function reportExportUrl(format: "csv" | "json") {
-  return `${API_BASE_URL}/api/v1/reports/export${toQueryString({ format })}`;
+  return `${currentApiBaseUrl()}/api/v1/reports/export${toQueryString({ format })}`;
 }
 
 export function objectReportUrl(listingId: string) {
-  return `${API_BASE_URL}/api/v1/reports/object/${listingId}.html`;
+  return `${currentApiBaseUrl()}/api/v1/reports/object/${listingId}.html`;
 }
