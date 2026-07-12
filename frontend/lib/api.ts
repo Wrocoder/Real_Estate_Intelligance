@@ -333,7 +333,13 @@ export type GeneratedReport = {
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
 
 export type UserRole = "buyer" | "realtor" | "agency_admin" | "admin";
-export type SubscriptionPlan = "free" | "buyer_pro" | "realtor" | "agency" | "enterprise";
+export type SubscriptionPlan =
+  | "free"
+  | "buyer_pro"
+  | "investor"
+  | "realtor"
+  | "agency"
+  | "enterprise";
 export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
 export type ReportProductCode =
   | "object_report"

@@ -68,6 +68,25 @@ def test_subscription_update_changes_plan_limits() -> None:
     assert payload["limits"]["monthly_reports"] == 20
 
 
+def test_investor_plan_limits_are_available() -> None:
+    plans = client.get("/api/v1/plans").json()
+    investor_plan = next(item for item in plans if item["plan"] == "investor")
+
+    response = client.patch(
+        "/api/v1/me/subscription",
+        headers={"X-Domarion-User-Id": "investor-probe"},
+        json={"plan": "investor"},
+    )
+    payload = response.json()
+
+    assert investor_plan["monthly_reports"] == 60
+    assert investor_plan["can_export"] is True
+    assert investor_plan["can_use_api"] is False
+    assert payload["subscription"]["plan"] == "investor"
+    assert payload["limits"]["max_alerts"] == 40
+    assert payload["limits"]["monthly_reports"] == 60
+
+
 def test_free_plan_alert_limit_is_enforced() -> None:
     headers = {"X-Domarion-User-Id": "limit-user"}
 

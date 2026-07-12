@@ -210,7 +210,7 @@
 - [ ] Подключить hosted checkout API для Stripe или PayU.
 - [x] Добавить one-time report purchase flow.
 - [x] Добавить audit logging для paid artifacts.
-- [ ] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
+- [x] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
 - [ ] Добавить team/agency accounts: несколько агентов под одной организацией.
 - [ ] Добавить роли и права для agency owner/admin/agent.
 - [x] Добавить report credits и usage quotas для packages.
@@ -422,6 +422,7 @@
 - [x] Commit 27: distinct paid full object analysis artifact.
 - [x] Commit 28: report bundle credits package.
 - [x] Commit 29: CSV/JSON report history exports.
+- [x] Commit 30: Investor plan limits.
 
 ## Current Sprint
 
@@ -446,6 +447,7 @@
 - [x] Добавить distinct paid artifact для `full_object_analysis`.
 - [x] Добавить `report_bundle_5` paid package и списание credits сверх monthly limit.
 - [x] Добавить owner-scoped CSV/JSON export saved reports для планов с `can_export`.
+- [x] Добавить Investor plan limits в тарифную сетку.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -460,3 +462,4 @@
 - [x] Сделать Commit 27 и push.
 - [x] Сделать Commit 28 и push.
 - [x] Сделать Commit 29 и push.
+- [x] Сделать Commit 30 и push.

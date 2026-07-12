@@ -17,6 +17,7 @@ import { numberValue } from "@/lib/format";
 const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   free: "Free",
   buyer_pro: "Buyer Pro",
+  investor: "Investor",
   realtor: "Realtor",
   agency: "Agency",
   enterprise: "Enterprise",
@@ -250,5 +251,5 @@ function Capability({ label, enabled }: { label: string; enabled: boolean }) {
 }
 
 function planWeight(plan: SubscriptionPlan) {
-  return ["free", "buyer_pro", "realtor", "agency", "enterprise"].indexOf(plan);
+  return ["free", "buyer_pro", "investor", "realtor", "agency", "enterprise"].indexOf(plan);
 }

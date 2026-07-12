@@ -461,6 +461,8 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/me `
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/plans
 ```
 
+В MVP доступны планы `free`, `buyer_pro`, `investor`, `realtor`, `agency` и `enterprise`.
+
 Сменить тариф текущего пользователя в MVP-режиме:
 
 ```powershell

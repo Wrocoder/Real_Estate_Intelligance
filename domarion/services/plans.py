@@ -21,6 +21,16 @@ PLAN_LIMITS: dict[SubscriptionPlan, PlanLimits] = {
         can_use_api=False,
         can_white_label=False,
     ),
+    "investor": PlanLimits(
+        plan="investor",
+        max_favorites=150,
+        max_alerts=40,
+        monthly_reports=60,
+        max_compare_items=5,
+        can_export=True,
+        can_use_api=False,
+        can_white_label=False,
+    ),
     "realtor": PlanLimits(
         plan="realtor",
         max_favorites=250,
