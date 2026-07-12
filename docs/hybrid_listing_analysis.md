@@ -5,9 +5,9 @@
 ## Product Flow
 
 1. Пользователь открывает “Проверить квартиру”.
-2. Вводит адрес или район, цену, площадь, комнаты и базовые параметры.
-3. Опционально вставляет URL объявления.
-4. Система нормализует объект, геокодирует адрес и считает data-quality/confidence score.
+2. Вставляет URL объявления или вводит адрес/район, цену, площадь, комнаты и базовые параметры.
+3. Для Otodom/OLX система может сделать one-off import минимальных полей без фото, контактов и raw HTML.
+4. Пользователь подтверждает/исправляет параметры, затем система нормализует объект, геокодирует адрес и считает data-quality/confidence score.
 5. Сравнение строится по нашим legal-first данным: партнерские snapshots, user-owned/manual listings, area statistics, market snapshots, planned investments и open-data слои.
 6. Если comparables мало, система делает area-level estimate и явно показывает низкую confidence.
 7. Отчет не публикует URL объявления и не показывает пользователям скрытые ссылки на порталы.
@@ -17,7 +17,7 @@
 - URL хранится только как приватный internal reference/evidence для объекта пользователя.
 - URL не индексируется в SEO, не показывается другим пользователям, не экспортируется в публичные отчеты.
 - URL не используется для scheduled crawling, bulk indexing или мониторинга портала без отдельного legal approval.
-- URL-assisted parsing можно добавить только как one-off user-submitted analysis после review конкретного источника в Source Registry.
+- URL-assisted parsing разрешен только как one-off user-submitted analysis: обычный fetch без anti-bot обхода, без scheduled crawling и bulk indexing.
 - Не извлекать и не хранить фото, контактные данные, имена частных продавцов, телефоны, email или private notes.
 - Пользователь подтверждает, что он имеет право использовать переданные параметры/ссылку для личного анализа.
 
@@ -61,6 +61,8 @@
 Реализовано:
 
 - `POST /api/v1/user-submitted-listings/analyze`;
+- `POST /api/v1/user-submitted-listings/reference-preview`;
+- `POST /api/v1/user-submitted-listings/import-from-url`;
 - `POST /api/v1/user-submitted-listings/report`;
 - `GET /api/v1/user-submitted-listings/drafts`;
 - `POST /api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate`;
@@ -76,9 +78,10 @@
 - owner-scoped draft access, manual deletion, `expires_at` и admin prune для retention;
 - saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content;
 - paid report order lifecycle для draft references через `listing_id="draft:<draft_id>"`.
+- one-off URL import для Otodom/OLX: минимальные поля объекта, status `extracted/partial/failed/unsupported`, fallback на ручное подтверждение.
 
-Следующие шаги: optional URL-assisted parser после legal review источника, draft-to-paid checkout UX
-для live PSP и demand-validation landing page.
+Следующие шаги: draft-to-paid checkout UX для live PSP, source-specific legal review
+и demand-validation landing page.
 
 ## Non-Goals For MVP
 

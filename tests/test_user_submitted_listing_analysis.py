@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from domarion.main import app
 from domarion.report_store.factory import memory_report_store
+from domarion.services import user_submitted_listings as user_submitted_listing_service
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
@@ -84,6 +85,182 @@ def test_user_submitted_listing_reference_preview_for_olx_url() -> None:
     assert payload["provider_label"] == "OLX"
     assert payload["listing_reference_id"] == "IDabc987"
     assert payload["source_slug"] == "kawalerka-wroclaw-krzyki-IDabc987"
+
+
+def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypatch) -> None:
+    page_html = """
+    <html>
+      <head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Apartment",
+          "name": "Mieszkanie 3 pokoje Fabryczna",
+          "price": "675000",
+          "floorSize": {"value": 58.4, "unitCode": "MTK"},
+          "numberOfRooms": 3,
+          "floorNumber": 3,
+          "marketType": "secondary",
+          "address": {
+            "streetAddress": "ul. Rogowska 10",
+            "addressLocality": "Wrocław",
+            "addressRegion": "Fabryczna"
+          }
+        }
+        </script>
+      </head>
+      <body>Rok budowy 2014</body>
+    </html>
+    """
+
+    def fake_fetch(source_url: str, timeout_seconds: float):
+        assert source_url == "https://www.otodom.pl/pl/oferta/demo-ID4abc123"
+        assert timeout_seconds == 8
+        return user_submitted_listing_service.SourceFetchResult(
+            body=page_html,
+            final_url=source_url,
+            status_code=200,
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fake_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.otodom.pl/pl/oferta/demo-ID4abc123"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "extracted"
+    assert payload["reference_preview"]["provider"] == "otodom"
+    assert payload["fields"]["title"] == "Mieszkanie 3 pokoje Fabryczna"
+    assert payload["fields"]["address"] == "ul. Rogowska 10"
+    assert payload["fields"]["city"] == "Wrocław"
+    assert payload["fields"]["district"] == "Fabryczna"
+    assert payload["fields"]["market_type"] == "secondary"
+    assert payload["fields"]["price"] == 675000
+    assert payload["fields"]["area_m2"] == 58.4
+    assert payload["fields"]["rooms"] == 3
+    assert payload["fields"]["floor"] == 3
+    assert payload["fields"]["building_year"] == 2014
+    assert "price" in payload["fields_extracted"]
+    assert "description" not in payload["fields"]
+    assert "photos" not in payload["fields"]
+    assert payload["fetch_status_code"] == 200
+    assert any("Photos, contacts and full description" in item for item in payload["warnings"])
+
+
+def test_user_submitted_listing_import_from_url_rejects_unsupported_provider(
+    monkeypatch,
+) -> None:
+    def fail_fetch(source_url: str, timeout_seconds: float):
+        raise AssertionError("unsupported providers must not be fetched")
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fail_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://example.com/listing"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "unsupported"
+    assert payload["fields"] == {
+        "title": None,
+        "address": None,
+        "city": None,
+        "district": None,
+        "market_type": None,
+        "price": None,
+        "area_m2": None,
+        "rooms": None,
+        "floor": None,
+        "building_floors": None,
+        "building_year": None,
+    }
+    assert payload["fields_extracted"] == []
+
+
+def test_user_submitted_listing_import_from_url_ignores_invalid_extracted_values(
+    monkeypatch,
+) -> None:
+    page_html = """
+    <script type="application/ld+json">
+    {
+      "price": 675000,
+      "area_m2": 58.4,
+      "rooms": 99,
+      "floor": 120,
+      "buildingYear": 1700,
+      "address": "ul. Rogowska 10",
+      "district": "Fabryczna"
+    }
+    </script>
+    """
+
+    def fake_fetch(source_url: str, timeout_seconds: float):
+        return user_submitted_listing_service.SourceFetchResult(
+            body=page_html,
+            final_url=source_url,
+            status_code=200,
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fake_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.otodom.pl/pl/oferta/dirty-ID4abc123"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "partial"
+    assert payload["fields"]["price"] == 675000
+    assert payload["fields"]["area_m2"] == 58.4
+    assert payload["fields"]["rooms"] is None
+    assert payload["fields"]["floor"] is None
+    assert payload["fields"]["building_year"] is None
+    assert "rooms" not in payload["fields_extracted"]
+
+
+def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
+    monkeypatch,
+) -> None:
+    def fail_fetch(source_url: str, timeout_seconds: float):
+        raise user_submitted_listing_service.SourceUrlImportError("Portal blocked ordinary fetch.")
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fail_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.olx.pl/d/oferta/demo-IDabc987.html"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "failed"
+    assert payload["reference_preview"]["provider"] == "olx"
+    assert payload["fields_extracted"] == []
+    assert any("Portal blocked ordinary fetch" in item for item in payload["warnings"])
 
 
 def test_user_submitted_listing_analysis_requires_private_confirmation() -> None:

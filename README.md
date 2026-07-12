@@ -31,6 +31,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
 - Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
+- Добавлен one-off URL import: пользовательская Otodom/OLX ссылка может автозаполнить минимальные поля без фото, контактов, raw HTML и bulk crawling.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -79,6 +80,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview
+- http://127.0.0.1:8000/api/v1/user-submitted-listings/import-from-url
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/report
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/drafts
@@ -124,7 +126,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 Основные страницы:
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
-- http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам и optional private URL reference.
+- http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам, private URL reference и one-off автозаполнение из Otodom/OLX.
 - http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
@@ -558,7 +560,10 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
 Публичный endpoint анализирует объект, который пользователь ввел вручную. Если
 передан `source_url`, он возвращается только как private reference текущего
 запроса и не попадает в `analysis.listing.source_url`, UI, SEO или отчеты.
-Live scraping портала в этом flow не выполняется. По умолчанию создается
+Массовый scheduled scraping порталов в этом flow не выполняется. Для Otodom/OLX
+доступен one-off import по ссылке пользователя: backend делает обычный fetch без
+anti-bot обхода и пытается извлечь только минимальные поля объекта. Фото,
+контакты, full description и raw HTML не сохраняются. По умолчанию создается
 private draft на 30 дней; это можно отключить через `save_private_draft=false`
 или изменить через `retention_days`.
 
@@ -570,6 +575,19 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/reference
   -ContentType "application/json" `
   -Body '{"source_url":"https://www.otodom.pl/pl/oferta/demo-ID4abc123"}'
 ```
+
+Автозаполнить минимальные поля из Otodom/OLX URL:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/import-from-url `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"source_url":"https://www.otodom.pl/pl/oferta/demo-ID4abc123"}'
+```
+
+Если портал блокирует обычный fetch или страница не содержит пригодных
+структурированных данных, endpoint вернет `status:"failed"` или
+`status:"partial"` и UI оставит ручные поля для подтверждения.
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze `

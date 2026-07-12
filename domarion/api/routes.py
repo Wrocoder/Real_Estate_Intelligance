@@ -116,6 +116,8 @@ from domarion.schemas import (
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
+    SourceUrlImportRequest,
+    SourceUrlImportResult,
     SubscriptionUpdate,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
@@ -156,6 +158,7 @@ from domarion.services.search import ListingSearchError, search_listing_analyses
 from domarion.services.user_submitted_listings import (
     analyze_user_submitted_listing,
     build_source_reference_preview,
+    import_listing_from_source_url,
 )
 from domarion.user_store.base import UserStore
 from domarion.user_store.factory import get_user_store
@@ -343,6 +346,19 @@ def preview_user_submitted_listing_reference(
 ) -> SourceReferencePreview:
     try:
         return build_source_reference_preview(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/user-submitted-listings/import-from-url",
+    response_model=SourceUrlImportResult,
+)
+def import_user_submitted_listing_from_url(
+    payload: SourceUrlImportRequest,
+) -> SourceUrlImportResult:
+    try:
+        return import_listing_from_source_url(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

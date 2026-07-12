@@ -40,6 +40,7 @@ IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
 SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
+SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
@@ -431,6 +432,36 @@ class SourceReferencePreview(BaseModel):
     manual_fields_required: list[str]
     manual_fields_recommended: list[str]
     privacy_note: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class SourceUrlImportRequest(BaseModel):
+    source_url: str = Field(min_length=3, max_length=1000)
+    timeout_seconds: float = Field(default=8, ge=1, le=20)
+
+
+class SourceUrlImportFields(BaseModel):
+    title: str | None = None
+    address: str | None = None
+    city: str | None = None
+    district: str | None = None
+    market_type: MarketType | None = None
+    price: int | None = Field(default=None, gt=0)
+    area_m2: float | None = Field(default=None, gt=0)
+    rooms: int | None = Field(default=None, ge=1, le=10)
+    floor: int | None = Field(default=None, ge=0, le=80)
+    building_floors: int | None = Field(default=None, ge=1, le=120)
+    building_year: int | None = Field(default=None, ge=1800, le=2100)
+
+
+class SourceUrlImportResult(BaseModel):
+    reference_preview: SourceReferencePreview
+    status: SourceUrlImportStatus
+    fields: SourceUrlImportFields
+    fields_extracted: list[str] = Field(default_factory=list)
+    extraction_source: str | None = None
+    fetched_at: datetime | None = None
+    fetch_status_code: int | None = None
     warnings: list[str] = Field(default_factory=list)
 
 

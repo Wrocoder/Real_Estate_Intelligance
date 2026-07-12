@@ -21,6 +21,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "post",
         ): "SourceReferencePreview",
         (
+            "/api/v1/user-submitted-listings/import-from-url",
+            "post",
+        ): "SourceUrlImportResult",
+        (
             "/api/v1/user-submitted-listings/analyze",
             "post",
         ): "UserSubmittedListingAnalysis",
@@ -119,6 +123,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ScoringBacktestResult",
         "SourceReferencePreview",
         "SourceReferencePreviewRequest",
+        "SourceUrlImportFields",
+        "SourceUrlImportRequest",
+        "SourceUrlImportResult",
         "SourceRegistryEntry",
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",
@@ -156,6 +163,14 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     assert reference_request_schema["$ref"] == (
         "#/components/schemas/SourceReferencePreviewRequest"
     )
+
+    import_operation = openapi["paths"][
+        "/api/v1/user-submitted-listings/import-from-url"
+    ]["post"]
+    import_request_schema = import_operation["requestBody"]["content"]["application/json"][
+        "schema"
+    ]
+    assert import_request_schema["$ref"] == "#/components/schemas/SourceUrlImportRequest"
 
     user_listing_operation = openapi["paths"]["/api/v1/user-submitted-listings/analyze"]["post"]
     user_listing_request_schema = user_listing_operation["requestBody"]["content"][

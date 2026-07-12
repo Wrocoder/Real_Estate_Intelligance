@@ -241,6 +241,31 @@ export type SourceReferencePreview = {
   warnings: string[];
 };
 
+export type SourceUrlImportFields = {
+  title: string | null;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  market_type: "primary" | "secondary" | null;
+  price: number | null;
+  area_m2: number | null;
+  rooms: number | null;
+  floor: number | null;
+  building_floors: number | null;
+  building_year: number | null;
+};
+
+export type SourceUrlImportResult = {
+  reference_preview: SourceReferencePreview;
+  status: "extracted" | "partial" | "failed" | "unsupported";
+  fields: SourceUrlImportFields;
+  fields_extracted: string[];
+  extraction_source: string | null;
+  fetched_at: string | null;
+  fetch_status_code: number | null;
+  warnings: string[];
+};
+
 export type UserSubmittedListingAnalysis = {
   analysis: ListingAnalysis;
   confidence_score: number;
@@ -904,6 +929,11 @@ export const api = {
     }),
   previewUserSubmittedListingReference: (sourceUrl: string) =>
     request<SourceReferencePreview>("/api/v1/user-submitted-listings/reference-preview", {
+      method: "POST",
+      body: JSON.stringify({ source_url: sourceUrl }),
+    }),
+  importUserSubmittedListingFromUrl: (sourceUrl: string) =>
+    request<SourceUrlImportResult>("/api/v1/user-submitted-listings/import-from-url", {
       method: "POST",
       body: JSON.stringify({ source_url: sourceUrl }),
     }),

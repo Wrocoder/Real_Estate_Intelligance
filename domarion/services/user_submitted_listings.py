@@ -1,8 +1,16 @@
+import html
+import json
 import re
 import unicodedata
-from datetime import date
+from collections.abc import Callable, Iterator
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
 from hashlib import sha256
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
+from urllib.request import Request, urlopen
+
+from pydantic import ValidationError
 
 from domarion.ingestion.geocoding import GeocodingResult, geocode_partner_address
 from domarion.repositories.base import RealEstateRepository
@@ -11,6 +19,9 @@ from domarion.schemas import (
     Listing,
     SourceReferencePreview,
     SourceReferencePreviewRequest,
+    SourceUrlImportFields,
+    SourceUrlImportRequest,
+    SourceUrlImportResult,
     UserSubmittedListingAnalysis,
     UserSubmittedListingRequest,
 )
@@ -24,6 +35,8 @@ RETENTION_NOTE = (
     "User-submitted analysis is computed as a private draft; source URL is not exposed "
     "in public UI, SEO pages or generated listing analysis."
 )
+URL_IMPORT_USER_AGENT = "DomarionAnalytics/0.1 (+https://domarion.local)"
+MAX_URL_IMPORT_BYTES = 1_500_000
 
 DISTRICT_DEFAULTS = {
     "wroclaw-fabryczna": {
@@ -57,6 +70,18 @@ DISTRICT_DEFAULTS = {
 
 MANUAL_FIELDS_REQUIRED = ["address", "district", "price", "area_m2", "rooms"]
 MANUAL_FIELDS_RECOMMENDED = ["floor", "building_floors", "building_year", "market_type"]
+
+
+@dataclass(frozen=True)
+class SourceFetchResult:
+    body: str
+    final_url: str
+    status_code: int
+    content_type: str | None = None
+
+
+class SourceUrlImportError(RuntimeError):
+    pass
 
 
 def analyze_user_submitted_listing(
@@ -166,6 +191,71 @@ def build_source_reference_preview(
         manual_fields_required=MANUAL_FIELDS_REQUIRED,
         manual_fields_recommended=MANUAL_FIELDS_RECOMMENDED,
         privacy_note=RETENTION_NOTE,
+        warnings=warnings,
+    )
+
+
+def import_listing_from_source_url(
+    payload: SourceUrlImportRequest,
+    fetcher: Callable[[str, float], SourceFetchResult] | None = None,
+) -> SourceUrlImportResult:
+    preview = build_source_reference_preview(
+        SourceReferencePreviewRequest(source_url=payload.source_url)
+    )
+    if preview.provider == "other":
+        return SourceUrlImportResult(
+            reference_preview=preview,
+            status="unsupported",
+            fields=SourceUrlImportFields(),
+            warnings=[
+                *preview.warnings,
+                "Automatic import currently supports only Otodom and OLX URLs.",
+            ],
+        )
+
+    fetch = fetcher or _fetch_source_url_html
+    try:
+        fetched = fetch(preview.source_url_private, payload.timeout_seconds)
+    except SourceUrlImportError as exc:
+        return SourceUrlImportResult(
+            reference_preview=preview,
+            status="failed",
+            fields=SourceUrlImportFields(),
+            warnings=[
+                *preview.warnings,
+                str(exc),
+                "Use manual fields if the portal blocks one-off import.",
+            ],
+        )
+
+    fields = _extract_import_fields(fetched.body)
+    extracted = _fields_extracted(fields)
+    missing_required = [
+        field for field in MANUAL_FIELDS_REQUIRED if getattr(fields, field) is None
+    ]
+    warnings = [
+        "Fetched a single user-submitted URL without bulk crawling or anti-bot bypass.",
+        "Photos, contacts and full description are not retained.",
+        "Confirm extracted fields before generating a report.",
+    ]
+    if missing_required:
+        warnings.append(f"Missing required fields: {', '.join(missing_required)}.")
+
+    if not extracted:
+        status = "failed"
+    elif missing_required:
+        status = "partial"
+    else:
+        status = "extracted"
+
+    return SourceUrlImportResult(
+        reference_preview=preview,
+        status=status,
+        fields=fields,
+        fields_extracted=extracted,
+        extraction_source="html_jsonld_meta_text",
+        fetched_at=datetime.now(UTC),
+        fetch_status_code=fetched.status_code,
         warnings=warnings,
     )
 
@@ -425,6 +515,306 @@ def _source_provider(source_domain: str | None) -> tuple[str, str]:
     if source_domain == "olx.pl" or source_domain.endswith(".olx.pl"):
         return "olx", "OLX"
     return "other", source_domain
+
+
+def _fetch_source_url_html(source_url: str, timeout_seconds: float) -> SourceFetchResult:
+    request = Request(
+        source_url,
+        headers={
+            "User-Agent": URL_IMPORT_USER_AGENT,
+            "Accept": "text/html,application/xhtml+xml,application/json;q=0.8,*/*;q=0.5",
+        },
+        method="GET",
+    )
+    try:
+        with urlopen(request, timeout=timeout_seconds) as response:
+            body = response.read(MAX_URL_IMPORT_BYTES + 1)
+            if len(body) > MAX_URL_IMPORT_BYTES:
+                raise SourceUrlImportError("Imported page is too large for one-off URL import.")
+            content_type = response.headers.get("Content-Type")
+            charset = response.headers.get_content_charset() or "utf-8"
+            return SourceFetchResult(
+                body=body.decode(charset, errors="replace"),
+                final_url=response.geturl(),
+                status_code=getattr(response, "status", 200),
+                content_type=content_type,
+            )
+    except HTTPError as exc:
+        raise SourceUrlImportError(f"Portal returned HTTP {exc.code}.") from exc
+    except (OSError, URLError) as exc:
+        raise SourceUrlImportError(f"Could not fetch portal page: {exc}.") from exc
+
+
+def _extract_import_fields(page_html: str) -> SourceUrlImportFields:
+    fields = SourceUrlImportFields()
+    for document in _json_documents(page_html):
+        fields = _merge_import_fields(fields, _fields_from_json_value(document))
+    fields = _merge_import_fields(fields, _fields_from_meta(page_html))
+    fields = _merge_import_fields(fields, _fields_from_text(page_html))
+    return fields
+
+
+def _json_documents(page_html: str) -> Iterator[object]:
+    stripped = page_html.strip()
+    if stripped.startswith(("{", "[")):
+        try:
+            yield json.loads(stripped)
+        except json.JSONDecodeError:
+            pass
+
+    for match in re.finditer(
+        r"<script[^>]+type=[\"']application/ld\+json[\"'][^>]*>(.*?)</script>",
+        page_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        try:
+            yield json.loads(html.unescape(match.group(1)).strip())
+        except json.JSONDecodeError:
+            continue
+
+    for match in re.finditer(
+        r"<script[^>]+id=[\"']__(?:NEXT_DATA|NUXT_DATA)__[\"'][^>]*>(.*?)</script>",
+        page_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        try:
+            yield json.loads(html.unescape(match.group(1)).strip())
+        except json.JSONDecodeError:
+            continue
+
+
+def _fields_from_json_value(value: object) -> SourceUrlImportFields:
+    fields = SourceUrlImportFields()
+    for item in _walk_json(value):
+        if not isinstance(item, dict):
+            continue
+        fields = _merge_import_fields(fields, _fields_from_json_object(item))
+    return fields
+
+
+def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
+    fields = SourceUrlImportFields()
+    lowered = {_json_key(key): value for key, value in item.items()}
+
+    title = _first_text(lowered, ("name", "title", "headline"))
+    if title:
+        fields.title = title
+
+    price = _first_number(lowered, ("price", "priceamount", "amount", "totalprice"))
+    if price:
+        fields.price = int(round(price))
+
+    floor_size = lowered.get("floorsize")
+    if isinstance(floor_size, dict):
+        fields.area_m2 = _coerce_float(floor_size.get("value"))
+    area = _first_number(
+        lowered,
+        ("area", "aream2", "areainsquaremeters", "usablearea", "floorarea"),
+    )
+    if area and fields.area_m2 is None:
+        fields.area_m2 = area
+
+    rooms = _first_number(lowered, ("rooms", "numberofrooms", "roomsnumber", "roomnumber"))
+    if rooms:
+        fields.rooms = int(round(rooms))
+
+    floor = _first_number(lowered, ("floor", "floornumber"))
+    if floor is not None:
+        fields.floor = int(round(floor))
+
+    building_floors = _first_number(
+        lowered,
+        ("buildingfloors", "totalfloors", "floorcount", "numberoffloors"),
+    )
+    if building_floors:
+        fields.building_floors = int(round(building_floors))
+
+    building_year = _first_number(
+        lowered,
+        ("buildingyear", "buildyear", "constructionyear", "yearbuilt"),
+    )
+    if building_year:
+        fields.building_year = int(round(building_year))
+
+    market_type = _market_type_from_value(
+        _first_text(lowered, ("market", "markettype", "buildingmarket"))
+    )
+    if market_type:
+        fields.market_type = market_type
+
+    address = lowered.get("address")
+    if isinstance(address, dict):
+        address_lowered = {_json_key(key): value for key, value in address.items()}
+        fields.address = _first_text(address_lowered, ("streetaddress", "address"))
+        fields.city = _first_text(address_lowered, ("addresslocality", "locality", "city"))
+        fields.district = _first_text(
+            address_lowered,
+            ("district", "neighborhood", "addressregion"),
+        )
+    else:
+        fields.address = _first_text(lowered, ("streetaddress", "address", "location"))
+        fields.city = _first_text(lowered, ("city", "locality", "addresslocality"))
+        fields.district = _first_text(lowered, ("district", "neighborhood", "addressregion"))
+
+    return fields
+
+
+def _fields_from_meta(page_html: str) -> SourceUrlImportFields:
+    fields = SourceUrlImportFields()
+    title_match = re.search(
+        r"<meta[^>]+(?:property|name)=[\"'](?:og:title|twitter:title|title)[\"'][^>]+content=[\"']([^\"']+)",
+        page_html,
+        flags=re.IGNORECASE,
+    )
+    if title_match:
+        fields.title = html.unescape(title_match.group(1)).strip()
+    return fields
+
+
+def _fields_from_text(page_html: str) -> SourceUrlImportFields:
+    text = _visible_text(page_html)
+    fields = SourceUrlImportFields()
+    price = _money_from_text(text)
+    if price:
+        fields.price = price
+
+    area_match = re.search(r"(\d+(?:[,.]\d+)?)\s*(?:m²|m2|m kw\.?|mkw)", text, re.IGNORECASE)
+    if area_match:
+        fields.area_m2 = _coerce_float(area_match.group(1))
+
+    rooms_match = re.search(r"(\d+)\s*(?:pokoi|pokoje|pokój|rooms?)", text, re.IGNORECASE)
+    if rooms_match:
+        fields.rooms = int(rooms_match.group(1))
+
+    floor_match = re.search(r"(?:piętro|floor)\D{0,12}(\d+)", text, re.IGNORECASE)
+    if floor_match:
+        fields.floor = int(floor_match.group(1))
+
+    year_match = re.search(
+        r"(?:rok budowy|building year|year built)\D{0,20}((?:19|20)\d{2})",
+        text,
+        re.IGNORECASE,
+    )
+    if year_match:
+        fields.building_year = int(year_match.group(1))
+
+    return fields
+
+
+def _walk_json(value: object) -> Iterator[object]:
+    yield value
+    if isinstance(value, dict):
+        for child in value.values():
+            yield from _walk_json(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from _walk_json(child)
+
+
+def _merge_import_fields(
+    base: SourceUrlImportFields,
+    update: SourceUrlImportFields,
+) -> SourceUrlImportFields:
+    data = base.model_dump()
+    for key, value in update.model_dump().items():
+        if data.get(key) is None and value is not None:
+            data[key] = value
+    return _validated_import_fields(data)
+
+
+def _fields_extracted(fields: SourceUrlImportFields) -> list[str]:
+    return [
+        key
+        for key, value in fields.model_dump().items()
+        if value is not None
+    ]
+
+
+def _first_text(values: dict[str, object], keys: tuple[str, ...]) -> str | None:
+    for key in keys:
+        text = _coerce_text(values.get(key))
+        if text:
+            return text
+    return None
+
+
+def _first_number(values: dict[str, object], keys: tuple[str, ...]) -> float | None:
+    for key in keys:
+        number = _coerce_float(values.get(key))
+        if number is not None:
+            return number
+    return None
+
+
+def _coerce_text(value: object) -> str | None:
+    if isinstance(value, str):
+        cleaned = re.sub(r"\s+", " ", value).strip()
+        return cleaned or None
+    return None
+
+
+def _coerce_float(value: object) -> float | None:
+    if isinstance(value, int | float):
+        return float(value)
+    if not isinstance(value, str):
+        return None
+    normalized = value.replace("\xa0", " ").replace(" ", "").replace(",", ".")
+    match = re.search(r"\d+(?:\.\d+)?", normalized)
+    if not match:
+        return None
+    return float(match.group(0))
+
+
+def _market_type_from_value(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.casefold()
+    if "pierw" in normalized or "primary" in normalized:
+        return "primary"
+    if "wtór" in normalized or "wtor" in normalized or "secondary" in normalized:
+        return "secondary"
+    return None
+
+
+def _visible_text(page_html: str) -> str:
+    without_scripts = re.sub(
+        r"<(script|style)[^>]*>.*?</\1>",
+        " ",
+        page_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    text = re.sub(r"<[^>]+>", " ", without_scripts)
+    return re.sub(r"\s+", " ", html.unescape(text))
+
+
+def _money_from_text(text: str) -> int | None:
+    candidates = []
+    for match in re.finditer(r"(\d[\d\s\xa0.,]{2,})\s*(?:zł|PLN)", text, re.IGNORECASE):
+        normalized = re.sub(r"[^\d]", "", match.group(1))
+        if normalized:
+            candidates.append(int(normalized))
+    if not candidates:
+        return None
+    return max(candidates)
+
+
+def _json_key(value: object) -> str:
+    return re.sub(r"[^a-z0-9]+", "", str(value).casefold())
+
+
+def _validated_import_fields(data: dict[str, object]) -> SourceUrlImportFields:
+    clean: dict[str, object] = {}
+    for key, value in data.items():
+        if value is None:
+            clean[key] = None
+            continue
+        try:
+            SourceUrlImportFields(**{key: value})
+        except ValidationError:
+            clean[key] = None
+        else:
+            clean[key] = value
+    return SourceUrlImportFields(**clean)
 
 
 def _source_slug(path: str) -> str | None:

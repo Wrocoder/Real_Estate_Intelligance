@@ -115,6 +115,7 @@
 - [x] Строить comparables не из URL, а из наших legal-first listings, партнерских snapshots, area statistics и open-data слоев.
 - [x] Добавить fallback, если comparables мало: area-level estimate + confidence warning.
 - [x] Добавить optional URL-assisted reference preview только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
+- [x] Добавить one-off URL import по user-submitted Otodom/OLX ссылке: обычный fetch без anti-bot обхода, извлечение минимальных полей и подтверждение пользователем перед отчетом.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
@@ -427,6 +428,7 @@
 - [x] Commit 31: partner referral lead capture.
 - [x] Commit 32: daily email alert batch delivery.
 - [x] Commit 33: URL-assisted private listing check.
+- [x] Commit 34: one-off URL import for private listing checks.
 
 ## Current Sprint
 
@@ -455,6 +457,7 @@
 - [x] Добавить partner referral lead capture API/store/UI и admin review queue.
 - [x] Добавить daily email alert batch delivery для cron/admin запуска.
 - [x] Добавить URL-assisted private listing check: reference preview + быстрый отчет на `/check`.
+- [x] Добавить one-off URL import для автозаполнения `/check` по user-submitted Otodom/OLX URL.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -473,3 +476,4 @@
 - [x] Сделать Commit 31 и push.
 - [x] Сделать Commit 32 и push.
 - [x] Сделать Commit 33 и push.
+- [x] Сделать Commit 34 и push.

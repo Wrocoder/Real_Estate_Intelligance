@@ -19,6 +19,8 @@ import {
   reportContentUrl,
   type GeneratedReport,
   type SourceReferencePreview,
+  type SourceUrlImportFields,
+  type SourceUrlImportResult,
   type UserSubmittedListingAnalysis,
   type UserSubmittedListingReport,
   type UserSubmittedListingRequest,
@@ -64,10 +66,13 @@ export default function CheckListingPage() {
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
   const [referencePreview, setReferencePreview] =
     useState<SourceReferencePreview | null>(null);
+  const [urlImportResult, setUrlImportResult] =
+    useState<SourceUrlImportResult | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
   const [status, setStatus] = useState("Готово к проверке");
   const [referenceStatus, setReferenceStatus] = useState("Ссылка не добавлена");
+  const [urlImportStatus, setUrlImportStatus] = useState("Автоимпорт не запускался");
   const [reportStatus, setReportStatus] = useState("Отчет не создан");
   const [saveStatus, setSaveStatus] = useState("Не сохранен");
   const [error, setError] = useState("");
@@ -103,6 +108,24 @@ export default function CheckListingPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setReferenceStatus("Ошибка ссылки");
+    }
+  }
+
+  async function importFromUrl() {
+    setError("");
+    setReferenceStatus("Загрузка ссылки...");
+    setUrlImportStatus("Автоимпорт...");
+    try {
+      const payload = await api.importUserSubmittedListingFromUrl(form.source_url);
+      setUrlImportResult(payload);
+      setReferencePreview(payload.reference_preview);
+      applyImportedFields(payload.fields);
+      setReferenceStatus(`${payload.reference_preview.provider_label}: private reference`);
+      setUrlImportStatus(urlImportStatusLabel(payload));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown error");
+      setReferenceStatus("Ошибка ссылки");
+      setUrlImportStatus("Ошибка автоимпорта");
     }
   }
 
@@ -145,6 +168,25 @@ export default function CheckListingPage() {
 
   function updateField<K extends keyof CheckFormState>(key: K, value: CheckFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function applyImportedFields(fields: SourceUrlImportFields) {
+    setForm((current) => ({
+      ...current,
+      title: fields.title ?? current.title,
+      address: fields.address ?? current.address,
+      city: fields.city ?? current.city,
+      district: normalizeDistrict(fields.district) ?? current.district,
+      market_type: fields.market_type ?? current.market_type,
+      price: fields.price ? String(fields.price) : current.price,
+      area_m2: fields.area_m2 ? String(fields.area_m2) : current.area_m2,
+      rooms: fields.rooms ? String(fields.rooms) : current.rooms,
+      floor: fields.floor !== null && fields.floor !== undefined ? String(fields.floor) : current.floor,
+      building_floors: fields.building_floors
+        ? String(fields.building_floors)
+        : current.building_floors,
+      building_year: fields.building_year ? String(fields.building_year) : current.building_year,
+    }));
   }
 
   const analysis = result?.analysis ?? null;
@@ -198,7 +240,9 @@ export default function CheckListingPage() {
                 onChange={(event) => {
                   updateField("source_url", event.target.value);
                   setReferencePreview(null);
+                  setUrlImportResult(null);
                   setReferenceStatus("Ссылка не проверена");
+                  setUrlImportStatus("Автоимпорт не запускался");
                 }}
               />
             </label>
@@ -211,6 +255,14 @@ export default function CheckListingPage() {
               <Link2 size={16} /> Принять ссылку
             </button>
             <button
+              className="button"
+              disabled={!form.source_url.trim()}
+              type="button"
+              onClick={() => void importFromUrl()}
+            >
+              <RefreshCw size={16} /> Автозаполнить
+            </button>
+            <button
               className="button primary"
               disabled={!form.confirm_private_analysis}
               type="button"
@@ -219,6 +271,7 @@ export default function CheckListingPage() {
               <FileText size={16} /> Ссылка + параметры → отчет
             </button>
           </div>
+          <p className="status-line" style={{ marginTop: 12 }}>{urlImportStatus}</p>
           {referencePreview ? (
             <div className="metric-grid compact" style={{ marginTop: 12 }}>
               <div className="metric">
@@ -239,11 +292,33 @@ export default function CheckListingPage() {
               </div>
             </div>
           ) : null}
+          {urlImportResult ? (
+            <div className="metric-grid compact" style={{ marginTop: 12 }}>
+              <div className="metric">
+                <span>Import status</span>
+                <strong>{urlImportResult.status}</strong>
+              </div>
+              <div className="metric">
+                <span>Extracted</span>
+                <strong>{urlImportResult.fields_extracted.length}</strong>
+              </div>
+              <div className="metric">
+                <span>HTTP</span>
+                <strong>{urlImportResult.fetch_status_code ?? "—"}</strong>
+              </div>
+              <div className="metric">
+                <span>Source</span>
+                <strong>{urlImportResult.extraction_source ?? "—"}</strong>
+              </div>
+            </div>
+          ) : null}
           {referencePreview ? (
             <ul className="section-list compact" style={{ marginTop: 12 }}>
-              {referencePreview.warnings.map((warning) => (
-                <li key={warning}>{warning}</li>
-              ))}
+              {[...referencePreview.warnings, ...(urlImportResult?.warnings ?? [])].map(
+                (warning, index) => (
+                  <li key={`${index}-${warning}`}>{warning}</li>
+                ),
+              )}
             </ul>
           ) : null}
         </div>
@@ -622,4 +697,26 @@ function dateLabel(value: string) {
     month: "short",
     day: "2-digit",
   }).format(new Date(value));
+}
+
+function normalizeDistrict(value: string | null) {
+  if (!value) return null;
+  const normalized = value.toLocaleLowerCase("pl-PL");
+  return (
+    DISTRICTS.find((district) => normalized.includes(district.toLocaleLowerCase("pl-PL"))) ??
+    null
+  );
+}
+
+function urlImportStatusLabel(result: SourceUrlImportResult) {
+  if (result.status === "extracted") {
+    return `Автоимпорт: заполнено ${result.fields_extracted.length} полей`;
+  }
+  if (result.status === "partial") {
+    return `Автоимпорт частичный: заполнено ${result.fields_extracted.length} полей`;
+  }
+  if (result.status === "unsupported") {
+    return "Автоимпорт доступен только для Otodom/OLX";
+  }
+  return "Автоимпорт не получил параметры, заполните поля вручную";
 }
