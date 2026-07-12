@@ -86,6 +86,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         raise RuntimeError("Expected demo listing wr-001 after seed.")
 
     price_history = repository.get_price_history("wr-001")
+    listing_events = repository.get_listing_events("wr-001")
     comparables = repository.find_comparables(listing)
     nearby_listing_ids = [
         item.id for item in repository.list_listings(lat=51.1117, lon=16.9653, radius_km=1)
@@ -99,6 +100,9 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         raise RuntimeError("Expected PostGIS radius listing query to return only wr-001.")
     if not any("Nowy Dwór tram corridor" in item.name for item in nearby_planned_investments):
         raise RuntimeError("Expected PostGIS radius planned investment query near wr-001.")
+    listing_event_types = [event.event_type for event in listing_events]
+    if "first_seen" not in listing_event_types or "price_reduced" not in listing_event_types:
+        raise RuntimeError("Expected derived listing events for wr-001.")
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -134,6 +138,8 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "area_count": len(areas),
         "planned_investment_count": len(investments),
         "price_history_points": len(price_history),
+        "listing_event_count": len(listing_events),
+        "listing_event_types": listing_event_types,
         "comparable_count": len(comparables),
         "planned_investment_crud": "ok",
         "spatial": {

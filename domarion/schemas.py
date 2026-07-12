@@ -41,6 +41,15 @@ SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
+ListingEventType = Literal[
+    "first_seen",
+    "price_reduced",
+    "price_increased",
+    "parameter_changed",
+    "relisted",
+    "removed",
+    "republished",
+]
 ScoreDecisionLabel = Literal[
     "strong_candidate",
     "good_option",
@@ -82,6 +91,14 @@ class PriceHistoryPoint(BaseModel):
     observed_at: date
     price: int
     price_per_m2: int
+
+
+class ListingEvent(BaseModel):
+    listing_id: str
+    event_type: ListingEventType
+    observed_at: date
+    summary: str
+    payload: dict[str, Any] = Field(default_factory=dict)
 
 
 class Listing(BaseModel):
@@ -302,6 +319,7 @@ class PriceHistoryRebuildResult(BaseModel):
     property_sources_seen: int = Field(ge=0)
     snapshots_seen: int = Field(ge=0)
     snapshots_updated: int = Field(ge=0)
+    listing_events_created: int = Field(default=0, ge=0)
 
 
 class PlannedInvestmentImportResponse(BaseModel):
@@ -544,6 +562,7 @@ class ListingAnalysis(BaseModel):
     listing: Listing
     area_statistics: AreaStatistics
     price_history: list[PriceHistoryPoint]
+    listing_events: list[ListingEvent] = Field(default_factory=list)
     comparables: list[Listing]
     scores: PropertyScores
     insights: list[str]

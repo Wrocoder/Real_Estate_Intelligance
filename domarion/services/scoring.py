@@ -282,6 +282,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         raise ValueError(f"Missing area statistics for {listing.area_id}")
 
     price_history = repository.get_price_history(listing.id)
+    listing_events = repository.get_listing_events(listing.id)
     comparables = repository.find_comparables(listing)
     scores = calculate_scores(listing, area_statistics, comparables)
 
@@ -330,6 +331,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         listing=listing,
         area_statistics=area_statistics,
         price_history=price_history,
+        listing_events=listing_events,
         comparables=comparables,
         scores=scores,
         insights=insights,

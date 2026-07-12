@@ -171,6 +171,21 @@ export type PriceHistoryPoint = {
   price_per_m2: number;
 };
 
+export type ListingEvent = {
+  listing_id: string;
+  event_type:
+    | "first_seen"
+    | "price_reduced"
+    | "price_increased"
+    | "parameter_changed"
+    | "relisted"
+    | "removed"
+    | "republished";
+  observed_at: string;
+  summary: string;
+  payload: Record<string, unknown>;
+};
+
 export type PropertyScores = {
   formula_version: string;
   weights_profile: string;
@@ -208,6 +223,7 @@ export type ListingAnalysis = {
   listing: Listing;
   area_statistics: AreaStatistics;
   price_history: PriceHistoryPoint[];
+  listing_events: ListingEvent[];
   comparables: Listing[];
   scores: PropertyScores;
   insights: string[];

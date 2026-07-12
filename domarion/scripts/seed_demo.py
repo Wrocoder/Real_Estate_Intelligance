@@ -15,6 +15,7 @@ from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
 )
 from domarion.db.session import SessionLocal
+from domarion.ingestion.db_writer import rebuild_price_history_metrics_in_session
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
 from domarion.schemas import Listing, PlannedInvestment, PriceHistoryPoint
 
@@ -64,12 +65,14 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
     for investment in demo_repository.list_planned_investments():
         planned_investments_seeded += int(_upsert_planned_investment(session, investment))
 
+    history_result = rebuild_price_history_metrics_in_session(session)
     session.commit()
     return {
         "areas_seeded": areas_seeded,
         "listings_seeded": listings_seeded,
         "planned_investments_seeded": planned_investments_seeded,
         "snapshots_seeded": snapshots_seeded,
+        "listing_events_seeded": history_result.listing_events_created,
     }
 
 

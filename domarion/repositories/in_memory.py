@@ -6,11 +6,13 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
     Listing,
+    ListingEvent,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
 )
+from domarion.services.listing_events import ListingEventInput, derive_listing_events
 
 
 class InMemoryRealEstateRepository:
@@ -368,6 +370,32 @@ class InMemoryRealEstateRepository:
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
         return self._history.get(listing_id, [])
+
+    def get_listing_events(self, listing_id: str) -> list[ListingEvent]:
+        listing = self._listings.get(listing_id)
+        history = self._history.get(listing_id, [])
+        if listing is None or not history:
+            return []
+
+        snapshots = []
+        for point in history:
+            payload = listing.model_copy(
+                update={
+                    "price": point.price,
+                    "price_per_m2": point.price_per_m2,
+                }
+            ).model_dump(mode="json")
+            snapshots.append(
+                ListingEventInput(
+                    listing_id=listing_id,
+                    observed_at=point.observed_at,
+                    price=point.price,
+                    price_per_m2=point.price_per_m2,
+                    payload=payload,
+                )
+            )
+
+        return [event.to_schema() for event in derive_listing_events(snapshots)]
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
         candidates = [

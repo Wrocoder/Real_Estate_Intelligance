@@ -72,6 +72,8 @@ def test_listing_analysis() -> None:
     assert payload["listing"]["id"] == "wr-001"
     assert 0 <= payload["scores"]["investment_score"] <= 100
     assert payload["price_history"]
+    assert payload["listing_events"]
+    assert payload["listing_events"][0]["event_type"] == "first_seen"
 
 
 def test_compare_requires_existing_ids() -> None:

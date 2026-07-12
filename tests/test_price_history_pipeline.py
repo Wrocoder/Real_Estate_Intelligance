@@ -1,6 +1,7 @@
 from datetime import date
 
 from domarion.schemas import Listing, PriceHistoryPoint
+from domarion.services.listing_events import ListingEventInput, derive_listing_events
 from domarion.services.price_history import (
     listing_with_price_history_metrics,
     summarize_price_history,
@@ -49,6 +50,74 @@ def test_listing_price_history_metrics_can_be_calculated_for_historical_snapshot
     assert latest_listing.days_on_market == 19
     assert latest_listing.price_increases == 1
     assert latest_listing.price_reductions == 1
+
+
+def test_listing_events_capture_price_parameter_and_status_changes() -> None:
+    snapshots = [
+        ListingEventInput(
+            listing_id="history-test",
+            observed_at=date(2026, 7, 1),
+            price=700000,
+            price_per_m2=11824,
+            payload={
+                "id": "history-test",
+                "price": 700000,
+                "price_per_m2": 11824,
+                "rooms": 3,
+                "area_m2": 59.2,
+                "active_status": "active",
+                "relisted": False,
+            },
+            snapshot_id=1,
+        ),
+        ListingEventInput(
+            listing_id="history-test",
+            observed_at=date(2026, 7, 10),
+            price=680000,
+            price_per_m2=11486,
+            payload={
+                "id": "history-test",
+                "price": 680000,
+                "price_per_m2": 11486,
+                "rooms": 2,
+                "area_m2": 59.2,
+                "active_status": "removed",
+                "relisted": True,
+            },
+            snapshot_id=2,
+        ),
+        ListingEventInput(
+            listing_id="history-test",
+            observed_at=date(2026, 7, 20),
+            price=690000,
+            price_per_m2=11655,
+            payload={
+                "id": "history-test",
+                "price": 690000,
+                "price_per_m2": 11655,
+                "rooms": 2,
+                "area_m2": 59.2,
+                "active_status": "active",
+                "relisted": True,
+            },
+            snapshot_id=3,
+        ),
+    ]
+
+    events = derive_listing_events(snapshots)
+    event_types = [event.event_type for event in events]
+
+    assert event_types == [
+        "first_seen",
+        "price_reduced",
+        "parameter_changed",
+        "removed",
+        "relisted",
+        "price_increased",
+        "republished",
+    ]
+    parameter_event = next(event for event in events if event.event_type == "parameter_changed")
+    assert parameter_event.payload["changes"]["rooms"] == {"previous": 3, "current": 2}
 
 
 def _listing() -> Listing:

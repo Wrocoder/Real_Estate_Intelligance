@@ -5,7 +5,7 @@ from datetime import datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from domarion.db.models import (
@@ -17,6 +17,9 @@ from domarion.db.models import (
     PropertySource,
     RawListing,
 )
+from domarion.db.models import (
+    ListingEvent as ListingEventRow,
+)
 from domarion.db.session import SessionLocal
 from domarion.ingestion.partner_csv import PartnerListingRecord, read_partner_csv, slugify
 from domarion.schemas import (
@@ -25,6 +28,7 @@ from domarion.schemas import (
     PriceHistoryPoint,
     PriceHistoryRebuildResult,
 )
+from domarion.services.listing_events import ListingEventInput, derive_listing_events
 from domarion.services.price_history import listing_with_price_history_metrics
 
 DEDUP_AREA_TOLERANCE_M2 = 1.0
@@ -113,16 +117,19 @@ def rebuild_price_history_metrics_in_session(session: Session) -> PriceHistoryRe
     property_sources = session.scalars(select(PropertySource).order_by(PropertySource.id)).all()
     snapshots_seen = 0
     snapshots_updated = 0
+    listing_events_created = 0
 
     for property_source in property_sources:
-        seen, updated = _refresh_price_history_metrics(session, property_source)
+        seen, updated, events_created = _refresh_price_history_metrics(session, property_source)
         snapshots_seen += seen
         snapshots_updated += updated
+        listing_events_created += events_created
 
     return PriceHistoryRebuildResult(
         property_sources_seen=len(property_sources),
         snapshots_seen=snapshots_seen,
         snapshots_updated=snapshots_updated,
+        listing_events_created=listing_events_created,
     )
 
 
@@ -438,14 +445,14 @@ def _upsert_snapshot(
 def _refresh_price_history_metrics(
     session: Session,
     property_source: PropertySource,
-) -> tuple[int, int]:
+) -> tuple[int, int, int]:
     snapshots = session.scalars(
         select(ListingSnapshot)
         .where(ListingSnapshot.property_source_id == property_source.id)
         .order_by(ListingSnapshot.observed_at)
     ).all()
     if not snapshots:
-        return 0, 0
+        return 0, 0, 0
 
     history = [_snapshot_to_price_history_point(snapshot) for snapshot in snapshots]
     property_source.first_seen_at = _date_to_datetime(history[0].observed_at)
@@ -464,8 +471,51 @@ def _refresh_price_history_metrics(
             snapshot.normalized_payload = enriched_payload
             updated += 1
 
+    events_created = _rebuild_listing_events(session, property_source, snapshots)
     session.flush()
-    return len(snapshots), updated
+    return len(snapshots), updated, events_created
+
+
+def _rebuild_listing_events(
+    session: Session,
+    property_source: PropertySource,
+    snapshots: list[ListingSnapshot],
+) -> int:
+    session.execute(
+        delete(ListingEventRow).where(
+            ListingEventRow.property_source_id == property_source.id,
+        )
+    )
+    events = derive_listing_events(
+        [_snapshot_to_listing_event_input(snapshot) for snapshot in snapshots]
+    )
+    for event in events:
+        session.add(
+            ListingEventRow(
+                property_source_id=property_source.id,
+                listing_snapshot_id=event.snapshot_id,
+                previous_snapshot_id=event.previous_snapshot_id,
+                listing_id=event.listing_id,
+                event_type=event.event_type,
+                observed_at=_date_to_datetime(event.observed_at),
+                summary=event.summary,
+                event_payload=event.payload,
+            )
+        )
+    return len(events)
+
+
+def _snapshot_to_listing_event_input(snapshot: ListingSnapshot) -> ListingEventInput:
+    point = _snapshot_to_price_history_point(snapshot)
+    payload = snapshot.normalized_payload
+    return ListingEventInput(
+        listing_id=payload["id"],
+        observed_at=point.observed_at,
+        price=point.price,
+        price_per_m2=point.price_per_m2,
+        payload=payload,
+        snapshot_id=snapshot.id,
+    )
 
 
 def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryPoint:

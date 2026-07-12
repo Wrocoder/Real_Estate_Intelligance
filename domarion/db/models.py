@@ -157,6 +157,32 @@ class ListingSnapshot(Base):
     property_source: Mapped[PropertySource] = relationship()
 
 
+class ListingEvent(Base):
+    __tablename__ = "listing_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "property_source_id",
+            "listing_snapshot_id",
+            "event_type",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    property_source_id: Mapped[int] = mapped_column(ForeignKey("property_sources.id"), index=True)
+    listing_snapshot_id: Mapped[int | None] = mapped_column(
+        ForeignKey("listing_snapshots.id"),
+        index=True,
+    )
+    previous_snapshot_id: Mapped[int | None] = mapped_column(ForeignKey("listing_snapshots.id"))
+    listing_id: Mapped[str] = mapped_column(String(120), index=True)
+    event_type: Mapped[str] = mapped_column(String(60), index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    summary: Mapped[str] = mapped_column(Text)
+    event_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    property_source: Mapped[PropertySource] = relationship()
+
+
 class PropertyScore(Base):
     __tablename__ = "property_scores"
 

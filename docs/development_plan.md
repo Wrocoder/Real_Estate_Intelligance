@@ -73,7 +73,7 @@
 - [x] Добавить geometry columns и spatial indexes.
 - [x] Добавить таблицы `generated_reports`, `user_favorites`, `user_alerts`.
 - [x] Добавить миграционную проверку в CI.
-- [ ] Добавить таблицы `listing_events` и расширить price history под снятие/републикацию/изменение параметров.
+- [x] Добавить таблицы `listing_events` и расширить price history под снятие/републикацию/изменение параметров.
 - [ ] Добавить таблицу `property_deduplication_matches` для review queue и объяснения match decisions.
 - [ ] Добавить справочники `locations`, `districts`, `municipalities`.
 - [ ] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
@@ -434,6 +434,7 @@
 - [x] Commit 37: live PostGIS migration verification.
 - [x] Commit 38: PostGIS geometry columns and spatial indexes.
 - [x] Commit 39: PostGIS distance calculations for radius queries.
+- [x] Commit 40: listing event timeline from price history.
 
 ## Current Sprint
 
@@ -468,6 +469,7 @@
 - [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Добавить geometry columns и GiST spatial indexes для `properties` и `planned_investments`.
 - [x] Добавить PostGIS distance calculations для listing/map radius queries и private draft scoring.
+- [x] Добавить `listing_events` timeline из snapshots для price/parameter/status changes.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -491,3 +493,4 @@
 - [x] Сделать Commit 37 и push.
 - [x] Сделать Commit 38 и push.
 - [x] Сделать Commit 39 и push.
+- [x] Сделать Commit 40 и push.

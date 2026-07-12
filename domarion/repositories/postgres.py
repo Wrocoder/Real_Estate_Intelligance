@@ -9,12 +9,16 @@ from domarion.db.models import (
     ListingSnapshot,
 )
 from domarion.db.models import (
+    ListingEvent as ListingEventRow,
+)
+from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
 )
 from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
     Listing,
+    ListingEvent,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
@@ -186,6 +190,23 @@ class PostgresRealEstateRepository:
             history.append(self._snapshot_to_price_history_point(snapshot))
 
         return history
+
+    def get_listing_events(self, listing_id: str) -> list[ListingEvent]:
+        rows = self.session.scalars(
+            select(ListingEventRow)
+            .where(ListingEventRow.listing_id == listing_id)
+            .order_by(ListingEventRow.observed_at, ListingEventRow.id)
+        ).all()
+        return [
+            ListingEvent(
+                listing_id=row.listing_id,
+                event_type=row.event_type,
+                observed_at=row.observed_at.date(),
+                summary=row.summary,
+                payload=row.event_payload,
+            )
+            for row in rows
+        ]
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
         candidates = [

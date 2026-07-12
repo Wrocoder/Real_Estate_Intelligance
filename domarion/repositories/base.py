@@ -3,6 +3,7 @@ from typing import Protocol
 from domarion.schemas import (
     AreaStatistics,
     Listing,
+    ListingEvent,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
@@ -67,6 +68,9 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def get_price_history(self, listing_id: str) -> list[PriceHistoryPoint]:
+        raise NotImplementedError
+
+    def get_listing_events(self, listing_id: str) -> list[ListingEvent]:
         raise NotImplementedError
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
