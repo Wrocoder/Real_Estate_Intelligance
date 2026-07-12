@@ -268,6 +268,31 @@ class UserSubmittedListingDraft(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class PartnerReferralLead(Base):
+    __tablename__ = "partner_referral_leads"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    referral_type: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="new", index=True)
+    source_context: Mapped[str] = mapped_column(String(120), index=True)
+    listing_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    report_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    district: Mapped[str | None] = mapped_column(String(80), index=True)
+    contact_name: Mapped[str | None] = mapped_column(String(160))
+    contact_email: Mapped[str | None] = mapped_column(String(255), index=True)
+    contact_phone: Mapped[str | None] = mapped_column(String(80))
+    message: Mapped[str | None] = mapped_column(Text)
+    consent_to_contact: Mapped[bool] = mapped_column(Boolean, default=False)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    assigned_to: Mapped[str | None] = mapped_column(String(120), index=True)
+    partner_name: Mapped[str | None] = mapped_column(String(160))
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class User(Base):
     __tablename__ = "users"
 

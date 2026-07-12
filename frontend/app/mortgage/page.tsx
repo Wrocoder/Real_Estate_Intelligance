@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Calculator, RefreshCw } from "lucide-react";
+import { Calculator, RefreshCw, Send } from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
-import { api, type MortgageCalculationResult } from "@/lib/api";
+import {
+  api,
+  type MortgageCalculationResult,
+  type PartnerReferral,
+  type PartnerReferralType,
+} from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
 
 type MortgageFormState = {
@@ -26,6 +31,17 @@ type MortgageFormState = {
   include_pcc: boolean;
 };
 
+type ReferralFormState = {
+  referral_type: PartnerReferralType;
+  city: string;
+  district: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  message: string;
+  consent_to_contact: boolean;
+};
+
 const DEFAULT_FORM: MortgageFormState = {
   property_price_pln: "800000",
   down_payment_pln: "160000",
@@ -45,11 +61,27 @@ const DEFAULT_FORM: MortgageFormState = {
   include_pcc: true,
 };
 
+const DEFAULT_REFERRAL_FORM: ReferralFormState = {
+  referral_type: "mortgage",
+  city: "Wrocław",
+  district: "",
+  contact_name: "",
+  contact_email: "",
+  contact_phone: "",
+  message: "Chcę porozmawiać o finansowaniu i kosztach tej transakcji.",
+  consent_to_contact: false,
+};
+
 export default function MortgagePage() {
   const [form, setForm] = useState<MortgageFormState>(DEFAULT_FORM);
+  const [referralForm, setReferralForm] =
+    useState<ReferralFormState>(DEFAULT_REFERRAL_FORM);
   const [result, setResult] = useState<MortgageCalculationResult | null>(null);
+  const [referralResult, setReferralResult] = useState<PartnerReferral | null>(null);
   const [status, setStatus] = useState("Готово к расчету");
+  const [referralStatus, setReferralStatus] = useState("Заявка не отправлена");
   const [error, setError] = useState("");
+  const [referralError, setReferralError] = useState("");
 
   const affordabilityLabel = useMemo(() => {
     if (!result) return "—";
@@ -98,6 +130,46 @@ export default function MortgagePage() {
 
   function updateField<K extends keyof MortgageFormState>(key: K, value: MortgageFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateReferralField<K extends keyof ReferralFormState>(
+    key: K,
+    value: ReferralFormState[K],
+  ) {
+    setReferralForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function submitPartnerReferral() {
+    setReferralError("");
+    setReferralStatus("Отправка заявки...");
+    try {
+      const referral = await api.createPartnerReferral({
+        referral_type: referralForm.referral_type,
+        source_context: "mortgage_calculator",
+        city: referralForm.city.trim() || "Wrocław",
+        district: toOptionalText(referralForm.district),
+        contact_name: toOptionalText(referralForm.contact_name),
+        contact_email: toOptionalText(referralForm.contact_email),
+        contact_phone: toOptionalText(referralForm.contact_phone),
+        message: toOptionalText(referralForm.message),
+        consent_to_contact: referralForm.consent_to_contact,
+        metadata: {
+          property_price_pln: toNumber(form.property_price_pln),
+          down_payment_pln: toNumber(form.down_payment_pln),
+          loan_years: toNumber(form.loan_years),
+          annual_interest_rate_pct: toNumber(form.annual_interest_rate_pct),
+          market_type: form.market_type,
+          monthly_total_payment_pln: result?.base_scenario.monthly_total_payment_pln ?? null,
+          upfront_cash_needed_pln: result?.costs.upfront_cash_needed_pln ?? null,
+          affordability_status: result?.affordability.status ?? null,
+        },
+      });
+      setReferralResult(referral);
+      setReferralStatus(`Заявка создана: ${referral.id}`);
+    } catch (caught) {
+      setReferralError(caught instanceof Error ? caught.message : "unknown error");
+      setReferralStatus("Ошибка отправки заявки");
+    }
   }
 
   return (
@@ -360,6 +432,93 @@ export default function MortgagePage() {
           </div>
         </section>
       ) : null}
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>Заявка партнеру</h2>
+          <span className="status-line">{referralStatus}</span>
+        </div>
+        <div className="panel-body">
+          {referralError ? <ErrorBlock message={referralError} /> : null}
+          <div className="form-grid">
+            <label className="field">
+              <span>Направление</span>
+              <select
+                className="select"
+                value={referralForm.referral_type}
+                onChange={(event) =>
+                  updateReferralField(
+                    "referral_type",
+                    event.target.value as PartnerReferralType,
+                  )
+                }
+              >
+                <option value="mortgage">Mortgage</option>
+                <option value="legal">Legal</option>
+                <option value="renovation">Renovation</option>
+              </select>
+            </label>
+            <ReferralField
+              label="City"
+              value={referralForm.city}
+              onChange={(value) => updateReferralField("city", value)}
+            />
+            <ReferralField
+              label="District"
+              value={referralForm.district}
+              onChange={(value) => updateReferralField("district", value)}
+            />
+            <ReferralField
+              label="Name"
+              value={referralForm.contact_name}
+              onChange={(value) => updateReferralField("contact_name", value)}
+            />
+            <ReferralField
+              label="Email"
+              value={referralForm.contact_email}
+              onChange={(value) => updateReferralField("contact_email", value)}
+            />
+            <ReferralField
+              label="Phone"
+              value={referralForm.contact_phone}
+              onChange={(value) => updateReferralField("contact_phone", value)}
+            />
+          </div>
+          <label className="field" style={{ marginTop: 12 }}>
+            <span>Message</span>
+            <textarea
+              className="textarea"
+              value={referralForm.message}
+              onChange={(event) => updateReferralField("message", event.target.value)}
+            />
+          </label>
+          <div className="toolbar" style={{ marginTop: 12 }}>
+            <label className="compare-toggle">
+              <input
+                type="checkbox"
+                checked={referralForm.consent_to_contact}
+                onChange={(event) =>
+                  updateReferralField("consent_to_contact", event.target.checked)
+                }
+              />
+              Zgadzam się na kontakt
+            </label>
+            <button
+              className="button primary"
+              type="button"
+              disabled={!referralForm.consent_to_contact}
+              onClick={() => void submitPartnerReferral()}
+            >
+              <Send size={16} /> Отправить
+            </button>
+            {referralResult ? (
+              <span className={`status-pill ${referralResult.status}`}>
+                {referralResult.status}
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </section>
     </>
   );
 }
@@ -400,12 +559,34 @@ function CostMetric({ label, value }: { label: string; value: number }) {
   );
 }
 
+function ReferralField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
+}
+
 function toNumber(value: string) {
   return Number(value || 0);
 }
 
 function toOptionalNumber(value: string) {
   return value === "" ? null : Number(value);
+}
+
+function toOptionalText(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 function formatPlainPct(value: number) {

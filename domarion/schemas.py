@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 MarketType = Literal["primary", "secondary"]
 ReportAudience = Literal["buyer", "realtor", "investor"]
@@ -21,6 +21,8 @@ ReportProductCode = Literal[
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
+PartnerReferralType = Literal["mortgage", "legal", "renovation"]
+PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
 ReportOrderEventType = Literal[
     "order_created",
     "checkout_created",
@@ -605,6 +607,58 @@ class MortgageCalculationResult(BaseModel):
     affordability: MortgageAffordability
     notes: list[str]
     disclaimer: str
+
+
+class PartnerReferralCreate(BaseModel):
+    referral_type: PartnerReferralType
+    source_context: str = Field(default="mortgage_calculator", max_length=120)
+    listing_id: str | None = Field(default=None, max_length=120)
+    report_id: str | None = Field(default=None, max_length=120)
+    city: str = Field(default="Wrocław", max_length=80)
+    district: str | None = Field(default=None, max_length=80)
+    contact_name: str | None = Field(default=None, max_length=160)
+    contact_email: str | None = Field(default=None, max_length=255)
+    contact_phone: str | None = Field(default=None, max_length=80)
+    message: str | None = Field(default=None, max_length=2000)
+    consent_to_contact: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def ensure_contact_consent(self) -> "PartnerReferralCreate":
+        if not self.consent_to_contact:
+            raise ValueError("consent_to_contact must be true")
+        return self
+
+
+class PartnerReferralUpdate(BaseModel):
+    status: PartnerReferralStatus | None = None
+    assigned_to: str | None = Field(default=None, max_length=120)
+    partner_name: str | None = Field(default=None, max_length=160)
+    notes: str | None = Field(default=None, max_length=2000)
+    metadata: dict[str, Any] | None = None
+
+
+class PartnerReferral(BaseModel):
+    id: str
+    owner_id: str
+    referral_type: PartnerReferralType
+    status: PartnerReferralStatus
+    source_context: str
+    listing_id: str | None = None
+    report_id: str | None = None
+    city: str
+    district: str | None = None
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    message: str | None = None
+    consent_to_contact: bool
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    assigned_to: str | None = None
+    partner_name: str | None = None
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
 
 
 class ReportBranding(BaseModel):

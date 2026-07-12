@@ -36,6 +36,8 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
             "post",
         ): "UserSubmittedListingDraftPruneResult",
+        ("/api/v1/partner-referrals/{referral_id}", "get"): "PartnerReferral",
+        ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
     }
@@ -96,6 +98,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "MortgageCostBreakdown",
         "MortgageScenario",
         "ObjectReport",
+        "PartnerReferral",
+        "PartnerReferralCreate",
+        "PartnerReferralUpdate",
         "PartnerCsvImportResponse",
         "PlannedInvestmentImportResponse",
         "PriceHistoryRebuildResult",
@@ -168,4 +173,35 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     ]["schema"]
     assert draft_report_request_schema["$ref"] == (
         "#/components/schemas/GenerateUserSubmittedDraftReportRequest"
+    )
+
+    partner_referral_operation = openapi["paths"]["/api/v1/partner-referrals"]["post"]
+    partner_referral_response_schema = partner_referral_operation["responses"]["201"]["content"][
+        "application/json"
+    ]["schema"]
+    partner_referral_request_schema = partner_referral_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert partner_referral_response_schema["$ref"] == "#/components/schemas/PartnerReferral"
+    assert partner_referral_request_schema["$ref"] == "#/components/schemas/PartnerReferralCreate"
+
+    partner_referral_list_schema = openapi["paths"]["/api/v1/partner-referrals"]["get"][
+        "responses"
+    ]["200"]["content"]["application/json"]["schema"]
+    assert partner_referral_list_schema["type"] == "array"
+    assert partner_referral_list_schema["items"]["$ref"] == "#/components/schemas/PartnerReferral"
+
+    admin_partner_referral_list_schema = openapi["paths"]["/api/v1/admin/partner-referrals"][
+        "get"
+    ]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert admin_partner_referral_list_schema["type"] == "array"
+    assert admin_partner_referral_list_schema["items"]["$ref"] == (
+        "#/components/schemas/PartnerReferral"
+    )
+
+    admin_partner_referral_update_schema = openapi["paths"][
+        "/api/v1/admin/partner-referrals/{referral_id}"
+    ]["patch"]["requestBody"]["content"]["application/json"]["schema"]
+    assert admin_partner_referral_update_schema["$ref"] == (
+        "#/components/schemas/PartnerReferralUpdate"
     )

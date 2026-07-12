@@ -215,7 +215,7 @@
 - [ ] Добавить роли и права для agency owner/admin/agent.
 - [x] Добавить report credits и usage quotas для packages.
 - [ ] Добавить invoice/VAT metadata для B2B checkout.
-- [ ] Добавить lead capture для mortgage/legal/renovation partner referrals.
+- [x] Добавить lead capture для mortgage/legal/renovation partner referrals.
 
 ## 9. Favorites и Alerts
 
@@ -291,6 +291,7 @@
 - [x] Добавить data quality dashboard.
 - [x] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
 - [x] Добавить admin view user-submitted listing drafts и source URL references без публичного раскрытия ссылок.
+- [x] Добавить admin review queue для mortgage/legal/renovation partner referrals.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [ ] Добавить moderation workflow для data deletion requests.
 - [ ] Добавить просмотр source errors и retry actions.
@@ -369,7 +370,7 @@
 - [ ] Подготовить offer для отчетов: object report, area report, realtor report, hidden gems подборка.
 - [ ] Подготовить партнерскую модель: mortgage brokers, banks, insurers, lawyers, notaries, appraisers, renovation/design partners.
 - [ ] Добавить правило явной маркировки рекламы, promoted listings и sponsored reports.
-- [ ] Добавить lead tracking для partner referrals и early sales.
+- [x] Добавить lead tracking для partner referrals и early sales.
 
 ## 18. Agency, Enterprise/API и Data Products
 
@@ -423,6 +424,7 @@
 - [x] Commit 28: report bundle credits package.
 - [x] Commit 29: CSV/JSON report history exports.
 - [x] Commit 30: Investor plan limits.
+- [x] Commit 31: partner referral lead capture.
 
 ## Current Sprint
 
@@ -448,6 +450,7 @@
 - [x] Добавить `report_bundle_5` paid package и списание credits сверх monthly limit.
 - [x] Добавить owner-scoped CSV/JSON export saved reports для планов с `can_export`.
 - [x] Добавить Investor plan limits в тарифную сетку.
+- [x] Добавить partner referral lead capture API/store/UI и admin review queue.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -463,3 +466,4 @@
 - [x] Сделать Commit 28 и push.
 - [x] Сделать Commit 29 и push.
 - [x] Сделать Commit 30 и push.
+- [x] Сделать Commit 31 и push.

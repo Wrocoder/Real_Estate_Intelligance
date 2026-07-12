@@ -1,7 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BarChart3, Database, Plus, RefreshCw, ShieldAlert, Upload } from "lucide-react";
+import {
+  BarChart3,
+  Database,
+  Handshake,
+  Plus,
+  RefreshCw,
+  ShieldAlert,
+  Upload,
+} from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -10,6 +18,8 @@ import {
   type IngestionJob,
   type IngestionSourceHealth,
   type PartnerCsvImportResponse,
+  type PartnerReferral,
+  type PartnerReferralStatus,
   type PlannedInvestment,
   type PlannedInvestmentImportResponse,
   type PlannedInvestmentPayload,
@@ -88,9 +98,16 @@ export default function AdminPage() {
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
+  const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
+  const [selectedReferralId, setSelectedReferralId] = useState("");
+  const [referralStatus, setReferralStatus] =
+    useState<PartnerReferralStatus>("contacted");
+  const [referralAssignedTo, setReferralAssignedTo] = useState("");
+  const [referralPartnerName, setReferralPartnerName] = useState("");
+  const [referralNotes, setReferralNotes] = useState("");
   const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
   const [investmentForm, setInvestmentForm] =
     useState<InvestmentForm>(defaultInvestmentForm);
@@ -119,6 +136,7 @@ export default function AdminPage() {
         logData,
         rawData,
         investmentData,
+        referralData,
       ] =
         await Promise.all([
           api.listAdminIngestionJobs(),
@@ -128,6 +146,7 @@ export default function AdminPage() {
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
           api.listAdminRawListings({ limit: 50 }),
           api.listAdminPlannedInvestments({ city: "Wrocław" }),
+          api.listAdminPartnerReferrals({ limit: 100 }),
         ]);
       setJobs(jobData);
       setSourceHealth(healthData);
@@ -136,6 +155,7 @@ export default function AdminPage() {
       setLogs(logData);
       setRawListings(rawData);
       setPlannedInvestments(investmentData);
+      setPartnerReferrals(referralData);
       setStatus("Admin dashboard обновлен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
@@ -154,6 +174,9 @@ export default function AdminPage() {
     (investment) => investment.id === selectedInvestmentId,
   );
   const selectedSource = sources.find((source) => source.id === selectedSourceId);
+  const selectedReferral = partnerReferrals.find(
+    (referral) => referral.id === selectedReferralId,
+  );
   const sourceNames = useMemo(
     () => Array.from(new Set(rawListings.map((item) => item.source_name))),
     [rawListings],
@@ -231,6 +254,25 @@ export default function AdminPage() {
     setInvestmentForm(defaultInvestmentForm);
     await load(selectedJobId);
     setStatus("Planned investment удален");
+  }
+
+  async function updatePartnerReferral() {
+    if (!selectedReferralId) {
+      setStatus("Выбери partner referral для обновления");
+      return;
+    }
+    const updated = await api.updateAdminPartnerReferral(selectedReferralId, {
+      status: referralStatus,
+      assigned_to: blankToNull(referralAssignedTo),
+      partner_name: blankToNull(referralPartnerName),
+      notes: blankToNull(referralNotes),
+    });
+    setReferralStatus(updated.status);
+    setReferralAssignedTo(updated.assigned_to ?? "");
+    setReferralPartnerName(updated.partner_name ?? "");
+    setReferralNotes(updated.notes ?? "");
+    await load(selectedJobId);
+    setStatus(`Partner referral обновлен: ${updated.id}`);
   }
 
   async function importPartnerCsv(dryRun = partnerDryRun) {
@@ -317,6 +359,10 @@ export default function AdminPage() {
         <div className="metric">
           <span>Planned investments</span>
           <strong>{numberValue(plannedInvestments.length)}</strong>
+        </div>
+        <div className="metric">
+          <span>Partner leads</span>
+          <strong>{numberValue(partnerReferrals.length)}</strong>
         </div>
         <div className="metric">
           <span>Warnings / errors</span>
@@ -431,6 +477,134 @@ export default function AdminPage() {
               )}
             </div>
           </aside>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Partner Referrals</h2>
+              <Handshake size={18} />
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="table-scroll">
+                {partnerReferrals.length === 0 ? (
+                  <EmptyBlock label="Нет partner referral заявок." />
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Contact</th>
+                        <th>Context</th>
+                        <th>Created</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {partnerReferrals.map((referral) => (
+                        <tr
+                          key={referral.id}
+                          className={
+                            selectedReferralId === referral.id ? "selected-row" : undefined
+                          }
+                          onClick={() => {
+                            setSelectedReferralId(referral.id);
+                            setReferralStatus(referral.status);
+                            setReferralAssignedTo(referral.assigned_to ?? "");
+                            setReferralPartnerName(referral.partner_name ?? "");
+                            setReferralNotes(referral.notes ?? "");
+                          }}
+                        >
+                          <td>
+                            <strong>{referral.referral_type}</strong>
+                            <small>{referral.city}</small>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${referral.status}`}>
+                              {referral.status}
+                            </span>
+                          </td>
+                          <td>
+                            {referral.contact_name || referral.owner_id}
+                            <small>{referralContact(referral)}</small>
+                          </td>
+                          <td>
+                            {referral.source_context}
+                            <small>
+                              {referral.listing_id || referral.report_id || referral.district || "-"}
+                            </small>
+                          </td>
+                          <td>{formatDate(referral.created_at)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>{selectedReferral ? "Обработка лида" : "Выбери заявку"}</h3>
+                </div>
+                {selectedReferral ? (
+                  <>
+                    <ul className="section-list compact" style={{ marginBottom: 12 }}>
+                      <li>
+                        <strong>{selectedReferral.referral_type}</strong>
+                        <p className="muted">{selectedReferral.message || "Без сообщения"}</p>
+                        <small>{selectedReferralContactLine(selectedReferral)}</small>
+                      </li>
+                    </ul>
+                    <div className="form-grid compact">
+                      <label className="field">
+                        <span>Status</span>
+                        <select
+                          className="select"
+                          value={referralStatus}
+                          onChange={(event) =>
+                            setReferralStatus(event.target.value as PartnerReferralStatus)
+                          }
+                        >
+                          <option value="new">new</option>
+                          <option value="contacted">contacted</option>
+                          <option value="qualified">qualified</option>
+                          <option value="closed">closed</option>
+                          <option value="rejected">rejected</option>
+                        </select>
+                      </label>
+                      <Field
+                        label="Assigned"
+                        value={referralAssignedTo}
+                        onChange={setReferralAssignedTo}
+                      />
+                      <Field
+                        label="Partner"
+                        value={referralPartnerName}
+                        onChange={setReferralPartnerName}
+                      />
+                    </div>
+                    <label className="field" style={{ marginTop: 10 }}>
+                      <span>Notes</span>
+                      <textarea
+                        className="textarea"
+                        value={referralNotes}
+                        onChange={(event) => setReferralNotes(event.target.value)}
+                      />
+                    </label>
+                    <div className="toolbar" style={{ marginTop: 12 }}>
+                      <button
+                        className="button primary"
+                        type="button"
+                        onClick={() => void updatePartnerReferral()}
+                      >
+                        Update
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <EmptyBlock label="Выбери строку заявки для редактирования." />
+                )}
+              </div>
+            </div>
+          </section>
 
           <section className="panel admin-wide">
             <div className="panel-header">
@@ -1176,6 +1350,22 @@ function formFromInvestment(investment: PlannedInvestment): InvestmentForm {
     confidence_score: String(investment.confidence_score),
     notes: investment.notes ?? "",
   };
+}
+
+function referralContact(referral: PartnerReferral) {
+  return [referral.contact_email, referral.contact_phone].filter(Boolean).join(" · ") || "-";
+}
+
+function selectedReferralContactLine(referral: PartnerReferral) {
+  return [
+    referral.contact_name,
+    referral.contact_email,
+    referral.contact_phone,
+    referral.city,
+    referral.district,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function blankToNull(value: string) {

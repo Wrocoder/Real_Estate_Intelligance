@@ -464,6 +464,47 @@ export type MortgageCalculationResult = {
   disclaimer: string;
 };
 
+export type PartnerReferralType = "mortgage" | "legal" | "renovation";
+export type PartnerReferralStatus = "new" | "contacted" | "qualified" | "closed" | "rejected";
+
+export type PartnerReferralPayload = {
+  referral_type: PartnerReferralType;
+  source_context?: string;
+  listing_id?: string | null;
+  report_id?: string | null;
+  city?: string;
+  district?: string | null;
+  contact_name?: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
+  message?: string | null;
+  consent_to_contact: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+export type PartnerReferral = {
+  id: string;
+  owner_id: string;
+  referral_type: PartnerReferralType;
+  status: PartnerReferralStatus;
+  source_context: string;
+  listing_id: string | null;
+  report_id: string | null;
+  city: string;
+  district: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  message: string | null;
+  consent_to_contact: boolean;
+  metadata: Record<string, unknown>;
+  assigned_to: string | null;
+  partner_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type AccountUsage = {
   favorites: number;
   alerts: number;
@@ -814,6 +855,37 @@ export const api = {
   calculateMortgage: (payload: MortgageCalculationRequest) =>
     request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
       method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  createPartnerReferral: (payload: PartnerReferralPayload) =>
+    request<PartnerReferral>("/api/v1/partner-referrals", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  listPartnerReferrals: (params: { limit?: number } = {}) =>
+    request<PartnerReferral[]>(`/api/v1/partner-referrals${toQueryString(params)}`),
+  listAdminPartnerReferrals: (params: {
+    status?: PartnerReferralStatus;
+    referral_type?: PartnerReferralType;
+    limit?: number;
+  } = {}) =>
+    request<PartnerReferral[]>(
+      `/api/v1/admin/partner-referrals${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  updateAdminPartnerReferral: (
+    referralId: string,
+    payload: {
+      status?: PartnerReferralStatus;
+      assigned_to?: string | null;
+      partner_name?: string | null;
+      notes?: string | null;
+      metadata?: Record<string, unknown>;
+    },
+  ) =>
+    request<PartnerReferral>(`/api/v1/admin/partner-referrals/${referralId}`, {
+      method: "PATCH",
+      headers: ADMIN_HEADERS,
       body: JSON.stringify(payload),
     }),
   analyzeUserSubmittedListing: (payload: UserSubmittedListingRequest) =>

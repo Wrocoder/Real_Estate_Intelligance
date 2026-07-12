@@ -115,6 +115,8 @@ python scripts\smoke_deployment.py
 | `USER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `AUTH_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `INGESTION_ADMIN_STORE_BACKEND` | `memory` или `postgres` | `memory` |
+| `USER_SUBMITTED_LISTING_STORE_BACKEND` | `memory` или `postgres` | `memory` |
+| `PARTNER_REFERRAL_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `PAYMENT_PROVIDER` | `mock`, `stripe` или `payu` | `mock` |
 | `PAYMENT_CHECKOUT_BASE_URL` | Base URL для внешнего checkout handoff | пусто |
 | `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Допуск Stripe timestamp для webhook signature | `300` |

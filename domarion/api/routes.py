@@ -37,6 +37,8 @@ from domarion.ingestion.planned_investments import (
 )
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
+from domarion.partner_referral_store.base import PartnerReferralStore
+from domarion.partner_referral_store.factory import get_partner_referral_store
 from domarion.report_order_store.base import ReportOrderStore
 from domarion.report_order_store.factory import get_report_order_store
 from domarion.report_store.base import ReportStore
@@ -81,6 +83,11 @@ from domarion.schemas import (
     MortgageCalculationResult,
     ObjectReport,
     PartnerCsvImportResponse,
+    PartnerReferral,
+    PartnerReferralCreate,
+    PartnerReferralStatus,
+    PartnerReferralType,
+    PartnerReferralUpdate,
     PaymentWebhookEventCreate,
     PaymentWebhookResult,
     PlanLimits,
@@ -154,6 +161,7 @@ ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
+PartnerReferralStoreDep = Annotated[PartnerReferralStore, Depends(get_partner_referral_store)]
 UserSubmittedListingStoreDep = Annotated[
     UserSubmittedListingStore,
     Depends(get_user_submitted_listing_store),
@@ -251,6 +259,71 @@ def calculate_mortgage_budget(
         return calculate_mortgage(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post(
+    "/partner-referrals",
+    response_model=PartnerReferral,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_partner_referral(
+    payload: PartnerReferralCreate,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+) -> PartnerReferral:
+    payload = _normalize_partner_referral_payload(payload, account)
+    return referral_store.create_referral(account.user.id, payload)
+
+
+@router.get("/partner-referrals", response_model=list[PartnerReferral])
+def list_partner_referrals(
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[PartnerReferral]:
+    return referral_store.list_referrals(account.user.id, limit=limit)
+
+
+@router.get("/partner-referrals/{referral_id}", response_model=PartnerReferral)
+def get_partner_referral(
+    referral_id: str,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+) -> PartnerReferral:
+    referral = referral_store.get_referral(account.user.id, referral_id)
+    if referral is None:
+        raise HTTPException(status_code=404, detail="Partner referral not found")
+    return referral
+
+
+@router.get("/admin/partner-referrals", response_model=list[PartnerReferral])
+def list_admin_partner_referrals(
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+    referral_status: Annotated[PartnerReferralStatus | None, Query(alias="status")] = None,
+    referral_type: Annotated[PartnerReferralType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[PartnerReferral]:
+    _ensure_admin(account)
+    return referral_store.list_all(
+        limit=limit,
+        status=referral_status,
+        referral_type=referral_type,
+    )
+
+
+@router.patch("/admin/partner-referrals/{referral_id}", response_model=PartnerReferral)
+def update_admin_partner_referral(
+    referral_id: str,
+    payload: PartnerReferralUpdate,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+) -> PartnerReferral:
+    _ensure_admin(account)
+    referral = referral_store.update_referral(referral_id, payload)
+    if referral is None:
+        raise HTTPException(status_code=404, detail="Partner referral not found")
+    return referral
 
 
 @router.post(
@@ -1842,6 +1915,44 @@ def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Fav
 def _ensure_admin(account: CurrentAccount) -> None:
     if account.user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+
+def _normalize_partner_referral_payload(
+    payload: PartnerReferralCreate,
+    account: CurrentAccount,
+) -> PartnerReferralCreate:
+    data = payload.model_dump()
+    for key in (
+        "source_context",
+        "listing_id",
+        "report_id",
+        "city",
+        "district",
+        "contact_name",
+        "contact_email",
+        "contact_phone",
+        "message",
+    ):
+        data[key] = _blank_to_none(data.get(key))
+
+    data["source_context"] = data["source_context"] or "manual"
+    data["city"] = data["city"] or "Wrocław"
+    if data["contact_email"] is None and account.user.email:
+        data["contact_email"] = account.user.email
+    if data["contact_email"] is None and data["contact_phone"] is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide contact_email or contact_phone for partner referral",
+        )
+
+    return PartnerReferralCreate(**data)
+
+
+def _blank_to_none(value: object) -> object | None:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return value
 
 
 def _ensure_source_name_available(

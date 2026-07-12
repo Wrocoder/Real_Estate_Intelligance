@@ -15,6 +15,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
+- Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
 - Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
 - Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
@@ -71,6 +72,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
+- http://127.0.0.1:8000/api/v1/partner-referrals
 - http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
@@ -83,6 +85,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
+- http://127.0.0.1:8000/api/v1/admin/partner-referrals
 - http://127.0.0.1:8000/api/v1/alert-delivery-jobs
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
@@ -125,6 +128,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/pricing — разовые paid reports, checkout и audit trail.
+- http://127.0.0.1:3000/mortgage — ипотечный расчет и заявка mortgage/legal/renovation партнеру.
 - http://127.0.0.1:3000/alerts — saved searches, preview и delivery dry-run.
 - http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
 - http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
@@ -712,6 +716,28 @@ Webhook endpoints:
 - `POST /api/v1/payment-webhooks/payu` проверяет `OpenPayU-Signature` через `PAYU_SECOND_KEY`.
 - Повторный `provider_event_id` возвращает `duplicate` и не генерирует второй отчет.
 - Paid webhook автоматически переводит order в `fulfilled` и создает saved report.
+
+## Partner referrals MVP
+
+Создать заявку партнеру из mortgage/legal/renovation flow:
+
+```powershell
+$lead = Invoke-RestMethod http://127.0.0.1:8000/api/v1/partner-referrals `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="buyer-1";"X-Domarion-Email"="buyer@example.com"} `
+  -ContentType "application/json" `
+  -Body '{"referral_type":"mortgage","city":"Wrocław","contact_phone":"+48 500 000 001","consent_to_contact":true}'
+```
+
+Обработать заявку в internal admin queue:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/partner-referrals/$($lead.id)" `
+  -Method Patch `
+  -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"} `
+  -ContentType "application/json" `
+  -Body '{"status":"qualified","assigned_to":"ops@example.com","notes":"Ready to hand off."}'
+```
 
 ## Избранное и уведомления
 

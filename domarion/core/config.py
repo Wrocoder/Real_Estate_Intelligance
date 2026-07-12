@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     auth_store_backend: str = "memory"
     ingestion_admin_store_backend: str = "memory"
     user_submitted_listing_store_backend: str = "memory"
+    partner_referral_store_backend: str = "memory"
     payment_provider: str = "mock"
     payment_checkout_base_url: str | None = None
     payment_webhook_tolerance_seconds: int = 300

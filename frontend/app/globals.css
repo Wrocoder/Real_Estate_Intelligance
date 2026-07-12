@@ -979,21 +979,26 @@ button {
 
 .status-pill.succeeded,
 .status-pill.healthy,
-.status-pill.info {
+.status-pill.info,
+.status-pill.qualified,
+.status-pill.closed {
   background: #edf8f2;
   color: var(--ok);
 }
 
 .status-pill.warning,
 .status-pill.running,
-.status-pill.queued {
+.status-pill.queued,
+.status-pill.new,
+.status-pill.contacted {
   background: #fff8e8;
   color: var(--warn);
 }
 
 .status-pill.failed,
 .status-pill.failing,
-.status-pill.error {
+.status-pill.error,
+.status-pill.rejected {
   background: #fff0ed;
   color: var(--risk);
 }
