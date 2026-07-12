@@ -717,6 +717,25 @@ export type RawListingSummary = {
   raw_payload: Record<string, unknown>;
 };
 
+export type PropertyDeduplicationDecision = "matched" | "review_required" | "rejected";
+export type PropertyDeduplicationReviewStatus = "open" | "auto_resolved";
+
+export type PropertyDeduplicationMatch = {
+  id: number;
+  job_id: string | null;
+  source_name: string;
+  source_listing_id: string;
+  candidate_property_id: number | null;
+  matched_property_id: number | null;
+  decision: PropertyDeduplicationDecision;
+  review_status: PropertyDeduplicationReviewStatus;
+  match_score: number;
+  reasons: string[];
+  incoming_payload: Record<string, unknown>;
+  candidate_payload: Record<string, unknown>;
+  created_at: string;
+};
+
 export type CompareResponse = {
   items: ListingAnalysis[];
 };
@@ -1132,6 +1151,17 @@ export const api = {
   listAdminRawListings: (params: { source_name?: string; limit?: number } = {}) =>
     request<RawListingSummary[]>(
       `/api/v1/admin/raw-listings${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  listAdminDeduplicationMatches: (params: {
+    job_id?: string;
+    source_listing_id?: string;
+    decision?: PropertyDeduplicationDecision;
+    review_status?: PropertyDeduplicationReviewStatus;
+    limit?: number;
+  } = {}) =>
+    request<PropertyDeduplicationMatch[]>(
+      `/api/v1/admin/deduplication/matches${toQueryString(params)}`,
       { headers: ADMIN_HEADERS },
     ),
   deliverAdminDailyEmailAlerts: (payload: AlertDeliveryBatchRequest = {}) =>

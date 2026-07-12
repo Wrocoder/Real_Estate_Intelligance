@@ -7,7 +7,11 @@ from types import SimpleNamespace
 import pytest
 
 from domarion.cli import main
-from domarion.ingestion.db_writer import _is_duplicate_property_match, payload_hash
+from domarion.ingestion.db_writer import (
+    _evaluate_deduplication_candidate,
+    _is_duplicate_property_match,
+    payload_hash,
+)
 from domarion.ingestion.partner_csv import PartnerCsvError, read_partner_csv, slugify
 from domarion.schemas import Listing
 
@@ -167,6 +171,36 @@ def test_partner_import_dedup_match_rejects_weak_matches(property_updates) -> No
     existing_property = _dedup_property(**property_updates)
 
     assert not _is_duplicate_property_match(existing_property, listing)
+
+
+def test_partner_import_dedup_explains_review_required_match() -> None:
+    listing = _dedup_listing(address="Nowy Dwór 12")
+    existing_property = _dedup_property(id=123, lat=Decimal("51.1400"))
+
+    decision = _evaluate_deduplication_candidate(existing_property, listing)
+
+    assert decision.property_id == 123
+    assert decision.decision == "review_required"
+    assert decision.match_score == 90
+    assert "coordinates differ beyond tolerance" in decision.reasons
+    assert decision.candidate_payload["property_id"] == 123
+
+
+def test_partner_import_dedup_explains_rejected_match() -> None:
+    listing = _dedup_listing(address="Nowy Dwór 12")
+    existing_property = _dedup_property(
+        id=124,
+        canonical_address="Inna 12",
+        area_m2=Decimal("84.0"),
+        lat=Decimal("51.1400"),
+    )
+
+    decision = _evaluate_deduplication_candidate(existing_property, listing)
+
+    assert decision.decision == "rejected"
+    assert decision.match_score < 70
+    assert "address differs after normalization" in decision.reasons
+    assert "area differs beyond tolerance" in decision.reasons
 
 
 def test_cli_import_partner_csv_dry_run(tmp_path, capsys, monkeypatch) -> None:

@@ -35,6 +35,9 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["listing_event_count"] >= 3
     assert "first_seen" in payload["checks"]["listing_event_types"]
     assert "price_reduced" in payload["checks"]["listing_event_types"]
+    assert payload["checks"]["deduplication"]["decision"] == "matched"
+    assert payload["checks"]["deduplication"]["review_status"] == "auto_resolved"
+    assert payload["checks"]["deduplication"]["match_score"] >= 95
     assert payload["checks"]["spatial"]["properties_with_geom"] >= 3
     assert payload["checks"]["spatial"]["planned_investments_with_geom"] >= 4
     assert payload["checks"]["spatial"]["spatial_index_count"] == 2

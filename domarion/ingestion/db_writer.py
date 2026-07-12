@@ -14,6 +14,7 @@ from domarion.db.models import (
     ListingSnapshot,
     ListingSource,
     Property,
+    PropertyDeduplicationMatch,
     PropertySource,
     RawListing,
 )
@@ -34,6 +35,8 @@ from domarion.services.price_history import listing_with_price_history_metrics
 DEDUP_AREA_TOLERANCE_M2 = 1.0
 DEDUP_AREA_TOLERANCE_RATIO = 0.02
 DEDUP_COORDINATE_TOLERANCE_DEGREES = 0.0015
+DEDUP_AUTO_MATCH_THRESHOLD = 95
+DEDUP_REVIEW_THRESHOLD = 70
 STREET_PREFIX_TOKENS = {"al", "aleja", "pl", "plac", "ul", "ulica"}
 
 
@@ -59,6 +62,15 @@ class ImportResult:
         }
 
 
+@dataclass(frozen=True)
+class DeduplicationCandidateDecision:
+    property_id: int
+    decision: str
+    match_score: int
+    reasons: list[str]
+    candidate_payload: dict
+
+
 def import_partner_csv(
     path: str,
     source_name: str,
@@ -75,7 +87,7 @@ def import_partner_csv(
 
         try:
             _mark_ingestion_job_running(session, job.id)
-            result = import_partner_records_in_session(session, records)
+            result = import_partner_records_in_session(session, records, job_id=job.id)
             warnings_count = _write_data_quality_logs(session, job.id, records)
             _finish_ingestion_job(session, job.id, result, "succeeded", warnings_count)
             session.commit()
@@ -90,13 +102,19 @@ def import_partner_csv(
 def import_partner_records_in_session(
     session: Session,
     records: list[PartnerListingRecord],
+    job_id: str | None = None,
 ) -> ImportResult:
     result = ImportResult(rows_seen=len(records))
 
     for record in records:
         source = _get_or_create_source(session, record)
         raw_created = _upsert_raw_listing(session, source, record)
-        property_source, property_created = _upsert_property_source(session, source, record)
+        property_source, property_created = _upsert_property_source(
+            session,
+            source,
+            record,
+            job_id=job_id,
+        )
         snapshot_created, snapshot_updated = _upsert_snapshot(session, property_source, record)
         _refresh_price_history_metrics(session, property_source)
 
@@ -343,6 +361,8 @@ def _upsert_property_source(
     session: Session,
     source: ListingSource,
     record: PartnerListingRecord,
+    *,
+    job_id: str | None,
 ) -> tuple[PropertySource, bool]:
     property_source = session.scalar(
         select(PropertySource).where(
@@ -359,7 +379,15 @@ def _upsert_property_source(
         session.flush()
         return property_source, False
 
-    property_ = _find_duplicate_property(session, listing)
+    property_, deduplication_decisions = _find_duplicate_property(session, listing)
+    if deduplication_decisions:
+        _write_deduplication_decision(
+            session,
+            source,
+            record,
+            job_id=job_id,
+            decision=deduplication_decisions[0],
+        )
     property_created = property_ is None
     if property_ is None:
         property_ = Property()
@@ -381,35 +409,145 @@ def _upsert_property_source(
     return property_source, property_created
 
 
-def _find_duplicate_property(session: Session, listing: Listing) -> Property | None:
+def _find_duplicate_property(
+    session: Session,
+    listing: Listing,
+) -> tuple[Property | None, list[DeduplicationCandidateDecision]]:
     candidates = session.scalars(
         select(Property).where(
             Property.city == listing.city,
             Property.district == listing.district,
-            Property.rooms == listing.rooms,
-            Property.market_type == listing.market_type,
         )
     ).all()
-    for candidate in candidates:
-        if _is_duplicate_property_match(candidate, listing):
-            return candidate
-    return None
+    decisions = sorted(
+        [_evaluate_deduplication_candidate(candidate, listing) for candidate in candidates],
+        key=lambda decision: (-decision.match_score, decision.property_id),
+    )
+    for decision in decisions:
+        if decision.decision == "matched":
+            matched_property = session.get(Property, decision.property_id)
+            return matched_property, decisions[:1]
+    return None, decisions[:1]
 
 
 def _is_duplicate_property_match(property_: Property, listing: Listing) -> bool:
-    if not _same_dedup_text(property_.city, listing.city):
+    return _evaluate_deduplication_candidate(property_, listing).decision == "matched"
+
+
+def _evaluate_deduplication_candidate(
+    property_: Property,
+    listing: Listing,
+) -> DeduplicationCandidateDecision:
+    score = 0
+    reasons = []
+
+    def check(condition: bool, points: int, passed: str, failed: str) -> bool:
+        nonlocal score
+        if condition:
+            score += points
+            reasons.append(passed)
+            return True
+        reasons.append(failed)
         return False
-    if not _same_dedup_text(property_.district, listing.district):
-        return False
-    if property_.market_type and property_.market_type != listing.market_type:
-        return False
-    if property_.rooms != listing.rooms:
-        return False
-    if not _same_dedup_text(property_.canonical_address, listing.address):
-        return False
-    if not _is_area_close(property_.area_m2, listing.area_m2):
-        return False
-    return _are_coordinates_close(property_.lat, property_.lon, listing.lat, listing.lon)
+
+    city_match = check(
+        _same_dedup_text(property_.city, listing.city),
+        15,
+        "city matches",
+        "city differs",
+    )
+    district_match = check(
+        _same_dedup_text(property_.district, listing.district),
+        15,
+        "district matches",
+        "district differs",
+    )
+    market_match = check(
+        not property_.market_type or property_.market_type == listing.market_type,
+        10,
+        "market type matches",
+        "market type differs",
+    )
+    rooms_match = check(
+        property_.rooms == listing.rooms,
+        10,
+        "rooms match",
+        "rooms differ",
+    )
+    address_match = check(
+        _same_dedup_text(property_.canonical_address, listing.address),
+        25,
+        "address matches after normalization",
+        "address differs after normalization",
+    )
+    area_match = check(
+        _is_area_close(property_.area_m2, listing.area_m2),
+        15,
+        "area is within tolerance",
+        "area differs beyond tolerance",
+    )
+    coordinate_match = check(
+        _are_coordinates_close(property_.lat, property_.lon, listing.lat, listing.lon),
+        10,
+        "coordinates are within tolerance",
+        "coordinates differ beyond tolerance",
+    )
+
+    strict_match = all(
+        (
+            city_match,
+            district_match,
+            market_match,
+            rooms_match,
+            address_match,
+            area_match,
+            coordinate_match,
+        )
+    )
+    if strict_match and score >= DEDUP_AUTO_MATCH_THRESHOLD:
+        decision = "matched"
+    elif score >= DEDUP_REVIEW_THRESHOLD:
+        decision = "review_required"
+    else:
+        decision = "rejected"
+
+    return DeduplicationCandidateDecision(
+        property_id=getattr(property_, "id", 0) or 0,
+        decision=decision,
+        match_score=score,
+        reasons=reasons,
+        candidate_payload=_property_dedup_payload(property_),
+    )
+
+
+def _write_deduplication_decision(
+    session: Session,
+    source: ListingSource,
+    record: PartnerListingRecord,
+    *,
+    job_id: str | None,
+    decision: DeduplicationCandidateDecision,
+) -> None:
+    session.add(
+        PropertyDeduplicationMatch(
+            job_id=job_id,
+            source_id=source.id,
+            source_name=record.source_name,
+            source_listing_id=record.source_listing_id,
+            candidate_property_id=decision.property_id,
+            matched_property_id=decision.property_id if decision.decision == "matched" else None,
+            decision=decision.decision,
+            review_status=(
+                "open" if decision.decision == "review_required" else "auto_resolved"
+            ),
+            match_score=decision.match_score,
+            reasons_json=decision.reasons,
+            incoming_payload=_listing_dedup_payload(record.listing),
+            candidate_payload=decision.candidate_payload,
+            created_at=datetime.utcnow(),
+        )
+    )
+    session.flush()
 
 
 def _upsert_snapshot(
@@ -551,6 +689,42 @@ def _update_property_from_listing(property_: Property, listing: Listing) -> None
     property_.schools_within_1km = listing.schools_within_1km
     property_.planned_investments_within_2km = listing.planned_investments_within_2km
     property_.data_quality_score = listing.data_quality_score
+
+
+def _listing_dedup_payload(listing: Listing) -> dict[str, object]:
+    return {
+        "listing_id": listing.id,
+        "address": listing.address,
+        "city": listing.city,
+        "district": listing.district,
+        "market_type": listing.market_type,
+        "rooms": listing.rooms,
+        "area_m2": listing.area_m2,
+        "lat": listing.lat,
+        "lon": listing.lon,
+        "price": listing.price,
+        "source_name": listing.source_name,
+    }
+
+
+def _property_dedup_payload(property_: Property) -> dict[str, object]:
+    return {
+        "property_id": getattr(property_, "id", None),
+        "address": property_.canonical_address,
+        "city": property_.city,
+        "district": property_.district,
+        "market_type": property_.market_type,
+        "rooms": property_.rooms,
+        "area_m2": _optional_float_value(property_.area_m2),
+        "lat": _optional_float_value(property_.lat),
+        "lon": _optional_float_value(property_.lon),
+    }
+
+
+def _optional_float_value(value: Decimal | None) -> float | None:
+    if value is None:
+        return None
+    return float(value)
 
 
 def _date_to_datetime(value) -> datetime:

@@ -60,11 +60,19 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert import_response.status_code == 403
     assert import_response.json()["detail"] == "Admin role required"
 
+    dedup_response = client.get("/api/v1/admin/deduplication/matches")
+    assert dedup_response.status_code == 403
+    assert dedup_response.json()["detail"] == "Admin role required"
+
 
 def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     jobs = client.get("/api/v1/admin/ingestion/jobs", headers=ADMIN_HEADERS).json()
     logs = client.get("/api/v1/admin/data-quality/logs", headers=ADMIN_HEADERS).json()
     raw_listings = client.get("/api/v1/admin/raw-listings", headers=ADMIN_HEADERS).json()
+    dedup_matches = client.get(
+        "/api/v1/admin/deduplication/matches",
+        headers=ADMIN_HEADERS,
+    ).json()
     source_health = client.get(
         "/api/v1/admin/ingestion/source-health",
         headers=ADMIN_HEADERS,
@@ -76,6 +84,7 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     assert len(logs) == 1
     assert logs[0]["severity"] == "warning"
     assert len(raw_listings) == 3
+    assert dedup_matches == []
     assert raw_listings[0]["source_name"] == "Demo Partner"
     assert source_health[0]["source_name"] == "Demo Partner"
     assert source_health[0]["health_status"] == "warning"

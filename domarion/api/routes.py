@@ -17,11 +17,15 @@ from fastapi import (
     status,
 )
 from fastapi.responses import HTMLResponse, Response
+from sqlalchemy import select
 
 from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
 from domarion.core import get_settings
+from domarion.db.models import (
+    PropertyDeduplicationMatch as PropertyDeduplicationMatchRow,
+)
 from domarion.db.session import SessionLocal
 from domarion.ingestion.db_writer import (
     ImportResult,
@@ -102,6 +106,9 @@ from domarion.schemas import (
     PlannedInvestmentImportResponse,
     PlannedInvestmentUpdate,
     PriceHistoryRebuildResult,
+    PropertyDeduplicationDecision,
+    PropertyDeduplicationMatch,
+    PropertyDeduplicationReviewStatus,
     RawListingSummary,
     ReportAudience,
     ReportEmailRequest,
@@ -827,6 +834,42 @@ def get_admin_raw_listing(
     return raw_listing
 
 
+@router.get("/admin/deduplication/matches", response_model=list[PropertyDeduplicationMatch])
+def list_admin_property_deduplication_matches(
+    account: CurrentAccountDep,
+    job_id: Annotated[str | None, Query()] = None,
+    source_listing_id: Annotated[str | None, Query()] = None,
+    decision: Annotated[PropertyDeduplicationDecision | None, Query()] = None,
+    review_status: Annotated[PropertyDeduplicationReviewStatus | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[PropertyDeduplicationMatch]:
+    _ensure_admin(account)
+    settings = get_settings()
+    if settings.data_repository_backend != "postgres":
+        return []
+
+    statement = select(PropertyDeduplicationMatchRow).order_by(
+        PropertyDeduplicationMatchRow.created_at.desc(),
+        PropertyDeduplicationMatchRow.id.desc(),
+    )
+    if job_id:
+        statement = statement.where(PropertyDeduplicationMatchRow.job_id == job_id)
+    if source_listing_id:
+        statement = statement.where(
+            PropertyDeduplicationMatchRow.source_listing_id == source_listing_id
+        )
+    if decision:
+        statement = statement.where(PropertyDeduplicationMatchRow.decision == decision)
+    if review_status:
+        statement = statement.where(
+            PropertyDeduplicationMatchRow.review_status == review_status
+        )
+
+    with SessionLocal() as session:
+        rows = session.scalars(statement.limit(limit)).all()
+        return [_deduplication_match_to_schema(row) for row in rows]
+
+
 @router.post(
     "/admin/listings/import-csv",
     response_model=PartnerCsvImportResponse,
@@ -924,7 +967,7 @@ async def import_admin_partner_csv(
 
         with SessionLocal() as session:
             try:
-                result = import_partner_records_in_session(session, records)
+                result = import_partner_records_in_session(session, records, job_id=job.id)
                 session.commit()
             except Exception as exc:
                 session.rollback()
@@ -2025,6 +2068,26 @@ def _fail_import_job(
         result or ImportResult(),
         status="failed",
         errors_count=1,
+    )
+
+
+def _deduplication_match_to_schema(
+    row: PropertyDeduplicationMatchRow,
+) -> PropertyDeduplicationMatch:
+    return PropertyDeduplicationMatch(
+        id=row.id,
+        job_id=row.job_id,
+        source_name=row.source_name,
+        source_listing_id=row.source_listing_id,
+        candidate_property_id=row.candidate_property_id,
+        matched_property_id=row.matched_property_id,
+        decision=row.decision,
+        review_status=row.review_status,
+        match_score=row.match_score,
+        reasons=row.reasons_json,
+        incoming_payload=row.incoming_payload,
+        candidate_payload=row.candidate_payload,
+        created_at=row.created_at,
     )
 
 

@@ -183,6 +183,28 @@ class ListingEvent(Base):
     property_source: Mapped[PropertySource] = relationship()
 
 
+class PropertyDeduplicationMatch(Base):
+    __tablename__ = "property_deduplication_matches"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    job_id: Mapped[str | None] = mapped_column(ForeignKey("ingestion_jobs.id"), index=True)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("listing_sources.id"))
+    source_name: Mapped[str] = mapped_column(String(120), index=True)
+    source_listing_id: Mapped[str] = mapped_column(String(120), index=True)
+    candidate_property_id: Mapped[int | None] = mapped_column(ForeignKey("properties.id"))
+    matched_property_id: Mapped[int | None] = mapped_column(ForeignKey("properties.id"))
+    decision: Mapped[str] = mapped_column(String(40), index=True)
+    review_status: Mapped[str] = mapped_column(String(40), default="auto_resolved", index=True)
+    match_score: Mapped[int] = mapped_column(Integer)
+    reasons_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    incoming_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    candidate_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    job: Mapped[IngestionJob | None] = relationship()
+    source: Mapped[ListingSource | None] = relationship()
+
+
 class PropertyScore(Base):
     __tablename__ = "property_scores"
 

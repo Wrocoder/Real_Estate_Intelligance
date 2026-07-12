@@ -27,6 +27,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
 - Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
 - Добавлен `listing_events` timeline из snapshots: first seen, price moves, parameter/status changes и relist events.
+- Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
@@ -879,8 +880,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить таблицу `property_deduplication_matches` для review queue и объяснения match decisions.
-2. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-3. Добавить SEO structured content для следующих городов.
-4. Добавить deployment workflow после выбора hosting.
-5. Добавить background worker deployment для alerts, ingestion и report generation.
+1. Добавить справочники `locations`, `districts`, `municipalities`.
+2. Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
+3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+4. Добавить SEO structured content для следующих городов.
+5. Добавить deployment workflow после выбора hosting.

@@ -25,6 +25,7 @@ import {
   type PlannedInvestment,
   type PlannedInvestmentImportResponse,
   type PlannedInvestmentPayload,
+  type PropertyDeduplicationMatch,
   type RawListingSummary,
   type ScoringBacktestResult,
   type SourceLegalStatus,
@@ -99,6 +100,7 @@ export default function AdminPage() {
     useState<ScoringBacktestResult | null>(null);
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
+  const [dedupMatches, setDedupMatches] = useState<PropertyDeduplicationMatch[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
   const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
   const [dailyAlertRun, setDailyAlertRun] =
@@ -139,6 +141,7 @@ export default function AdminPage() {
         backtestData,
         logData,
         rawData,
+        dedupData,
         investmentData,
         referralData,
       ] =
@@ -149,6 +152,10 @@ export default function AdminPage() {
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
           api.listAdminRawListings({ limit: 50 }),
+          api.listAdminDeduplicationMatches({
+            job_id: jobId || undefined,
+            limit: 50,
+          }),
           api.listAdminPlannedInvestments({ city: "Wrocław" }),
           api.listAdminPartnerReferrals({ limit: 100 }),
         ]);
@@ -158,6 +165,7 @@ export default function AdminPage() {
       setScoringBacktest(backtestData);
       setLogs(logData);
       setRawListings(rawData);
+      setDedupMatches(dedupData);
       setPlannedInvestments(investmentData);
       setPartnerReferrals(referralData);
       setStatus("Admin dashboard обновлен");
@@ -174,6 +182,9 @@ export default function AdminPage() {
   const latestJob = jobs[0];
   const warningCount = logs.filter((log) => log.severity === "warning").length;
   const errorCount = logs.filter((log) => log.severity === "error").length;
+  const openDedupCount = dedupMatches.filter(
+    (match) => match.review_status === "open",
+  ).length;
   const selectedInvestment = plannedInvestments.find(
     (investment) => investment.id === selectedInvestmentId,
   );
@@ -386,6 +397,12 @@ export default function AdminPage() {
           <strong>{numberValue(plannedInvestments.length)}</strong>
         </div>
         <div className="metric">
+          <span>Dedup review</span>
+          <strong>
+            {numberValue(openDedupCount)} / {numberValue(dedupMatches.length)}
+          </strong>
+        </div>
+        <div className="metric">
           <span>Partner leads</span>
           <strong>{numberValue(partnerReferrals.length)}</strong>
         </div>
@@ -502,6 +519,65 @@ export default function AdminPage() {
               )}
             </div>
           </aside>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Dedup Review</h2>
+              <span className="muted">
+                {numberValue(openDedupCount)} open · {numberValue(dedupMatches.length)} latest
+              </span>
+            </div>
+            <div className="table-scroll">
+              {dedupMatches.length === 0 ? (
+                <EmptyBlock label="Нет deduplication decisions под текущий фильтр." />
+              ) : (
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Source</th>
+                      <th>Decision</th>
+                      <th>Score</th>
+                      <th>Incoming</th>
+                      <th>Candidate</th>
+                      <th>Reasons</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dedupMatches.map((match) => (
+                      <tr key={match.id}>
+                        <td>
+                          <strong>{match.source_name}</strong>
+                          <small>{match.source_listing_id}</small>
+                        </td>
+                        <td>
+                          <span className={`status-pill ${dedupDecisionClass(match)}`}>
+                            {match.decision}
+                          </span>
+                          <small>{match.review_status}</small>
+                        </td>
+                        <td>{match.match_score}/100</td>
+                        <td>
+                          <strong>{dedupPayloadText(match.incoming_payload, "address")}</strong>
+                          <small>
+                            {dedupPayloadText(match.incoming_payload, "area_m2")} m2 ·{" "}
+                            {dedupPayloadText(match.incoming_payload, "rooms")} rooms
+                          </small>
+                        </td>
+                        <td>
+                          <strong>{dedupPayloadText(match.candidate_payload, "address")}</strong>
+                          <small>
+                            property {match.candidate_property_id ?? "-"} · matched{" "}
+                            {match.matched_property_id ?? "-"}
+                          </small>
+                        </td>
+                        <td>{match.reasons.slice(0, 3).join(" · ") || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
 
           <section className="panel admin-wide">
             <div className="panel-header">
@@ -1493,6 +1569,20 @@ function legalStatusClass(status: SourceLegalStatus) {
   if (status === "blocked") return "failed";
   if (status === "review_required") return "warning";
   return "queued";
+}
+
+function dedupDecisionClass(match: PropertyDeduplicationMatch) {
+  if (match.decision === "matched") return "healthy";
+  if (match.decision === "review_required" || match.review_status === "open") {
+    return "warning";
+  }
+  return "failed";
+}
+
+function dedupPayloadText(payload: Record<string, unknown>, key: string) {
+  const value = payload[key];
+  if (value === null || value === undefined || value === "") return "-";
+  return String(value);
 }
 
 function formatDate(value: string) {

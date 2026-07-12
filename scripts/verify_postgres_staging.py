@@ -12,6 +12,8 @@ from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from domarion.core.config import get_settings
+from domarion.ingestion.db_writer import import_partner_records_in_session
+from domarion.ingestion.partner_csv import PartnerListingRecord
 from domarion.repositories.postgres import PostgresRealEstateRepository
 from domarion.schemas import PlannedInvestmentCreate, PlannedInvestmentUpdate
 from domarion.scripts.seed_demo import seed_demo_data_in_session
@@ -104,6 +106,8 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     if "first_seen" not in listing_event_types or "price_reduced" not in listing_event_types:
         raise RuntimeError("Expected derived listing events for wr-001.")
 
+    deduplication_check = _run_deduplication_check(repository, listing)
+
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
             name="Staging verifier planned investment",
@@ -141,6 +145,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "listing_event_count": len(listing_events),
         "listing_event_types": listing_event_types,
         "comparable_count": len(comparables),
+        "deduplication": deduplication_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -149,6 +154,61 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
         },
+    }
+
+
+def _run_deduplication_check(
+    repository: PostgresRealEstateRepository,
+    listing,
+) -> dict[str, Any]:
+    source_listing_id = "staging-dedup-wr-001"
+    duplicate_listing = listing.model_copy(
+        update={
+            "id": source_listing_id,
+            "title": "Staging verifier duplicate listing",
+            "source_name": "Staging verifier partner",
+            "source_url": "https://example.com/staging-dedup-wr-001",
+        }
+    )
+    raw_payload = {
+        key: str(value)
+        for key, value in duplicate_listing.model_dump(mode="json").items()
+        if value is not None
+    }
+    record = PartnerListingRecord(
+        source_name="Staging verifier partner",
+        source_type="partner_csv",
+        source_base_url="https://example.com",
+        source_listing_id=source_listing_id,
+        source_url="https://example.com/staging-dedup-wr-001",
+        observed_at=duplicate_listing.last_seen_at,
+        raw_payload=raw_payload,
+        listing=duplicate_listing,
+    )
+
+    import_partner_records_in_session(repository.session, [record])
+    row = repository.session.execute(
+        text(
+            """
+            select decision, review_status, match_score
+            from property_deduplication_matches
+            where source_listing_id = :source_listing_id
+            order by id desc
+            limit 1
+            """
+        ),
+        {"source_listing_id": source_listing_id},
+    ).one_or_none()
+    if row is None:
+        raise RuntimeError("Expected property_deduplication_matches row after duplicate import.")
+    if row.decision != "matched" or row.review_status != "auto_resolved":
+        raise RuntimeError("Expected staging duplicate import to be auto matched.")
+    if row.match_score < 95:
+        raise RuntimeError("Expected staging duplicate import match_score >= 95.")
+    return {
+        "decision": row.decision,
+        "review_status": row.review_status,
+        "match_score": row.match_score,
     }
 
 

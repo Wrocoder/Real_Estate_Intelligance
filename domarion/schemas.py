@@ -41,6 +41,8 @@ SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
+PropertyDeduplicationDecision = Literal["matched", "review_required", "rejected"]
+PropertyDeduplicationReviewStatus = Literal["open", "auto_resolved"]
 ListingEventType = Literal[
     "first_seen",
     "price_reduced",
@@ -364,6 +366,22 @@ class RawListingSummary(BaseModel):
     fetched_at: datetime
     payload_hash: str
     raw_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class PropertyDeduplicationMatch(BaseModel):
+    id: int
+    job_id: str | None = None
+    source_name: str
+    source_listing_id: str
+    candidate_property_id: int | None = None
+    matched_property_id: int | None = None
+    decision: PropertyDeduplicationDecision
+    review_status: PropertyDeduplicationReviewStatus
+    match_score: int = Field(ge=0, le=100)
+    reasons: list[str] = Field(default_factory=list)
+    incoming_payload: dict[str, Any] = Field(default_factory=dict)
+    candidate_payload: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
 
 
 class MapPointGeometry(BaseModel):
