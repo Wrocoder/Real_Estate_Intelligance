@@ -50,6 +50,50 @@ export type AreaStatistics = {
   supply_change_90d_pct: number;
 };
 
+export type LocationReferenceType =
+  | "district"
+  | "neighborhood"
+  | "locality"
+  | "landmark"
+  | "transport_node";
+
+export type MunicipalityReference = {
+  id: string;
+  name: string;
+  country_code: string;
+  region: string | null;
+  lat: number | null;
+  lon: number | null;
+  metadata: Record<string, unknown>;
+};
+
+export type DistrictReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  name: string;
+  slug: string;
+  area_id: string | null;
+  lat: number | null;
+  lon: number | null;
+  metadata: Record<string, unknown>;
+};
+
+export type LocationReference = {
+  id: string;
+  municipality_id: string;
+  municipality_name: string;
+  district_id: string | null;
+  district_name: string | null;
+  name: string;
+  slug: string;
+  location_type: LocationReferenceType;
+  lat: number | null;
+  lon: number | null;
+  aliases: string[];
+  metadata: Record<string, unknown>;
+};
+
 export type MarketDistributionBucket = {
   label: string;
   count: number;
@@ -1007,6 +1051,20 @@ export const api = {
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  listMunicipalities: () =>
+    request<MunicipalityReference[]>("/api/v1/locations/municipalities"),
+  listDistrictReferences: (params: { municipality_id?: string; city?: string } = {}) =>
+    request<DistrictReference[]>(
+      `/api/v1/locations/districts${toQueryString(params)}`,
+    ),
+  listLocationReferences: (params: {
+    municipality_id?: string;
+    district_id?: string;
+    location_type?: LocationReferenceType;
+    query?: string;
+    limit?: number;
+  } = {}) =>
+    request<LocationReference[]>(`/api/v1/locations${toQueryString(params)}`),
   getMarketDashboard: (params: { city?: string; district?: string } = {}) =>
     request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
   getMe: () => request<AccountSummary>("/api/v1/me"),

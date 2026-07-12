@@ -64,6 +64,24 @@ def test_areas() -> None:
     assert len(response.json()) >= 3
 
 
+def test_location_reference_endpoints() -> None:
+    municipalities_response = client.get("/api/v1/locations/municipalities")
+    districts_response = client.get("/api/v1/locations/districts", params={"city": "Wrocław"})
+    locations_response = client.get("/api/v1/locations", params={"query": "Nowy"})
+
+    assert municipalities_response.status_code == 200
+    assert municipalities_response.json()[0]["id"] == "wroclaw"
+
+    districts = districts_response.json()
+    assert districts_response.status_code == 200
+    assert {district["id"] for district in districts} >= {"wroclaw-fabryczna"}
+
+    locations = locations_response.json()
+    assert locations_response.status_code == 200
+    assert locations[0]["name"] == "Nowy Dwór"
+    assert locations[0]["district_id"] == "wroclaw-fabryczna"
+
+
 def test_listing_analysis() -> None:
     response = client.get("/api/v1/listings/wr-001/analysis")
     payload = response.json()

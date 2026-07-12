@@ -38,6 +38,9 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["deduplication"]["decision"] == "matched"
     assert payload["checks"]["deduplication"]["review_status"] == "auto_resolved"
     assert payload["checks"]["deduplication"]["match_score"] >= 95
+    assert payload["checks"]["location_references"]["municipality_count"] >= 1
+    assert payload["checks"]["location_references"]["district_count"] >= 3
+    assert payload["checks"]["location_references"]["query_count"] >= 1
     assert payload["checks"]["spatial"]["properties_with_geom"] >= 3
     assert payload["checks"]["spatial"]["planned_investments_with_geom"] >= 4
     assert payload["checks"]["spatial"]["spatial_index_count"] == 2

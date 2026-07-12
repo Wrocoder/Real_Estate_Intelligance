@@ -2,8 +2,12 @@ from typing import Protocol
 
 from domarion.schemas import (
     AreaStatistics,
+    DistrictReference,
     Listing,
     ListingEvent,
+    LocationReference,
+    LocationReferenceType,
+    MunicipalityReference,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
@@ -35,6 +39,26 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
+        raise NotImplementedError
+
+    def list_municipalities(self) -> list[MunicipalityReference]:
+        raise NotImplementedError
+
+    def list_district_references(
+        self,
+        municipality_id: str | None = None,
+        city: str | None = None,
+    ) -> list[DistrictReference]:
+        raise NotImplementedError
+
+    def list_location_references(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        location_type: LocationReferenceType | None = None,
+        query: str | None = None,
+        limit: int = 100,
+    ) -> list[LocationReference]:
         raise NotImplementedError
 
     def list_planned_investments(

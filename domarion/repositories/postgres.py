@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session
 
 from domarion.db.models import (
     AreaStatistic,
+    District,
     ListingSnapshot,
+    Municipality,
 )
 from domarion.db.models import (
     ListingEvent as ListingEventRow,
+)
+from domarion.db.models import (
+    LocationReference as LocationReferenceRow,
 )
 from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
@@ -17,8 +22,12 @@ from domarion.db.models import (
 from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
+    DistrictReference,
     Listing,
     ListingEvent,
+    LocationReference,
+    LocationReferenceType,
+    MunicipalityReference,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
@@ -88,6 +97,52 @@ class PostgresRealEstateRepository:
         if row is None:
             return None
         return self._area_to_schema(row)
+
+    def list_municipalities(self) -> list[MunicipalityReference]:
+        rows = self.session.scalars(select(Municipality).order_by(Municipality.name)).all()
+        return [self._municipality_to_schema(row) for row in rows]
+
+    def list_district_references(
+        self,
+        municipality_id: str | None = None,
+        city: str | None = None,
+    ) -> list[DistrictReference]:
+        statement = select(District).join(Municipality).order_by(Municipality.name, District.name)
+        if municipality_id:
+            statement = statement.where(District.municipality_id == municipality_id)
+        if city:
+            statement = statement.where(Municipality.name.ilike(city))
+
+        rows = self.session.scalars(statement).all()
+        return [self._district_to_schema(row) for row in rows]
+
+    def list_location_references(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        location_type: LocationReferenceType | None = None,
+        query: str | None = None,
+        limit: int = 100,
+    ) -> list[LocationReference]:
+        statement = select(LocationReferenceRow).join(Municipality).order_by(
+            Municipality.name,
+            LocationReferenceRow.name,
+        )
+        if municipality_id:
+            statement = statement.where(LocationReferenceRow.municipality_id == municipality_id)
+        if district_id:
+            statement = statement.where(LocationReferenceRow.district_id == district_id)
+        if location_type:
+            statement = statement.where(LocationReferenceRow.location_type == location_type)
+        if query:
+            search = f"%{query}%"
+            statement = statement.where(
+                LocationReferenceRow.name.ilike(search)
+                | LocationReferenceRow.slug.ilike(search)
+            )
+
+        rows = self.session.scalars(statement.limit(limit)).all()
+        return [self._location_reference_to_schema(row) for row in rows]
 
     def list_planned_investments(
         self,
@@ -396,6 +451,49 @@ class PostgresRealEstateRepository:
         )
 
     @staticmethod
+    def _municipality_to_schema(row: Municipality) -> MunicipalityReference:
+        return MunicipalityReference(
+            id=row.id,
+            name=row.name,
+            country_code=row.country_code,
+            region=row.region,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _district_to_schema(row: District) -> DistrictReference:
+        return DistrictReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            name=row.name,
+            slug=row.slug,
+            area_id=row.area_id,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
+    def _location_reference_to_schema(row: LocationReferenceRow) -> LocationReference:
+        return LocationReference(
+            id=row.id,
+            municipality_id=row.municipality_id,
+            municipality_name=row.municipality.name,
+            district_id=row.district_id,
+            district_name=row.district.name if row.district else None,
+            name=row.name,
+            slug=row.slug,
+            location_type=row.location_type,
+            lat=_optional_decimal_float(row.lat),
+            lon=_optional_decimal_float(row.lon),
+            aliases=row.aliases_json,
+            metadata=row.metadata_json,
+        )
+
+    @staticmethod
     def _planned_investment_to_schema(row: PlannedInvestmentRow) -> PlannedInvestment:
         if row.lat is None or row.lon is None:
             raise ValueError(f"Planned investment {row.id} has no coordinates")
@@ -452,6 +550,12 @@ class PostgresRealEstateRepository:
             price=snapshot.price,
             price_per_m2=int(round(snapshot.price / area_m2)),
         )
+
+
+def _optional_decimal_float(value: Decimal | None) -> float | None:
+    if value is None:
+        return None
+    return float(value)
 
 
 def _radius_degrees(radius_km: float, lat: float) -> float:

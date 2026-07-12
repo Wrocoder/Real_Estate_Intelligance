@@ -1,3 +1,6 @@
+import re
+import unicodedata
+from collections.abc import Iterable
 from datetime import date
 from math import asin, cos, radians, sin, sqrt
 from uuid import uuid4
@@ -5,8 +8,12 @@ from uuid import uuid4
 from domarion.repositories.base import BBox
 from domarion.schemas import (
     AreaStatistics,
+    DistrictReference,
     Listing,
     ListingEvent,
+    LocationReference,
+    LocationReferenceType,
+    MunicipalityReference,
     PlannedInvestment,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
@@ -302,6 +309,106 @@ class InMemoryRealEstateRepository:
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
         return self._areas.get(area_id)
 
+    def list_municipalities(self) -> list[MunicipalityReference]:
+        lat, lon = _centroid((listing.lat, listing.lon) for listing in self._listings.values())
+        return [
+            MunicipalityReference(
+                id="wroclaw",
+                name="Wrocław",
+                country_code="PL",
+                region="Dolnośląskie",
+                lat=lat,
+                lon=lon,
+                metadata={"source": "demo_seed"},
+            )
+        ]
+
+    def list_district_references(
+        self,
+        municipality_id: str | None = None,
+        city: str | None = None,
+    ) -> list[DistrictReference]:
+        if municipality_id and municipality_id != "wroclaw":
+            return []
+        if city and city.casefold() != "Wrocław".casefold():
+            return []
+
+        districts = []
+        for area in sorted(self._areas.values(), key=lambda item: item.name):
+            lat, lon = self._district_centroid(area.name)
+            districts.append(
+                DistrictReference(
+                    id=area.area_id,
+                    municipality_id="wroclaw",
+                    municipality_name="Wrocław",
+                    name=area.name,
+                    slug=_slug(area.name),
+                    area_id=area.area_id,
+                    lat=lat,
+                    lon=lon,
+                    metadata={"source": "area_statistics"},
+                )
+            )
+        return districts
+
+    def list_location_references(
+        self,
+        municipality_id: str | None = None,
+        district_id: str | None = None,
+        location_type: LocationReferenceType | None = None,
+        query: str | None = None,
+        limit: int = 100,
+    ) -> list[LocationReference]:
+        if municipality_id and municipality_id != "wroclaw":
+            return []
+
+        districts_by_name = {
+            district.name: district for district in self.list_district_references()
+        }
+        references = []
+        seen_ids = set()
+        for listing in self._listings.values():
+            name = listing.address.split(",", maxsplit=1)[0].strip()
+            if not name:
+                continue
+            district = districts_by_name.get(listing.district)
+            reference_id = f"wroclaw-{_slug(name)}"
+            if reference_id in seen_ids:
+                continue
+            seen_ids.add(reference_id)
+            references.append(
+                LocationReference(
+                    id=reference_id,
+                    municipality_id="wroclaw",
+                    municipality_name="Wrocław",
+                    district_id=district.id if district else None,
+                    district_name=listing.district,
+                    name=name,
+                    slug=_slug(name),
+                    location_type="neighborhood",
+                    lat=listing.lat,
+                    lon=listing.lon,
+                    aliases=[listing.address],
+                    metadata={"area_id": listing.area_id, "source_listing_id": listing.id},
+                )
+            )
+
+        if district_id:
+            references = [item for item in references if item.district_id == district_id]
+        if location_type:
+            references = [item for item in references if item.location_type == location_type]
+        if query:
+            query_key = query.casefold()
+            references = [
+                item
+                for item in references
+                if query_key in item.name.casefold()
+                or query_key in item.slug.casefold()
+                or any(query_key in alias.casefold() for alias in item.aliases)
+            ]
+
+        return sorted(references, key=lambda item: item.name)[:limit]
+
     def list_planned_investments(
         self,
         city: str | None = None,
@@ -415,6 +522,13 @@ class InMemoryRealEstateRepository:
             ),
         )[:limit]
 
+    def _district_centroid(self, district: str) -> tuple[float | None, float | None]:
+        return _centroid(
+            (listing.lat, listing.lon)
+            for listing in self._listings.values()
+            if listing.district == district
+        )
+
 
 def _validate_spatial_args(
     *,
@@ -457,3 +571,18 @@ def _haversine_km(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> flo
         + cos(radians(lat_1)) * cos(radians(lat_2)) * sin(delta_lon / 2) ** 2
     )
     return 2 * radius * asin(sqrt(a))
+
+
+def _centroid(points: Iterable[tuple[float, float]]) -> tuple[float | None, float | None]:
+    values = list(points)
+    if not values:
+        return None, None
+    return (
+        round(sum(point[0] for point in values) / len(values), 6),
+        round(sum(point[1] for point in values) / len(values), 6),
+    )
+
+
+def _slug(value: str) -> str:
+    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")

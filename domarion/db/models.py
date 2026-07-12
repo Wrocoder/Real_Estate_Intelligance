@@ -258,6 +258,59 @@ class AreaStatistic(Base):
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class Municipality(Base):
+    __tablename__ = "municipalities"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    country_code: Mapped[str] = mapped_column(String(2), default="PL")
+    region: Mapped[str | None] = mapped_column(String(120))
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class District(Base):
+    __tablename__ = "districts"
+    __table_args__ = (UniqueConstraint("municipality_id", "slug"),)
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    municipality_id: Mapped[str] = mapped_column(ForeignKey("municipalities.id"), index=True)
+    area_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    name: Mapped[str] = mapped_column(String(120), index=True)
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    municipality: Mapped[Municipality] = relationship()
+
+
+class LocationReference(Base):
+    __tablename__ = "location_references"
+    __table_args__ = (UniqueConstraint("municipality_id", "slug", "location_type"),)
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    municipality_id: Mapped[str] = mapped_column(ForeignKey("municipalities.id"), index=True)
+    district_id: Mapped[str | None] = mapped_column(ForeignKey("districts.id"), index=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    slug: Mapped[str] = mapped_column(String(160), index=True)
+    location_type: Mapped[str] = mapped_column(String(60), index=True)
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    aliases_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    municipality: Mapped[Municipality] = relationship()
+    district: Mapped[District | None] = relationship()
+
+
 class AreaMarketSnapshot(Base):
     __tablename__ = "area_market_snapshots"
 

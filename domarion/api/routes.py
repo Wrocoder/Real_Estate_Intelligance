@@ -72,6 +72,7 @@ from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
+    DistrictReference,
     Favorite,
     FavoriteCreate,
     FavoriteUpdate,
@@ -86,11 +87,14 @@ from domarion.schemas import (
     ListingAnalysis,
     ListingSearchResponse,
     ListingSort,
+    LocationReference,
+    LocationReferenceType,
     MapFeatureCollection,
     MarketDashboard,
     MarketType,
     MortgageCalculationRequest,
     MortgageCalculationResult,
+    MunicipalityReference,
     ObjectReport,
     PartnerCsvImportResponse,
     PartnerReferral,
@@ -257,6 +261,38 @@ def list_listings(
 @router.get("/areas", response_model=list[AreaStatistics])
 def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
     return repository.list_area_statistics()
+
+
+@router.get("/locations/municipalities", response_model=list[MunicipalityReference])
+def list_municipalities(repository: RepositoryDep) -> list[MunicipalityReference]:
+    return repository.list_municipalities()
+
+
+@router.get("/locations/districts", response_model=list[DistrictReference])
+def list_district_references(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    city: Annotated[str | None, Query()] = None,
+) -> list[DistrictReference]:
+    return repository.list_district_references(municipality_id=municipality_id, city=city)
+
+
+@router.get("/locations", response_model=list[LocationReference])
+def list_location_references(
+    repository: RepositoryDep,
+    municipality_id: Annotated[str | None, Query()] = None,
+    district_id: Annotated[str | None, Query()] = None,
+    location_type: Annotated[LocationReferenceType | None, Query()] = None,
+    query: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[LocationReference]:
+    return repository.list_location_references(
+        municipality_id=municipality_id,
+        district_id=district_id,
+        location_type=location_type,
+        query=query,
+        limit=limit,
+    )
 
 
 @router.get("/plans", response_model=list[PlanLimits])

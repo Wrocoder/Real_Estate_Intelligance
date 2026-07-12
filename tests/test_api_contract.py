@@ -97,7 +97,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
 
     expected_schemas = {
         "AreaMarketSnapshotJobResult",
+        "DistrictReference",
         "GenerateUserSubmittedDraftReportRequest",
+        "LocationReference",
         "MarketDashboard",
         "MarketDashboardArea",
         "MarketDistributionBucket",
@@ -106,6 +108,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "MortgageCalculationResult",
         "MortgageCostBreakdown",
         "MortgageScenario",
+        "MunicipalityReference",
         "ObjectReport",
         "AlertDeliveryBatchRequest",
         "AlertDeliveryBatchResult",

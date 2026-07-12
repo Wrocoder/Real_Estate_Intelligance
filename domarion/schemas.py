@@ -43,6 +43,13 @@ SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
 PropertyDeduplicationDecision = Literal["matched", "review_required", "rejected"]
 PropertyDeduplicationReviewStatus = Literal["open", "auto_resolved"]
+LocationReferenceType = Literal[
+    "district",
+    "neighborhood",
+    "locality",
+    "landmark",
+    "transport_node",
+]
 ListingEventType = Literal[
     "first_seen",
     "price_reduced",
@@ -153,6 +160,43 @@ class AreaStatistics(BaseModel):
     average_days_on_market: int
     price_change_90d_pct: float
     supply_change_90d_pct: float
+
+
+class MunicipalityReference(BaseModel):
+    id: str
+    name: str
+    country_code: str
+    region: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class DistrictReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    name: str
+    slug: str
+    area_id: str | None = None
+    lat: float | None = None
+    lon: float | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class LocationReference(BaseModel):
+    id: str
+    municipality_id: str
+    municipality_name: str
+    district_id: str | None = None
+    district_name: str | None = None
+    name: str
+    slug: str
+    location_type: LocationReferenceType
+    lat: float | None = None
+    lon: float | None = None
+    aliases: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
 
 class AreaMarketSnapshot(AreaStatistics):

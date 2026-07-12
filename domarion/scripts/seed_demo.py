@@ -6,10 +6,15 @@ from sqlalchemy.orm import Session
 
 from domarion.db.models import (
     AreaStatistic,
+    District,
     ListingSnapshot,
     ListingSource,
+    Municipality,
     Property,
     PropertySource,
+)
+from domarion.db.models import (
+    LocationReference as LocationReferenceRow,
 )
 from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
@@ -17,7 +22,14 @@ from domarion.db.models import (
 from domarion.db.session import SessionLocal
 from domarion.ingestion.db_writer import rebuild_price_history_metrics_in_session
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
-from domarion.schemas import Listing, PlannedInvestment, PriceHistoryPoint
+from domarion.schemas import (
+    DistrictReference,
+    Listing,
+    LocationReference,
+    MunicipalityReference,
+    PlannedInvestment,
+    PriceHistoryPoint,
+)
 
 
 def seed_demo_data() -> dict[str, int]:
@@ -30,6 +42,9 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
     source = _get_or_create_demo_source(session)
 
     areas_seeded = 0
+    municipalities_seeded = 0
+    districts_seeded = 0
+    locations_seeded = 0
     listings_seeded = 0
     planned_investments_seeded = 0
     snapshots_seeded = 0
@@ -52,6 +67,15 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
         )
         areas_seeded += 1
 
+    for municipality in demo_repository.list_municipalities():
+        municipalities_seeded += int(_upsert_municipality(session, municipality))
+
+    for district in demo_repository.list_district_references():
+        districts_seeded += int(_upsert_district(session, district))
+
+    for location in demo_repository.list_location_references():
+        locations_seeded += int(_upsert_location_reference(session, location))
+
     for listing in demo_repository.list_listings():
         property_source, created = _get_or_create_property_source(session, source, listing)
         listings_seeded += int(created)
@@ -69,6 +93,9 @@ def seed_demo_data_in_session(session: Session) -> dict[str, int]:
     session.commit()
     return {
         "areas_seeded": areas_seeded,
+        "municipalities_seeded": municipalities_seeded,
+        "districts_seeded": districts_seeded,
+        "locations_seeded": locations_seeded,
         "listings_seeded": listings_seeded,
         "planned_investments_seeded": planned_investments_seeded,
         "snapshots_seeded": snapshots_seeded,
@@ -91,6 +118,64 @@ def _get_or_create_demo_source(session: Session) -> ListingSource:
     session.add(source)
     session.flush()
     return source
+
+
+def _upsert_municipality(session: Session, item: MunicipalityReference) -> bool:
+    row = session.get(Municipality, item.id)
+    created = row is None
+    if row is None:
+        row = Municipality(id=item.id)
+        session.add(row)
+
+    row.name = item.name
+    row.country_code = item.country_code
+    row.region = item.region
+    row.lat = _optional_decimal(item.lat)
+    row.lon = _optional_decimal(item.lon)
+    row.metadata_json = item.metadata
+    row.updated_at = datetime.utcnow()
+    session.flush()
+    return created
+
+
+def _upsert_district(session: Session, item: DistrictReference) -> bool:
+    row = session.get(District, item.id)
+    created = row is None
+    if row is None:
+        row = District(id=item.id)
+        session.add(row)
+
+    row.municipality_id = item.municipality_id
+    row.area_id = item.area_id
+    row.name = item.name
+    row.slug = item.slug
+    row.lat = _optional_decimal(item.lat)
+    row.lon = _optional_decimal(item.lon)
+    row.metadata_json = item.metadata
+    row.updated_at = datetime.utcnow()
+    session.flush()
+    return created
+
+
+def _upsert_location_reference(session: Session, item: LocationReference) -> bool:
+    row = session.get(LocationReferenceRow, item.id)
+    created = row is None
+    if row is None:
+        row = LocationReferenceRow(id=item.id)
+        session.add(row)
+
+    row.municipality_id = item.municipality_id
+    row.district_id = item.district_id
+    row.name = item.name
+    row.slug = item.slug
+    row.location_type = item.location_type
+    row.lat = _optional_decimal(item.lat)
+    row.lon = _optional_decimal(item.lon)
+    row.aliases_json = item.aliases
+    row.metadata_json = item.metadata
+    row.updated_at = datetime.utcnow()
+    session.flush()
+    return created
 
 
 def _get_or_create_property_source(
@@ -212,3 +297,9 @@ def _upsert_planned_investment(session: Session, investment: PlannedInvestment) 
     row.confidence_score = investment.confidence_score
     row.notes = investment.notes
     return created
+
+
+def _optional_decimal(value: float | None) -> Decimal | None:
+    if value is None:
+        return None
+    return Decimal(str(value))

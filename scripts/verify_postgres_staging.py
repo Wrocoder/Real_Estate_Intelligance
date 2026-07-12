@@ -107,6 +107,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         raise RuntimeError("Expected derived listing events for wr-001.")
 
     deduplication_check = _run_deduplication_check(repository, listing)
+    location_reference_check = _run_location_reference_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -146,6 +147,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "listing_event_types": listing_event_types,
         "comparable_count": len(comparables),
         "deduplication": deduplication_check,
+        "location_references": location_reference_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -154,6 +156,23 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
         },
+    }
+
+
+def _run_location_reference_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    municipalities = repository.list_municipalities()
+    districts = repository.list_district_references(city="Wrocław")
+    locations = repository.list_location_references(query="Nowy", limit=10)
+    if not any(item.id == "wroclaw" for item in municipalities):
+        raise RuntimeError("Expected Wrocław municipality reference after seed.")
+    if not any(item.id == "wroclaw-fabryczna" for item in districts):
+        raise RuntimeError("Expected Fabryczna district reference after seed.")
+    if not any(item.name == "Nowy Dwór" for item in locations):
+        raise RuntimeError("Expected Nowy Dwór location reference after seed.")
+    return {
+        "municipality_count": len(municipalities),
+        "district_count": len(districts),
+        "query_count": len(locations),
     }
 
 
