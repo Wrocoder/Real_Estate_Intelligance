@@ -169,10 +169,10 @@ export default function ComparePage() {
               </thead>
               <tbody>
                 {comparisonRows(items).map((row) => (
-                  <tr key={row.label}>
+                  <tr key={row.id}>
                     <th>{row.label}</th>
                     {row.values.map((value, index) => (
-                      <td key={`${row.label}-${items[index].listing.id}`}>{value}</td>
+                      <td key={`${row.id}-${items[index].listing.id}`}>{value}</td>
                     ))}
                   </tr>
                 ))}
@@ -188,44 +188,54 @@ export default function ComparePage() {
 function comparisonRows(items: ListingAnalysis[]) {
   return [
     {
+      id: "location",
       label: "Локация",
       values: items.map((item) => `${item.listing.district}, ${item.listing.address}`),
     },
     {
+      id: "price",
       label: "Цена",
       values: items.map((item) => money(item.listing.price)),
     },
     {
+      id: "price-per-m2",
       label: "Цена/m2",
       values: items.map((item) => `${money(item.listing.price_per_m2)}/m2`),
     },
     {
+      id: "area-rooms",
       label: "Площадь и комнаты",
       values: items.map((item) => `${item.listing.area_m2.toFixed(1)} m2 · ${item.listing.rooms}`),
     },
     {
+      id: "days-on-market",
       label: "Дней на рынке",
       values: items.map((item) => `${item.listing.days_on_market}`),
     },
     {
+      id: "decision-label",
       label: "Вердикт",
       values: items.map((item) => scoreLabel(item.scores.decision_label)),
     },
     {
-      label: "Цена",
+      id: "price-label",
+      label: "Оценка цены",
       values: items.map((item) => scoreLabel(item.scores.price_label)),
     },
     {
+      id: "investment-score",
       label: "Investment Score",
       values: items.map((item) => `${item.scores.investment_score}/100`),
     },
     {
+      id: "risk-score",
       label: "Risk Score",
       values: items.map(
         (item) => `${item.scores.risk_score}/100 · ${scoreLabel(item.scores.risk_label)}`,
       ),
     },
     {
+      id: "negotiation-score",
       label: "Negotiation Score",
       values: items.map(
         (item) =>
@@ -233,12 +243,14 @@ function comparisonRows(items: ListingAnalysis[]) {
       ),
     },
     {
+      id: "liquidity-score",
       label: "Liquidity",
       values: items.map(
         (item) => `${item.scores.liquidity_score}/100 · ${scoreLabel(item.scores.liquidity_label)}`,
       ),
     },
     {
+      id: "rental-potential-score",
       label: "Rental Potential",
       values: items.map(
         (item) =>
@@ -248,6 +260,7 @@ function comparisonRows(items: ListingAnalysis[]) {
       ),
     },
     {
+      id: "fair-price-range",
       label: "Fair price",
       values: items.map(
         (item) =>
@@ -255,18 +268,22 @@ function comparisonRows(items: ListingAnalysis[]) {
       ),
     },
     {
+      id: "fair-price-confidence",
       label: "Fair price confidence",
       values: items.map((item) => `${item.scores.fair_price_confidence_score}/100`),
     },
     {
+      id: "fair-price-delta",
       label: "Delta до fair mid",
       values: items.map((item) => percent(item.scores.price_delta_to_fair_mid_pct)),
     },
     {
+      id: "transport",
       label: "Транспорт",
       values: items.map((item) => `${item.listing.nearest_stop_m} м до остановки`),
     },
     {
+      id: "infrastructure",
       label: "Инфраструктура",
       values: items.map(
         (item) =>
@@ -274,14 +291,17 @@ function comparisonRows(items: ListingAnalysis[]) {
       ),
     },
     {
+      id: "planned-investments",
       label: "Planned investments",
       values: items.map((item) => `${item.listing.planned_investments_within_2km} в радиусе 2 км`),
     },
     {
+      id: "negotiation-argument",
       label: "Аргумент для торга",
       values: items.map((item) => item.negotiation_arguments[0] ?? "-"),
     },
     {
+      id: "main-risk",
       label: "Главный риск",
       values: items.map((item) => item.scores.warnings[0] ?? "Критичных предупреждений нет"),
     },
