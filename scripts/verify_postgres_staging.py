@@ -15,12 +15,16 @@ from domarion.ai_insight_store.postgres import PostgresAIInsightStore
 from domarion.core.config import get_settings
 from domarion.ingestion.db_writer import import_partner_records_in_session
 from domarion.ingestion.partner_csv import PartnerListingRecord
+from domarion.ingestion_admin_store.postgres import PostgresIngestionAdminStore
 from domarion.report_store.postgres import PostgresReportStore
 from domarion.repositories.postgres import PostgresRealEstateRepository
 from domarion.schemas import (
     GeneratedReportCreate,
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
+    SourceCheckJobCreate,
+    SourceErrorCreate,
+    SourceErrorUpdate,
 )
 from domarion.scripts.seed_demo import seed_demo_data_in_session
 from domarion.services.ai_insights import persist_generated_report_insights
@@ -117,6 +121,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     location_reference_check = _run_location_reference_check(repository)
     infrastructure_check = _run_infrastructure_check(repository)
     ai_insight_check = _run_ai_insight_check(repository)
+    source_error_check = _run_source_error_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -159,6 +164,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "location_references": location_reference_check,
         "infrastructure": infrastructure_check,
         "ai_insights": ai_insight_check,
+        "source_errors": source_error_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -330,6 +336,92 @@ def _run_ai_insight_check(repository: PostgresRealEstateRepository) -> dict[str,
         "created_count": len(created),
         "listed_count": len(insights),
         "insight_types": sorted(insight_types),
+        "index_count": index_count,
+    }
+
+
+def _run_source_error_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    admin_store = PostgresIngestionAdminStore(repository.session)
+    source_check = admin_store.create_source_check_job(
+        SourceCheckJobCreate(
+            source_name="Staging Source Check Feed",
+            source_type="partner_csv",
+            check_type="connectivity",
+            status="failed",
+            target_domain="staging-source.example",
+            target_url_hash="staging-url-hash",
+            created_by="staging-verifier",
+            notes="Created by scripts/verify_postgres_staging.py",
+            metadata={"private_source_url_omitted": True},
+        )
+    )
+    source_error = admin_store.create_source_error(
+        SourceErrorCreate(
+            source_name="Staging Source Check Feed",
+            source_type="partner_csv",
+            source_check_job_id=source_check.id,
+            severity="error",
+            error_code="staging_source_timeout",
+            message="Staging source check timeout.",
+            retryable=True,
+            metadata={
+                "source_domain": "staging-source.example",
+                "source_url_hash": "staging-url-hash",
+                "private_source_url_omitted": True,
+            },
+        )
+    )
+    retry_result = admin_store.retry_source_error(source_error.id, created_by="staging-verifier")
+    if retry_result is None:
+        raise RuntimeError("Expected retryable source error to create retry job.")
+    resolved = admin_store.update_source_error(
+        source_error.id,
+        SourceErrorUpdate(
+            status="resolved",
+            resolved_by="staging-verifier",
+            resolution_note="Verifier resolved retry queue item.",
+        ),
+    )
+    listed_errors = admin_store.list_source_errors(source_name="Staging Source Check Feed")
+    listed_checks = admin_store.list_source_check_jobs(source_name="Staging Source Check Feed")
+    index_count = repository.session.scalar(
+        text(
+            """
+            select count(*)
+            from pg_indexes
+            where schemaname = 'public'
+              and indexname in (
+                'ix_source_check_jobs_source_name',
+                'ix_source_check_jobs_status',
+                'ix_source_check_jobs_target_domain',
+                'ix_source_errors_source_name',
+                'ix_source_errors_status',
+                'ix_source_errors_retryable',
+                'ix_source_errors_next_retry_at',
+                'ix_source_errors_last_retry_job_id'
+              )
+            """
+        )
+    )
+
+    if resolved is None or resolved.status != "resolved":
+        raise RuntimeError("Expected source error resolve update to succeed.")
+    if retry_result.error.retry_count != 1:
+        raise RuntimeError("Expected source error retry_count to increment.")
+    if retry_result.retry_job.status != "queued":
+        raise RuntimeError("Expected source error retry to create queued source check job.")
+    if len(listed_errors) != 1:
+        raise RuntimeError("Expected one staging source error.")
+    if len(listed_checks) != 2:
+        raise RuntimeError("Expected original and retry source check jobs.")
+    if index_count != 8:
+        raise RuntimeError("Expected source check/source error lookup indexes.")
+
+    return {
+        "source_check_count": len(listed_checks),
+        "source_error_count": len(listed_errors),
+        "retry_count": retry_result.error.retry_count,
+        "resolved_status": resolved.status,
         "index_count": index_count,
     }
 

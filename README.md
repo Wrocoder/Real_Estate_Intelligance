@@ -36,6 +36,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
+- Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
 - Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
@@ -97,6 +98,8 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/user-submitted-listing-drafts
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
+- http://127.0.0.1:8000/api/v1/admin/ingestion/source-checks
+- http://127.0.0.1:8000/api/v1/admin/ingestion/source-errors
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
@@ -884,8 +887,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить `scraping_jobs`/`source_errors` для legal source checks, ошибок источников и retry actions без bulk scraping lock-in.
-2. Добавить data enrichment pipeline для infrastructure matching и distance calculations.
-3. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
-4. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+1. Добавить data enrichment pipeline для infrastructure matching и distance calculations.
+2. Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
+3. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
+4. Добавить district/city comparison analytics.
 5. Добавить deployment workflow после выбора hosting.

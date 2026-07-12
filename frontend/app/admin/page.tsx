@@ -28,6 +28,8 @@ import {
   type PropertyDeduplicationMatch,
   type RawListingSummary,
   type ScoringBacktestResult,
+  type SourceCheckJob,
+  type SourceError,
   type SourceLegalStatus,
   type SourceRegistryEntry,
   type SourceRegistryEntryPayload,
@@ -95,6 +97,8 @@ const defaultSourceForm: SourceForm = {
 export default function AdminPage() {
   const [jobs, setJobs] = useState<IngestionJob[]>([]);
   const [sourceHealth, setSourceHealth] = useState<IngestionSourceHealth[]>([]);
+  const [sourceCheckJobs, setSourceCheckJobs] = useState<SourceCheckJob[]>([]);
+  const [sourceErrors, setSourceErrors] = useState<SourceError[]>([]);
   const [sources, setSources] = useState<SourceRegistryEntry[]>([]);
   const [scoringBacktest, setScoringBacktest] =
     useState<ScoringBacktestResult | null>(null);
@@ -137,6 +141,8 @@ export default function AdminPage() {
       const [
         jobData,
         healthData,
+        sourceCheckData,
+        sourceErrorData,
         sourceData,
         backtestData,
         logData,
@@ -148,6 +154,8 @@ export default function AdminPage() {
         await Promise.all([
           api.listAdminIngestionJobs(),
           api.listAdminIngestionSourceHealth(),
+          api.listAdminSourceCheckJobs({ limit: 50 }),
+          api.listAdminSourceErrors({ limit: 50 }),
           api.listAdminIngestionSources(),
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
@@ -161,6 +169,8 @@ export default function AdminPage() {
         ]);
       setJobs(jobData);
       setSourceHealth(healthData);
+      setSourceCheckJobs(sourceCheckData);
+      setSourceErrors(sourceErrorData);
       setSources(sourceData);
       setScoringBacktest(backtestData);
       setLogs(logData);
@@ -182,6 +192,12 @@ export default function AdminPage() {
   const latestJob = jobs[0];
   const warningCount = logs.filter((log) => log.severity === "warning").length;
   const errorCount = logs.filter((log) => log.severity === "error").length;
+  const openSourceErrorCount = sourceErrors.filter(
+    (sourceError) => sourceError.status === "open",
+  ).length;
+  const retryableSourceErrorCount = sourceErrors.filter(
+    (sourceError) => sourceError.retryable && sourceError.status !== "resolved",
+  ).length;
   const openDedupCount = dedupMatches.filter(
     (match) => match.review_status === "open",
   ).length;
@@ -230,6 +246,40 @@ export default function AdminPage() {
     setSourceForm(formFromSource(updated));
     await load(selectedJobId);
     setStatus(`Source обновлен: ${updated.name}`);
+  }
+
+  async function createSourceCheckForSelectedSource() {
+    if (!selectedSource) {
+      setStatus("Выбери source registry entry для проверки");
+      return;
+    }
+    const created = await api.createAdminSourceCheckJob({
+      source_id: selectedSource.id,
+      source_name: selectedSource.name,
+      source_type: selectedSource.source_type,
+      check_type: "manual_review",
+      status: "queued",
+      target_domain: domainFromUrl(selectedSource.base_url),
+      notes: "Manual source check from admin dashboard.",
+      metadata: { legal_status: selectedSource.legal_status },
+    });
+    await load(selectedJobId);
+    setStatus(`Source check создан: ${created.id}`);
+  }
+
+  async function retrySourceError(errorId: string) {
+    const result = await api.retryAdminSourceError(errorId);
+    await load(selectedJobId);
+    setStatus(`Retry job создан: ${result.retry_job.id}`);
+  }
+
+  async function resolveSourceError(errorId: string) {
+    const updated = await api.updateAdminSourceError(errorId, {
+      status: "resolved",
+      resolution_note: "Resolved from admin dashboard.",
+    });
+    await load(selectedJobId);
+    setStatus(`Source error resolved: ${updated.error_code}`);
   }
 
   async function createInvestment() {
@@ -410,6 +460,12 @@ export default function AdminPage() {
           <span>Warnings / errors</span>
           <strong>
             {numberValue(warningCount)} / {numberValue(errorCount)}
+          </strong>
+        </div>
+        <div className="metric">
+          <span>Source errors</span>
+          <strong>
+            {numberValue(openSourceErrorCount)} / {numberValue(retryableSourceErrorCount)}
           </strong>
         </div>
       </section>
@@ -826,6 +882,122 @@ export default function AdminPage() {
                   ))}
                 </ul>
               )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Source Errors & Checks</h2>
+              <span className="muted">
+                {numberValue(openSourceErrorCount)} open ·{" "}
+                {numberValue(sourceCheckJobs.length)} checks
+              </span>
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="table-scroll">
+                {sourceErrors.length === 0 ? (
+                  <EmptyBlock label="Нет source errors." />
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
+                        <th>Status</th>
+                        <th>Code</th>
+                        <th>Retry</th>
+                        <th>Message</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sourceErrors.map((sourceError) => (
+                        <tr key={sourceError.id}>
+                          <td>
+                            <strong>{sourceError.source_name}</strong>
+                            <small>{sourceError.source_type}</small>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${sourceErrorStatusClass(sourceError)}`}>
+                              {sourceError.status}
+                            </span>
+                            <small>{sourceError.severity}</small>
+                          </td>
+                          <td>
+                            {sourceError.error_code}
+                            <small>{sourceErrorDomain(sourceError)}</small>
+                          </td>
+                          <td>
+                            {sourceError.retryable ? "yes" : "no"}
+                            <small>
+                              count {sourceError.retry_count}
+                              {sourceError.last_retry_job_id
+                                ? ` · ${sourceError.last_retry_job_id}`
+                                : ""}
+                            </small>
+                          </td>
+                          <td>{sourceError.message}</td>
+                          <td>
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={
+                                !sourceError.retryable || sourceError.status === "resolved"
+                              }
+                              onClick={() => void retrySourceError(sourceError.id)}
+                            >
+                              Retry
+                            </button>
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={sourceError.status === "resolved"}
+                              onClick={() => void resolveSourceError(sourceError.id)}
+                              style={{ marginLeft: 8 }}
+                            >
+                              Resolve
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>Latest source checks</h3>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedSource}
+                    onClick={() => void createSourceCheckForSelectedSource()}
+                  >
+                    Check selected source
+                  </button>
+                </div>
+                {sourceCheckJobs.length === 0 ? (
+                  <EmptyBlock label="Нет source check jobs." />
+                ) : (
+                  <ul className="section-list compact">
+                    {sourceCheckJobs.slice(0, 8).map((checkJob) => (
+                      <li key={checkJob.id}>
+                        <span className={`status-pill ${checkJob.status}`}>
+                          {checkJob.status}
+                        </span>
+                        <strong>{checkJob.source_name}</strong>
+                        <p className="muted">
+                          {checkJob.check_type}
+                          {checkJob.target_domain ? ` · ${checkJob.target_domain}` : ""}
+                        </p>
+                        <small>
+                          {checkJob.created_by} · {formatDate(checkJob.created_at)}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           </section>
 
@@ -1564,11 +1736,40 @@ function blankToNull(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function domainFromUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    return new URL(value).hostname;
+  } catch {
+    return value.replace(/^https?:\/\//, "").split("/")[0] || null;
+  }
+}
+
 function legalStatusClass(status: SourceLegalStatus) {
   if (status === "approved") return "healthy";
   if (status === "blocked") return "failed";
   if (status === "review_required") return "warning";
   return "queued";
+}
+
+function sourceErrorStatusClass(sourceError: SourceError) {
+  if (sourceError.status === "resolved" || sourceError.status === "ignored") return "healthy";
+  if (sourceError.status === "retry_scheduled") return "warning";
+  return sourceError.severity === "error" ? "failed" : "warning";
+}
+
+function sourceErrorDomain(sourceError: SourceError) {
+  const sourceDomain =
+    typeof sourceError.metadata.source_domain === "string"
+      ? sourceError.metadata.source_domain
+      : null;
+  const sourceUrlHash =
+    typeof sourceError.metadata.source_url_hash === "string"
+      ? sourceError.metadata.source_url_hash
+      : null;
+  return [sourceDomain, sourceUrlHash ? `hash ${sourceUrlHash.slice(0, 10)}` : null]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function dedupDecisionClass(match: PropertyDeduplicationMatch) {

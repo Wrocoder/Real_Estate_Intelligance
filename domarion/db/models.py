@@ -78,6 +78,73 @@ class DataQualityLog(Base):
     job: Mapped[IngestionJob | None] = relationship()
 
 
+class SourceCheckJob(Base):
+    __tablename__ = "source_check_jobs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("listing_sources.id"), index=True)
+    source_name: Mapped[str] = mapped_column(String(120), index=True)
+    source_type: Mapped[str] = mapped_column(String(60), index=True)
+    check_type: Mapped[str] = mapped_column(String(60), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="queued", index=True)
+    target_domain: Mapped[str | None] = mapped_column(String(255), index=True)
+    target_url_hash: Mapped[str | None] = mapped_column(String(128), index=True)
+    created_by: Mapped[str] = mapped_column(String(120), default="system", index=True)
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime)
+    notes: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    result_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    source: Mapped[ListingSource | None] = relationship()
+
+
+class SourceError(Base):
+    __tablename__ = "source_errors"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    source_id: Mapped[int | None] = mapped_column(ForeignKey("listing_sources.id"), index=True)
+    source_name: Mapped[str] = mapped_column(String(120), index=True)
+    source_type: Mapped[str] = mapped_column(String(60), index=True)
+    source_check_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("source_check_jobs.id"),
+        index=True,
+    )
+    ingestion_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ingestion_jobs.id"),
+        index=True,
+    )
+    severity: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="open", index=True)
+    error_code: Mapped[str] = mapped_column(String(100), index=True)
+    message: Mapped[str] = mapped_column(Text)
+    retryable: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    retry_count: Mapped[int] = mapped_column(Integer, default=0)
+    next_retry_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    last_retry_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("source_check_jobs.id"),
+        index=True,
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    resolved_by: Mapped[str | None] = mapped_column(String(120), index=True)
+    resolution_note: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    source: Mapped[ListingSource | None] = relationship()
+    source_check_job: Mapped[SourceCheckJob | None] = relationship(
+        foreign_keys=[source_check_job_id],
+    )
+    ingestion_job: Mapped[IngestionJob | None] = relationship()
+    last_retry_job: Mapped[SourceCheckJob | None] = relationship(
+        foreign_keys=[last_retry_job_id],
+    )
+
+
 class RawListing(Base):
     __tablename__ = "raw_listings"
     __table_args__ = (UniqueConstraint("source_id", "source_listing_id"),)

@@ -9,6 +9,14 @@ from domarion.schemas import (
     IngestionJobCreate,
     IngestionJobStatus,
     RawListingSummary,
+    SourceCheckJob,
+    SourceCheckJobCreate,
+    SourceCheckJobStatus,
+    SourceError,
+    SourceErrorCreate,
+    SourceErrorRetryResult,
+    SourceErrorStatus,
+    SourceErrorUpdate,
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
@@ -35,6 +43,43 @@ class IngestionAdminStore(Protocol):
         raise NotImplementedError
 
     def get_job(self, job_id: str) -> IngestionJob | None:
+        raise NotImplementedError
+
+    def create_source_check_job(self, payload: SourceCheckJobCreate) -> SourceCheckJob:
+        raise NotImplementedError
+
+    def list_source_check_jobs(
+        self,
+        source_name: str | None = None,
+        status: SourceCheckJobStatus | None = None,
+        limit: int = 100,
+    ) -> list[SourceCheckJob]:
+        raise NotImplementedError
+
+    def create_source_error(self, payload: SourceErrorCreate) -> SourceError:
+        raise NotImplementedError
+
+    def list_source_errors(
+        self,
+        source_name: str | None = None,
+        status: SourceErrorStatus | None = None,
+        severity: DataQualitySeverity | None = None,
+        limit: int = 100,
+    ) -> list[SourceError]:
+        raise NotImplementedError
+
+    def update_source_error(
+        self,
+        error_id: str,
+        payload: SourceErrorUpdate,
+    ) -> SourceError | None:
+        raise NotImplementedError
+
+    def retry_source_error(
+        self,
+        error_id: str,
+        created_by: str = "system",
+    ) -> SourceErrorRetryResult | None:
         raise NotImplementedError
 
     def create_quality_log(self, payload: DataQualityLogCreate) -> DataQualityLog:

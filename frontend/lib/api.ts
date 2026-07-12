@@ -580,6 +580,15 @@ export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";
 export type IngestionSourceHealthStatus = "healthy" | "warning" | "failing";
 export type SourceLegalStatus = "unknown" | "approved" | "review_required" | "blocked";
+export type SourceCheckType =
+  | "robots_txt"
+  | "terms_review"
+  | "connectivity"
+  | "partner_feed"
+  | "one_off_user_url"
+  | "manual_review";
+export type SourceCheckJobStatus = "queued" | "running" | "succeeded" | "failed" | "blocked";
+export type SourceErrorStatus = "open" | "retry_scheduled" | "resolved" | "ignored";
 export type ListingSort =
   | "price_asc"
   | "price_desc"
@@ -817,6 +826,90 @@ export type IngestionSourceHealth = {
   error_count: number;
   last_error_message: string | null;
   updated_at: string;
+};
+
+export type SourceCheckJob = {
+  id: string;
+  source_id: string | null;
+  source_name: string;
+  source_type: string;
+  check_type: SourceCheckType;
+  status: SourceCheckJobStatus;
+  target_domain: string | null;
+  target_url_hash: string | null;
+  created_by: string;
+  scheduled_for: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  notes: string | null;
+  metadata: Record<string, unknown>;
+  result: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SourceCheckJobPayload = {
+  source_id?: string | null;
+  source_name: string;
+  source_type?: string;
+  check_type?: SourceCheckType;
+  status?: SourceCheckJobStatus;
+  target_domain?: string | null;
+  target_url_hash?: string | null;
+  scheduled_for?: string | null;
+  notes?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type SourceError = {
+  id: string;
+  source_id: string | null;
+  source_name: string;
+  source_type: string;
+  source_check_job_id: string | null;
+  ingestion_job_id: string | null;
+  severity: DataQualitySeverity;
+  status: SourceErrorStatus;
+  error_code: string;
+  message: string;
+  retryable: boolean;
+  retry_count: number;
+  next_retry_at: string | null;
+  last_retry_job_id: string | null;
+  resolved_at: string | null;
+  resolved_by: string | null;
+  resolution_note: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SourceErrorPayload = {
+  source_id?: string | null;
+  source_name: string;
+  source_type?: string;
+  source_check_job_id?: string | null;
+  ingestion_job_id?: string | null;
+  severity?: DataQualitySeverity;
+  status?: SourceErrorStatus;
+  error_code: string;
+  message: string;
+  retryable?: boolean;
+  next_retry_at?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type SourceErrorUpdatePayload = {
+  status?: SourceErrorStatus;
+  retryable?: boolean;
+  next_retry_at?: string | null;
+  resolution_note?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type SourceErrorRetryResult = {
+  error: SourceError;
+  retry_job: SourceCheckJob;
 };
 
 export type SourceRegistryEntry = {
@@ -1325,6 +1418,48 @@ export const api = {
     request<IngestionSourceHealth[]>("/api/v1/admin/ingestion/source-health", {
       headers: ADMIN_HEADERS,
     }),
+  listAdminSourceCheckJobs: (params: {
+    source_name?: string;
+    status?: SourceCheckJobStatus;
+    limit?: number;
+  } = {}) =>
+    request<SourceCheckJob[]>(
+      `/api/v1/admin/ingestion/source-checks${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  createAdminSourceCheckJob: (payload: SourceCheckJobPayload) =>
+    request<SourceCheckJob>("/api/v1/admin/ingestion/source-checks", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  listAdminSourceErrors: (params: {
+    source_name?: string;
+    status?: SourceErrorStatus;
+    severity?: DataQualitySeverity;
+    limit?: number;
+  } = {}) =>
+    request<SourceError[]>(
+      `/api/v1/admin/ingestion/source-errors${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  createAdminSourceError: (payload: SourceErrorPayload) =>
+    request<SourceError>("/api/v1/admin/ingestion/source-errors", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  updateAdminSourceError: (errorId: string, payload: SourceErrorUpdatePayload) =>
+    request<SourceError>(`/api/v1/admin/ingestion/source-errors/${errorId}`, {
+      method: "PATCH",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  retryAdminSourceError: (errorId: string) =>
+    request<SourceErrorRetryResult>(
+      `/api/v1/admin/ingestion/source-errors/${errorId}/retry`,
+      { method: "POST", headers: ADMIN_HEADERS },
+    ),
   listAdminIngestionSources: () =>
     request<SourceRegistryEntry[]>("/api/v1/admin/ingestion/sources", {
       headers: ADMIN_HEADERS,

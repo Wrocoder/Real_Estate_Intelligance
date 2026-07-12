@@ -40,6 +40,16 @@ IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
 IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
 SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
+SourceCheckType = Literal[
+    "robots_txt",
+    "terms_review",
+    "connectivity",
+    "partner_feed",
+    "one_off_user_url",
+    "manual_review",
+]
+SourceCheckJobStatus = Literal["queued", "running", "succeeded", "failed", "blocked"]
+SourceErrorStatus = Literal["open", "retry_scheduled", "resolved", "ignored"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
@@ -375,6 +385,92 @@ class IngestionJob(BaseModel):
     finished_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class SourceCheckJobCreate(BaseModel):
+    source_id: str | None = None
+    source_name: str
+    source_type: str = "portal"
+    check_type: SourceCheckType = "manual_review"
+    status: SourceCheckJobStatus = "queued"
+    target_domain: str | None = None
+    target_url_hash: str | None = None
+    created_by: str = "system"
+    scheduled_for: datetime | None = None
+    notes: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SourceCheckJob(BaseModel):
+    id: str
+    source_id: str | None = None
+    source_name: str
+    source_type: str
+    check_type: SourceCheckType
+    status: SourceCheckJobStatus
+    target_domain: str | None = None
+    target_url_hash: str | None = None
+    created_by: str
+    scheduled_for: datetime | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    notes: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    result: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class SourceErrorCreate(BaseModel):
+    source_id: str | None = None
+    source_name: str
+    source_type: str = "portal"
+    source_check_job_id: str | None = None
+    ingestion_job_id: str | None = None
+    severity: DataQualitySeverity = "error"
+    status: SourceErrorStatus = "open"
+    error_code: str
+    message: str
+    retryable: bool = True
+    next_retry_at: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class SourceErrorUpdate(BaseModel):
+    status: SourceErrorStatus | None = None
+    retryable: bool | None = None
+    next_retry_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution_note: str | None = None
+    metadata: dict[str, Any] | None = None
+
+
+class SourceError(BaseModel):
+    id: str
+    source_id: str | None = None
+    source_name: str
+    source_type: str
+    source_check_job_id: str | None = None
+    ingestion_job_id: str | None = None
+    severity: DataQualitySeverity
+    status: SourceErrorStatus
+    error_code: str
+    message: str
+    retryable: bool
+    retry_count: int = Field(ge=0)
+    next_retry_at: datetime | None = None
+    last_retry_job_id: str | None = None
+    resolved_at: datetime | None = None
+    resolved_by: str | None = None
+    resolution_note: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class SourceErrorRetryResult(BaseModel):
+    error: SourceError
+    retry_job: SourceCheckJob
 
 
 class IngestionSourceHealth(BaseModel):

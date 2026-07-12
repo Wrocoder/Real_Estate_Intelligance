@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from domarion.db.models import DataQualityLog as DataQualityLogRow
 from domarion.db.models import IngestionJob as IngestionJobRow
 from domarion.db.models import ListingSource, RawListing
+from domarion.db.models import SourceCheckJob as SourceCheckJobRow
+from domarion.db.models import SourceError as SourceErrorRow
 from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.system_sources import system_source_payloads
@@ -18,6 +20,14 @@ from domarion.schemas import (
     IngestionJobCreate,
     IngestionJobStatus,
     RawListingSummary,
+    SourceCheckJob,
+    SourceCheckJobCreate,
+    SourceCheckJobStatus,
+    SourceError,
+    SourceErrorCreate,
+    SourceErrorRetryResult,
+    SourceErrorStatus,
+    SourceErrorUpdate,
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
@@ -99,6 +109,158 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         if row is None:
             return None
         return self._job_to_schema(row)
+
+    def create_source_check_job(self, payload: SourceCheckJobCreate) -> SourceCheckJob:
+        now = datetime.utcnow()
+        row = SourceCheckJobRow(
+            id=str(uuid4()),
+            source_id=_source_id_to_int(payload.source_id),
+            source_name=payload.source_name,
+            source_type=payload.source_type,
+            check_type=payload.check_type,
+            status=payload.status,
+            target_domain=payload.target_domain,
+            target_url_hash=payload.target_url_hash,
+            created_by=payload.created_by,
+            scheduled_for=payload.scheduled_for,
+            started_at=now if payload.status == "running" else None,
+            finished_at=now if payload.status in {"succeeded", "failed", "blocked"} else None,
+            notes=payload.notes,
+            metadata_json=payload.metadata,
+            result_json={},
+            created_at=now,
+            updated_at=now,
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._source_check_job_to_schema(row)
+
+    def list_source_check_jobs(
+        self,
+        source_name: str | None = None,
+        status: SourceCheckJobStatus | None = None,
+        limit: int = 100,
+    ) -> list[SourceCheckJob]:
+        statement = select(SourceCheckJobRow)
+        if source_name:
+            statement = statement.where(SourceCheckJobRow.source_name == source_name)
+        if status:
+            statement = statement.where(SourceCheckJobRow.status == status)
+        rows = self.session.scalars(
+            statement.order_by(SourceCheckJobRow.created_at.desc()).limit(limit)
+        ).all()
+        return [self._source_check_job_to_schema(row) for row in rows]
+
+    def create_source_error(self, payload: SourceErrorCreate) -> SourceError:
+        now = datetime.utcnow()
+        row = SourceErrorRow(
+            id=str(uuid4()),
+            source_id=_source_id_to_int(payload.source_id),
+            source_name=payload.source_name,
+            source_type=payload.source_type,
+            source_check_job_id=payload.source_check_job_id,
+            ingestion_job_id=payload.ingestion_job_id,
+            severity=payload.severity,
+            status=payload.status,
+            error_code=payload.error_code,
+            message=payload.message,
+            retryable=payload.retryable,
+            retry_count=0,
+            next_retry_at=payload.next_retry_at,
+            last_retry_job_id=None,
+            resolved_at=now if payload.status in {"resolved", "ignored"} else None,
+            resolved_by=None,
+            resolution_note=None,
+            metadata_json=payload.metadata,
+            created_at=now,
+            updated_at=now,
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._source_error_to_schema(row)
+
+    def list_source_errors(
+        self,
+        source_name: str | None = None,
+        status: SourceErrorStatus | None = None,
+        severity: DataQualitySeverity | None = None,
+        limit: int = 100,
+    ) -> list[SourceError]:
+        statement = select(SourceErrorRow)
+        if source_name:
+            statement = statement.where(SourceErrorRow.source_name == source_name)
+        if status:
+            statement = statement.where(SourceErrorRow.status == status)
+        if severity:
+            statement = statement.where(SourceErrorRow.severity == severity)
+        rows = self.session.scalars(
+            statement.order_by(SourceErrorRow.created_at.desc()).limit(limit)
+        ).all()
+        return [self._source_error_to_schema(row) for row in rows]
+
+    def update_source_error(
+        self,
+        error_id: str,
+        payload: SourceErrorUpdate,
+    ) -> SourceError | None:
+        row = self.session.get(SourceErrorRow, error_id)
+        if row is None:
+            return None
+        update_data = payload.model_dump(exclude_unset=True)
+        if "metadata" in update_data:
+            row.metadata_json = update_data.pop("metadata") or {}
+        for key, value in update_data.items():
+            setattr(row, key, value)
+        if payload.status in {"resolved", "ignored"}:
+            row.resolved_at = datetime.utcnow()
+        elif payload.status in {"open", "retry_scheduled"}:
+            row.resolved_at = None
+        row.updated_at = datetime.utcnow()
+        self.session.commit()
+        self.session.refresh(row)
+        return self._source_error_to_schema(row)
+
+    def retry_source_error(
+        self,
+        error_id: str,
+        created_by: str = "system",
+    ) -> SourceErrorRetryResult | None:
+        row = self.session.get(SourceErrorRow, error_id)
+        if row is None or not row.retryable:
+            return None
+        retry_job = self.create_source_check_job(
+            SourceCheckJobCreate(
+                source_id=str(row.source_id) if row.source_id is not None else None,
+                source_name=row.source_name,
+                source_type=row.source_type,
+                check_type="manual_review",
+                status="queued",
+                target_domain=_metadata_str(row.metadata_json, "source_domain"),
+                target_url_hash=_metadata_str(row.metadata_json, "source_url_hash"),
+                created_by=created_by,
+                notes=f"Retry for source error {row.id}: {row.error_code}",
+                metadata={
+                    "retry_for_source_error_id": row.id,
+                    "previous_error_code": row.error_code,
+                },
+            )
+        )
+        row = self.session.get(SourceErrorRow, error_id)
+        if row is None:
+            return None
+        row.status = "retry_scheduled"
+        row.retry_count += 1
+        row.last_retry_job_id = retry_job.id
+        row.next_retry_at = retry_job.scheduled_for
+        row.updated_at = datetime.utcnow()
+        self.session.commit()
+        self.session.refresh(row)
+        return SourceErrorRetryResult(
+            error=self._source_error_to_schema(row),
+            retry_job=retry_job,
+        )
 
     def create_quality_log(self, payload: DataQualityLogCreate) -> DataQualityLog:
         row = DataQualityLogRow(
@@ -249,6 +411,53 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         )
 
     @staticmethod
+    def _source_check_job_to_schema(row: SourceCheckJobRow) -> SourceCheckJob:
+        return SourceCheckJob(
+            id=row.id,
+            source_id=str(row.source_id) if row.source_id is not None else None,
+            source_name=row.source_name,
+            source_type=row.source_type,
+            check_type=row.check_type,
+            status=row.status,
+            target_domain=row.target_domain,
+            target_url_hash=row.target_url_hash,
+            created_by=row.created_by,
+            scheduled_for=row.scheduled_for,
+            started_at=row.started_at,
+            finished_at=row.finished_at,
+            notes=row.notes,
+            metadata=row.metadata_json,
+            result=row.result_json,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _source_error_to_schema(row: SourceErrorRow) -> SourceError:
+        return SourceError(
+            id=row.id,
+            source_id=str(row.source_id) if row.source_id is not None else None,
+            source_name=row.source_name,
+            source_type=row.source_type,
+            source_check_job_id=row.source_check_job_id,
+            ingestion_job_id=row.ingestion_job_id,
+            severity=row.severity,
+            status=row.status,
+            error_code=row.error_code,
+            message=row.message,
+            retryable=row.retryable,
+            retry_count=row.retry_count,
+            next_retry_at=row.next_retry_at,
+            last_retry_job_id=row.last_retry_job_id,
+            resolved_at=row.resolved_at,
+            resolved_by=row.resolved_by,
+            resolution_note=row.resolution_note,
+            metadata=row.metadata_json,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
+
+    @staticmethod
     def _raw_listing_to_schema(raw: RawListing, source: ListingSource) -> RawListingSummary:
         return RawListingSummary(
             id=raw.id,
@@ -310,3 +519,14 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             created = True
         if created:
             self.session.commit()
+
+
+def _source_id_to_int(source_id: str | None) -> int | None:
+    if source_id is None or not source_id.isdigit():
+        return None
+    return int(source_id)
+
+
+def _metadata_str(metadata: dict[str, object], key: str) -> str | None:
+    value = metadata.get(key)
+    return value if isinstance(value, str) and value else None

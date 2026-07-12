@@ -78,7 +78,7 @@
 - [x] Добавить справочники `locations`, `districts`, `municipalities`.
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
-- [ ] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
+- [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [ ] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
 ## 4. Listings и Search API
@@ -295,7 +295,7 @@
 - [x] Добавить admin review queue для mortgage/legal/renovation partner referrals.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [ ] Добавить moderation workflow для data deletion requests.
-- [ ] Добавить просмотр source errors и retry actions.
+- [x] Добавить просмотр source errors и retry actions.
 - [ ] Добавить admin audit log UI.
 
 ## 13. AI Assistant
@@ -439,6 +439,7 @@
 - [x] Commit 42: location reference tables and API.
 - [x] Commit 43: infrastructure reference tables and API.
 - [x] Commit 44: AI insight persistence for generated reports.
+- [x] Commit 45: source check jobs and source error retry queue.
 
 ## Current Sprint
 
@@ -478,6 +479,7 @@
 - [x] Добавить справочники `municipalities`, `districts`, `location_references` с public API.
 - [x] Добавить infrastructure reference tables/API для transport, education, amenities и industrial zones.
 - [x] Добавить `ai_insights` table/store/API и сохранение report summaries/object explanations для generated reports.
+- [x] Добавить `source_check_jobs`/`source_errors` для legal source checks, sanitized URL import failures и retry queue.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -506,3 +508,4 @@
 - [x] Сделать Commit 42 и push.
 - [x] Сделать Commit 43 и push.
 - [x] Сделать Commit 44 и push.
+- [x] Сделать Commit 45 и push.

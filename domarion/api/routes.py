@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import io
 import json
 import tempfile
@@ -136,6 +137,14 @@ from domarion.schemas import (
     ReportTemplateDescriptor,
     SchoolReference,
     ScoringBacktestResult,
+    SourceCheckJob,
+    SourceCheckJobCreate,
+    SourceCheckJobStatus,
+    SourceError,
+    SourceErrorCreate,
+    SourceErrorRetryResult,
+    SourceErrorStatus,
+    SourceErrorUpdate,
     SourceReferencePreview,
     SourceReferencePreviewRequest,
     SourceRegistryEntry,
@@ -705,6 +714,7 @@ def _record_user_submitted_reference_import(
     account: CurrentAccount,
     result: SourceUrlImportResult,
 ) -> None:
+    metadata = _user_submitted_reference_import_metadata(result)
     job = admin_store.create_job(
         IngestionJobCreate(
             source_name=USER_SUBMITTED_REFERENCE_SOURCE_NAME,
@@ -712,10 +722,25 @@ def _record_user_submitted_reference_import(
             status="running",
             created_by=account.user.id,
             notes="One-off user-submitted URL import; private source URL omitted.",
-            metadata=_user_submitted_reference_import_metadata(result),
+            metadata=metadata,
         )
     )
-    if result.status in {"failed", "partial"}:
+    source_check_job = admin_store.create_source_check_job(
+        SourceCheckJobCreate(
+            source_name=USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+            source_type=USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+            check_type="one_off_user_url",
+            status=_source_check_status_for_user_submitted_import(result),
+            target_domain=result.reference_preview.source_domain,
+            target_url_hash=_private_source_url_hash(
+                result.reference_preview.source_url_private,
+            ),
+            created_by=account.user.id,
+            notes="One-off user-submitted URL check; private source URL omitted.",
+            metadata=metadata,
+        )
+    )
+    if result.status in {"failed", "partial", "unsupported"}:
         admin_store.create_quality_log(
             DataQualityLogCreate(
                 job_id=job.id,
@@ -727,12 +752,25 @@ def _record_user_submitted_reference_import(
                 payload=_user_submitted_reference_quality_payload(result),
             )
         )
+        admin_store.create_source_error(
+            SourceErrorCreate(
+                source_name=USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+                source_type=USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+                source_check_job_id=source_check_job.id,
+                ingestion_job_id=job.id,
+                severity="error" if result.status in {"failed", "unsupported"} else "warning",
+                error_code=f"user_submitted_reference_{result.status}",
+                message=_user_submitted_reference_import_message(result),
+                retryable=result.status != "unsupported",
+                metadata=_user_submitted_reference_source_error_payload(result),
+            )
+        )
 
     admin_store.finish_job(
         job.id,
         ImportResult(rows_seen=1),
-        status="failed" if result.status == "failed" else "succeeded",
-        errors_count=1 if result.status == "failed" else 0,
+        status="failed" if result.status in {"failed", "unsupported"} else "succeeded",
+        errors_count=1 if result.status in {"failed", "unsupported"} else 0,
     )
 
 
@@ -763,10 +801,36 @@ def _user_submitted_reference_quality_payload(
     return payload
 
 
+def _user_submitted_reference_source_error_payload(
+    result: SourceUrlImportResult,
+) -> dict[str, object]:
+    payload = _user_submitted_reference_quality_payload(result)
+    payload["source_url_hash"] = _private_source_url_hash(
+        result.reference_preview.source_url_private,
+    )
+    return payload
+
+
 def _user_submitted_reference_import_message(result: SourceUrlImportResult) -> str:
     if result.status == "failed":
         return "User-submitted URL import failed; private source URL omitted from logs."
+    if result.status == "unsupported":
+        return "User-submitted URL import is unsupported; private source URL omitted from logs."
     return "User-submitted URL import extracted only partial fields; manual confirmation required."
+
+
+def _source_check_status_for_user_submitted_import(
+    result: SourceUrlImportResult,
+) -> SourceCheckJobStatus:
+    if result.status == "failed":
+        return "failed"
+    if result.status == "unsupported":
+        return "blocked"
+    return "succeeded"
+
+
+def _private_source_url_hash(source_url: str) -> str:
+    return hashlib.sha256(source_url.encode("utf-8")).hexdigest()
 
 
 @router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])
@@ -789,6 +853,111 @@ def list_admin_ingestion_source_health(
     jobs = admin_store.list_jobs(limit=limit)
     logs = admin_store.list_quality_logs(limit=500)
     return _build_source_health(jobs, logs)
+
+
+@router.get("/admin/ingestion/source-checks", response_model=list[SourceCheckJob])
+def list_admin_source_check_jobs(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    source_name: Annotated[str | None, Query()] = None,
+    status_filter: Annotated[SourceCheckJobStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[SourceCheckJob]:
+    _ensure_admin(account)
+    return admin_store.list_source_check_jobs(
+        source_name=source_name,
+        status=status_filter,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/admin/ingestion/source-checks",
+    response_model=SourceCheckJob,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_source_check_job(
+    payload: SourceCheckJobCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceCheckJob:
+    _ensure_admin(account)
+    payload = payload.model_copy(
+        update={
+            "source_name": payload.source_name.strip(),
+            "created_by": account.user.id,
+        }
+    )
+    if not payload.source_name:
+        raise HTTPException(status_code=400, detail="Source name is required")
+    return admin_store.create_source_check_job(payload)
+
+
+@router.get("/admin/ingestion/source-errors", response_model=list[SourceError])
+def list_admin_source_errors(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    source_name: Annotated[str | None, Query()] = None,
+    status_filter: Annotated[SourceErrorStatus | None, Query(alias="status")] = None,
+    severity: Annotated[DataQualitySeverity | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[SourceError]:
+    _ensure_admin(account)
+    return admin_store.list_source_errors(
+        source_name=source_name,
+        status=status_filter,
+        severity=severity,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/admin/ingestion/source-errors",
+    response_model=SourceError,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_source_error(
+    payload: SourceErrorCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceError:
+    _ensure_admin(account)
+    payload = payload.model_copy(update={"source_name": payload.source_name.strip()})
+    if not payload.source_name:
+        raise HTTPException(status_code=400, detail="Source name is required")
+    return admin_store.create_source_error(payload)
+
+
+@router.patch("/admin/ingestion/source-errors/{error_id}", response_model=SourceError)
+def update_admin_source_error(
+    error_id: str,
+    payload: SourceErrorUpdate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceError:
+    _ensure_admin(account)
+    if payload.status in {"resolved", "ignored"} and payload.resolved_by is None:
+        payload = payload.model_copy(update={"resolved_by": account.user.id})
+    source_error = admin_store.update_source_error(error_id, payload)
+    if source_error is None:
+        raise HTTPException(status_code=404, detail="Source error not found")
+    return source_error
+
+
+@router.post(
+    "/admin/ingestion/source-errors/{error_id}/retry",
+    response_model=SourceErrorRetryResult,
+)
+def retry_admin_source_error(
+    error_id: str,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> SourceErrorRetryResult:
+    _ensure_admin(account)
+    result = admin_store.retry_source_error(error_id, created_by=account.user.id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Retryable source error not found")
+    return result
 
 
 @router.get("/admin/ingestion/sources", response_model=list[SourceRegistryEntry])

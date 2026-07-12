@@ -54,6 +54,11 @@ def test_verify_postgres_staging_script() -> None:
         "report_summary",
     ]
     assert payload["checks"]["ai_insights"]["index_count"] == 7
+    assert payload["checks"]["source_errors"]["source_check_count"] == 2
+    assert payload["checks"]["source_errors"]["source_error_count"] == 1
+    assert payload["checks"]["source_errors"]["retry_count"] == 1
+    assert payload["checks"]["source_errors"]["resolved_status"] == "resolved"
+    assert payload["checks"]["source_errors"]["index_count"] == 8
     assert (
         payload["checks"]["infrastructure"]["spatial"]["infrastructure_spatial_index_count"]
         == 5

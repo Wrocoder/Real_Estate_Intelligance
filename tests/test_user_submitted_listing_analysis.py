@@ -284,6 +284,16 @@ def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
         headers=admin_headers,
         params={"job_id": reference_job["id"]},
     ).json()
+    source_errors = client.get(
+        "/api/v1/admin/ingestion/source-errors",
+        headers=admin_headers,
+        params={"source_name": USER_SUBMITTED_REFERENCE_SOURCE_NAME},
+    ).json()
+    source_checks = client.get(
+        "/api/v1/admin/ingestion/source-checks",
+        headers=admin_headers,
+        params={"source_name": USER_SUBMITTED_REFERENCE_SOURCE_NAME},
+    ).json()
     health = client.get("/api/v1/admin/ingestion/source-health", headers=admin_headers).json()
 
     assert reference_job["source_name"] == USER_SUBMITTED_REFERENCE_SOURCE_NAME
@@ -303,6 +313,16 @@ def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
         "rooms",
     ]
     assert source_url not in str(logs[0])
+    assert source_errors[0]["error_code"] == "user_submitted_reference_failed"
+    assert source_errors[0]["ingestion_job_id"] == reference_job["id"]
+    assert source_errors[0]["source_check_job_id"] == source_checks[0]["id"]
+    assert source_errors[0]["metadata"]["source_domain"] == "olx.pl"
+    assert source_errors[0]["metadata"]["source_url_hash"]
+    assert source_url not in str(source_errors[0])
+    assert source_checks[0]["check_type"] == "one_off_user_url"
+    assert source_checks[0]["target_domain"] == "olx.pl"
+    assert source_checks[0]["target_url_hash"] == source_errors[0]["metadata"]["source_url_hash"]
+    assert source_url not in str(source_checks[0])
     reference_health = next(
         item for item in health if item["source_type"] == USER_SUBMITTED_REFERENCE_SOURCE_TYPE
     )

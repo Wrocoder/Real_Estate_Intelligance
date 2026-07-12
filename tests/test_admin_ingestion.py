@@ -36,6 +36,14 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert health_response.status_code == 403
     assert health_response.json()["detail"] == "Admin role required"
 
+    source_checks_response = client.get("/api/v1/admin/ingestion/source-checks")
+    assert source_checks_response.status_code == 403
+    assert source_checks_response.json()["detail"] == "Admin role required"
+
+    source_errors_response = client.get("/api/v1/admin/ingestion/source-errors")
+    assert source_errors_response.status_code == 403
+    assert source_errors_response.json()["detail"] == "Admin role required"
+
     sources_response = client.get("/api/v1/admin/ingestion/sources")
     assert sources_response.status_code == 403
     assert sources_response.json()["detail"] == "Admin role required"
@@ -77,6 +85,14 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
         "/api/v1/admin/ingestion/source-health",
         headers=ADMIN_HEADERS,
     ).json()
+    source_checks = client.get(
+        "/api/v1/admin/ingestion/source-checks",
+        headers=ADMIN_HEADERS,
+    ).json()
+    source_errors = client.get(
+        "/api/v1/admin/ingestion/source-errors",
+        headers=ADMIN_HEADERS,
+    ).json()
 
     assert len(jobs) == 1
     assert jobs[0]["status"] == "succeeded"
@@ -89,6 +105,11 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     assert source_health[0]["source_name"] == "Demo Partner"
     assert source_health[0]["health_status"] == "warning"
     assert source_health[0]["warning_count"] == 1
+    assert source_checks[0]["source_name"] == "Demo Partner"
+    assert source_checks[0]["check_type"] == "partner_feed"
+    assert source_errors[0]["source_name"] == "Demo Partner"
+    assert source_errors[0]["status"] == "open"
+    assert source_errors[0]["retryable"] is True
 
 
 def test_admin_can_manage_source_registry() -> None:
@@ -238,6 +259,68 @@ def test_admin_can_create_manual_ingestion_job() -> None:
 
     jobs = client.get("/api/v1/admin/ingestion/jobs", headers=ADMIN_HEADERS).json()
     assert [job["source_name"] for job in jobs][:2] == ["Manual Import", "Demo Partner"]
+
+
+def test_admin_can_manage_source_errors_and_retry_actions() -> None:
+    source_check = client.post(
+        "/api/v1/admin/ingestion/source-checks",
+        headers=ADMIN_HEADERS,
+        json={
+            "source_name": "Agency Retry Feed",
+            "source_type": "partner_csv",
+            "check_type": "connectivity",
+            "target_domain": "agency.example",
+            "metadata": {"legal_status": "review_required"},
+        },
+    ).json()
+    created_error_response = client.post(
+        "/api/v1/admin/ingestion/source-errors",
+        headers=ADMIN_HEADERS,
+        json={
+            "source_name": "Agency Retry Feed",
+            "source_type": "partner_csv",
+            "source_check_job_id": source_check["id"],
+            "severity": "error",
+            "error_code": "partner_feed_timeout",
+            "message": "Partner feed timed out.",
+            "retryable": True,
+            "metadata": {
+                "source_domain": "agency.example",
+                "private_source_url_omitted": True,
+            },
+        },
+    )
+    created_error = created_error_response.json()
+
+    retry_response = client.post(
+        f"/api/v1/admin/ingestion/source-errors/{created_error['id']}/retry",
+        headers=ADMIN_HEADERS,
+    )
+    retry_payload = retry_response.json()
+    filtered_errors = client.get(
+        "/api/v1/admin/ingestion/source-errors",
+        headers=ADMIN_HEADERS,
+        params={"source_name": "Agency Retry Feed", "status": "retry_scheduled"},
+    ).json()
+    resolved = client.patch(
+        f"/api/v1/admin/ingestion/source-errors/{created_error['id']}",
+        headers=ADMIN_HEADERS,
+        json={"status": "resolved", "resolution_note": "Partner endpoint restored."},
+    ).json()
+
+    assert created_error_response.status_code == 201
+    assert created_error["status"] == "open"
+    assert source_check["created_by"] == "admin-test"
+    assert retry_response.status_code == 200
+    assert retry_payload["error"]["status"] == "retry_scheduled"
+    assert retry_payload["error"]["retry_count"] == 1
+    assert retry_payload["retry_job"]["status"] == "queued"
+    assert retry_payload["retry_job"]["created_by"] == "admin-test"
+    assert retry_payload["retry_job"]["target_domain"] == "agency.example"
+    assert filtered_errors[0]["last_retry_job_id"] == retry_payload["retry_job"]["id"]
+    assert resolved["status"] == "resolved"
+    assert resolved["resolved_by"] == "admin-test"
+    assert resolved["resolution_note"] == "Partner endpoint restored."
 
 
 def test_admin_can_filter_quality_logs_by_job() -> None:

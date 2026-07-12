@@ -45,6 +45,11 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/admin/user-submitted-listing-drafts/prune-expired",
             "post",
         ): "UserSubmittedListingDraftPruneResult",
+        ("/api/v1/admin/ingestion/source-errors/{error_id}", "patch"): "SourceError",
+        (
+            "/api/v1/admin/ingestion/source-errors/{error_id}/retry",
+            "post",
+        ): "SourceErrorRetryResult",
         ("/api/v1/partner-referrals/{referral_id}", "get"): "PartnerReferral",
         ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
@@ -55,6 +60,16 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
     for (path, method), schema_name in expected_response_refs.items():
         operation = openapi["paths"][path][method]
         schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+
+        assert schema["$ref"] == f"#/components/schemas/{schema_name}"
+
+    expected_created_refs = {
+        ("/api/v1/admin/ingestion/source-checks", "post"): "SourceCheckJob",
+        ("/api/v1/admin/ingestion/source-errors", "post"): "SourceError",
+    }
+    for (path, method), schema_name in expected_created_refs.items():
+        operation = openapi["paths"][path][method]
+        schema = operation["responses"]["201"]["content"]["application/json"]["schema"]
 
         assert schema["$ref"] == f"#/components/schemas/{schema_name}"
 
@@ -90,6 +105,17 @@ def test_openapi_exposes_source_registry_contract() -> None:
     assert create_schema["$ref"] == "#/components/schemas/SourceRegistryEntry"
     assert update_schema["$ref"] == "#/components/schemas/SourceRegistryEntry"
     assert request_schema["$ref"] == "#/components/schemas/SourceRegistryEntryCreate"
+
+    checks_schema = paths["/api/v1/admin/ingestion/source-checks"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+    errors_schema = paths["/api/v1/admin/ingestion/source-errors"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+    assert checks_schema["type"] == "array"
+    assert checks_schema["items"]["$ref"] == "#/components/schemas/SourceCheckJob"
+    assert errors_schema["type"] == "array"
+    assert errors_schema["items"]["$ref"] == "#/components/schemas/SourceError"
 
 
 def test_openapi_exposes_recent_request_and_response_models() -> None:
@@ -133,6 +159,12 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ScoringBacktestResult",
         "SourceReferencePreview",
         "SourceReferencePreviewRequest",
+        "SourceCheckJob",
+        "SourceCheckJobCreate",
+        "SourceError",
+        "SourceErrorCreate",
+        "SourceErrorRetryResult",
+        "SourceErrorUpdate",
         "SourceUrlImportFields",
         "SourceUrlImportRequest",
         "SourceUrlImportResult",
