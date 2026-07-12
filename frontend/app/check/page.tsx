@@ -41,6 +41,8 @@ type CheckFormState = {
   floor: string;
   building_floors: string;
   building_year: string;
+  lat: string;
+  lon: string;
   confirm_private_analysis: boolean;
 };
 
@@ -57,6 +59,8 @@ const DEFAULT_FORM: CheckFormState = {
   floor: "3",
   building_floors: "6",
   building_year: "2014",
+  lat: "",
+  lon: "",
   confirm_private_analysis: true,
 };
 
@@ -97,19 +101,7 @@ export default function CheckListingPage() {
   }
 
   async function previewReference() {
-    setError("");
-    setReferenceStatus("Проверка ссылки...");
-    try {
-      const preview = await api.previewUserSubmittedListingReference(form.source_url);
-      setReferencePreview(preview);
-      setReferenceStatus(`${preview.provider_label}: ссылка принята как private reference`);
-      if (preview.suggested_title && !form.title.trim()) {
-        setForm((current) => ({ ...current, title: preview.suggested_title ?? "" }));
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setReferenceStatus("Ошибка ссылки");
-    }
+    await importFromUrl();
   }
 
   async function importFromUrl() {
@@ -123,6 +115,9 @@ export default function CheckListingPage() {
       applyImportedFields(payload.fields);
       setReferenceStatus(`${payload.reference_preview.provider_label}: private reference`);
       setUrlImportStatus(urlImportStatusLabel(payload));
+      setStatus("Поля обновлены из ссылки");
+      setReportStatus("Отчет не создан");
+      setSaveStatus("Не сохранен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setReferenceStatus("Ошибка ссылки");
@@ -175,8 +170,8 @@ export default function CheckListingPage() {
     setForm((current) => ({
       ...current,
       title: fields.title ?? current.title,
-      address: fields.address ?? current.address,
-      city: fields.city ?? current.city,
+      address: normalizedImportedAddress(fields, current.address),
+      city: normalizeCity(fields.city, fields.district, current.city),
       district: normalizeDistrict(fields.district) ?? current.district,
       market_type: fields.market_type ?? current.market_type,
       price: fields.price ? String(fields.price) : current.price,
@@ -187,6 +182,8 @@ export default function CheckListingPage() {
         ? String(fields.building_floors)
         : current.building_floors,
       building_year: fields.building_year ? String(fields.building_year) : current.building_year,
+      lat: fields.lat !== null && fields.lat !== undefined ? String(fields.lat) : current.lat,
+      lon: fields.lon !== null && fields.lon !== undefined ? String(fields.lon) : current.lon,
     }));
   }
 
@@ -254,7 +251,7 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void previewReference()}
             >
-              <Link2 size={16} /> Принять ссылку
+              <Link2 size={16} /> Принять и заполнить
             </button>
             <button
               className="button"
@@ -262,7 +259,7 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void importFromUrl()}
             >
-              <RefreshCw size={16} /> Автозаполнить
+              <RefreshCw size={16} /> Повторить импорт
             </button>
             <button
               className="button primary"
@@ -516,6 +513,24 @@ export default function CheckListingPage() {
                     <strong>{result.draft_expires_at ? dateLabel(result.draft_expires_at) : "—"}</strong>
                   </li>
                 </ul>
+                <div className="button-row" style={{ marginTop: 12 }}>
+                  <button
+                    className="button primary"
+                    disabled={!form.confirm_private_analysis}
+                    type="button"
+                    onClick={() => void createReport()}
+                  >
+                    <FileText size={16} /> Сгенерировать отчет
+                  </button>
+                  <button
+                    className="button"
+                    disabled={!result.draft_id}
+                    type="button"
+                    onClick={() => void saveReportToHistory()}
+                  >
+                    <Save size={16} /> Сохранить в историю
+                  </button>
+                </div>
                 <ul className="section-list" style={{ marginTop: 12 }}>
                   {result.warnings.map((warning) => (
                     <li key={warning}>{warning}</li>
@@ -661,6 +676,8 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
     floor: toOptionalNumber(form.floor),
     building_floors: toOptionalNumber(form.building_floors),
     building_year: toOptionalNumber(form.building_year),
+    lat: toOptionalNumber(form.lat),
+    lon: toOptionalNumber(form.lon),
     confirm_private_analysis: form.confirm_private_analysis,
     save_private_draft: true,
     retention_days: 30,
@@ -721,6 +738,26 @@ function normalizeDistrict(value: string | null) {
     DISTRICTS.find((district) => normalized.includes(district.toLocaleLowerCase("pl-PL"))) ??
     null
   );
+}
+
+function normalizeCity(value: string | null, district: string | null, currentCity: string) {
+  if (!value) return currentCity;
+  const normalized = value.toLocaleLowerCase("pl-PL");
+  if (normalized.includes("wrocław") || normalized.includes("wroclaw")) {
+    return "Wrocław";
+  }
+  if (normalizeDistrict(district)) {
+    return currentCity;
+  }
+  return currentCity;
+}
+
+function normalizedImportedAddress(fields: SourceUrlImportFields, currentAddress: string) {
+  if (!fields.address) return currentAddress;
+  if (!fields.city || fields.address.toLocaleLowerCase("pl-PL").includes(fields.city.toLocaleLowerCase("pl-PL"))) {
+    return fields.address;
+  }
+  return `${fields.address}, ${fields.city}`;
 }
 
 function urlImportStatusLabel(result: SourceUrlImportResult) {

@@ -443,6 +443,8 @@ export type SourceUrlImportFields = {
   floor: number | null;
   building_floors: number | null;
   building_year: number | null;
+  lat: number | null;
+  lon: number | null;
 };
 
 export type SourceUrlImportResult = {

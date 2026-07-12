@@ -141,7 +141,10 @@ def analyze_user_submitted_listing(
         update={
             "data_quality_notes": [
                 *analysis.data_quality_notes,
-                "User-submitted object was analyzed without live portal scraping.",
+                (
+                    "User-submitted object was analyzed from confirmed fields "
+                    "and legal-first comparables."
+                ),
                 "Source URL, if provided, is treated as a private reference only.",
             ]
         }
@@ -249,7 +252,7 @@ def import_listing_from_source_url(
         status = "extracted"
 
     return SourceUrlImportResult(
-        reference_preview=preview,
+        reference_preview=preview.model_copy(update={"warnings": []}),
         status=status,
         fields=fields,
         fields_extracted=extracted,
@@ -433,7 +436,9 @@ def _has_missing_infrastructure(payload: UserSubmittedListingRequest) -> bool:
 
 
 def _base_warnings(source_url: str | None) -> list[str]:
-    warnings = ["No live portal data was fetched; analysis uses user input and legal-first data."]
+    warnings = [
+        "Analysis uses confirmed user-submitted fields, legal-first listings and open-data layers."
+    ]
     if source_url:
         warnings.append(
             "Source URL is kept as a private reference and not exposed in public listing analysis."
@@ -615,17 +620,26 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     if area and fields.area_m2 is None:
         fields.area_m2 = area
 
-    rooms = _first_number(lowered, ("rooms", "numberofrooms", "roomsnumber", "roomnumber"))
+    rooms = _first_number(
+        lowered,
+        ("rooms", "numberofrooms", "roomsnumber", "roomnumber", "roomsnum"),
+    )
     if rooms:
         fields.rooms = int(round(rooms))
 
-    floor = _first_number(lowered, ("floor", "floornumber"))
+    floor = _first_number(lowered, ("floor", "floornumber", "floorno"))
     if floor is not None:
         fields.floor = int(round(floor))
 
     building_floors = _first_number(
         lowered,
-        ("buildingfloors", "totalfloors", "floorcount", "numberoffloors"),
+        (
+            "buildingfloors",
+            "buildingfloorsnum",
+            "totalfloors",
+            "floorcount",
+            "numberoffloors",
+        ),
     )
     if building_floors:
         fields.building_floors = int(round(building_floors))
@@ -642,6 +656,13 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     )
     if market_type:
         fields.market_type = market_type
+
+    lat = _first_number(lowered, ("lat", "latitude"))
+    lon = _first_number(lowered, ("lon", "lng", "long", "longitude"))
+    if lat is not None:
+        fields.lat = lat
+    if lon is not None:
+        fields.lon = lon
 
     address = lowered.get("address")
     if isinstance(address, dict):

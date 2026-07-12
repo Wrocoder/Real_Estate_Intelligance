@@ -53,7 +53,7 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert payload["draft_expires_at"]
     assert payload["analysis"]["comparables"]
     assert "legal-first" in payload["comparables_basis"]
-    assert any("No live portal data was fetched" in item for item in payload["warnings"])
+    assert any("confirmed user-submitted fields" in item for item in payload["warnings"])
 
 
 def test_user_submitted_listing_reference_preview_for_otodom_url() -> None:
@@ -106,7 +106,13 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
           "floorSize": {"value": 58.4, "unitCode": "MTK"},
           "numberOfRooms": 3,
           "floorNumber": 3,
+          "building_floors_num": "6",
           "marketType": "secondary",
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 51.1117,
+            "longitude": 16.9653
+          },
           "address": {
             "streetAddress": "ul. Rogowska 10",
             "addressLocality": "Wrocław",
@@ -153,11 +159,16 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
     assert payload["fields"]["area_m2"] == 58.4
     assert payload["fields"]["rooms"] == 3
     assert payload["fields"]["floor"] == 3
+    assert payload["fields"]["building_floors"] == 6
     assert payload["fields"]["building_year"] == 2014
+    assert payload["fields"]["lat"] == 51.1117
+    assert payload["fields"]["lon"] == 16.9653
     assert "price" in payload["fields_extracted"]
+    assert "building_floors" in payload["fields_extracted"]
     assert "description" not in payload["fields"]
     assert "photos" not in payload["fields"]
     assert payload["fetch_status_code"] == 200
+    assert payload["reference_preview"]["warnings"] == []
     assert any("Photos, contacts and full description" in item for item in payload["warnings"])
 
 
@@ -193,6 +204,8 @@ def test_user_submitted_listing_import_from_url_rejects_unsupported_provider(
         "floor": None,
         "building_floors": None,
         "building_year": None,
+        "lat": None,
+        "lon": None,
     }
     assert payload["fields_extracted"] == []
 
