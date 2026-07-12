@@ -195,7 +195,7 @@
 - [x] Добавить full object analysis report product.
 - [x] Добавить bundles: package of 5 reports.
 - [ ] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
-- [ ] Добавить export reports в CSV/JSON для realtor/investor workflows.
+- [x] Добавить export reports в CSV/JSON для realtor/investor workflows.
 
 ## 8. Users, Auth и Payments
 
@@ -421,6 +421,7 @@
 - [x] Commit 26: paid area report product.
 - [x] Commit 27: distinct paid full object analysis artifact.
 - [x] Commit 28: report bundle credits package.
+- [x] Commit 29: CSV/JSON report history exports.
 
 ## Current Sprint
 
@@ -444,6 +445,7 @@
 - [x] Добавить paid area report product через `area:<area_id>` order reference.
 - [x] Добавить distinct paid artifact для `full_object_analysis`.
 - [x] Добавить `report_bundle_5` paid package и списание credits сверх monthly limit.
+- [x] Добавить owner-scoped CSV/JSON export saved reports для планов с `can_export`.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -457,3 +459,4 @@
 - [x] Сделать Commit 26 и push.
 - [x] Сделать Commit 27 и push.
 - [x] Сделать Commit 28 и push.
+- [x] Сделать Commit 29 и push.

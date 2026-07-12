@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Mail, RefreshCw } from "lucide-react";
+import { Download, ExternalLink, FileText, Mail, RefreshCw } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  reportExportUrl,
   reportContentUrl,
+  type AccountSummary,
   type GeneratedReportListItem,
   type ReportBranding,
 } from "@/lib/api";
 
 export default function ReportsPage() {
   const [reports, setReports] = useState<GeneratedReportListItem[]>([]);
+  const [account, setAccount] = useState<AccountSummary | null>(null);
   const [listingId, setListingId] = useState("wr-001");
   const [audience, setAudience] = useState<"buyer" | "realtor" | "investor">("buyer");
   const [branding, setBranding] = useState<ReportBranding>({
@@ -29,7 +32,8 @@ export default function ReportsPage() {
   async function load() {
     setError("");
     try {
-      const data = await api.listReports();
+      const [accountData, data] = await Promise.all([api.getMe(), api.listReports()]);
+      setAccount(accountData);
       setReports(data);
       setStatus(`Отчетов: ${data.length}`);
     } catch (caught) {
@@ -60,9 +64,23 @@ export default function ReportsPage() {
           <h1>Отчеты</h1>
           <p>Сохраненные HTML/JSON отчеты по объектам для клиента, риелтора и инвестора.</p>
         </div>
-        <button className="button" type="button" onClick={() => void load()}>
-          <RefreshCw size={16} /> Обновить
-        </button>
+        <div className="button-row">
+          {account?.limits.can_export ? (
+            <>
+              <a className="button" href={reportExportUrl("csv")}>
+                <Download size={16} /> CSV
+              </a>
+              <a className="button" href={reportExportUrl("json")}>
+                <Download size={16} /> JSON
+              </a>
+            </>
+          ) : (
+            <span className="muted">Export доступен на Realtor/Agency планах</span>
+          )}
+          <button className="button" type="button" onClick={() => void load()}>
+            <RefreshCw size={16} /> Обновить
+          </button>
+        </div>
       </header>
 
       <section className="panel">

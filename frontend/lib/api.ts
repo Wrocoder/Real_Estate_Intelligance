@@ -1079,6 +1079,10 @@ export function reportContentUrl(reportId: string) {
   return `${API_BASE_URL}/api/v1/reports/${reportId}/content`;
 }
 
+export function reportExportUrl(format: "csv" | "json") {
+  return `${API_BASE_URL}/api/v1/reports/export${toQueryString({ format })}`;
+}
+
 export function objectReportUrl(listingId: string) {
   return `${API_BASE_URL}/api/v1/reports/object/${listingId}.html`;
 }

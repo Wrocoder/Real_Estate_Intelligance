@@ -1,3 +1,6 @@
+import csv
+import io
+
 from fastapi.testclient import TestClient
 
 from domarion.core import get_settings
@@ -51,6 +54,73 @@ def test_get_saved_report_and_content() -> None:
     assert content_response.status_code == 200
     assert content_response.headers["content-type"].startswith("text/html")
     assert "Инвестиционная оценка" in content_response.text
+
+
+def test_export_reports_json_and_csv_for_export_capable_plan() -> None:
+    memory_report_store.clear()
+    headers = {
+        "X-Domarion-User-Id": "report-export-owner",
+        "X-Domarion-Role": "realtor",
+        "X-Domarion-Plan": "realtor",
+    }
+    other_headers = {"X-Domarion-User-Id": "report-export-other"}
+    client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-001", "audience": "realtor", "report_format": "html"},
+    )
+    client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={"listing_id": "wr-002", "audience": "investor", "report_format": "json"},
+    )
+    client.post(
+        "/api/v1/reports/object/generate",
+        headers=other_headers,
+        json={"listing_id": "wr-003", "audience": "buyer", "report_format": "html"},
+    )
+
+    json_response = client.get(
+        "/api/v1/reports/export",
+        headers=headers,
+        params={"format": "json", "audience": "realtor"},
+    )
+    csv_response = client.get(
+        "/api/v1/reports/export",
+        headers=headers,
+        params={"format": "csv"},
+    )
+    csv_rows = list(csv.DictReader(io.StringIO(csv_response.text)))
+
+    assert json_response.status_code == 200
+    assert json_response.headers["content-disposition"] == (
+        'attachment; filename="domarion-reports.json"'
+    )
+    assert len(json_response.json()) == 1
+    assert json_response.json()[0]["owner_id"] == "report-export-owner"
+    assert json_response.json()[0]["audience"] == "realtor"
+    assert json_response.json()[0]["report_template_code"] == "realtor_client_report_v1"
+    assert "content" not in json_response.json()[0]
+
+    assert csv_response.status_code == 200
+    assert csv_response.headers["content-disposition"] == (
+        'attachment; filename="domarion-reports.csv"'
+    )
+    assert len(csv_rows) == 2
+    assert {row["owner_id"] for row in csv_rows} == {"report-export-owner"}
+    assert {"id", "listing_id", "report_template_code", "content_url"} <= set(csv_rows[0])
+
+
+def test_export_reports_requires_export_capability() -> None:
+    memory_report_store.clear()
+    response = client.get(
+        "/api/v1/reports/export",
+        headers={"X-Domarion-User-Id": "free-export-user"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"]["resource"] == "exports"
+    assert response.json()["detail"]["required_capability"] == "can_export"
 
 
 def test_email_saved_report_dry_run() -> None:

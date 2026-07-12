@@ -689,6 +689,21 @@ Paid fulfillment не расходует подписочный monthly report l
 Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.id)/events"
 ```
 
+Экспортировать saved reports можно на планах с `can_export=true` (`realtor`, `agency`,
+`enterprise`). Export owner-scoped и не включает полный HTML/JSON content, только summary,
+content URL и report metadata:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/reports/export?format=json" `
+  -Headers @{"X-Domarion-User-Id"="agent-1";"X-Domarion-Plan"="realtor"}
+```
+
+```powershell
+Invoke-WebRequest "http://127.0.0.1:8000/api/v1/reports/export?format=csv" `
+  -Headers @{"X-Domarion-User-Id"="agent-1";"X-Domarion-Plan"="realtor"} `
+  -OutFile domarion-reports.csv
+```
+
 Webhook endpoints:
 
 - `POST /api/v1/payment-webhooks/stripe` проверяет `Stripe-Signature` через `STRIPE_WEBHOOK_SECRET`.

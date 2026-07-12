@@ -1,3 +1,6 @@
+import csv
+import io
+import json
 import tempfile
 from pathlib import Path
 from typing import Annotated
@@ -1501,6 +1504,39 @@ def list_generated_reports(
     return report_store.list_reports(limit=limit, owner_id=account.user.id)
 
 
+@router.get("/reports/export")
+def export_generated_reports(
+    report_store: ReportStoreDep,
+    account: CurrentAccountDep,
+    export_format: Annotated[str, Query(alias="format", pattern="^(csv|json)$")] = "csv",
+    audience: Annotated[ReportAudience | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=10_000)] = 1_000,
+) -> Response:
+    _ensure_export_allowed(account)
+    reports = report_store.list_reports_with_metadata(limit=limit, owner_id=account.user.id)
+    if audience is not None:
+        reports = [report for report in reports if report.audience == audience]
+
+    rows = [_report_export_row(report) for report in reports]
+    if export_format == "json":
+        content = json.dumps(rows, ensure_ascii=False, indent=2)
+        return Response(
+            content=content,
+            media_type="application/json",
+            headers={"Content-Disposition": 'attachment; filename="domarion-reports.json"'},
+        )
+
+    output = io.StringIO()
+    writer = csv.DictWriter(output, fieldnames=REPORT_EXPORT_COLUMNS, extrasaction="ignore")
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="domarion-reports.csv"'},
+    )
+
+
 @router.post("/reports/{report_id}/email", response_model=ReportEmailResult)
 def email_generated_report(
     report_id: str,
@@ -1880,6 +1916,77 @@ def _ensure_alert_limit(account: CurrentAccount, user_store: UserStore) -> None:
                 "limit": account.limits.max_alerts,
             },
         )
+
+
+def _ensure_export_allowed(account: CurrentAccount) -> None:
+    if account.limits.can_export:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "exports",
+            "plan": account.subscription.plan,
+            "required_capability": "can_export",
+        },
+    )
+
+
+REPORT_EXPORT_COLUMNS = [
+    "id",
+    "owner_id",
+    "listing_id",
+    "audience",
+    "report_format",
+    "content_type",
+    "title",
+    "summary",
+    "created_at",
+    "content_url",
+    "report_product_code",
+    "report_template_code",
+    "report_template_name",
+    "area_id",
+    "city",
+    "district",
+    "investment_score",
+    "risk_score",
+    "negotiation_score",
+    "liquidity_index",
+    "buyer_market_index",
+    "seller_market_index",
+    "overheated_index",
+    "paid_order_id",
+    "user_submitted_draft_id",
+    "source_domain",
+    "report_credit_source_order_id",
+]
+
+
+def _report_export_row(report: GeneratedReport) -> dict[str, object]:
+    metadata = report.report_metadata
+    row = {
+        "id": report.id,
+        "owner_id": report.owner_id,
+        "listing_id": report.listing_id,
+        "audience": report.audience,
+        "report_format": report.report_format,
+        "content_type": report.content_type,
+        "title": report.title,
+        "summary": report.summary,
+        "created_at": report.created_at.isoformat(),
+        "content_url": f"/api/v1/reports/{report.id}/content",
+    }
+    for key in REPORT_EXPORT_COLUMNS:
+        if key not in row and key in metadata:
+            row[key] = _report_export_value(metadata[key])
+    return {column: row.get(column, "") for column in REPORT_EXPORT_COLUMNS}
+
+
+def _report_export_value(value: object) -> object:
+    if isinstance(value, str | int | float | bool) or value is None:
+        return value if value is not None else ""
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
 def _ensure_report_limit(
