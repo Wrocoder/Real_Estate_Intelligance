@@ -143,7 +143,7 @@
 - [ ] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [ ] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [ ] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
-- [ ] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
+- [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
 - [ ] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
 - [ ] Добавить source-specific retention и delete-request handling.
 
@@ -430,6 +430,7 @@
 - [x] Commit 33: URL-assisted private listing check.
 - [x] Commit 34: one-off URL import for private listing checks.
 - [x] Commit 35: human-readable score labels.
+- [x] Commit 36: user-submitted reference source telemetry.
 
 ## Current Sprint
 
@@ -460,6 +461,7 @@
 - [x] Добавить URL-assisted private listing check: reference preview + быстрый отчет на `/check`.
 - [x] Добавить one-off URL import для автозаполнения `/check` по user-submitted Otodom/OLX URL.
 - [x] Добавить человекочитаемые score labels в API/UI/report metadata.
+- [x] Добавить `user_submitted_reference` source type и sanitized telemetry для private URL import.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -480,3 +482,4 @@
 - [x] Сделать Commit 33 и push.
 - [x] Сделать Commit 34 и push.
 - [x] Сделать Commit 35 и push.
+- [x] Сделать Commit 36 и push.

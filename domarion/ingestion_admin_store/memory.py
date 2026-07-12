@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
+from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
@@ -218,6 +219,24 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             created_at=now,
             updated_at=now,
         )
+        for payload in system_source_payloads():
+            self._sources[f"system-{payload.source_type}"] = SourceRegistryEntry(
+                id=f"system-{payload.source_type}",
+                name=payload.name,
+                source_type=payload.source_type,
+                base_url=payload.base_url,
+                legal_status=payload.legal_status,
+                refresh_cadence=payload.refresh_cadence,
+                owner=payload.owner,
+                ingestion_method=payload.ingestion_method,
+                allowed_use=payload.allowed_use,
+                robots_txt_url=payload.robots_txt_url,
+                terms_url=payload.terms_url,
+                notes=payload.notes,
+                is_active=payload.is_active,
+                created_at=now,
+                updated_at=now,
+            )
 
         job = IngestionJob(
             id="demo-ingestion-job-1",

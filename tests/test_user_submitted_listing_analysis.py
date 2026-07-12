@@ -1,5 +1,10 @@
 from fastapi.testclient import TestClient
 
+from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
+from domarion.ingestion_admin_store.system_sources import (
+    USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+    USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+)
 from domarion.main import app
 from domarion.report_store.factory import memory_report_store
 from domarion.services import user_submitted_listings as user_submitted_listing_service
@@ -9,6 +14,7 @@ client = TestClient(app)
 
 
 def setup_function() -> None:
+    memory_ingestion_admin_store.reset_demo()
     memory_user_submitted_listing_store.clear()
     memory_report_store.clear()
 
@@ -241,6 +247,8 @@ def test_user_submitted_listing_import_from_url_ignores_invalid_extracted_values
 def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
     monkeypatch,
 ) -> None:
+    source_url = "https://www.olx.pl/d/oferta/demo-IDabc987.html"
+
     def fail_fetch(source_url: str, timeout_seconds: float):
         raise user_submitted_listing_service.SourceUrlImportError("Portal blocked ordinary fetch.")
 
@@ -252,7 +260,7 @@ def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
 
     response = client.post(
         "/api/v1/user-submitted-listings/import-from-url",
-        json={"source_url": "https://www.olx.pl/d/oferta/demo-IDabc987.html"},
+        json={"source_url": source_url},
     )
     payload = response.json()
 
@@ -261,6 +269,44 @@ def test_user_submitted_listing_import_from_url_returns_failed_on_fetch_error(
     assert payload["reference_preview"]["provider"] == "olx"
     assert payload["fields_extracted"] == []
     assert any("Portal blocked ordinary fetch" in item for item in payload["warnings"])
+
+    admin_headers = {
+        "X-Domarion-User-Id": "draft-admin",
+        "X-Domarion-Role": "admin",
+        "X-Domarion-Plan": "enterprise",
+    }
+    jobs = client.get("/api/v1/admin/ingestion/jobs", headers=admin_headers).json()
+    reference_job = next(
+        job for job in jobs if job["source_type"] == USER_SUBMITTED_REFERENCE_SOURCE_TYPE
+    )
+    logs = client.get(
+        "/api/v1/admin/data-quality/logs",
+        headers=admin_headers,
+        params={"job_id": reference_job["id"]},
+    ).json()
+    health = client.get("/api/v1/admin/ingestion/source-health", headers=admin_headers).json()
+
+    assert reference_job["source_name"] == USER_SUBMITTED_REFERENCE_SOURCE_NAME
+    assert reference_job["status"] == "failed"
+    assert reference_job["rows_seen"] == 1
+    assert reference_job["metadata"]["provider"] == "olx"
+    assert reference_job["metadata"]["source_domain"] == "olx.pl"
+    assert reference_job["metadata"]["private_source_url_omitted"] is True
+    assert source_url not in str(reference_job)
+    assert logs[0]["code"] == "user_submitted_reference_failed"
+    assert logs[0]["source_listing_id"] is None
+    assert logs[0]["payload"]["missing_required_fields"] == [
+        "address",
+        "district",
+        "price",
+        "area_m2",
+        "rooms",
+    ]
+    assert source_url not in str(logs[0])
+    reference_health = next(
+        item for item in health if item["source_type"] == USER_SUBMITTED_REFERENCE_SOURCE_TYPE
+    )
+    assert reference_health["health_status"] == "failing"
 
 
 def test_user_submitted_listing_analysis_requires_private_confirmation() -> None:

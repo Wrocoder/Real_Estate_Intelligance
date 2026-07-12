@@ -9,6 +9,7 @@ from domarion.db.models import IngestionJob as IngestionJobRow
 from domarion.db.models import ListingSource, RawListing
 from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
+from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
@@ -160,6 +161,7 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         return self._raw_listing_to_schema(raw, source)
 
     def list_sources(self) -> list[SourceRegistryEntry]:
+        self._ensure_system_sources()
         rows = self.session.scalars(
             select(ListingSource).order_by(ListingSource.created_at.desc(), ListingSource.name)
         ).all()
@@ -277,3 +279,34 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+
+    def _ensure_system_sources(self) -> None:
+        created = False
+        for payload in system_source_payloads():
+            existing = self.session.scalar(
+                select(ListingSource).where(ListingSource.name == payload.name)
+            )
+            if existing is not None:
+                continue
+            now = datetime.utcnow()
+            self.session.add(
+                ListingSource(
+                    name=payload.name,
+                    source_type=payload.source_type,
+                    base_url=payload.base_url,
+                    legal_status=payload.legal_status,
+                    refresh_cadence=payload.refresh_cadence,
+                    owner=payload.owner,
+                    ingestion_method=payload.ingestion_method,
+                    allowed_use_json=payload.allowed_use,
+                    robots_txt_url=payload.robots_txt_url,
+                    terms_url=payload.terms_url,
+                    notes=payload.notes,
+                    is_active=payload.is_active,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            created = True
+        if created:
+            self.session.commit()

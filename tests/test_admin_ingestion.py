@@ -5,6 +5,10 @@ from fastapi.testclient import TestClient
 
 from domarion.auth_store.factory import memory_auth_store
 from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
+from domarion.ingestion_admin_store.system_sources import (
+    USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+    USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+)
 from domarion.main import app
 
 client = TestClient(app)
@@ -81,11 +85,23 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
 def test_admin_can_manage_source_registry() -> None:
     sources = client.get("/api/v1/admin/ingestion/sources", headers=ADMIN_HEADERS).json()
 
-    assert {source["name"] for source in sources} == {"Demo Partner", "wroclaw.pl WPT"}
+    assert {source["name"] for source in sources} == {
+        "Demo Partner",
+        "wroclaw.pl WPT",
+        USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+    }
     demo_source = next(source for source in sources if source["name"] == "Demo Partner")
     assert demo_source["legal_status"] == "approved"
     assert demo_source["ingestion_method"] == "admin_csv_upload"
     assert "price_history" in demo_source["allowed_use"]
+    user_reference_source = next(
+        source for source in sources if source["name"] == USER_SUBMITTED_REFERENCE_SOURCE_NAME
+    )
+    assert user_reference_source["source_type"] == USER_SUBMITTED_REFERENCE_SOURCE_TYPE
+    assert user_reference_source["legal_status"] == "approved"
+    assert user_reference_source["refresh_cadence"] == "one_off_user_action"
+    assert "private_analysis" in user_reference_source["allowed_use"]
+    assert "No bulk crawling" in user_reference_source["notes"]
 
     create_response = client.post(
         "/api/v1/admin/ingestion/sources",

@@ -18,6 +18,7 @@
 - URL не индексируется в SEO, не показывается другим пользователям, не экспортируется в публичные отчеты.
 - URL не используется для scheduled crawling, bulk indexing или мониторинга портала без отдельного legal approval.
 - URL-assisted parsing разрешен только как one-off user-submitted analysis: обычный fetch без anti-bot обхода, без scheduled crawling и bulk indexing.
+- One-off import пишет ingestion telemetry как `user_submitted_reference`, но admin job/log metadata хранит только домен, провайдера, статус и извлеченные поля, без полного private URL.
 - Не извлекать и не хранить фото, контактные данные, имена частных продавцов, телефоны, email или private notes.
 - Пользователь подтверждает, что он имеет право использовать переданные параметры/ссылку для личного анализа.
 
@@ -79,6 +80,7 @@
 - saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content;
 - paid report order lifecycle для draft references через `listing_id="draft:<draft_id>"`.
 - one-off URL import для Otodom/OLX: минимальные поля объекта, status `extracted/partial/failed/unsupported`, fallback на ручное подтверждение.
+- source registry entry `user_submitted_reference` и sanitized ingestion telemetry для monitoring import failures без раскрытия full private URL.
 
 Следующие шаги: draft-to-paid checkout UX для live PSP, source-specific legal review
 и demand-validation landing page.

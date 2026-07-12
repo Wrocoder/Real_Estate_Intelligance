@@ -37,6 +37,10 @@ from domarion.ingestion.planned_investments import (
 )
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
+from domarion.ingestion_admin_store.system_sources import (
+    USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+    USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+)
 from domarion.partner_referral_store.base import PartnerReferralStore
 from domarion.partner_referral_store.factory import get_partner_referral_store
 from domarion.report_order_store.base import ReportOrderStore
@@ -356,11 +360,15 @@ def preview_user_submitted_listing_reference(
 )
 def import_user_submitted_listing_from_url(
     payload: SourceUrlImportRequest,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
 ) -> SourceUrlImportResult:
     try:
-        return import_listing_from_source_url(payload)
+        result = import_listing_from_source_url(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    _record_user_submitted_reference_import(admin_store, account, result)
+    return result
 
 
 @router.post(
@@ -532,6 +540,75 @@ def _analyze_and_optionally_save_user_submitted_draft(
             "retention_note": retention_note,
         }
     )
+
+
+def _record_user_submitted_reference_import(
+    admin_store: IngestionAdminStore,
+    account: CurrentAccount,
+    result: SourceUrlImportResult,
+) -> None:
+    job = admin_store.create_job(
+        IngestionJobCreate(
+            source_name=USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+            source_type=USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
+            status="running",
+            created_by=account.user.id,
+            notes="One-off user-submitted URL import; private source URL omitted.",
+            metadata=_user_submitted_reference_import_metadata(result),
+        )
+    )
+    if result.status in {"failed", "partial"}:
+        admin_store.create_quality_log(
+            DataQualityLogCreate(
+                job_id=job.id,
+                source_name=USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+                source_listing_id=None,
+                severity="error" if result.status == "failed" else "warning",
+                code=f"user_submitted_reference_{result.status}",
+                message=_user_submitted_reference_import_message(result),
+                payload=_user_submitted_reference_quality_payload(result),
+            )
+        )
+
+    admin_store.finish_job(
+        job.id,
+        ImportResult(rows_seen=1),
+        status="failed" if result.status == "failed" else "succeeded",
+        errors_count=1 if result.status == "failed" else 0,
+    )
+
+
+def _user_submitted_reference_import_metadata(
+    result: SourceUrlImportResult,
+) -> dict[str, object]:
+    preview = result.reference_preview
+    return {
+        "import_status": result.status,
+        "provider": preview.provider,
+        "source_domain": preview.source_domain,
+        "fields_extracted": result.fields_extracted,
+        "fetch_status_code": result.fetch_status_code,
+        "extraction_source": result.extraction_source,
+        "private_source_url_omitted": True,
+    }
+
+
+def _user_submitted_reference_quality_payload(
+    result: SourceUrlImportResult,
+) -> dict[str, object]:
+    payload = _user_submitted_reference_import_metadata(result)
+    payload["missing_required_fields"] = [
+        field
+        for field in result.reference_preview.manual_fields_required
+        if field not in result.fields_extracted
+    ]
+    return payload
+
+
+def _user_submitted_reference_import_message(result: SourceUrlImportResult) -> str:
+    if result.status == "failed":
+        return "User-submitted URL import failed; private source URL omitted from logs."
+    return "User-submitted URL import extracted only partial fields; manual confirmation required."
 
 
 @router.get("/admin/ingestion/jobs", response_model=list[IngestionJob])
