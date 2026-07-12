@@ -19,11 +19,11 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
 
     score_cards = "".join(
         [
-            _score_card("Investment", scores.investment_score),
-            _score_card("Risk", scores.risk_score),
-            _score_card("Negotiation", scores.negotiation_score),
-            _score_card("Liquidity", scores.liquidity_score),
-            _score_card("Rental", scores.rental_potential_score),
+            _score_card("Investment", scores.investment_score, scores.decision_label),
+            _score_card("Risk", scores.risk_score, scores.risk_label),
+            _score_card("Negotiation", scores.negotiation_score, scores.negotiation_label),
+            _score_card("Liquidity", scores.liquidity_score, scores.liquidity_label),
+            _score_card("Rental", scores.rental_potential_score, scores.rental_potential_label),
         ]
     )
     sections = "\n".join(
@@ -415,9 +415,15 @@ def _render_section(title: str, items: list[str]) -> str:
     return f"<section><h2>{escape(title)}</h2><ul>{rows}</ul></section>"
 
 
-def _score_card(label: str, value: int) -> str:
+def _score_card(label: str, value: int, helper: str) -> str:
     css_class = "score risk" if label == "Risk" else "score"
-    return f'<div class="{css_class}"><span>{escape(label)}</span><strong>{value}</strong></div>'
+    return (
+        f'<div class="{css_class}">'
+        f"<span>{escape(label)}</span>"
+        f"<strong>{value}</strong>"
+        f'<span class="muted">{escape(_label_text(helper))}</span>'
+        "</div>"
+    )
 
 
 def _metric(label: str, value: str) -> str:
@@ -447,6 +453,32 @@ def _render_branding(branding) -> str:
         return ""
     content = "<br>".join(rows)
     return f'<p class="muted">{content}<br>Powered by Domarion Analytics</p>'
+
+
+def _label_text(value: str) -> str:
+    return {
+        "strong_candidate": "Strong candidate",
+        "good_option": "Good option",
+        "fair_option": "Fair option",
+        "overpriced": "Overpriced",
+        "risky": "Risky",
+        "weak_fit": "Weak fit",
+        "below_fair": "Below fair",
+        "fair": "Fair",
+        "above_fair": "Above fair",
+        "low_risk": "Low risk",
+        "moderate_risk": "Moderate risk",
+        "elevated_risk": "Elevated risk",
+        "high_risk": "High risk",
+        "weak_negotiation": "Weak negotiation",
+        "some_negotiation": "Some negotiation",
+        "negotiable": "Negotiable",
+        "strong_negotiation": "Strong negotiation",
+        "weak": "Weak",
+        "moderate": "Moderate",
+        "good": "Good",
+        "strong": "Strong",
+    }.get(value, value)
 
 
 def _money(value: int) -> str:

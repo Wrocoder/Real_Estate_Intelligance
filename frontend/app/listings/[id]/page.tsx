@@ -9,6 +9,7 @@ import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { api, objectReportUrl, type ListingAnalysis } from "@/lib/api";
 import { money, percent } from "@/lib/format";
+import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 
 export default function ListingDetailPage() {
   const params = useParams<{ id: string }>();
@@ -48,6 +49,7 @@ export default function ListingDetailPage() {
   if (!analysis) return <LoadingBlock label="Загрузка аналитики объекта" />;
 
   const { listing, scores, area_statistics: areaStats } = analysis;
+  const verdictTone = decisionTone(scores);
 
   return (
     <>
@@ -76,6 +78,10 @@ export default function ListingDetailPage() {
 
       <section className="metric-grid">
         <div className="metric">
+          <span>Вердикт</span>
+          <strong>{scoreLabel(scores.decision_label)}</strong>
+        </div>
+        <div className="metric">
           <span>Цена</span>
           <strong>{money(listing.price)}</strong>
         </div>
@@ -94,6 +100,10 @@ export default function ListingDetailPage() {
         <div className="metric">
           <span>Отклонение от fair mid</span>
           <strong>{percent(scores.price_delta_to_fair_mid_pct)}</strong>
+        </div>
+        <div className="metric">
+          <span>Price label</span>
+          <strong>{scoreLabel(scores.price_label)}</strong>
         </div>
       </section>
 
@@ -166,7 +176,12 @@ export default function ListingDetailPage() {
         <aside className="panel">
           <div className="panel-header">
             <h2>Скоринг</h2>
-            <span className="score-pill">DQ {listing.data_quality_score}</span>
+            <div className="button-row">
+              <span className={`status-pill ${verdictTone}`}>
+                {scoreLabel(scores.decision_label)}
+              </span>
+              <span className="score-pill">DQ {listing.data_quality_score}</span>
+            </div>
           </div>
           <div className="panel-body">
             <ScoreBars scores={scores} />

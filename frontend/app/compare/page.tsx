@@ -7,6 +7,7 @@ import { BarChart3, RefreshCw } from "lucide-react";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { api, type ListingAnalysis } from "@/lib/api";
 import { money, percent } from "@/lib/format";
+import { scoreLabel } from "@/lib/scoreLabels";
 
 export default function ComparePage() {
   const [available, setAvailable] = useState<ListingAnalysis[]>([]);
@@ -132,7 +133,8 @@ export default function ComparePage() {
                   <strong>{analysis.listing.title}</strong>
                   <small>
                     {analysis.listing.district} · {money(analysis.listing.price)} · I{" "}
-                    {analysis.scores.investment_score} / R {analysis.scores.risk_score}
+                    {analysis.scores.investment_score} / R {analysis.scores.risk_score} ·{" "}
+                    {scoreLabel(analysis.scores.decision_label)}
                   </small>
                 </span>
               </label>
@@ -206,24 +208,44 @@ function comparisonRows(items: ListingAnalysis[]) {
       values: items.map((item) => `${item.listing.days_on_market}`),
     },
     {
+      label: "Вердикт",
+      values: items.map((item) => scoreLabel(item.scores.decision_label)),
+    },
+    {
+      label: "Цена",
+      values: items.map((item) => scoreLabel(item.scores.price_label)),
+    },
+    {
       label: "Investment Score",
       values: items.map((item) => `${item.scores.investment_score}/100`),
     },
     {
       label: "Risk Score",
-      values: items.map((item) => `${item.scores.risk_score}/100`),
+      values: items.map(
+        (item) => `${item.scores.risk_score}/100 · ${scoreLabel(item.scores.risk_label)}`,
+      ),
     },
     {
       label: "Negotiation Score",
-      values: items.map((item) => `${item.scores.negotiation_score}/100`),
+      values: items.map(
+        (item) =>
+          `${item.scores.negotiation_score}/100 · ${scoreLabel(item.scores.negotiation_label)}`,
+      ),
     },
     {
       label: "Liquidity",
-      values: items.map((item) => `${item.scores.liquidity_score}/100`),
+      values: items.map(
+        (item) => `${item.scores.liquidity_score}/100 · ${scoreLabel(item.scores.liquidity_label)}`,
+      ),
     },
     {
       label: "Rental Potential",
-      values: items.map((item) => `${item.scores.rental_potential_score}/100`),
+      values: items.map(
+        (item) =>
+          `${item.scores.rental_potential_score}/100 · ${scoreLabel(
+            item.scores.rental_potential_label,
+          )}`,
+      ),
     },
     {
       label: "Fair price",

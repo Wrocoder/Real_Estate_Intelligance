@@ -41,6 +41,23 @@ SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 SourceReferenceProvider = Literal["otodom", "olx", "other"]
 SourceUrlImportStatus = Literal["extracted", "partial", "failed", "unsupported"]
+ScoreDecisionLabel = Literal[
+    "strong_candidate",
+    "good_option",
+    "fair_option",
+    "overpriced",
+    "risky",
+    "weak_fit",
+]
+ScorePriceLabel = Literal["below_fair", "fair", "above_fair", "overpriced"]
+ScoreRiskLabel = Literal["low_risk", "moderate_risk", "elevated_risk", "high_risk"]
+ScoreNegotiationLabel = Literal[
+    "weak_negotiation",
+    "some_negotiation",
+    "negotiable",
+    "strong_negotiation",
+]
+ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
@@ -365,6 +382,12 @@ class ScoreBreakdown(BaseModel):
 class PropertyScores(BaseModel):
     formula_version: str
     weights_profile: str
+    decision_label: ScoreDecisionLabel
+    price_label: ScorePriceLabel
+    risk_label: ScoreRiskLabel
+    negotiation_label: ScoreNegotiationLabel
+    liquidity_label: ScorePotentialLabel
+    rental_potential_label: ScorePotentialLabel
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
@@ -378,6 +401,117 @@ class PropertyScores(BaseModel):
     breakdown: ScoreBreakdown
     reasons: list[str]
     warnings: list[str]
+
+    @model_validator(mode="before")
+    @classmethod
+    def fill_missing_score_labels(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        next_data = dict(data)
+        investment_score = _int_label_input(next_data.get("investment_score"))
+        risk_score = _int_label_input(next_data.get("risk_score"))
+        negotiation_score = _int_label_input(next_data.get("negotiation_score"))
+        liquidity_score = _int_label_input(next_data.get("liquidity_score"))
+        rental_potential_score = _int_label_input(next_data.get("rental_potential_score"))
+        price_delta = _float_label_input(next_data.get("price_delta_to_fair_mid_pct"))
+
+        next_data.setdefault(
+            "decision_label",
+            _score_decision_label(
+                investment_score,
+                risk_score,
+                price_delta,
+                negotiation_score,
+            ),
+        )
+        next_data.setdefault("price_label", _score_price_label(price_delta))
+        next_data.setdefault("risk_label", _score_risk_label(risk_score))
+        next_data.setdefault("negotiation_label", _score_negotiation_label(negotiation_score))
+        next_data.setdefault("liquidity_label", _score_potential_label(liquidity_score))
+        next_data.setdefault(
+            "rental_potential_label",
+            _score_potential_label(rental_potential_score),
+        )
+        return next_data
+
+
+def _int_label_input(value: object) -> int:
+    if isinstance(value, bool):
+        return 0
+    try:
+        return int(value) if value is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def _float_label_input(value: object) -> float:
+    if isinstance(value, bool):
+        return 0
+    try:
+        return float(value) if value is not None else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def _score_decision_label(
+    investment_score: int,
+    risk_score: int,
+    price_delta_to_fair_mid_pct: float,
+    negotiation_score: int,
+) -> ScoreDecisionLabel:
+    if risk_score >= 70:
+        return "risky"
+    if price_delta_to_fair_mid_pct >= 12 and investment_score < 65:
+        return "overpriced"
+    if investment_score >= 75 and risk_score <= 35 and price_delta_to_fair_mid_pct <= 5:
+        return "strong_candidate"
+    if investment_score >= 62 and risk_score <= 50:
+        return "good_option"
+    if negotiation_score >= 70 and price_delta_to_fair_mid_pct > 5:
+        return "overpriced"
+    if investment_score < 45 or risk_score >= 60:
+        return "weak_fit"
+    return "fair_option"
+
+
+def _score_price_label(price_delta_to_fair_mid_pct: float) -> ScorePriceLabel:
+    if price_delta_to_fair_mid_pct <= -6:
+        return "below_fair"
+    if price_delta_to_fair_mid_pct >= 12:
+        return "overpriced"
+    if price_delta_to_fair_mid_pct >= 5:
+        return "above_fair"
+    return "fair"
+
+
+def _score_risk_label(risk_score: int) -> ScoreRiskLabel:
+    if risk_score >= 70:
+        return "high_risk"
+    if risk_score >= 50:
+        return "elevated_risk"
+    if risk_score >= 30:
+        return "moderate_risk"
+    return "low_risk"
+
+
+def _score_negotiation_label(negotiation_score: int) -> ScoreNegotiationLabel:
+    if negotiation_score >= 75:
+        return "strong_negotiation"
+    if negotiation_score >= 55:
+        return "negotiable"
+    if negotiation_score >= 35:
+        return "some_negotiation"
+    return "weak_negotiation"
+
+
+def _score_potential_label(score: int) -> ScorePotentialLabel:
+    if score >= 75:
+        return "strong"
+    if score >= 60:
+        return "good"
+    if score >= 40:
+        return "moderate"
+    return "weak"
 
 
 class ScoringBacktestItem(BaseModel):

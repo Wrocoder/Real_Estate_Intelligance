@@ -5,6 +5,7 @@ import { BarChart3, FileText, Heart, MapPin } from "lucide-react";
 
 import type { ListingAnalysis } from "@/lib/api";
 import { money } from "@/lib/format";
+import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 
 type Props = {
   analysis: ListingAnalysis;
@@ -22,6 +23,7 @@ export function ListingCard({
   onToggleCompare,
 }: Props) {
   const { listing, scores } = analysis;
+  const verdictTone = decisionTone(scores);
 
   return (
     <article className="listing-card">
@@ -40,6 +42,9 @@ export function ListingCard({
           <span>{listing.days_on_market} дней</span>
         </div>
         <div className="meta-row">
+          <span className={`status-pill ${verdictTone}`}>
+            {scoreLabel(scores.decision_label)}
+          </span>
           <span className="score-pill">
             <BarChart3 size={14} /> I {scores.investment_score}
           </span>

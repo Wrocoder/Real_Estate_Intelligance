@@ -19,7 +19,8 @@ def build_object_report(
         price_text = "цена близка к расчетному fair price"
 
     summary = (
-        f"{listing.title}: {price_text}. Investment Score {scores.investment_score}/100, "
+        f"{listing.title}: {_label_text(scores.decision_label)}; {price_text}. "
+        f"Investment Score {scores.investment_score}/100, "
         f"Risk Score {scores.risk_score}/100, Negotiation Score {scores.negotiation_score}/100."
     )
 
@@ -42,3 +43,14 @@ def _has_branding(branding: ReportBranding | None) -> bool:
     if branding is None:
         return False
     return any(value for value in branding.model_dump().values())
+
+
+def _label_text(value: str) -> str:
+    return {
+        "strong_candidate": "сильный кандидат",
+        "good_option": "хороший вариант",
+        "fair_option": "нормальный вариант",
+        "overpriced": "похоже дорого",
+        "risky": "высокий риск",
+        "weak_fit": "слабое совпадение",
+    }.get(value, value)

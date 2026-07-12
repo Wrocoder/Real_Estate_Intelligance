@@ -174,6 +174,22 @@ export type PriceHistoryPoint = {
 export type PropertyScores = {
   formula_version: string;
   weights_profile: string;
+  decision_label:
+    | "strong_candidate"
+    | "good_option"
+    | "fair_option"
+    | "overpriced"
+    | "risky"
+    | "weak_fit";
+  price_label: "below_fair" | "fair" | "above_fair" | "overpriced";
+  risk_label: "low_risk" | "moderate_risk" | "elevated_risk" | "high_risk";
+  negotiation_label:
+    | "weak_negotiation"
+    | "some_negotiation"
+    | "negotiable"
+    | "strong_negotiation";
+  liquidity_label: "weak" | "moderate" | "good" | "strong";
+  rental_potential_label: "weak" | "moderate" | "good" | "strong";
   investment_score: number;
   risk_score: number;
   negotiation_score: number;

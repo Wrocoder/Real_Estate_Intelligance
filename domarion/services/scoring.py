@@ -239,6 +239,17 @@ def calculate_scores(
     return PropertyScores(
         formula_version=SCORING_FORMULA_VERSION,
         weights_profile=scoring_weights_profile(weights),
+        decision_label=_decision_label(
+            investment_score,
+            risk_score,
+            price_delta_to_fair_mid_pct,
+            negotiation_score,
+        ),
+        price_label=_price_label(price_delta_to_fair_mid_pct),
+        risk_label=_risk_label(risk_score),
+        negotiation_label=_negotiation_label(negotiation_score),
+        liquidity_label=_potential_label(liquidity),
+        rental_potential_label=_potential_label(rental_potential),
         investment_score=investment_score,
         risk_score=risk_score,
         negotiation_score=negotiation_score,
@@ -338,6 +349,67 @@ def _fair_price_confidence_score(
         + min(area_statistics.active_listings, 80) * 0.25
         + (10 if area_statistics.median_price_per_m2 > 0 else 0)
     )
+
+
+def _decision_label(
+    investment_score: int,
+    risk_score: int,
+    price_delta_to_fair_mid_pct: float,
+    negotiation_score: int,
+) -> str:
+    if risk_score >= 70:
+        return "risky"
+    if price_delta_to_fair_mid_pct >= 12 and investment_score < 65:
+        return "overpriced"
+    if investment_score >= 75 and risk_score <= 35 and price_delta_to_fair_mid_pct <= 5:
+        return "strong_candidate"
+    if investment_score >= 62 and risk_score <= 50:
+        return "good_option"
+    if negotiation_score >= 70 and price_delta_to_fair_mid_pct > 5:
+        return "overpriced"
+    if investment_score < 45 or risk_score >= 60:
+        return "weak_fit"
+    return "fair_option"
+
+
+def _price_label(price_delta_to_fair_mid_pct: float) -> str:
+    if price_delta_to_fair_mid_pct <= -6:
+        return "below_fair"
+    if price_delta_to_fair_mid_pct >= 12:
+        return "overpriced"
+    if price_delta_to_fair_mid_pct >= 5:
+        return "above_fair"
+    return "fair"
+
+
+def _risk_label(risk_score: int) -> str:
+    if risk_score >= 70:
+        return "high_risk"
+    if risk_score >= 50:
+        return "elevated_risk"
+    if risk_score >= 30:
+        return "moderate_risk"
+    return "low_risk"
+
+
+def _negotiation_label(negotiation_score: int) -> str:
+    if negotiation_score >= 75:
+        return "strong_negotiation"
+    if negotiation_score >= 55:
+        return "negotiable"
+    if negotiation_score >= 35:
+        return "some_negotiation"
+    return "weak_negotiation"
+
+
+def _potential_label(score: int) -> str:
+    if score >= 75:
+        return "strong"
+    if score >= 60:
+        return "good"
+    if score >= 40:
+        return "moderate"
+    return "weak"
 
 
 def _override_dataclass(instance, payload: Any, section: str):

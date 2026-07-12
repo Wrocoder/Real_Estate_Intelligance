@@ -161,7 +161,7 @@
 - [x] Добавить backtesting на historical snapshots.
 - [x] Добавить area market snapshots job.
 - [x] Добавить confidence score для fair price estimate.
-- [ ] Добавить человекочитаемые score labels: good option, overpriced, negotiable, risky, investment potential.
+- [x] Добавить человекочитаемые score labels: good option, overpriced, negotiable, risky, investment potential.
 - [x] Добавить market dashboards: active/new/removed listings, exposure time, price/rooms/area distributions.
 - [ ] Добавить district/city comparison analytics.
 - [x] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
@@ -429,6 +429,7 @@
 - [x] Commit 32: daily email alert batch delivery.
 - [x] Commit 33: URL-assisted private listing check.
 - [x] Commit 34: one-off URL import for private listing checks.
+- [x] Commit 35: human-readable score labels.
 
 ## Current Sprint
 
@@ -458,6 +459,7 @@
 - [x] Добавить daily email alert batch delivery для cron/admin запуска.
 - [x] Добавить URL-assisted private listing check: reference preview + быстрый отчет на `/check`.
 - [x] Добавить one-off URL import для автозаполнения `/check` по user-submitted Otodom/OLX URL.
+- [x] Добавить человекочитаемые score labels в API/UI/report metadata.
 - [ ] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
@@ -477,3 +479,4 @@
 - [x] Сделать Commit 32 и push.
 - [x] Сделать Commit 33 и push.
 - [x] Сделать Commit 34 и push.
+- [x] Сделать Commit 35 и push.

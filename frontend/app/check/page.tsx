@@ -26,6 +26,7 @@ import {
   type UserSubmittedListingRequest,
 } from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
+import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 
 type CheckFormState = {
   title: string;
@@ -190,6 +191,7 @@ export default function CheckListingPage() {
   }
 
   const analysis = result?.analysis ?? null;
+  const verdictTone = analysis ? decisionTone(analysis.scores) : "info";
 
   return (
     <>
@@ -326,6 +328,10 @@ export default function CheckListingPage() {
 
       <section className="metric-grid">
         <div className="metric">
+          <span>Вердикт</span>
+          <strong>{analysis ? scoreLabel(analysis.scores.decision_label) : "—"}</strong>
+        </div>
+        <div className="metric">
           <span>Investment Score</span>
           <strong>{analysis ? analysis.scores.investment_score : "—"}</strong>
         </div>
@@ -340,6 +346,10 @@ export default function CheckListingPage() {
         <div className="metric">
           <span>Confidence</span>
           <strong>{result ? `${result.confidence_score}/100` : "—"}</strong>
+        </div>
+        <div className="metric">
+          <span>Price label</span>
+          <strong>{analysis ? scoreLabel(analysis.scores.price_label) : "—"}</strong>
         </div>
       </section>
 
@@ -464,6 +474,11 @@ export default function CheckListingPage() {
         <aside className="panel">
           <div className="panel-header">
             <h2>Итог проверки</h2>
+            {analysis ? (
+              <span className={`status-pill ${verdictTone}`}>
+                {scoreLabel(analysis.scores.decision_label)}
+              </span>
+            ) : null}
           </div>
           <div className="panel-body">
             {analysis && result ? (

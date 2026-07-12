@@ -26,9 +26,14 @@ def test_generate_and_list_saved_html_report() -> None:
     assert payload["content_type"].startswith("text/html")
     assert "Domarion Analytics" in payload["content"]
     assert payload["report_metadata"]["investment_score"] >= 0
+    assert payload["report_metadata"]["decision_label"]
+    assert payload["report_metadata"]["price_label"]
+    assert payload["report_metadata"]["risk_label"]
+    assert payload["report_metadata"]["negotiation_label"]
     assert payload["report_metadata"]["fair_price_confidence_score"] >= 0
     assert payload["report_metadata"]["report_template_code"] == "buyer_object_report_v1"
     assert payload["report_metadata"]["scoring_formula_version"] == "domarion-scoring-v1"
+    assert '<section class="scores">' in payload["content"]
 
     list_response = client.get("/api/v1/reports")
     reports = list_response.json()

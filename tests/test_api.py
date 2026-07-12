@@ -22,6 +22,8 @@ def test_listings() -> None:
     assert payload["page_size"] == 20
     assert payload["items"][0]["listing"]["id"]
     assert "investment_score" in payload["items"][0]["scores"]
+    assert "decision_label" in payload["items"][0]["scores"]
+    assert "price_label" in payload["items"][0]["scores"]
 
 
 def test_listings_support_pagination_sorting_and_score_filters() -> None:

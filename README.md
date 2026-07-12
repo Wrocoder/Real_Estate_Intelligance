@@ -9,6 +9,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`.
 - Добавлен FastAPI-каркас с in-memory данными по объектам во Вроцлаве.
 - Добавлены первые формулы `Investment Score`, `Risk Score`, `Negotiation Score`.
+- Добавлены человекочитаемые score labels: verdict, price/risk/negotiation/liquidity/rental labels в API, UI и report metadata.
 - Добавлены API endpoints, Dockerfile, `compose.yaml` с PostGIS и Redis.
 - Подготовлены тесты для API и скоринга.
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
