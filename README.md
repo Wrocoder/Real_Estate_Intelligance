@@ -124,6 +124,10 @@ NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
 NEXT_PUBLIC_OWNER_ID=demo-user
 ```
 
+Если frontend показывает `Failed to fetch` или `Backend API недоступен`, проверь
+`frontend/.env.local`: `NEXT_PUBLIC_API_BASE_URL` должен указывать на реально
+запущенный backend, обычно `http://127.0.0.1:8000`.
+
 Основные страницы:
 
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
