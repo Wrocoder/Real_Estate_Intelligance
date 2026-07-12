@@ -2,9 +2,11 @@ from fastapi.testclient import TestClient
 
 from domarion.ai_insight_store.factory import memory_ai_insight_store
 from domarion.auth_store.factory import memory_auth_store
+from domarion.core.config import get_settings
 from domarion.main import app
 from domarion.report_order_store.factory import memory_report_order_store
 from domarion.report_store.factory import memory_report_store
+from domarion.services import payments
 from domarion.user_store.factory import memory_user_store
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
@@ -12,12 +14,17 @@ client = TestClient(app)
 
 
 def setup_function() -> None:
+    get_settings.cache_clear()
     memory_ai_insight_store.clear()
     memory_auth_store.clear()
     memory_report_order_store.clear()
     memory_report_store.clear()
     memory_user_submitted_listing_store.clear()
     memory_user_store.clear()
+
+
+def teardown_function() -> None:
+    get_settings.cache_clear()
 
 
 def test_report_products_are_available() -> None:
@@ -76,6 +83,148 @@ def test_report_order_mock_payment_and_fulfillment() -> None:
         "report_fulfilled",
     }.issubset(event_types)
     assert any(event["metadata"].get("generated_report_id") == reports[0]["id"] for event in events)
+
+
+def test_stripe_report_order_uses_hosted_checkout_api(monkeypatch) -> None:
+    monkeypatch.setenv("PAYMENT_PROVIDER", "stripe")
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_domarion")
+    monkeypatch.setenv("PAYMENT_CHECKOUT_BASE_URL", "https://app.example")
+    get_settings.cache_clear()
+    calls: list[dict] = []
+
+    def fake_post_form(url, payload, *, headers, timeout):
+        calls.append(
+            {
+                "url": url,
+                "payload": payload,
+                "headers": headers,
+                "timeout": timeout,
+            }
+        )
+        return payments.HttpJsonResponse(
+            status_code=200,
+            headers={},
+            payload={
+                "id": "cs_test_123",
+                "url": "https://checkout.stripe.com/c/pay/cs_test_123",
+            },
+        )
+
+    monkeypatch.setattr(payments, "_post_form", fake_post_form)
+
+    response = client.post(
+        "/api/v1/report-orders",
+        headers={"X-Domarion-User-Id": "stripe-checkout-buyer"},
+        json={"listing_id": "wr-001", "product_code": "object_report"},
+    )
+    payload = response.json()
+    checkout_payload = calls[0]["payload"]
+
+    assert response.status_code == 201
+    assert payload["provider"] == "stripe"
+    assert payload["checkout_url"] == "https://checkout.stripe.com/c/pay/cs_test_123"
+    assert payload["external_reference"] == "cs_test_123"
+    assert payload["metadata"]["stripe_session_id"] == "cs_test_123"
+    assert calls[0]["url"] == "https://api.stripe.com/v1/checkout/sessions"
+    assert calls[0]["headers"]["Authorization"].startswith("Basic ")
+    assert checkout_payload["mode"] == "payment"
+    assert checkout_payload["client_reference_id"] == payload["order"]["id"]
+    assert checkout_payload["line_items[0][price_data][unit_amount]"] == "4900"
+    assert checkout_payload["line_items[0][price_data][currency]"] == "pln"
+    assert checkout_payload["metadata[order_id]"] == payload["order"]["id"]
+    assert checkout_payload["payment_intent_data[metadata][order_id]"] == payload["order"]["id"]
+    assert checkout_payload["success_url"].startswith("https://app.example/pricing?payment=success")
+    assert checkout_payload["cancel_url"].startswith("https://app.example/pricing?payment=cancel")
+    assert payload["order"]["checkout_url"] == payload["checkout_url"]
+
+
+def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
+    monkeypatch.setenv("PAYMENT_PROVIDER", "payu")
+    monkeypatch.setenv("PAYMENT_CHECKOUT_BASE_URL", "https://app.example")
+    monkeypatch.setenv("PAYU_CLIENT_ID", "payu-client-id")
+    monkeypatch.setenv("PAYU_CLIENT_SECRET", "payu-client-secret")
+    monkeypatch.setenv("PAYU_MERCHANT_POS_ID", "payu-pos-id")
+    monkeypatch.setenv("PAYU_NOTIFY_URL", "https://api.example/api/v1/payment-webhooks/payu")
+    get_settings.cache_clear()
+    form_calls: list[dict] = []
+    json_calls: list[dict] = []
+
+    def fake_post_form(url, payload, *, headers, timeout):
+        form_calls.append(
+            {
+                "url": url,
+                "payload": payload,
+                "headers": headers,
+                "timeout": timeout,
+            }
+        )
+        return payments.HttpJsonResponse(
+            status_code=200,
+            headers={},
+            payload={"access_token": "payu-access-token"},
+        )
+
+    def fake_post_json(url, payload, *, headers, timeout):
+        json_calls.append(
+            {
+                "url": url,
+                "payload": payload,
+                "headers": headers,
+                "timeout": timeout,
+            }
+        )
+        return payments.HttpJsonResponse(
+            status_code=302,
+            headers={"location": "https://secure.snd.payu.com/pay/?orderId=payu-order-123"},
+            payload={
+                "orderId": "payu-order-123",
+                "status": {"statusCode": "SUCCESS"},
+            },
+        )
+
+    monkeypatch.setattr(payments, "_post_form", fake_post_form)
+    monkeypatch.setattr(payments, "_post_json", fake_post_json)
+
+    response = client.post(
+        "/api/v1/report-orders",
+        headers={"X-Domarion-User-Id": "payu-checkout-buyer"},
+        json={"listing_id": "wr-001", "product_code": "object_report"},
+    )
+    payload = response.json()
+    order_payload = json_calls[0]["payload"]
+
+    assert response.status_code == 201
+    assert payload["provider"] == "payu"
+    assert payload["checkout_url"] == "https://secure.snd.payu.com/pay/?orderId=payu-order-123"
+    assert payload["external_reference"] == "payu-order-123"
+    assert payload["metadata"]["payu_order_id"] == "payu-order-123"
+    assert form_calls[0]["url"] == (
+        "https://secure.snd.payu.com/pl/standard/user/oauth/authorize"
+    )
+    assert form_calls[0]["payload"] == {
+        "grant_type": "client_credentials",
+        "client_id": "payu-client-id",
+        "client_secret": "payu-client-secret",
+    }
+    assert json_calls[0]["url"] == "https://secure.snd.payu.com/api/v2_1/orders"
+    assert json_calls[0]["headers"]["Authorization"] == "Bearer payu-access-token"
+    assert order_payload["merchantPosId"] == "payu-pos-id"
+    assert order_payload["extOrderId"] == payload["order"]["id"]
+    assert order_payload["totalAmount"] == "4900"
+    assert order_payload["currencyCode"] == "PLN"
+    assert order_payload["notifyUrl"] == "https://api.example/api/v1/payment-webhooks/payu"
+    assert order_payload["continueUrl"].startswith(
+        "https://app.example/pricing?payment=success"
+    )
+    assert order_payload["products"] == [
+        {
+            "name": "Object Check",
+            "unitPrice": "4900",
+            "quantity": "1",
+            "virtual": True,
+        }
+    ]
+    assert payload["order"]["checkout_url"] == payload["checkout_url"]
 
 
 def test_report_orders_are_user_scoped() -> None:

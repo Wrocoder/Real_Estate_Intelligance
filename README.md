@@ -17,7 +17,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
-- Добавлен payment adapter skeleton: `mock` сейчас, подготовка к `stripe`/`payu` через env.
+- Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
 - Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
 - Добавлен daily email alert batch runner: admin API и CLI для cron/background worker.
@@ -767,8 +767,37 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.
 ```
 
 Paid fulfillment не расходует подписочный monthly report limit. Это MVP-модель для
-разовых покупок. `PAYMENT_PROVIDER=mock` работает по умолчанию; `stripe`/`payu` уже вынесены
-в adapter interface, но до production нужны реальные SDK/webhooks и verification.
+разовых покупок. `PAYMENT_PROVIDER=mock` работает по умолчанию. Для hosted checkout
+можно включить Stripe или PayU через env, при этом order lifecycle и webhook fulfillment
+остаются теми же.
+
+Stripe Checkout:
+
+```env
+PAYMENT_PROVIDER=stripe
+PAYMENT_CHECKOUT_BASE_URL=https://app.example.com
+PAYMENT_SUCCESS_URL=https://app.example.com/pricing?payment=success&order_id={order_id}
+PAYMENT_CANCEL_URL=https://app.example.com/pricing?payment=cancel&order_id={order_id}
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+```
+
+PayU hosted order:
+
+```env
+PAYMENT_PROVIDER=payu
+PAYMENT_CHECKOUT_BASE_URL=https://app.example.com
+PAYU_API_BASE_URL=https://secure.snd.payu.com
+PAYU_CLIENT_ID=...
+PAYU_CLIENT_SECRET=...
+PAYU_MERCHANT_POS_ID=...
+PAYU_NOTIFY_URL=https://api.example.com/api/v1/payment-webhooks/payu
+PAYU_SECOND_KEY=...
+```
+
+`PAYMENT_CHECKOUT_BASE_URL` используется как fallback для success/cancel URLs:
+`/pricing?payment=<status>&order_id=<order_id>`. В production лучше задавать явные
+`PAYMENT_SUCCESS_URL` и `PAYMENT_CANCEL_URL`.
 
 Посмотреть audit trail заказа:
 
@@ -948,8 +977,8 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить реальные hosted checkout SDK calls для Stripe/PayU вместо handoff URL skeleton.
-2. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
-3. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
-4. Добавить native PDF generation.
+1. Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
+2. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
+3. Добавить native PDF generation.
+4. Добавить invoice/VAT metadata для B2B checkout.
 5. Добавить deployment workflow после выбора hosting.

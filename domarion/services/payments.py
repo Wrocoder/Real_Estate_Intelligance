@@ -1,12 +1,17 @@
+import base64
 import hashlib
 import hmac
 import json
 import time
 from dataclasses import dataclass
 from typing import Any, Protocol
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlencode
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from domarion.core import get_settings
 from domarion.schemas import PaymentProviderName, ReportOrder
+from domarion.services.report_products import get_report_product
 
 
 @dataclass(frozen=True)
@@ -15,7 +20,14 @@ class PaymentSession:
     mode: str
     checkout_url: str
     external_reference: str | None = None
-    metadata: dict[str, str | int] | None = None
+    metadata: dict[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class HttpJsonResponse:
+    status_code: int
+    headers: dict[str, str]
+    payload: dict[str, Any]
 
 
 @dataclass(frozen=True)
@@ -57,31 +69,164 @@ class MockPaymentProvider:
         )
 
 
-class ConfiguredCheckoutPaymentProvider:
+class StripeCheckoutPaymentProvider:
     mode = "live"
-
-    def __init__(self, provider: str, checkout_base_url: str | None) -> None:
-        self.provider = provider
-        self.checkout_base_url = checkout_base_url.rstrip("/") if checkout_base_url else None
+    provider = "stripe"
 
     def create_checkout_session(self, order: ReportOrder) -> PaymentSession:
-        if not self.checkout_base_url:
+        settings = get_settings()
+        if not settings.stripe_secret_key:
             raise PaymentConfigurationError(
-                f"{self.provider.upper()} checkout is not configured. "
-                "Set PAYMENT_CHECKOUT_BASE_URL or switch PAYMENT_PROVIDER=mock."
+                "STRIPE_SECRET_KEY is not configured for Stripe checkout."
             )
 
-        external_reference = f"{self.provider}:{order.id}"
+        success_url = _checkout_return_url(
+            configured_url=settings.payment_success_url,
+            checkout_base_url=settings.payment_checkout_base_url,
+            order_id=order.id,
+            status_name="success",
+        )
+        cancel_url = _checkout_return_url(
+            configured_url=settings.payment_cancel_url,
+            checkout_base_url=settings.payment_checkout_base_url,
+            order_id=order.id,
+            status_name="cancel",
+        )
+        product = get_report_product(order.product_code)
+        form = {
+            "mode": "payment",
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+            "client_reference_id": order.id,
+            "line_items[0][quantity]": "1",
+            "line_items[0][price_data][currency]": order.currency.lower(),
+            "line_items[0][price_data][unit_amount]": str(order.amount_grosz),
+            "line_items[0][price_data][product_data][name]": product.title,
+            "line_items[0][price_data][product_data][description]": product.description,
+            "metadata[order_id]": order.id,
+            "metadata[owner_id]": order.owner_id,
+            "metadata[product_code]": order.product_code,
+            "metadata[listing_id]": order.listing_id,
+            "payment_intent_data[metadata][order_id]": order.id,
+            "payment_intent_data[metadata][owner_id]": order.owner_id,
+            "payment_intent_data[metadata][product_code]": order.product_code,
+        }
+        response = _post_form(
+            f"{settings.stripe_api_base_url.rstrip('/')}/v1/checkout/sessions",
+            form,
+            headers={
+                "Authorization": _stripe_authorization_header(settings.stripe_secret_key),
+                "Accept": "application/json",
+            },
+            timeout=settings.payment_checkout_timeout_seconds,
+        )
+        checkout_url = _first_string(response.payload.get("url"))
+        stripe_session_id = _first_string(response.payload.get("id"))
+        if checkout_url is None or stripe_session_id is None:
+            raise PaymentConfigurationError("Stripe checkout response did not include id and url.")
+
         return PaymentSession(
             provider=self.provider,
             mode=self.mode,
-            checkout_url=f"{self.checkout_base_url}/{self.provider}/checkout/{order.id}",
-            external_reference=external_reference,
+            checkout_url=checkout_url,
+            external_reference=stripe_session_id,
             metadata={
                 "order_id": order.id,
                 "listing_id": order.listing_id,
                 "amount_grosz": order.amount_grosz,
                 "currency": order.currency,
+                "stripe_session_id": stripe_session_id,
+                "checkout_api_status_code": response.status_code,
+            },
+        )
+
+
+class PayUCheckoutPaymentProvider:
+    mode = "live"
+    provider = "payu"
+
+    def create_checkout_session(self, order: ReportOrder) -> PaymentSession:
+        settings = get_settings()
+        if not (
+            settings.payu_client_id
+            and settings.payu_client_secret
+            and settings.payu_merchant_pos_id
+        ):
+            raise PaymentConfigurationError(
+                "PAYU_CLIENT_ID, PAYU_CLIENT_SECRET and PAYU_MERCHANT_POS_ID are required "
+                "for PayU checkout."
+            )
+
+        token_response = _post_form(
+            f"{settings.payu_api_base_url.rstrip('/')}/pl/standard/user/oauth/authorize",
+            {
+                "grant_type": "client_credentials",
+                "client_id": settings.payu_client_id,
+                "client_secret": settings.payu_client_secret,
+            },
+            headers={"Accept": "application/json"},
+            timeout=settings.payment_checkout_timeout_seconds,
+        )
+        access_token = _first_string(token_response.payload.get("access_token"))
+        if access_token is None:
+            raise PaymentConfigurationError("PayU OAuth response did not include access_token.")
+
+        product = get_report_product(order.product_code)
+        order_payload: dict[str, Any] = {
+            "customerIp": settings.payu_customer_ip,
+            "merchantPosId": settings.payu_merchant_pos_id,
+            "description": product.title,
+            "currencyCode": order.currency,
+            "totalAmount": str(order.amount_grosz),
+            "extOrderId": order.id,
+            "continueUrl": _checkout_return_url(
+                configured_url=settings.payment_success_url,
+                checkout_base_url=settings.payment_checkout_base_url,
+                order_id=order.id,
+                status_name="success",
+            ),
+            "products": [
+                {
+                    "name": product.title,
+                    "unitPrice": str(order.amount_grosz),
+                    "quantity": "1",
+                    "virtual": True,
+                }
+            ],
+        }
+        if settings.payu_notify_url:
+            order_payload["notifyUrl"] = settings.payu_notify_url
+
+        order_response = _post_json(
+            f"{settings.payu_api_base_url.rstrip('/')}/api/v2_1/orders",
+            order_payload,
+            headers={
+                "Authorization": f"Bearer {access_token}",
+                "Accept": "application/json",
+            },
+            timeout=settings.payment_checkout_timeout_seconds,
+        )
+        checkout_url = _first_string(
+            order_response.payload.get("redirectUri"),
+            order_response.headers.get("location"),
+        )
+        provider_order_id = _first_string(order_response.payload.get("orderId"))
+        if checkout_url is None:
+            raise PaymentConfigurationError("PayU order response did not include redirect URI.")
+
+        return PaymentSession(
+            provider=self.provider,
+            mode=self.mode,
+            checkout_url=checkout_url,
+            external_reference=provider_order_id,
+            metadata={
+                "order_id": order.id,
+                "listing_id": order.listing_id,
+                "amount_grosz": order.amount_grosz,
+                "currency": order.currency,
+                "payu_order_id": provider_order_id,
+                "payu_status_code": _payu_status_code(order_response.payload),
+                "checkout_api_status_code": order_response.status_code,
             },
         )
 
@@ -92,8 +237,10 @@ def get_payment_provider() -> PaymentProvider:
 
     if provider == "mock":
         return MockPaymentProvider()
-    if provider in {"stripe", "payu"}:
-        return ConfiguredCheckoutPaymentProvider(provider, settings.payment_checkout_base_url)
+    if provider == "stripe":
+        return StripeCheckoutPaymentProvider()
+    if provider == "payu":
+        return PayUCheckoutPaymentProvider()
 
     raise PaymentConfigurationError(
         "Unsupported PAYMENT_PROVIDER. Use 'mock', 'stripe', or 'payu'."
@@ -117,6 +264,134 @@ def verify_payment_webhook(
 
 def payment_payload_hash(body: bytes) -> str:
     return hashlib.sha256(body).hexdigest()
+
+
+def _post_form(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float,
+) -> HttpJsonResponse:
+    body = urlencode(payload).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            **(headers or {}),
+        },
+        method="POST",
+    )
+    return _send_json_request(request, timeout=timeout)
+
+
+def _post_json(
+    url: str,
+    payload: dict[str, Any],
+    *,
+    headers: dict[str, str] | None = None,
+    timeout: float,
+) -> HttpJsonResponse:
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            **(headers or {}),
+        },
+        method="POST",
+    )
+    return _send_json_request(request, timeout=timeout)
+
+
+def _send_json_request(request: Request, *, timeout: float) -> HttpJsonResponse:
+    opener = build_opener(_NoRedirectHandler)
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return _json_response(
+                status_code=response.status,
+                headers=dict(response.headers.items()),
+                body=response.read(),
+            )
+    except HTTPError as exc:
+        body = exc.read()
+        if 300 <= exc.code < 400:
+            return _json_response(
+                status_code=exc.code,
+                headers=dict(exc.headers.items()),
+                body=body,
+                allow_non_json=True,
+            )
+        details = body.decode("utf-8", errors="replace")[:500]
+        raise PaymentConfigurationError(
+            f"Payment provider request failed with HTTP {exc.code}: {details}"
+        ) from exc
+    except URLError as exc:
+        raise PaymentConfigurationError(f"Payment provider request failed: {exc.reason}") from exc
+
+
+def _json_response(
+    status_code: int,
+    headers: dict[str, str],
+    body: bytes,
+    *,
+    allow_non_json: bool = False,
+) -> HttpJsonResponse:
+    normalized_headers = {key.lower(): value for key, value in headers.items()}
+    if not body:
+        return HttpJsonResponse(status_code=status_code, headers=normalized_headers, payload={})
+    try:
+        payload = json.loads(body.decode("utf-8"))
+    except json.JSONDecodeError as exc:
+        if allow_non_json:
+            return HttpJsonResponse(
+                status_code=status_code,
+                headers=normalized_headers,
+                payload={},
+            )
+        raise PaymentConfigurationError("Payment provider response must be valid JSON.") from exc
+    if not isinstance(payload, dict):
+        raise PaymentConfigurationError("Payment provider response must be a JSON object.")
+    return HttpJsonResponse(
+        status_code=status_code,
+        headers=normalized_headers,
+        payload=payload,
+    )
+
+
+class _NoRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _checkout_return_url(
+    *,
+    configured_url: str | None,
+    checkout_base_url: str | None,
+    order_id: str,
+    status_name: str,
+) -> str:
+    if configured_url:
+        return configured_url.format(order_id=order_id)
+    if checkout_base_url:
+        base_url = checkout_base_url.rstrip("/")
+        return f"{base_url}/pricing?payment={status_name}&order_id={order_id}"
+    raise PaymentConfigurationError(
+        "Payment checkout return URLs are not configured. Set PAYMENT_CHECKOUT_BASE_URL "
+        "or provider-specific PAYMENT_SUCCESS_URL/PAYMENT_CANCEL_URL."
+    )
+
+
+def _stripe_authorization_header(secret_key: str) -> str:
+    token = base64.b64encode(f"{secret_key}:".encode()).decode("ascii")
+    return f"Basic {token}"
+
+
+def _payu_status_code(payload: dict[str, Any]) -> str | None:
+    status = _as_dict(payload.get("status"))
+    return _first_string(status.get("statusCode"), status.get("code"))
 
 
 def _verify_stripe_webhook(

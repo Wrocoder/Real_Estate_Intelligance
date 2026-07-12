@@ -208,7 +208,7 @@
 - [x] Добавить PayU/Stripe adapter interface поверх mock checkout.
 - [x] Добавить Stripe/PayU webhook signature verification.
 - [x] Добавить payment callback endpoints и idempotency keys.
-- [ ] Подключить hosted checkout API для Stripe или PayU.
+- [x] Подключить hosted checkout API для Stripe и PayU.
 - [x] Добавить one-time report purchase flow.
 - [x] Добавить audit logging для paid artifacts.
 - [x] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
@@ -443,6 +443,7 @@
 - [x] Commit 46: infrastructure enrichment pipeline.
 - [x] Commit 47: district and city comparison analytics.
 - [x] Commit 48: S3-compatible report artifact storage abstraction.
+- [x] Commit 49: Stripe/PayU hosted checkout API adapters.
 
 ## Current Sprint
 
@@ -486,6 +487,7 @@
 - [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [x] Добавить district/city comparison analytics и страницу сравнения районов.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
+- [x] Подключить hosted checkout API для Stripe и PayU.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -518,3 +520,4 @@
 - [x] Сделать Commit 46 и push.
 - [x] Сделать Commit 47 и push.
 - [x] Сделать Commit 48 и push.
+- [x] Сделать Commit 49 и push.
