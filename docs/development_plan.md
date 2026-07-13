@@ -195,7 +195,7 @@
 - [x] Добавить paid area report product.
 - [x] Добавить full object analysis report product.
 - [x] Добавить bundles: package of 5 reports.
-- [ ] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
+- [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Добавить export reports в CSV/JSON для realtor/investor workflows.
 
 ## 8. Users, Auth и Payments
@@ -448,6 +448,7 @@
 - [x] Commit 51: infrastructure reference JSON/CSV import.
 - [x] Commit 52: native PDF report export.
 - [x] Commit 53: B2B invoice metadata for checkout.
+- [x] Commit 54: white-label report controls.
 
 ## Current Sprint
 
@@ -496,6 +497,7 @@
 - [x] Добавить import для schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить native PDF generation для object reports и saved report history.
 - [x] Добавить invoice/VAT metadata для B2B checkout.
+- [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -533,3 +535,4 @@
 - [x] Сделать Commit 51 и push.
 - [x] Сделать Commit 52 и push.
 - [x] Сделать Commit 53 и push.
+- [x] Сделать Commit 54 и push.

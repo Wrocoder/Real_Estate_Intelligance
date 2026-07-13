@@ -16,6 +16,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
+- Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
 - Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
 - Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
 - Добавлены B2B invoice/VAT details для checkout: company/NIP/address/email хранятся на order и попадают в payment metadata.
@@ -495,10 +496,21 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/templates
     "agent_name": "Anna Agent",
     "agent_email": "anna@example.com",
     "agent_phone": "+48 500 000 000",
-    "website_url": "https://example.com"
+    "website_url": "https://example.com",
+    "logo_url": "https://example.com/logo.png",
+    "primary_color": "#0F766E",
+    "accent_color": "#B42318",
+    "footer_text": "Prepared by Example Realty.",
+    "agency_disclaimer": "Agency materials are informational and require independent diligence."
   }
 }
 ```
+
+Поля `logo_url`, `primary_color`, `accent_color`, `footer_text` и
+`agency_disclaimer` являются white-label controls и требуют тариф с
+`can_white_label=true` (`realtor`, `agency`, `enterprise`). Basic branding
+(`agency_name`, `agent_name`, контакты) остается доступен для realtor report
+template без advanced white-label.
 
 Сгенерировать printable HTML-отчет по demo listing:
 
@@ -1072,6 +1084,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
-2. Добавить team/agency accounts: несколько агентов под одной организацией.
+1. Добавить team/agency accounts: несколько агентов под одной организацией.
+2. Добавить роли и права для agency owner/admin/agent.
 3. Добавить deployment workflow после выбора hosting.

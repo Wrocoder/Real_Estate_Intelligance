@@ -59,6 +59,11 @@ def test_render_object_report_html_includes_realtor_branding() -> None:
             agency_name="Example Realty",
             agent_name="Anna Agent",
             agent_email="anna@example.com",
+            logo_url="https://example.com/logo.png",
+            primary_color="#123456",
+            accent_color="#654321",
+            footer_text="Prepared by Example Realty.",
+            agency_disclaimer="Agency disclaimer for client review.",
         ),
     )
 
@@ -66,11 +71,15 @@ def test_render_object_report_html_includes_realtor_branding() -> None:
 
     assert "Example Realty" in html
     assert "Anna Agent" in html
+    assert 'src="https://example.com/logo.png"' in html
+    assert "--accent: #123456" in html
+    assert "--risk: #654321" in html
+    assert "Prepared by Example Realty." in html
+    assert "Agency disclaimer for client review." in html
     assert "Клиентская аргументация цены" in html
     assert "Сравнение с аналогами" in html
     assert "Карта и локация для клиента" in html
     assert "openstreetmap.org" in html
-    assert "Powered by Domarion Analytics" in html
 
 
 def test_write_object_report_html(tmp_path: Path) -> None:

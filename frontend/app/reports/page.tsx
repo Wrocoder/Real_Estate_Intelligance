@@ -8,6 +8,7 @@ import {
   api,
   reportExportUrl,
   reportContentUrl,
+  reportPdfUrl,
   type AccountSummary,
   type AIInsightListItem,
   type GeneratedReportListItem,
@@ -27,6 +28,11 @@ export default function ReportsPage() {
     agent_phone: "+48 500 000 000",
     website_url: "https://example.com",
     note: "Prepared for client discussion.",
+    logo_url: "https://example.com/logo.png",
+    primary_color: "#0F766E",
+    accent_color: "#B42318",
+    footer_text: "Prepared by Domarion Realty for client review.",
+    agency_disclaimer: "Agency materials are informational and require independent diligence.",
   });
   const [status, setStatus] = useState("Загрузка отчетов...");
   const [error, setError] = useState("");
@@ -58,13 +64,17 @@ export default function ReportsPage() {
     const report = await api.generateReport(
       listingId,
       audience,
-      audience === "realtor" ? cleanBranding(branding) : undefined,
+      audience === "realtor"
+        ? cleanBranding(branding, account?.limits.can_white_label ?? false)
+        : undefined,
     );
     const insightData = await api.listAIInsights({ limit: 200 });
     setReports([report, ...reports]);
     setInsights(insightData);
     setStatus(`Отчет сохранен: ${report.id}`);
   }
+
+  const canWhiteLabel = account?.limits.can_white_label ?? false;
 
   return (
     <>
@@ -153,6 +163,40 @@ export default function ReportsPage() {
                 value={branding.note ?? ""}
                 onChange={(value) => setBranding({ ...branding, note: value })}
               />
+              {canWhiteLabel ? (
+                <>
+                  <BrandingField
+                    label="Logo URL"
+                    value={branding.logo_url ?? ""}
+                    onChange={(value) => setBranding({ ...branding, logo_url: value })}
+                  />
+                  <ColorField
+                    label="Primary"
+                    value={branding.primary_color ?? "#0F766E"}
+                    onChange={(value) => setBranding({ ...branding, primary_color: value })}
+                  />
+                  <ColorField
+                    label="Accent"
+                    value={branding.accent_color ?? "#B42318"}
+                    onChange={(value) => setBranding({ ...branding, accent_color: value })}
+                  />
+                  <BrandingField
+                    label="Footer"
+                    value={branding.footer_text ?? ""}
+                    onChange={(value) => setBranding({ ...branding, footer_text: value })}
+                  />
+                  <BrandingField
+                    label="Disclaimer"
+                    value={branding.agency_disclaimer ?? ""}
+                    onChange={(value) => setBranding({ ...branding, agency_disclaimer: value })}
+                  />
+                </>
+              ) : (
+                <div className="field">
+                  <span>White-label</span>
+                  <small className="muted">Logo, colors and custom footer need Realtor/Agency.</small>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -180,6 +224,7 @@ export default function ReportsPage() {
                   <th>Insight</th>
                   <th>Дата</th>
                   <th>Content</th>
+                  <th>PDF</th>
                 </tr>
               </thead>
               <tbody>
@@ -218,6 +263,16 @@ export default function ReportsPage() {
                         >
                           <Mail size={16} /> Email
                         </button>
+                      </td>
+                      <td>
+                        <a
+                          className="button"
+                          href={reportPdfUrl(report.id)}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Download size={16} /> PDF
+                        </a>
                       </td>
                     </tr>
                   );
@@ -272,8 +327,39 @@ function BrandingField({
   );
 }
 
-function cleanBranding(branding: ReportBranding): ReportBranding {
-  return Object.fromEntries(
-    Object.entries(branding).map(([key, value]) => [key, value?.trim() || null]),
-  ) as ReportBranding;
+function ColorField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input
+        className="input"
+        type="color"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
 }
+
+function cleanBranding(branding: ReportBranding, canWhiteLabel: boolean): ReportBranding {
+  const entries = Object.entries(branding)
+    .filter(([key]) => canWhiteLabel || !WHITE_LABEL_BRANDING_FIELDS.has(key))
+    .map(([key, value]) => [key, value?.trim() || null]);
+  return Object.fromEntries(entries) as ReportBranding;
+}
+
+const WHITE_LABEL_BRANDING_FIELDS = new Set([
+  "logo_url",
+  "primary_color",
+  "accent_color",
+  "footer_text",
+  "agency_disclaimer",
+]);

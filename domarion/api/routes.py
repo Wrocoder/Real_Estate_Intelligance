@@ -135,6 +135,7 @@ from domarion.schemas import (
     PropertyDeduplicationReviewStatus,
     RawListingSummary,
     ReportAudience,
+    ReportBranding,
     ReportEmailRequest,
     ReportEmailResult,
     ReportOrder,
@@ -595,6 +596,7 @@ def create_user_submitted_listing_report(
     draft_store: UserSubmittedListingStoreDep,
     account: CurrentAccountDep,
 ) -> UserSubmittedListingReport:
+    _ensure_white_label_branding_allowed(account, payload.branding)
     try:
         analysis = _analyze_and_optionally_save_user_submitted_draft(
             repository=repository,
@@ -674,6 +676,7 @@ def generate_user_submitted_listing_draft_report(
     if draft is None:
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
 
+    _ensure_white_label_branding_allowed(account, payload.branding)
     credit_source_order_id = _ensure_report_limit(account, report_store, order_store)
     report = generate_and_store_user_submitted_draft_report(
         report_store=report_store,
@@ -2198,7 +2201,12 @@ def compare_listings(
 
 
 @router.post("/reports/object", response_model=ObjectReport)
-def create_object_report(payload: ReportRequest, repository: RepositoryDep) -> ObjectReport:
+def create_object_report(
+    payload: ReportRequest,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> ObjectReport:
+    _ensure_white_label_branding_allowed(account, payload.branding)
     listing = repository.get_listing(payload.listing_id)
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -2221,6 +2229,7 @@ def generate_object_report(
     ai_insight_store: AIInsightStoreDep,
     account: CurrentAccountDep,
 ) -> GeneratedReport:
+    _ensure_white_label_branding_allowed(account, payload.branding)
     listing = repository.get_listing(payload.listing_id)
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
@@ -2865,6 +2874,39 @@ def _ensure_export_allowed(account: CurrentAccount) -> None:
             "required_capability": "can_export",
         },
     )
+
+
+WHITE_LABEL_BRANDING_FIELDS = {
+    "logo_url",
+    "primary_color",
+    "accent_color",
+    "footer_text",
+    "agency_disclaimer",
+}
+
+
+def _ensure_white_label_branding_allowed(
+    account: CurrentAccount,
+    branding: ReportBranding | None,
+) -> None:
+    if not _has_white_label_branding(branding) or account.limits.can_white_label:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "white_label_reports",
+            "plan": account.subscription.plan,
+            "required_capability": "can_white_label",
+        },
+    )
+
+
+def _has_white_label_branding(branding: ReportBranding | None) -> bool:
+    if branding is None:
+        return False
+    payload = branding.model_dump()
+    return any(payload.get(field) for field in WHITE_LABEL_BRANDING_FIELDS)
 
 
 REPORT_EXPORT_COLUMNS = [

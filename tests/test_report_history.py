@@ -357,6 +357,71 @@ def test_generate_saved_realtor_report_stores_branding_metadata() -> None:
     assert "Example Realty" in payload["content"]
 
 
+def test_generate_saved_realtor_report_rejects_white_label_without_plan() -> None:
+    memory_report_store.clear()
+
+    response = client.post(
+        "/api/v1/reports/object/generate",
+        headers={"X-Domarion-User-Id": "free-white-label", "X-Domarion-Plan": "free"},
+        json={
+            "listing_id": "wr-001",
+            "audience": "realtor",
+            "report_format": "html",
+            "branding": {
+                "agency_name": "Example Realty",
+                "primary_color": "#123456",
+            },
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"]["resource"] == "white_label_reports"
+    assert response.json()["detail"]["required_capability"] == "can_white_label"
+
+
+def test_generate_saved_realtor_report_stores_white_label_pdf_controls() -> None:
+    memory_report_store.clear()
+    headers = {
+        "X-Domarion-User-Id": "realtor-white-label",
+        "X-Domarion-Plan": "realtor",
+    }
+
+    response = client.post(
+        "/api/v1/reports/object/generate",
+        headers=headers,
+        json={
+            "listing_id": "wr-001",
+            "audience": "realtor",
+            "report_format": "html",
+            "branding": {
+                "agency_name": "Example Realty",
+                "agent_name": "Anna Agent",
+                "logo_url": "https://example.com/logo.png",
+                "primary_color": "#123456",
+                "accent_color": "#654321",
+                "footer_text": "Prepared by Example Realty.",
+                "agency_disclaimer": "Agency disclaimer for client review.",
+            },
+        },
+    )
+    payload = response.json()
+    pdf_response = client.get(f"/api/v1/reports/{payload['id']}/pdf", headers=headers)
+
+    assert response.status_code == 200
+    assert payload["report_metadata"]["report_branding"]["logo_url"] == (
+        "https://example.com/logo.png"
+    )
+    assert payload["report_metadata"]["report_branding"]["primary_color"] == "#123456"
+    assert payload["report_metadata"]["report_branding"]["accent_color"] == "#654321"
+    assert 'src="https://example.com/logo.png"' in payload["content"]
+    assert "Prepared by Example Realty." in payload["content"]
+    assert "Agency disclaimer for client review." in payload["content"]
+    assert pdf_response.status_code == 200
+    assert pdf_response.content.startswith(b"%PDF-1.4")
+    assert b"0.071 0.204 0.337 rg" in pdf_response.content
+    assert b"0.396 0.263 0.129 rg" in pdf_response.content
+
+
 def test_generate_saved_json_report() -> None:
     memory_report_store.clear()
 

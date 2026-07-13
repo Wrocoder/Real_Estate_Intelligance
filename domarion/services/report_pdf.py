@@ -21,6 +21,16 @@ BODY_WRAP_WIDTH = 92
 TITLE_WRAP_WIDTH = 58
 
 
+@dataclass(frozen=True)
+class ReportPdfBranding:
+    brand_name: str = "Domarion Analytics"
+    logo_url: str | None = None
+    primary_color: tuple[float, float, float] = (0.06, 0.46, 0.43)
+    accent_color: tuple[float, float, float] = (0.70, 0.14, 0.09)
+    footer_text: str = "Powered by Domarion Analytics"
+    agency_disclaimer: str | None = None
+
+
 def render_generated_report_pdf(report: GeneratedReport) -> bytes:
     metadata = [
         f"Report ID: {report.id}",
@@ -37,11 +47,13 @@ def render_generated_report_pdf(report: GeneratedReport) -> bytes:
             metadata.append(f"Template: {template}")
 
     content_lines = report_content_to_lines(report.content, report.content_type)
+    branding = _pdf_branding_from_metadata(report.report_metadata)
     return render_report_content_pdf(
         title=report.title,
         summary=report.summary,
         content_lines=content_lines,
         metadata_lines=metadata,
+        branding=branding,
     )
 
 
@@ -53,7 +65,9 @@ def render_report_content_pdf(
     content_type: str = "text/plain",
     content_lines: list[str] | None = None,
     metadata_lines: list[str] | None = None,
+    branding: ReportPdfBranding | None = None,
 ) -> bytes:
+    branding = branding or ReportPdfBranding()
     lines = _build_report_lines(
         title=title,
         summary=summary,
@@ -63,8 +77,9 @@ def render_report_content_pdf(
             if content_lines is not None
             else report_content_to_lines(content or "", content_type)
         ),
+        branding=branding,
     )
-    document = _PdfDocument(title=title, lines=lines)
+    document = _PdfDocument(title=title, lines=lines, branding=branding)
     return document.render()
 
 
@@ -96,8 +111,12 @@ def _build_report_lines(
     summary: str,
     metadata_lines: list[str],
     content_lines: list[str],
+    branding: ReportPdfBranding,
 ) -> list[str]:
-    lines = ["Domarion Analytics", "", *textwrap.wrap(title, width=TITLE_WRAP_WIDTH)]
+    lines = [branding.brand_name]
+    if branding.logo_url:
+        lines.append(f"Logo: {branding.logo_url}")
+    lines.extend(["", *textwrap.wrap(title, width=TITLE_WRAP_WIDTH)])
     if summary:
         lines.extend(["", "Summary", *textwrap.wrap(summary, width=BODY_WRAP_WIDTH)])
     if metadata_lines:
@@ -120,6 +139,16 @@ def _build_report_lines(
                 break_on_hyphens=False,
             )
             lines.extend(wrapped or [""])
+    if branding.agency_disclaimer:
+        lines.extend(
+            [
+                "",
+                "Agency disclaimer",
+                *textwrap.wrap(branding.agency_disclaimer, width=BODY_WRAP_WIDTH),
+            ]
+        )
+    if branding.footer_text:
+        lines.extend(["", *textwrap.wrap(branding.footer_text, width=BODY_WRAP_WIDTH)])
     return lines
 
 
@@ -235,6 +264,52 @@ def _json_scalar(value: Any) -> str:
     return str(value)
 
 
+def _pdf_branding_from_metadata(metadata: dict) -> ReportPdfBranding:
+    raw = metadata.get("report_branding") if isinstance(metadata, dict) else None
+    if not isinstance(raw, dict):
+        return ReportPdfBranding()
+
+    brand_name = _first_string(raw.get("agency_name")) or "Domarion Analytics"
+    primary_color = _hex_color_to_rgb(_first_string(raw.get("primary_color"))) or (
+        0.06,
+        0.46,
+        0.43,
+    )
+    accent_color = _hex_color_to_rgb(_first_string(raw.get("accent_color"))) or (
+        0.70,
+        0.14,
+        0.09,
+    )
+    return ReportPdfBranding(
+        brand_name=brand_name,
+        logo_url=_first_string(raw.get("logo_url")),
+        primary_color=primary_color,
+        accent_color=accent_color,
+        footer_text=_first_string(raw.get("footer_text")) or "Powered by Domarion Analytics",
+        agency_disclaimer=_first_string(raw.get("agency_disclaimer")),
+    )
+
+
+def _first_string(value: object) -> str | None:
+    if isinstance(value, str) and value.strip():
+        return value.strip()
+    return None
+
+
+def _hex_color_to_rgb(value: str | None) -> tuple[float, float, float] | None:
+    if not value or not re.fullmatch(r"#[0-9A-Fa-f]{6}", value):
+        return None
+    return (
+        int(value[1:3], 16) / 255,
+        int(value[3:5], 16) / 255,
+        int(value[5:7], 16) / 255,
+    )
+
+
+def _rgb_command(rgb: tuple[float, float, float]) -> str:
+    return f"{rgb[0]:.3f} {rgb[1]:.3f} {rgb[2]:.3f} rg"
+
+
 @dataclass(frozen=True)
 class _TrueTypeFont:
     path: Path
@@ -248,9 +323,16 @@ class _TrueTypeFont:
 
 
 class _PdfDocument:
-    def __init__(self, *, title: str, lines: list[str]) -> None:
+    def __init__(
+        self,
+        *,
+        title: str,
+        lines: list[str],
+        branding: ReportPdfBranding,
+    ) -> None:
         self.title = title
         self.lines = lines
+        self.branding = branding
         self.font = _load_unicode_font()
 
     def render(self) -> bytes:
@@ -384,6 +466,10 @@ class _PdfDocument:
         commands = ["q", "BT"]
         y = TOP_Y
         for line, font_size in page_lines:
+            if font_size == TITLE_FONT_SIZE:
+                commands.append(_rgb_command(self.branding.primary_color))
+            else:
+                commands.append(_rgb_command((0.09, 0.13, 0.16)))
             commands.append(f"/F1 {font_size} Tf")
             commands.append(f"1 0 0 1 {MARGIN_X} {y} Tm")
             if unicode_font:
@@ -391,6 +477,14 @@ class _PdfDocument:
             else:
                 commands.append(f"({_escape_pdf_literal(_ascii_fallback(line))}) Tj")
             y -= LINE_HEIGHT if font_size == BODY_FONT_SIZE else LINE_HEIGHT + 4
+        commands.append(_rgb_command(self.branding.accent_color))
+        commands.append("/F1 8 Tf")
+        commands.append(f"1 0 0 1 {MARGIN_X} 28 Tm")
+        if unicode_font:
+            commands.append(f"<{_hex_utf16be(self.branding.footer_text)}> Tj")
+        else:
+            footer = _escape_pdf_literal(_ascii_fallback(self.branding.footer_text))
+            commands.append(f"({footer}) Tj")
         commands.extend(["ET", "Q"])
         return ("\n".join(commands) + "\n").encode("ascii")
 

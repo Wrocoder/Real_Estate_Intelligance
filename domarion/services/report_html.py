@@ -16,6 +16,9 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
     branding = report.branding
     brand_name = branding.agency_name if branding and branding.agency_name else "Domarion Analytics"
     branding_html = _render_branding(branding)
+    footer_html = _render_report_footer(report.disclaimer, branding)
+    primary_color = _brand_color(branding.primary_color if branding else None, "#0f766e")
+    accent_color = _brand_color(branding.accent_color if branding else None, "#b42318")
 
     score_cards = "".join(
         [
@@ -66,8 +69,8 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       --muted: #5f6b7a;
       --line: #d9dee6;
       --soft: #f5f7fa;
-      --accent: #0f766e;
-      --risk: #b42318;
+      --accent: {primary_color};
+      --risk: {accent_color};
     }}
     * {{ box-sizing: border-box; }}
     body {{
@@ -92,6 +95,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       margin-bottom: 22px;
     }}
     .brand {{ font-weight: 700; color: var(--accent); letter-spacing: .02em; }}
+    .brand-logo {{ display: block; max-width: 180px; max-height: 54px; margin-bottom: 10px; }}
     h1 {{ margin: 8px 0 8px; font-size: 28px; line-height: 1.15; }}
     h2 {{ margin: 28px 0 10px; font-size: 18px; }}
     h3 {{ margin: 0 0 8px; font-size: 15px; }}
@@ -163,6 +167,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
   <main class="page">
     <section class="topline">
       <div>
+        {_render_logo(branding)}
         <div class="brand">{escape(brand_name)}</div>
         {branding_html}
         <h1>{escape(listing.title)}</h1>
@@ -216,7 +221,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       </table>
     </section>
 
-    <p class="footer">{escape(report.disclaimer)}</p>
+    {footer_html}
   </main>
 </body>
 </html>
@@ -452,7 +457,35 @@ def _render_branding(branding) -> str:
     if not rows:
         return ""
     content = "<br>".join(rows)
-    return f'<p class="muted">{content}<br>Powered by Domarion Analytics</p>'
+    return f'<p class="muted">{content}</p>'
+
+
+def _render_logo(branding) -> str:
+    if branding is None or not branding.logo_url:
+        return ""
+    return (
+        f'<img class="brand-logo" src="{escape(branding.logo_url, quote=True)}" '
+        'alt="Agency logo">'
+    )
+
+
+def _render_report_footer(disclaimer: str, branding) -> str:
+    rows = []
+    if branding and branding.agency_disclaimer:
+        rows.append(f"<strong>{escape(branding.agency_disclaimer)}</strong>")
+    rows.append(escape(disclaimer))
+    rows.append(
+        escape(branding.footer_text)
+        if branding and branding.footer_text
+        else "Powered by Domarion Analytics"
+    )
+    return '<div class="footer">' + "".join(f"<p>{row}</p>" for row in rows if row) + "</div>"
+
+
+def _brand_color(value: str | None, fallback: str) -> str:
+    if value and len(value) == 7 and value.startswith("#"):
+        return escape(value)
+    return fallback
 
 
 def _label_text(value: str) -> str:

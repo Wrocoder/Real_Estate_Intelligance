@@ -1,3 +1,4 @@
+import re
 from datetime import date, datetime
 from typing import Any, Literal
 
@@ -1220,6 +1221,41 @@ class ReportBranding(BaseModel):
     agent_phone: str | None = None
     website_url: str | None = None
     note: str | None = None
+    logo_url: str | None = None
+    primary_color: str | None = None
+    accent_color: str | None = None
+    footer_text: str | None = None
+    agency_disclaimer: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_branding(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = {}
+        for key, item in value.items():
+            if isinstance(item, str):
+                item = item.strip()
+                normalized[key] = item or None
+            else:
+                normalized[key] = item
+        for key in ("primary_color", "accent_color"):
+            color = normalized.get(key)
+            if isinstance(color, str):
+                normalized[key] = color.upper()
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_white_label_fields(self) -> "ReportBranding":
+        for field in ("primary_color", "accent_color"):
+            color = getattr(self, field)
+            if color and not re.fullmatch(r"#[0-9A-F]{6}", color):
+                raise ValueError(f"{field} must be a #RRGGBB color")
+        for field in ("logo_url", "website_url"):
+            url = getattr(self, field)
+            if url and not url.startswith(("https://", "http://")):
+                raise ValueError(f"{field} must be an http(s) URL")
+        return self
 
 
 class ReportRequest(BaseModel):

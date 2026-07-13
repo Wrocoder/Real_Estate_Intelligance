@@ -503,6 +503,11 @@ export type ReportBranding = {
   agent_phone?: string | null;
   website_url?: string | null;
   note?: string | null;
+  logo_url?: string | null;
+  primary_color?: string | null;
+  accent_color?: string | null;
+  footer_text?: string | null;
+  agency_disclaimer?: string | null;
 };
 
 export type ReportSection = {
@@ -1782,6 +1787,10 @@ export const api = {
 
 export function reportContentUrl(reportId: string) {
   return `${currentApiBaseUrl()}/api/v1/reports/${reportId}/content`;
+}
+
+export function reportPdfUrl(reportId: string) {
+  return `${currentApiBaseUrl()}/api/v1/reports/${reportId}/pdf`;
 }
 
 export function reportExportUrl(format: "csv" | "json") {
