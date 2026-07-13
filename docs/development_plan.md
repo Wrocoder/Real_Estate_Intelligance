@@ -78,6 +78,7 @@
 - [x] Добавить справочники `locations`, `districts`, `municipalities`.
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
+- [x] Добавить таблицы `agencies` и `agency_memberships` для agency workspaces.
 - [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
@@ -212,8 +213,8 @@
 - [x] Добавить one-time report purchase flow.
 - [x] Добавить audit logging для paid artifacts.
 - [x] Добавить тарифы Investor, Agency и Enterprise/API в plan limits.
-- [ ] Добавить team/agency accounts: несколько агентов под одной организацией.
-- [ ] Добавить роли и права для agency owner/admin/agent.
+- [x] Добавить team/agency accounts: несколько агентов под одной организацией.
+- [x] Добавить роли и права для agency owner/admin/agent.
 - [x] Добавить report credits и usage quotas для packages.
 - [x] Добавить invoice/VAT metadata для B2B checkout.
 - [x] Добавить lead capture для mortgage/legal/renovation partner referrals.
@@ -255,6 +256,7 @@
 - [x] Сделать mortgage calculator page.
 - [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
 - [x] Сделать страницу истории user-submitted private drafts.
+- [x] Добавить управление agency workspace и участниками на account page.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
@@ -335,6 +337,7 @@
 - [x] Добавить scoring tests.
 - [x] Добавить ingestion tests.
 - [x] Добавить report tests.
+- [x] Добавить agency accounts API/contract tests.
 - [x] Добавить optional repository integration tests с Postgres.
 - [x] Добавить contract tests для API.
 - [ ] Добавить coverage report.
@@ -375,7 +378,7 @@
 
 ## 18. Agency, Enterprise/API и Data Products
 
-- [ ] Добавить agency workspace model.
+- [x] Добавить agency workspace model.
 - [ ] Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
 - [ ] Добавить API-lite для agency/enterprise consumers.
 - [ ] Добавить API keys, quotas, usage logs и rate limits.
@@ -449,6 +452,7 @@
 - [x] Commit 52: native PDF report export.
 - [x] Commit 53: B2B invoice metadata for checkout.
 - [x] Commit 54: white-label report controls.
+- [x] Commit 55: agency workspaces and memberships.
 
 ## Current Sprint
 
@@ -498,6 +502,8 @@
 - [x] Добавить native PDF generation для object reports и saved report history.
 - [x] Добавить invoice/VAT metadata для B2B checkout.
 - [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
+- [x] Добавить team/agency accounts: workspace, memberships и owner/admin/agent роли.
+- [x] Добавить управление agency workspace и участниками на account page.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -536,3 +542,4 @@
 - [x] Сделать Commit 52 и push.
 - [x] Сделать Commit 53 и push.
 - [x] Сделать Commit 54 и push.
+- [x] Сделать Commit 55 и push.

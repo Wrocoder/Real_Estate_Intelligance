@@ -20,6 +20,8 @@ from fastapi import (
 from fastapi.responses import HTMLResponse, Response
 from sqlalchemy import select
 
+from domarion.agency_store.base import AgencyStore
+from domarion.agency_store.factory import get_agency_store
 from domarion.ai_insight_store.base import AIInsightStore
 from domarion.ai_insight_store.factory import get_ai_insight_store
 from domarion.auth import CurrentAccount, CurrentAccountDep
@@ -64,6 +66,14 @@ from domarion.repositories.factory import get_repository
 from domarion.schemas import (
     AccountSummary,
     AccountUsage,
+    AgencyMemberCreate,
+    AgencyMemberRole,
+    AgencyMembership,
+    AgencyMemberUpdate,
+    AgencyWorkspace,
+    AgencyWorkspaceCreate,
+    AgencyWorkspaceSummary,
+    AgencyWorkspaceUpdate,
     AIInsight,
     AIInsightListItem,
     AIInsightSubjectType,
@@ -80,6 +90,7 @@ from domarion.schemas import (
     AreaComparison,
     AreaMarketSnapshotJobResult,
     AreaStatistics,
+    AuthIdentity,
     CheckoutSession,
     CompareRequest,
     CompareResponse,
@@ -166,6 +177,7 @@ from domarion.schemas import (
     SubscriptionUpdate,
     TransportRouteReference,
     TransportStopReference,
+    UserRole,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
     UserSubmittedListingDraftPruneResult,
@@ -225,6 +237,7 @@ ReportOrderStoreDep = Annotated[ReportOrderStore, Depends(get_report_order_store
 ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
+AgencyStoreDep = Annotated[AgencyStore, Depends(get_agency_store)]
 PartnerReferralStoreDep = Annotated[PartnerReferralStore, Depends(get_partner_referral_store)]
 UserSubmittedListingStoreDep = Annotated[
     UserSubmittedListingStore,
@@ -238,6 +251,8 @@ PLANNED_INVESTMENTS_UPLOAD_EXTENSIONS = {".csv", ".json"}
 MAX_INFRASTRUCTURE_REFERENCES_UPLOAD_BYTES = 2 * 1024 * 1024
 INFRASTRUCTURE_REFERENCES_UPLOAD_EXTENSIONS = {".csv", ".json"}
 SOURCE_HEALTH_PRIORITY = {"failing": 0, "warning": 1, "healthy": 2}
+AGENCY_CREATABLE_PLANS = {"agency", "enterprise"}
+AGENCY_ADMIN_ROLES = {"owner", "admin"}
 
 
 @router.get("/listings", response_model=ListingSearchResponse)
@@ -1723,6 +1738,127 @@ def update_my_subscription(
 
 
 @router.post(
+    "/agencies",
+    response_model=AgencyWorkspace,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_agency_workspace(
+    payload: AgencyWorkspaceCreate,
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+) -> AgencyWorkspace:
+    _ensure_agency_plan(account)
+    return agency_store.create_agency(account.user, payload)
+
+
+@router.get("/agencies", response_model=list[AgencyWorkspaceSummary])
+def list_agency_workspaces(
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[AgencyWorkspaceSummary]:
+    return agency_store.list_agencies(account.user.id, limit=limit)
+
+
+@router.get("/agencies/{agency_id}", response_model=AgencyWorkspace)
+def get_agency_workspace(
+    agency_id: str,
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+) -> AgencyWorkspace:
+    agency = agency_store.get_agency(account.user.id, agency_id)
+    if agency is None:
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    return agency
+
+
+@router.patch("/agencies/{agency_id}", response_model=AgencyWorkspace)
+def update_agency_workspace(
+    agency_id: str,
+    payload: AgencyWorkspaceUpdate,
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+) -> AgencyWorkspace:
+    _ensure_agency_admin(agency_store, account, agency_id)
+    updated = agency_store.update_agency(agency_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    agency = agency_store.get_agency(account.user.id, agency_id)
+    if agency is None:
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    return agency
+
+
+@router.post(
+    "/agencies/{agency_id}/members",
+    response_model=AgencyMembership,
+    status_code=status.HTTP_201_CREATED,
+)
+def add_agency_member(
+    agency_id: str,
+    payload: AgencyMemberCreate,
+    agency_store: AgencyStoreDep,
+    auth_store: AuthStoreDep,
+    account: CurrentAccountDep,
+) -> AgencyMembership:
+    _ensure_agency_admin(agency_store, account, agency_id)
+    existing = agency_store.get_membership(agency_id, payload.user_id)
+    if existing is not None and _would_remove_last_owner(
+        agency_store,
+        existing,
+        AgencyMemberUpdate(role=payload.role, status=payload.status),
+    ):
+        raise HTTPException(status_code=400, detail="Agency must keep at least one active owner")
+    auth_store.get_or_create_user(
+        AuthIdentity(
+            user_id=payload.user_id,
+            email=payload.email,
+            display_name=payload.display_name,
+            role=_user_role_for_agency_member(payload.role),
+            plan="free",
+        )
+    )
+    return agency_store.add_member(agency_id, payload, invited_by=account.user.id)
+
+
+@router.patch("/agencies/{agency_id}/members/{membership_id}", response_model=AgencyMembership)
+def update_agency_member(
+    agency_id: str,
+    membership_id: str,
+    payload: AgencyMemberUpdate,
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+) -> AgencyMembership:
+    _ensure_agency_admin(agency_store, account, agency_id)
+    existing = _agency_member_or_404(agency_store, account, agency_id, membership_id)
+    if _would_remove_last_owner(agency_store, existing, payload):
+        raise HTTPException(status_code=400, detail="Agency must keep at least one active owner")
+    updated = agency_store.update_member(agency_id, membership_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Agency member not found")
+    return updated
+
+
+@router.delete(
+    "/agencies/{agency_id}/members/{membership_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def remove_agency_member(
+    agency_id: str,
+    membership_id: str,
+    agency_store: AgencyStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_agency_admin(agency_store, account, agency_id)
+    existing = _agency_member_or_404(agency_store, account, agency_id, membership_id)
+    if existing.role == "owner" and agency_store.count_active_owners(agency_id) <= 1:
+        raise HTTPException(status_code=400, detail="Agency must keep at least one active owner")
+    if not agency_store.remove_member(agency_id, membership_id):
+        raise HTTPException(status_code=404, detail="Agency member not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
     "/report-orders",
     response_model=CheckoutSession,
     status_code=status.HTTP_201_CREATED,
@@ -2748,6 +2884,82 @@ def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Fav
 def _ensure_admin(account: CurrentAccount) -> None:
     if account.user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+
+def _ensure_agency_plan(account: CurrentAccount) -> None:
+    if account.user.role == "admin" or account.subscription.plan in AGENCY_CREATABLE_PLANS:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "agency_accounts",
+            "plan": account.subscription.plan,
+            "required_plan": "agency",
+        },
+    )
+
+
+def _ensure_agency_admin(
+    agency_store: AgencyStore,
+    account: CurrentAccount,
+    agency_id: str,
+) -> AgencyMembership:
+    membership = agency_store.get_membership(agency_id, account.user.id)
+    if membership is None or membership.status == "disabled":
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    if membership.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "agency_membership_inactive",
+                "status": membership.status,
+            },
+        )
+    if membership.role not in AGENCY_ADMIN_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "agency_permission_denied",
+                "required_role": "owner_or_admin",
+            },
+        )
+    return membership
+
+
+def _agency_member_or_404(
+    agency_store: AgencyStore,
+    account: CurrentAccount,
+    agency_id: str,
+    membership_id: str,
+) -> AgencyMembership:
+    agency = agency_store.get_agency(account.user.id, agency_id)
+    if agency is None:
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    for member in agency.members:
+        if member.id == membership_id:
+            return member
+    raise HTTPException(status_code=404, detail="Agency member not found")
+
+
+def _would_remove_last_owner(
+    agency_store: AgencyStore,
+    membership: AgencyMembership,
+    payload: AgencyMemberUpdate,
+) -> bool:
+    target_role = payload.role or membership.role
+    target_status = payload.status or membership.status
+    if membership.role != "owner" or membership.status != "active":
+        return False
+    if target_role == "owner" and target_status == "active":
+        return False
+    return agency_store.count_active_owners(membership.agency_id) <= 1
+
+
+def _user_role_for_agency_member(role: AgencyMemberRole) -> UserRole:
+    if role in AGENCY_ADMIN_ROLES:
+        return "agency_admin"
+    return "realtor"
 
 
 def _normalize_partner_referral_payload(

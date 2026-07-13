@@ -633,6 +633,40 @@ class Subscription(Base):
     user: Mapped[User] = relationship()
 
 
+class Agency(Base):
+    __tablename__ = "agencies"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    billing_email: Mapped[str | None] = mapped_column(String(160), index=True)
+    website_url: Mapped[str | None] = mapped_column(String(240))
+    city: Mapped[str | None] = mapped_column(String(120), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    owner: Mapped[User] = relationship()
+
+
+class AgencyMembership(Base):
+    __tablename__ = "agency_memberships"
+    __table_args__ = (UniqueConstraint("agency_id", "user_id"),)
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    agency_id: Mapped[str] = mapped_column(ForeignKey("agencies.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    email: Mapped[str | None] = mapped_column(String(160), index=True)
+    display_name: Mapped[str | None] = mapped_column(String(160))
+    role: Mapped[str] = mapped_column(String(40), default="agent", index=True)
+    status: Mapped[str] = mapped_column(String(40), default="active", index=True)
+    invited_by: Mapped[str | None] = mapped_column(String(120), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    agency: Mapped[Agency] = relationship()
+    user: Mapped[User] = relationship(foreign_keys=[user_id])
+
+
 class ReportOrder(Base):
     __tablename__ = "report_orders"
 

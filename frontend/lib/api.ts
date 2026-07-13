@@ -667,6 +667,62 @@ export type PlanLimits = {
   can_white_label: boolean;
 };
 
+export type AgencyMemberRole = "owner" | "admin" | "agent";
+export type AgencyMembershipStatus = "active" | "invited" | "disabled";
+
+export type AgencyWorkspacePayload = {
+  name: string;
+  billing_email?: string | null;
+  website_url?: string | null;
+  city?: string | null;
+};
+
+export type AgencyMemberPayload = {
+  user_id: string;
+  email?: string | null;
+  display_name?: string | null;
+  role?: AgencyMemberRole;
+  status?: AgencyMembershipStatus;
+};
+
+export type AgencyMemberUpdatePayload = {
+  email?: string | null;
+  display_name?: string | null;
+  role?: AgencyMemberRole;
+  status?: AgencyMembershipStatus;
+};
+
+export type AgencyMembership = {
+  id: string;
+  agency_id: string;
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  role: AgencyMemberRole;
+  status: AgencyMembershipStatus;
+  invited_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AgencyWorkspaceSummary = {
+  id: string;
+  name: string;
+  owner_id: string;
+  billing_email: string | null;
+  website_url: string | null;
+  city: string | null;
+  current_user_role: AgencyMemberRole;
+  current_user_status: AgencyMembershipStatus;
+  members_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AgencyWorkspace = AgencyWorkspaceSummary & {
+  members: AgencyMembership[];
+};
+
 export type MortgageCalculationRequest = {
   property_price_pln: number;
   down_payment_pln: number;
@@ -1397,6 +1453,52 @@ export const api = {
     request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
+  listAgencies: (params: { limit?: number } = {}) =>
+    request<AgencyWorkspaceSummary[]>(`/api/v1/agencies${toQueryString(params)}`),
+  createAgency: (payload: AgencyWorkspacePayload) =>
+    request<AgencyWorkspace>("/api/v1/agencies", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getAgency: (agencyId: string) =>
+    request<AgencyWorkspace>(`/api/v1/agencies/${encodeURIComponent(agencyId)}`),
+  updateAgency: (agencyId: string, payload: Partial<AgencyWorkspacePayload>) =>
+    request<AgencyWorkspace>(`/api/v1/agencies/${encodeURIComponent(agencyId)}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  addAgencyMember: (agencyId: string, payload: AgencyMemberPayload) =>
+    request<AgencyMembership>(`/api/v1/agencies/${encodeURIComponent(agencyId)}/members`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  updateAgencyMember: (
+    agencyId: string,
+    membershipId: string,
+    payload: AgencyMemberUpdatePayload,
+  ) =>
+    request<AgencyMembership>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/members/${encodeURIComponent(membershipId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    ),
+  removeAgencyMember: async (agencyId: string, membershipId: string) => {
+    const response = await fetch(
+      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
+        agencyId,
+      )}/members/${encodeURIComponent(membershipId)}`,
+      {
+        method: "DELETE",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
   calculateMortgage: (payload: MortgageCalculationRequest) =>
     request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
       method: "POST",

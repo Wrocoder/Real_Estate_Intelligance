@@ -57,6 +57,12 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
+        ("/api/v1/agencies/{agency_id}", "get"): "AgencyWorkspace",
+        ("/api/v1/agencies/{agency_id}", "patch"): "AgencyWorkspace",
+        (
+            "/api/v1/agencies/{agency_id}/members/{membership_id}",
+            "patch",
+        ): "AgencyMembership",
     }
 
     for (path, method), schema_name in expected_response_refs.items():
@@ -68,6 +74,8 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
     expected_created_refs = {
         ("/api/v1/admin/ingestion/source-checks", "post"): "SourceCheckJob",
         ("/api/v1/admin/ingestion/source-errors", "post"): "SourceError",
+        ("/api/v1/agencies", "post"): "AgencyWorkspace",
+        ("/api/v1/agencies/{agency_id}/members", "post"): "AgencyMembership",
     }
     for (path, method), schema_name in expected_created_refs.items():
         operation = openapi["paths"][path][method]
@@ -150,6 +158,13 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     expected_schemas = {
         "AIInsight",
         "AIInsightListItem",
+        "AgencyMemberCreate",
+        "AgencyMemberUpdate",
+        "AgencyMembership",
+        "AgencyWorkspace",
+        "AgencyWorkspaceCreate",
+        "AgencyWorkspaceSummary",
+        "AgencyWorkspaceUpdate",
         "AreaComparison",
         "AreaComparisonItem",
         "AmenityReference",
@@ -220,6 +235,22 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     ]["content"]["application/json"]["schema"]
     assert ai_insights_list_schema["type"] == "array"
     assert ai_insights_list_schema["items"]["$ref"] == "#/components/schemas/AIInsightListItem"
+
+    agencies_list_schema = openapi["paths"]["/api/v1/agencies"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+    assert agencies_list_schema["type"] == "array"
+    assert agencies_list_schema["items"]["$ref"] == "#/components/schemas/AgencyWorkspaceSummary"
+
+    agency_create_schema = openapi["paths"]["/api/v1/agencies"]["post"]["requestBody"][
+        "content"
+    ]["application/json"]["schema"]
+    assert agency_create_schema["$ref"] == "#/components/schemas/AgencyWorkspaceCreate"
+
+    agency_member_create_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/members"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert agency_member_create_schema["$ref"] == "#/components/schemas/AgencyMemberCreate"
 
     report_request = schemas["ReportRequest"]
     assert report_request["properties"]["branding"]["anyOf"][0]["$ref"] == (

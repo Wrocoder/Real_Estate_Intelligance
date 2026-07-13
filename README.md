@@ -15,6 +15,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
+- Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
 - Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
@@ -616,6 +617,31 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/me/subscription `
 Лимиты уже применяются к favorites, alerts, saved reports и compare items.
 Старый `?owner_id=...` работает как fallback для совместимости старых запросов.
 
+Agency workspace доступен на планах `agency` и `enterprise`. Owner/admin могут
+добавлять участников, менять роли `owner`/`admin`/`agent` и отключать membership;
+agent может читать свой workspace без прав управления.
+
+```powershell
+$agencyHeaders = @{
+  "X-Domarion-User-Id"="agency-owner-1";
+  "X-Domarion-Email"="owner@example.com";
+  "X-Domarion-Role"="agency_admin";
+  "X-Domarion-Plan"="agency"
+}
+
+$agency = Invoke-RestMethod http://127.0.0.1:8000/api/v1/agencies `
+  -Headers $agencyHeaders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"name":"Example Realty","city":"Wrocław","billing_email":"billing@example.com"}'
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/agencies/$($agency.id)/members" `
+  -Headers $agencyHeaders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"user_id":"agent-1","email":"agent@example.com","role":"agent"}'
+```
+
 ## Internal admin MVP
 
 Admin endpoints требуют роль `admin` через MVP identity headers:
@@ -1084,6 +1110,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить team/agency accounts: несколько агентов под одной организацией.
-2. Добавить роли и права для agency owner/admin/agent.
+1. Добавить ручную загрузку/редактирование listing от риелтора.
+2. Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
 3. Добавить deployment workflow после выбора hosting.

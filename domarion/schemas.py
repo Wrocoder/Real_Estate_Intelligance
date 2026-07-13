@@ -12,6 +12,8 @@ AlertFrequency = Literal["instant", "daily", "weekly"]
 UserRole = Literal["buyer", "realtor", "agency_admin", "admin"]
 SubscriptionPlan = Literal["free", "buyer_pro", "investor", "realtor", "agency", "enterprise"]
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
+AgencyMemberRole = Literal["owner", "admin", "agent"]
+AgencyMembershipStatus = Literal["active", "invited", "disabled"]
 ReportProductCode = Literal[
     "object_report",
     "full_object_analysis",
@@ -1579,6 +1581,141 @@ class Subscription(BaseModel):
 class SubscriptionUpdate(BaseModel):
     plan: SubscriptionPlan | None = None
     status: SubscriptionStatus | None = None
+
+
+class AgencyWorkspaceCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    billing_email: str | None = Field(default=None, max_length=160)
+    website_url: str | None = Field(default=None, max_length=240)
+    city: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_create_payload(cls, value: Any) -> Any:
+        return _normalize_agency_payload(value)
+
+    @model_validator(mode="after")
+    def validate_create_payload(self) -> "AgencyWorkspaceCreate":
+        _validate_optional_email(self.billing_email)
+        _validate_optional_http_url("website_url", self.website_url)
+        return self
+
+
+class AgencyWorkspaceUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    billing_email: str | None = Field(default=None, max_length=160)
+    website_url: str | None = Field(default=None, max_length=240)
+    city: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_update_payload(cls, value: Any) -> Any:
+        return _normalize_agency_payload(value)
+
+    @model_validator(mode="after")
+    def validate_update_payload(self) -> "AgencyWorkspaceUpdate":
+        _validate_optional_email(self.billing_email)
+        _validate_optional_http_url("website_url", self.website_url)
+        return self
+
+
+class AgencyMemberCreate(BaseModel):
+    user_id: str = Field(min_length=2, max_length=120)
+    email: str | None = Field(default=None, max_length=160)
+    display_name: str | None = Field(default=None, max_length=160)
+    role: AgencyMemberRole = "agent"
+    status: AgencyMembershipStatus = "active"
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_member_create_payload(cls, value: Any) -> Any:
+        return _normalize_agency_payload(value)
+
+    @model_validator(mode="after")
+    def validate_member_create_payload(self) -> "AgencyMemberCreate":
+        _validate_optional_email(self.email)
+        return self
+
+
+class AgencyMemberUpdate(BaseModel):
+    role: AgencyMemberRole | None = None
+    status: AgencyMembershipStatus | None = None
+    email: str | None = Field(default=None, max_length=160)
+    display_name: str | None = Field(default=None, max_length=160)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_member_update_payload(cls, value: Any) -> Any:
+        return _normalize_agency_payload(value)
+
+    @model_validator(mode="after")
+    def validate_member_update_payload(self) -> "AgencyMemberUpdate":
+        _validate_optional_email(self.email)
+        return self
+
+
+class AgencyMembership(BaseModel):
+    id: str
+    agency_id: str
+    user_id: str
+    email: str | None = None
+    display_name: str | None = None
+    role: AgencyMemberRole
+    status: AgencyMembershipStatus
+    invited_by: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgencyWorkspaceSummary(BaseModel):
+    id: str
+    name: str
+    owner_id: str
+    billing_email: str | None = None
+    website_url: str | None = None
+    city: str | None = None
+    current_user_role: AgencyMemberRole
+    current_user_status: AgencyMembershipStatus
+    members_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class AgencyWorkspace(AgencyWorkspaceSummary):
+    members: list[AgencyMembership] = Field(default_factory=list)
+
+
+def _normalize_agency_payload(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    normalized = {}
+    for key, item in value.items():
+        if isinstance(item, str):
+            item = item.strip()
+            normalized[key] = item or None
+        else:
+            normalized[key] = item
+    email = normalized.get("email")
+    if isinstance(email, str):
+        normalized["email"] = email.lower()
+    billing_email = normalized.get("billing_email")
+    if isinstance(billing_email, str):
+        normalized["billing_email"] = billing_email.lower()
+    return normalized
+
+
+def _validate_optional_email(value: str | None) -> None:
+    if value is None:
+        return
+    if "@" not in value or "." not in value.rsplit("@", 1)[-1]:
+        raise ValueError("email is invalid")
+
+
+def _validate_optional_http_url(field_name: str, value: str | None) -> None:
+    if value is None:
+        return
+    if not value.startswith(("https://", "http://")):
+        raise ValueError(f"{field_name} must be an http(s) URL")
 
 
 class PlanLimits(BaseModel):
