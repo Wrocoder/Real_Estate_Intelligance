@@ -216,7 +216,7 @@ from domarion.services.report_generation import (
 from domarion.services.report_pdf import render_generated_report_pdf, render_report_content_pdf
 from domarion.services.report_products import get_report_product, list_report_products
 from domarion.services.report_templates import list_report_templates
-from domarion.services.reports import build_object_report
+from domarion.services.reports import build_object_report, build_user_submitted_object_report
 from domarion.services.scoring import build_listing_analysis
 from domarion.services.search import ListingSearchError, search_listing_analyses
 from domarion.services.user_submitted_listings import (
@@ -622,8 +622,8 @@ def create_user_submitted_listing_report(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    report = build_object_report(
-        analysis.analysis,
+    report = build_user_submitted_object_report(
+        analysis,
         payload.audience,
         branding=payload.branding,
     )

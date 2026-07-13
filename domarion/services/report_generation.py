@@ -20,7 +20,7 @@ from domarion.schemas import (
 )
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.report_html import render_area_report_html, render_object_report_html
-from domarion.services.reports import build_object_report
+from domarion.services.reports import build_object_report, build_user_submitted_object_report
 from domarion.services.scoring import build_listing_analysis
 
 
@@ -117,7 +117,7 @@ def generate_and_store_user_submitted_draft_report(
     analysis_wrapper = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
     analysis = analysis_wrapper.analysis
     listing = analysis.listing
-    report = build_object_report(analysis, audience, branding=branding)
+    report = build_user_submitted_object_report(analysis_wrapper, audience, branding=branding)
     report = _apply_paid_object_report_variant(report, analysis, product_code)
 
     if report_format == "html":

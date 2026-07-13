@@ -49,16 +49,16 @@ type CheckFormState = {
 const DEFAULT_FORM: CheckFormState = {
   title: "",
   source_url: "",
-  address: "Nowy Dwór, Wrocław",
+  address: "",
   city: "Wrocław",
   district: "Fabryczna",
   market_type: "secondary",
-  price: "675000",
-  area_m2: "58.4",
-  rooms: "3",
-  floor: "3",
-  building_floors: "6",
-  building_year: "2014",
+  price: "",
+  area_m2: "",
+  rooms: "",
+  floor: "",
+  building_floors: "",
+  building_year: "",
   lat: "",
   lon: "",
   confirm_private_analysis: true,
@@ -101,23 +101,39 @@ export default function CheckListingPage() {
   }
 
   async function previewReference() {
-    await importFromUrl();
+    await importFromUrl({ generateReport: true });
   }
 
-  async function importFromUrl() {
+  async function importFromUrl(options: { generateReport?: boolean } = {}) {
     setError("");
     setReferenceStatus("Загрузка ссылки...");
     setUrlImportStatus("Автоимпорт...");
     try {
       const payload = await api.importUserSubmittedListingFromUrl(form.source_url);
+      const updatedForm = mergeImportedFields(form, payload.fields);
       setUrlImportResult(payload);
       setReferencePreview(payload.reference_preview);
-      applyImportedFields(payload.fields);
+      setForm(updatedForm);
       setReferenceStatus(`${payload.reference_preview.provider_label}: private reference`);
       setUrlImportStatus(urlImportStatusLabel(payload));
-      setStatus("Поля обновлены из ссылки");
       setReportStatus("Отчет не создан");
       setSaveStatus("Не сохранен");
+      if (options.generateReport) {
+        if (payload.status === "failed" || payload.status === "unsupported") {
+          setStatus("Ссылка принята, но портал не отдал параметры");
+          setReportStatus("Отчет не создан: нет данных объявления");
+          return;
+        }
+        const missingFields = missingRequiredReportFields(updatedForm);
+        if (missingFields.length > 0) {
+          setStatus("Ссылка принята, но нужны обязательные поля");
+          setReportStatus(`Не хватает: ${missingFields.join(", ")}`);
+          return;
+        }
+        await createReportFromForm(updatedForm);
+      } else {
+        setStatus("Поля обновлены из ссылки");
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setReferenceStatus("Ошибка ссылки");
@@ -126,11 +142,21 @@ export default function CheckListingPage() {
   }
 
   async function createReport() {
+    await createReportFromForm(form);
+  }
+
+  async function createReportFromForm(targetForm: CheckFormState) {
     setError("");
+    const missingFields = missingRequiredReportFields(targetForm);
+    if (missingFields.length > 0) {
+      setReportStatus(`Не хватает: ${missingFields.join(", ")}`);
+      setStatus("Заполните обязательные поля для отчета");
+      return;
+    }
     setReportStatus("Генерация...");
     try {
       const payload = await api.createUserSubmittedListingReport({
-        ...buildListingPayload(form),
+        ...buildListingPayload(targetForm),
         audience: "buyer",
       });
       setResult(payload.analysis);
@@ -164,27 +190,6 @@ export default function CheckListingPage() {
 
   function updateField<K extends keyof CheckFormState>(key: K, value: CheckFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
-  }
-
-  function applyImportedFields(fields: SourceUrlImportFields) {
-    setForm((current) => ({
-      ...current,
-      title: fields.title ?? current.title,
-      address: normalizedImportedAddress(fields, current.address),
-      city: normalizeCity(fields.city, fields.district, current.city),
-      district: normalizeDistrict(fields.district) ?? current.district,
-      market_type: fields.market_type ?? current.market_type,
-      price: fields.price ? String(fields.price) : current.price,
-      area_m2: fields.area_m2 ? String(fields.area_m2) : current.area_m2,
-      rooms: fields.rooms ? String(fields.rooms) : current.rooms,
-      floor: fields.floor !== null && fields.floor !== undefined ? String(fields.floor) : current.floor,
-      building_floors: fields.building_floors
-        ? String(fields.building_floors)
-        : current.building_floors,
-      building_year: fields.building_year ? String(fields.building_year) : current.building_year,
-      lat: fields.lat !== null && fields.lat !== undefined ? String(fields.lat) : current.lat,
-      lon: fields.lon !== null && fields.lon !== undefined ? String(fields.lon) : current.lon,
-    }));
   }
 
   const analysis = result?.analysis ?? null;
@@ -237,7 +242,7 @@ export default function CheckListingPage() {
                 type="url"
                 value={form.source_url}
                 onChange={(event) => {
-                  updateField("source_url", event.target.value);
+                  setForm((current) => clearObjectFieldsForNewUrl(current, event.target.value));
                   setReferencePreview(null);
                   setUrlImportResult(null);
                   setReferenceStatus("Ссылка не проверена");
@@ -251,7 +256,7 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void previewReference()}
             >
-              <Link2 size={16} /> Принять и заполнить
+              <Link2 size={16} /> Принять и получить отчет
             </button>
             <button
               className="button"
@@ -393,17 +398,17 @@ export default function CheckListingPage() {
               </label>
               <label className="field">
                 <span>Район</span>
-                <select
-                  className="select"
+                <input
+                  className="input"
+                  list="district-options"
                   value={form.district}
                   onChange={(event) => updateField("district", event.target.value)}
-                >
+                />
+                <datalist id="district-options">
                   {DISTRICTS.map((district) => (
-                    <option key={district} value={district}>
-                      {district}
-                    </option>
+                    <option key={district} value={district} />
                   ))}
-                </select>
+                </datalist>
               </label>
               <label className="field">
                 <span>Рынок</span>
@@ -684,6 +689,51 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
   };
 }
 
+function mergeImportedFields(current: CheckFormState, fields: SourceUrlImportFields) {
+  return {
+    ...current,
+    title: fields.title ?? current.title,
+    address: normalizedImportedAddress(fields, current.address),
+    city: normalizeCity(fields.city, fields.district, current.city),
+    district: normalizeDistrict(fields.district) ?? current.district,
+    market_type: fields.market_type ?? current.market_type,
+    price: fields.price ? String(fields.price) : current.price,
+    area_m2: fields.area_m2 ? String(fields.area_m2) : current.area_m2,
+    rooms: fields.rooms ? String(fields.rooms) : current.rooms,
+    floor: fields.floor !== null && fields.floor !== undefined ? String(fields.floor) : current.floor,
+    building_floors: fields.building_floors ? String(fields.building_floors) : current.building_floors,
+    building_year: fields.building_year ? String(fields.building_year) : current.building_year,
+    lat: fields.lat !== null && fields.lat !== undefined ? String(fields.lat) : current.lat,
+    lon: fields.lon !== null && fields.lon !== undefined ? String(fields.lon) : current.lon,
+  };
+}
+
+function clearObjectFieldsForNewUrl(current: CheckFormState, sourceUrl: string) {
+  return {
+    ...DEFAULT_FORM,
+    city: current.city || DEFAULT_FORM.city,
+    district: current.district || DEFAULT_FORM.district,
+    market_type: current.market_type,
+    confirm_private_analysis: current.confirm_private_analysis,
+    source_url: sourceUrl,
+  };
+}
+
+function missingRequiredReportFields(form: CheckFormState) {
+  const missing = [];
+  if (!form.address.trim()) missing.push("address");
+  if (!form.city.trim()) missing.push("city");
+  if (!form.district.trim()) missing.push("district");
+  if (!isPositiveNumber(form.price)) missing.push("price");
+  if (!isPositiveNumber(form.area_m2)) missing.push("area_m2");
+  if (!isPositiveNumber(form.rooms)) missing.push("rooms");
+  return missing;
+}
+
+function isPositiveNumber(value: string) {
+  return Number(value) > 0;
+}
+
 function NumberField({
   label,
   value,
@@ -733,10 +783,11 @@ function dateLabel(value: string) {
 
 function normalizeDistrict(value: string | null) {
   if (!value) return null;
+  const cleaned = value.trim();
   const normalized = value.toLocaleLowerCase("pl-PL");
   return (
     DISTRICTS.find((district) => normalized.includes(district.toLocaleLowerCase("pl-PL"))) ??
-    null
+    cleaned
   );
 }
 
@@ -747,9 +798,9 @@ function normalizeCity(value: string | null, district: string | null, currentCit
     return "Wrocław";
   }
   if (normalizeDistrict(district)) {
-    return currentCity;
+    return value.trim();
   }
-  return currentCity;
+  return value.trim() || currentCity;
 }
 
 function normalizedImportedAddress(fields: SourceUrlImportFields, currentAddress: string) {

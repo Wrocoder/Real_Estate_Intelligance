@@ -117,6 +117,9 @@
 - [x] Добавить fallback, если comparables мало: area-level estimate + confidence warning.
 - [x] Добавить optional URL-assisted reference preview только как one-off user-submitted analysis, без bulk indexing, anti-bot обхода и контактов/фото.
 - [x] Добавить one-off URL import по user-submitted Otodom/OLX ссылке: обычный fetch без anti-bot обхода, извлечение минимальных полей и подтверждение пользователем перед отчетом.
+- [x] Доработать link-to-report flow: один клик импортирует Otodom/OLX параметры и строит buyer report без подстановки демо-данных.
+- [x] Добавить enhanced private listing report: источник/надежность, fair value, action plan, warnings и no source URL leak.
+- [x] Добавить proxy-market fallback для объектов вне текущего coverage с явным warning.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
@@ -453,6 +456,7 @@
 - [x] Commit 53: B2B invoice metadata for checkout.
 - [x] Commit 54: white-label report controls.
 - [x] Commit 55: agency workspaces and memberships.
+- [x] Commit 56: stronger link-to-report flow for user-submitted URLs.
 
 ## Current Sprint
 
@@ -504,6 +508,8 @@
 - [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Добавить team/agency accounts: workspace, memberships и owner/admin/agent роли.
 - [x] Добавить управление agency workspace и участниками на account page.
+- [x] Доработать one-click Otodom/OLX link-to-report flow с enhanced private listing report.
+- [x] Добавить nearest covered market fallback для объектов вне текущего coverage.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -543,3 +549,4 @@
 - [x] Сделать Commit 53 и push.
 - [x] Сделать Commit 54 и push.
 - [x] Сделать Commit 55 и push.
+- [x] Сделать Commit 56 и push.

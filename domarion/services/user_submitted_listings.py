@@ -1,5 +1,6 @@
 import html
 import json
+import math
 import re
 import unicodedata
 from collections.abc import Callable, Iterator
@@ -35,7 +36,10 @@ RETENTION_NOTE = (
     "User-submitted analysis is computed as a private draft; source URL is not exposed "
     "in public UI, SEO pages or generated listing analysis."
 )
-URL_IMPORT_USER_AGENT = "DomarionAnalytics/0.1 (+https://domarion.local)"
+URL_IMPORT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+)
 MAX_URL_IMPORT_BYTES = 1_500_000
 
 DISTRICT_DEFAULTS = {
@@ -92,15 +96,31 @@ def analyze_user_submitted_listing(
     if not payload.confirm_private_analysis:
         raise ValueError("Private analysis confirmation is required")
 
-    area_statistics = _resolve_area_statistics(repository, payload.city, payload.district)
+    area_statistics = _resolve_area_statistics(
+        repository,
+        payload.city,
+        payload.district,
+        lat=payload.lat,
+        lon=payload.lon,
+    )
     if area_statistics is None:
         raise ValueError(
             "Area statistics are not available for this city/district in the current MVP data"
         )
+    area_is_proxy = (
+        area_statistics.city.casefold() != payload.city.casefold()
+        or area_statistics.name.casefold() != payload.district.casefold()
+    )
 
     geocoding = _resolve_location(payload)
     source_domain = _source_domain(payload.source_url)
     warnings = _base_warnings(payload.source_url)
+    if area_is_proxy:
+        warnings.append(
+            "Object is outside the currently covered market grid; report uses "
+            f"{area_statistics.name}, {area_statistics.city} as the nearest available "
+            "market proxy. Treat valuation as directional."
+        )
     if geocoding and payload.lat is None and payload.lon is None:
         warnings.append(
             "Location was approximated by offline geocoding; verify exact address before a deal."
@@ -292,6 +312,8 @@ def _resolve_area_statistics(
     repository: RealEstateRepository,
     city: str,
     district: str,
+    lat: float | None = None,
+    lon: float | None = None,
 ) -> AreaStatistics | None:
     area_id = _area_id(city, district)
     stats = repository.get_area_statistics(area_id)
@@ -303,7 +325,25 @@ def _resolve_area_statistics(
     for item in repository.list_area_statistics():
         if item.city.casefold() == city_key and item.name.casefold() == district_key:
             return item
+    if lat is not None and lon is not None:
+        return _nearest_area_statistics_by_coordinates(repository, lat, lon)
     return None
+
+
+def _nearest_area_statistics_by_coordinates(
+    repository: RealEstateRepository,
+    lat: float,
+    lon: float,
+) -> AreaStatistics | None:
+    candidates = []
+    for listing in repository.list_listings():
+        stats = repository.get_area_statistics(listing.area_id)
+        if stats is None:
+            continue
+        candidates.append((_haversine_km(lat, lon, listing.lat, listing.lon), stats))
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[0])[1]
 
 
 def _resolve_location(payload: UserSubmittedListingRequest) -> GeocodingResult | None:
@@ -340,8 +380,8 @@ def _build_listing(
         title=payload.title or f"Проверка: {payload.address}",
         source_name="User submitted private draft",
         source_url=PRIVATE_SOURCE_URL_PLACEHOLDER,
-        city=payload.city,
-        district=payload.district,
+        city=area_statistics.city,
+        district=area_statistics.name,
         area_id=area_id,
         municipality=payload.city,
         address=payload.address,
@@ -529,6 +569,7 @@ def _fetch_source_url_html(source_url: str, timeout_seconds: float) -> SourceFet
         headers={
             "User-Agent": URL_IMPORT_USER_AGENT,
             "Accept": "text/html,application/xhtml+xml,application/json;q=0.8,*/*;q=0.5",
+            "Accept-Language": "pl-PL,pl;q=0.9,en;q=0.7",
         },
         method="GET",
     )
@@ -606,7 +647,10 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     if title:
         fields.title = title
 
-    price = _first_number(lowered, ("price", "priceamount", "amount", "totalprice"))
+    price = _first_number(
+        lowered,
+        ("price", "priceamount", "amount", "totalprice", "askingprice", "cena"),
+    )
     if price:
         fields.price = int(round(price))
 
@@ -615,19 +659,36 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
         fields.area_m2 = _coerce_float(floor_size.get("value"))
     area = _first_number(
         lowered,
-        ("area", "aream2", "areainsquaremeters", "usablearea", "floorarea"),
+        (
+            "area",
+            "aream2",
+            "areainsquaremeters",
+            "usablearea",
+            "floorarea",
+            "powierzchnia",
+            "powierzchniam2",
+            "m",
+        ),
     )
     if area and fields.area_m2 is None:
         fields.area_m2 = area
 
     rooms = _first_number(
         lowered,
-        ("rooms", "numberofrooms", "roomsnumber", "roomnumber", "roomsnum"),
+        (
+            "rooms",
+            "numberofrooms",
+            "roomsnumber",
+            "roomnumber",
+            "roomsnum",
+            "liczbapokoi",
+            "pokoje",
+        ),
     )
     if rooms:
         fields.rooms = int(round(rooms))
 
-    floor = _first_number(lowered, ("floor", "floornumber", "floorno"))
+    floor = _first_number(lowered, ("floor", "floornumber", "floorno", "pietro", "pitro"))
     if floor is not None:
         fields.floor = int(round(floor))
 
@@ -639,6 +700,10 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
             "totalfloors",
             "floorcount",
             "numberoffloors",
+            "liczbapieter",
+            "liczbapiter",
+            "pieterwbudynku",
+            "piterwbudynku",
         ),
     )
     if building_floors:
@@ -646,13 +711,13 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
 
     building_year = _first_number(
         lowered,
-        ("buildingyear", "buildyear", "constructionyear", "yearbuilt"),
+        ("buildingyear", "buildyear", "constructionyear", "yearbuilt", "rokbudowy"),
     )
     if building_year:
         fields.building_year = int(round(building_year))
 
     market_type = _market_type_from_value(
-        _first_text(lowered, ("market", "markettype", "buildingmarket"))
+        _first_text(lowered, ("market", "markettype", "buildingmarket", "rynek"))
     )
     if market_type:
         fields.market_type = market_type
@@ -674,11 +739,121 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
             ("district", "neighborhood", "addressregion"),
         )
     else:
-        fields.address = _first_text(lowered, ("streetaddress", "address", "location"))
+        fields.address = _first_text(lowered, ("streetaddress", "address", "location", "adres"))
         fields.city = _first_text(lowered, ("city", "locality", "addresslocality"))
-        fields.district = _first_text(lowered, ("district", "neighborhood", "addressregion"))
+        fields.district = _first_text(
+            lowered,
+            ("district", "neighborhood", "addressregion", "dzielnica"),
+        )
 
-    return fields
+    return _merge_import_fields(fields, _fields_from_labeled_json_object(item))
+
+
+def _fields_from_labeled_json_object(item: dict) -> SourceUrlImportFields:
+    label = _field_label(item)
+    if label is None:
+        return SourceUrlImportFields()
+
+    raw_value = _field_value(item)
+    if raw_value is None:
+        return SourceUrlImportFields()
+
+    fields = SourceUrlImportFields()
+    _apply_labeled_field(fields, label, raw_value)
+    return _validated_import_fields(fields.model_dump())
+
+
+def _field_label(item: dict) -> str | None:
+    lowered = {_json_key(key): value for key, value in item.items()}
+    return _first_text(
+        lowered,
+        (
+            "label",
+            "name",
+            "key",
+            "code",
+            "slug",
+            "parameter",
+            "attributename",
+            "localizedname",
+        ),
+    )
+
+
+def _field_value(item: dict) -> object | None:
+    lowered = {_json_key(key): value for key, value in item.items()}
+    for key in (
+        "value",
+        "values",
+        "displayvalue",
+        "localizedvalue",
+        "localizedvalues",
+        "text",
+        "content",
+    ):
+        value = lowered.get(key)
+        if value not in (None, "", []):
+            return value
+    return None
+
+
+def _apply_labeled_field(fields: SourceUrlImportFields, label: str, value: object) -> None:
+    key = _json_key(label)
+    text = _value_text(value)
+    if not text:
+        return
+
+    if key in {"price", "priceamount", "totalprice", "askingprice", "cena"}:
+        fields.price = _money_from_text(text) or _int_from_text(text)
+        return
+
+    if key in {"area", "aream2", "usablearea", "floorarea", "powierzchnia", "m"}:
+        fields.area_m2 = _area_from_text(text) or _coerce_float(text)
+        return
+
+    if key in {"rooms", "numberofrooms", "roomsnumber", "roomnumber", "liczbapokoi", "pokoje"}:
+        fields.rooms = _int_from_text(text)
+        return
+
+    if key in {"floor", "floornumber", "pietro", "pitro"}:
+        floor, building_floors = _floor_pair_from_text(text)
+        if floor is not None:
+            fields.floor = floor
+        if building_floors is not None:
+            fields.building_floors = building_floors
+        return
+
+    if key in {
+        "buildingfloors",
+        "totalfloors",
+        "floorcount",
+        "numberoffloors",
+        "liczbapieter",
+        "liczbapiter",
+        "pieterwbudynku",
+        "piterwbudynku",
+    }:
+        fields.building_floors = _int_from_text(text)
+        return
+
+    if key in {"buildingyear", "buildyear", "constructionyear", "yearbuilt", "rokbudowy"}:
+        fields.building_year = _year_from_text(text)
+        return
+
+    if key in {"market", "markettype", "buildingmarket", "rynek"}:
+        fields.market_type = _market_type_from_value(text)
+        return
+
+    if key in {"address", "streetaddress", "location", "adres", "lokalizacja"}:
+        fields.address = text
+        return
+
+    if key in {"city", "locality", "addresslocality", "miasto"}:
+        fields.city = text
+        return
+
+    if key in {"district", "neighborhood", "addressregion", "dzielnica"}:
+        fields.district = text
 
 
 def _fields_from_meta(page_html: str) -> SourceUrlImportFields:
@@ -700,25 +875,34 @@ def _fields_from_text(page_html: str) -> SourceUrlImportFields:
     if price:
         fields.price = price
 
-    area_match = re.search(r"(\d+(?:[,.]\d+)?)\s*(?:m²|m2|m kw\.?|mkw)", text, re.IGNORECASE)
-    if area_match:
-        fields.area_m2 = _coerce_float(area_match.group(1))
+    fields.area_m2 = _area_from_text(text)
 
     rooms_match = re.search(r"(\d+)\s*(?:pokoi|pokoje|pokój|rooms?)", text, re.IGNORECASE)
     if rooms_match:
         fields.rooms = int(rooms_match.group(1))
 
-    floor_match = re.search(r"(?:piętro|floor)\D{0,12}(\d+)", text, re.IGNORECASE)
-    if floor_match:
-        fields.floor = int(floor_match.group(1))
+    floor, building_floors = _floor_pair_from_text(text)
+    if floor is not None:
+        fields.floor = floor
+    if building_floors is not None:
+        fields.building_floors = building_floors
 
-    year_match = re.search(
-        r"(?:rok budowy|building year|year built)\D{0,20}((?:19|20)\d{2})",
+    building_floors_match = re.search(
+        (
+            r"(?:liczba pięter|liczba pieter|pięter w budynku|"
+            r"pieter w budynku|total floors)\D{0,24}(\d+)"
+        ),
         text,
         re.IGNORECASE,
     )
-    if year_match:
-        fields.building_year = int(year_match.group(1))
+    if building_floors_match and fields.building_floors is None:
+        fields.building_floors = int(building_floors_match.group(1))
+
+    fields.building_year = _year_from_text(text)
+
+    market_type = _market_type_from_value(text)
+    if market_type:
+        fields.market_type = market_type
 
     return fields
 
@@ -775,6 +959,34 @@ def _coerce_text(value: object) -> str | None:
     return None
 
 
+def _value_text(value: object) -> str | None:
+    if isinstance(value, str):
+        return _coerce_text(value)
+    if isinstance(value, int | float):
+        return str(value)
+    if isinstance(value, list):
+        parts = [_value_text(item) for item in value]
+        text = " ".join(part for part in parts if part)
+        return text or None
+    if isinstance(value, dict):
+        parts = []
+        for key in (
+            "value",
+            "displayValue",
+            "localizedValue",
+            "label",
+            "name",
+            "text",
+            "content",
+        ):
+            if key in value:
+                text = _value_text(value[key])
+                if text:
+                    parts.append(text)
+        return " ".join(parts) or None
+    return None
+
+
 def _coerce_float(value: object) -> float | None:
     if isinstance(value, int | float):
         return float(value)
@@ -785,6 +997,53 @@ def _coerce_float(value: object) -> float | None:
     if not match:
         return None
     return float(match.group(0))
+
+
+def _int_from_text(text: str) -> int | None:
+    number = _coerce_float(text)
+    if number is None:
+        return None
+    return int(round(number))
+
+
+def _area_from_text(text: str) -> float | None:
+    match = re.search(r"(\d+(?:[,.]\d+)?)\s*(?:m²|m2|m kw\.?|mkw)", text, re.IGNORECASE)
+    if match:
+        return _coerce_float(match.group(1))
+    return None
+
+
+def _floor_pair_from_text(text: str) -> tuple[int | None, int | None]:
+    if re.search(r"\bparter\b", text, re.IGNORECASE):
+        building_match = re.search(r"\bparter\s*/\s*(\d+)", text, re.IGNORECASE)
+        return 0, int(building_match.group(1)) if building_match else None
+
+    pair_match = re.search(
+        r"(?:piętro|pietro|floor)?\D{0,12}(\d+)\s*/\s*(\d+)",
+        text,
+        re.IGNORECASE,
+    )
+    if pair_match:
+        return int(pair_match.group(1)), int(pair_match.group(2))
+
+    floor_match = re.search(r"(?:piętro|pietro|floor)\D{0,16}(\d+)", text, re.IGNORECASE)
+    if floor_match:
+        return int(floor_match.group(1)), None
+    return None, None
+
+
+def _year_from_text(text: str) -> int | None:
+    compact = text.strip()
+    if len(compact) <= 12 and re.fullmatch(r"(?:18|19|20)\d{2}", compact):
+        return int(compact)
+    match = re.search(
+        r"(?:rok budowy|building year|year built|construction year)\D{0,20}((?:18|19|20)\d{2})",
+        text,
+        re.IGNORECASE,
+    )
+    if match:
+        return int(match.group(1))
+    return None
 
 
 def _market_type_from_value(value: str | None) -> str | None:
@@ -896,3 +1155,16 @@ def _float_value(
     fallback: float,
 ) -> float:
     return float(value if value is not None else defaults.get(key, fallback))
+
+
+def _haversine_km(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
+    radius_km = 6371.0
+    phi_1 = math.radians(lat_1)
+    phi_2 = math.radians(lat_2)
+    delta_phi = math.radians(lat_2 - lat_1)
+    delta_lambda = math.radians(lon_2 - lon_1)
+    value = (
+        math.sin(delta_phi / 2) ** 2
+        + math.cos(phi_1) * math.cos(phi_2) * math.sin(delta_lambda / 2) ** 2
+    )
+    return 2 * radius_km * math.atan2(math.sqrt(value), math.sqrt(1 - value))

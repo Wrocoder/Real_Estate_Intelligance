@@ -172,6 +172,73 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
     assert any("Photos, contacts and full description" in item for item in payload["warnings"])
 
 
+def test_user_submitted_listing_import_from_url_extracts_labeled_portal_parameters(
+    monkeypatch,
+) -> None:
+    page_html = """
+    <html>
+      <head>
+        <script id="__NEXT_DATA__" type="application/json">
+        {
+          "props": {
+            "pageProps": {
+              "ad": {
+                "title": "Funkcjonalne 3 pokoje",
+                "parameters": [
+                  {"label": "Cena", "value": "729 000 zł"},
+                  {"label": "Powierzchnia", "value": "62,5 m²"},
+                  {"label": "Liczba pokoi", "value": "3 pokoje"},
+                  {"label": "Piętro", "value": "2/4"},
+                  {"label": "Rok budowy", "value": "2018"},
+                  {"label": "Rynek", "value": "wtórny"},
+                  {"label": "Adres", "value": "ul. Kwiatowa 5"},
+                  {"label": "Miasto", "value": "Wrocław"},
+                  {"label": "Dzielnica", "value": "Krzyki"}
+                ]
+              }
+            }
+          }
+        }
+        </script>
+      </head>
+    </html>
+    """
+
+    def fake_fetch(source_url: str, timeout_seconds: float):
+        return user_submitted_listing_service.SourceFetchResult(
+            body=page_html,
+            final_url=source_url,
+            status_code=200,
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fake_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.olx.pl/d/oferta/demo-IDabc987.html"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "extracted"
+    assert payload["fields"]["title"] == "Funkcjonalne 3 pokoje"
+    assert payload["fields"]["price"] == 729000
+    assert payload["fields"]["area_m2"] == 62.5
+    assert payload["fields"]["rooms"] == 3
+    assert payload["fields"]["floor"] == 2
+    assert payload["fields"]["building_floors"] == 4
+    assert payload["fields"]["building_year"] == 2018
+    assert payload["fields"]["market_type"] == "secondary"
+    assert payload["fields"]["address"] == "ul. Kwiatowa 5"
+    assert payload["fields"]["city"] == "Wrocław"
+    assert payload["fields"]["district"] == "Krzyki"
+
+
 def test_user_submitted_listing_import_from_url_rejects_unsupported_provider(
     monkeypatch,
 ) -> None:
@@ -361,6 +428,35 @@ def test_user_submitted_listing_analysis_requires_private_confirmation() -> None
     assert response.json()["detail"] == "Private analysis confirmation is required"
 
 
+def test_user_submitted_listing_analysis_uses_nearest_market_proxy_for_uncovered_location() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/outside-wroclaw-ID4C0bS",
+            "address": "Piastów Śląskich, Mędłów",
+            "city": "Mędłów",
+            "district": "dolnośląskie",
+            "market_type": "secondary",
+            "price": 625000,
+            "area_m2": 59.74,
+            "rooms": 3,
+            "floor": 1,
+            "building_floors": 2,
+            "building_year": 2011,
+            "lat": 51.007355,
+            "lon": 17.048521,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["analysis"]["listing"]["city"] == "Wrocław"
+    assert payload["analysis"]["listing"]["municipality"] == "Mędłów"
+    assert payload["analysis"]["comparables"]
+    assert any("nearest available market proxy" in item for item in payload["warnings"])
+
+
 def test_user_submitted_listing_report_uses_buyer_template_without_source_url_leak() -> None:
     source_url = "https://www.otodom.pl/pl/oferta/demo-private-reference"
     response = client.post(
@@ -391,8 +487,12 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert payload["report"]["listing_id"].startswith("user-submitted-")
     assert "не финансовая" in payload["report"]["disclaimer"]
     section_titles = {section["title"] for section in payload["report"]["sections"]}
+    assert "Источник и надежность отчета" in section_titles
+    assert "Цена: fair value и решение" in section_titles
+    assert "Что делать дальше" in section_titles
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
+    assert source_url not in str(payload["report"])
 
 
 def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
@@ -534,6 +634,8 @@ def test_user_submitted_listing_draft_can_generate_saved_report_without_url_leak
     assert payload["listing_id"].startswith("user-submitted-")
     assert payload["content_type"].startswith("text/html")
     assert source_url not in payload["content"]
+    assert "Источник и надежность отчета" in payload["content"]
+    assert "Цена: fair value и решение" in payload["content"]
     assert payload["report_metadata"]["user_submitted_draft_id"] == created["draft_id"]
     assert payload["report_metadata"]["source_domain"] == "otodom.pl"
     assert payload["report_metadata"]["private_source_reference_present"] is True

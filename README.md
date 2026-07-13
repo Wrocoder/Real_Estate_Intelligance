@@ -49,7 +49,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлена аналитика сравнения районов: city baseline, value/growth индексы, buyer/seller market и public `/areas/compare`.
 - Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
 - Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
-- Добавлен one-off URL import: пользовательская Otodom/OLX ссылка может автозаполнить минимальные поля без фото, контактов, raw HTML и bulk crawling.
+- Доработан link-to-report flow: пользовательская Otodom/OLX ссылка автозаполняет параметры, строит buyer report, не хранит фото/контакты/raw HTML и явно маркирует proxy-market fallback вне текущего coverage.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -1110,6 +1110,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить ручную загрузку/редактирование listing от риелтора.
-2. Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
+1. Расширить coverage beyond Wrocław: больше районов/гмин и area statistics для объектов из Otodom/OLX ссылок.
+2. Добавить stronger URL extraction fixtures под реальные Otodom/OLX варианты HTML/embedded state.
 3. Добавить deployment workflow после выбора hosting.
