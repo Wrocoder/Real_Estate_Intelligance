@@ -652,6 +652,18 @@ class PlannedInvestmentImportResponse(BaseModel):
     job: IngestionJob
 
 
+class InfrastructureReferenceImportResponse(BaseModel):
+    rows_seen: int = Field(ge=0)
+    created: int = Field(ge=0)
+    updated: int = Field(ge=0)
+    skipped: int = Field(ge=0)
+    dry_run: bool
+    layer_counts: dict[str, int] = Field(default_factory=dict)
+    item_ids: list[str] = Field(default_factory=list)
+    errors: list[str] = Field(default_factory=list)
+    job: IngestionJob
+
+
 class DataQualityLogCreate(BaseModel):
     job_id: str | None = None
     source_name: str

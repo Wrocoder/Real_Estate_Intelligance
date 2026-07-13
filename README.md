@@ -39,6 +39,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
+- Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
 - Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
 - Добавлен scoring backtest v1 по historical price snapshots.
@@ -351,6 +352,39 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/ingestion/open-data-roadma
 Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/ingestion/open-data-roadmap?status=ready_for_import" `
   -Headers @{"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"}
 ```
+
+## Импорт infrastructure references
+
+Infrastructure references можно импортировать из JSON/CSV в существующие таблицы:
+`transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities` и
+`industrial_zones`. Это покрывает transport, schools/kindergartens, healthcare,
+parks и industrial risk layers. Dry-run работает локально, запись требует
+`DATA_REPOSITORY_BACKEND=postgres`.
+
+Пример файла:
+`data/samples/infrastructure_references_wroclaw_open_data.json`.
+
+CLI dry-run:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-infrastructure-references data\samples\infrastructure_references_wroclaw_open_data.json --dry-run
+```
+
+Admin upload dry-run:
+
+```powershell
+curl.exe -X POST "http://127.0.0.1:8000/api/v1/admin/infrastructure/import" `
+  -H "X-Domarion-Role: admin" `
+  -H "X-Domarion-Plan: enterprise" `
+  -F "dry_run=true" `
+  -F "source_name=OpenData Wroclaw Sample" `
+  -F "file=@data/samples/infrastructure_references_wroclaw_open_data.json;type=application/json"
+```
+
+Минимальные поля для point layers: `layer`, `id`, `municipality_id`, `name`,
+`lat`, `lon` и layer-specific type field: `stop_type`, `school_type`,
+`kindergarten_type`, `amenity_type` или `zone_type`. Для CSV без `layer` можно
+передать fallback `--layer schools` в CLI или form field `layer=schools` в API.
 
 ## Импорт planned investments
 
@@ -996,7 +1030,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
-2. Добавить native PDF generation.
-3. Добавить invoice/VAT metadata для B2B checkout.
-4. Добавить deployment workflow после выбора hosting.
+1. Добавить native PDF generation.
+2. Добавить invoice/VAT metadata для B2B checkout.
+3. Добавить deployment workflow после выбора hosting.

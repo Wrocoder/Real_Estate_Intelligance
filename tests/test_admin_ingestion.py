@@ -52,6 +52,14 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert open_data_response.status_code == 403
     assert open_data_response.json()["detail"] == "Admin role required"
 
+    infrastructure_import_response = client.post(
+        "/api/v1/admin/infrastructure/import",
+        data={"dry_run": "true"},
+        files={"file": ("infrastructure.json", b"{}", "application/json")},
+    )
+    assert infrastructure_import_response.status_code == 403
+    assert infrastructure_import_response.json()["detail"] == "Admin role required"
+
     backtest_response = client.get("/api/v1/admin/scoring/backtest")
     assert backtest_response.status_code == 403
     assert backtest_response.json()["detail"] == "Admin role required"
@@ -227,6 +235,30 @@ def test_admin_can_list_and_filter_open_data_roadmap() -> None:
         params={"status": "ready_for_import"},
     )
     assert {item["status"] for item in ready_response.json()} == {"ready_for_import"}
+
+
+def test_admin_can_dry_run_infrastructure_reference_import() -> None:
+    sample_path = "data/samples/infrastructure_references_wroclaw_open_data.json"
+    with open(sample_path, "rb") as file:
+        response = client.post(
+            "/api/v1/admin/infrastructure/import",
+            headers=ADMIN_HEADERS,
+            data={"dry_run": "true", "source_name": "OpenData Wroclaw Sample"},
+            files={"file": ("infrastructure.json", file, "application/json")},
+        )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["dry_run"] is True
+    assert payload["rows_seen"] == 7
+    assert payload["created"] == 0
+    assert payload["updated"] == 0
+    assert payload["layer_counts"]["amenities"] == 2
+    assert "wro-school-sp-fabryczna-demo" in payload["item_ids"]
+    assert payload["job"]["source_name"] == "OpenData Wroclaw Sample"
+    assert payload["job"]["source_type"] == "infrastructure_reference_import"
+    assert payload["job"]["status"] == "succeeded"
+    assert payload["job"]["rows_seen"] == 7
 
 
 def test_admin_can_run_scoring_backtest() -> None:

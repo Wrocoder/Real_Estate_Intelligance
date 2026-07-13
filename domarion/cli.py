@@ -9,6 +9,7 @@ from domarion.ingestion.db_writer import (
     import_partner_csv,
     rebuild_price_history_metrics_in_session,
 )
+from domarion.ingestion.infrastructure_references import import_infrastructure_references
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
 from domarion.repositories.factory import get_repository
@@ -52,6 +53,26 @@ def main() -> None:
         "--dry-run",
         action="store_true",
         help="Parse and validate the file without writing to the repository backend.",
+    )
+    infrastructure_parser = subparsers.add_parser(
+        "import-infrastructure-references",
+        help="Import schools, transport, amenities and industrial zones from JSON/CSV.",
+    )
+    infrastructure_parser.add_argument("path", help="Path to UTF-8 JSON or CSV file.")
+    infrastructure_parser.add_argument(
+        "--source-name",
+        default=None,
+        help="Fallback source name if the file does not define one.",
+    )
+    infrastructure_parser.add_argument(
+        "--layer",
+        default=None,
+        help="Fallback layer for CSV/list files without a layer column.",
+    )
+    infrastructure_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Parse and validate the file without writing to PostgreSQL.",
     )
     report_parser = subparsers.add_parser(
         "generate-report-html",
@@ -149,6 +170,23 @@ def main() -> None:
                     default_source_name=args.source_name,
                 ).as_dict()
         _print_json(json.dumps(result, ensure_ascii=False, indent=2))
+    elif args.command == "import-infrastructure-references":
+        if not args.dry_run and get_settings().data_repository_backend != "postgres":
+            raise SystemExit(
+                "import-infrastructure-references writes require "
+                "DATA_REPOSITORY_BACKEND=postgres. Use --dry-run for local validation."
+            )
+        with SessionLocal() as session:
+            result = import_infrastructure_references(
+                args.path,
+                session,
+                default_layer=args.layer,
+                default_source_name=args.source_name,
+                dry_run=args.dry_run,
+            )
+            if not args.dry_run:
+                session.commit()
+        _print_json(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "generate-report-html":
         repository = InMemoryRealEstateRepository()
         path = write_object_report_html(

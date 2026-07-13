@@ -114,6 +114,13 @@ def test_openapi_exposes_source_registry_contract() -> None:
     assert roadmap_schema["type"] == "array"
     assert roadmap_schema["items"]["$ref"] == "#/components/schemas/OpenDataRoadmapItem"
 
+    infrastructure_import_schema = paths["/api/v1/admin/infrastructure/import"]["post"][
+        "responses"
+    ]["200"]["content"]["application/json"]["schema"]
+    assert infrastructure_import_schema["$ref"] == (
+        "#/components/schemas/InfrastructureReferenceImportResponse"
+    )
+
     checks_schema = paths["/api/v1/admin/ingestion/source-checks"]["get"]["responses"]["200"][
         "content"
     ]["application/json"]["schema"]
@@ -142,6 +149,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "IndustrialZoneReference",
         "InfrastructureEnrichmentItem",
         "InfrastructureEnrichmentJobResult",
+        "InfrastructureReferenceImportResponse",
         "KindergartenReference",
         "LocationReference",
         "MarketDashboard",

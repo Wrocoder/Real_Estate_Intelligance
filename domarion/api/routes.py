@@ -36,6 +36,11 @@ from domarion.ingestion.db_writer import (
     import_partner_records_in_session,
     rebuild_price_history_metrics_in_session,
 )
+from domarion.ingestion.infrastructure_references import (
+    InfrastructureReferenceImportError,
+    InfrastructureReferenceImportResult,
+    import_infrastructure_references,
+)
 from domarion.ingestion.partner_csv import PartnerCsvError, read_partner_csv
 from domarion.ingestion.planned_investments import (
     PlannedInvestmentImportError,
@@ -91,6 +96,7 @@ from domarion.schemas import (
     GenerateUserSubmittedDraftReportRequest,
     IndustrialZoneReference,
     InfrastructureEnrichmentJobResult,
+    InfrastructureReferenceImportResponse,
     IngestionJob,
     IngestionJobCreate,
     IngestionSourceHealth,
@@ -227,6 +233,8 @@ MAX_PARTNER_CSV_UPLOAD_BYTES = 5 * 1024 * 1024
 PARTNER_CSV_UPLOAD_EXTENSIONS = {".csv"}
 MAX_PLANNED_INVESTMENTS_UPLOAD_BYTES = 2 * 1024 * 1024
 PLANNED_INVESTMENTS_UPLOAD_EXTENSIONS = {".csv", ".json"}
+MAX_INFRASTRUCTURE_REFERENCES_UPLOAD_BYTES = 2 * 1024 * 1024
+INFRASTRUCTURE_REFERENCES_UPLOAD_EXTENSIONS = {".csv", ".json"}
 SOURCE_HEALTH_PRIORITY = {"failing": 0, "warning": 1, "healthy": 2}
 
 
@@ -1507,6 +1515,136 @@ async def import_admin_planned_investments(
     return PlannedInvestmentImportResponse(**result.as_dict(), job=finished_job)
 
 
+@router.post(
+    "/admin/infrastructure/import",
+    response_model=InfrastructureReferenceImportResponse,
+)
+async def import_admin_infrastructure_references(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    file: Annotated[UploadFile, File(description="UTF-8 JSON or CSV file.")],
+    source_name: Annotated[str | None, Form()] = None,
+    layer: Annotated[str | None, Form()] = None,
+    dry_run: Annotated[bool, Form()] = True,
+) -> InfrastructureReferenceImportResponse:
+    _ensure_admin(account)
+    filename = file.filename or "infrastructure_references.json"
+    suffix = Path(filename).suffix.lower()
+    if suffix not in INFRASTRUCTURE_REFERENCES_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supported infrastructure reference upload formats: .json, .csv",
+        )
+
+    content = await file.read(MAX_INFRASTRUCTURE_REFERENCES_UPLOAD_BYTES + 1)
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > MAX_INFRASTRUCTURE_REFERENCES_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+
+    source_label = (source_name or Path(filename).stem).strip() or Path(filename).stem
+    job = admin_store.create_job(
+        IngestionJobCreate(
+            source_name=source_label,
+            source_type="infrastructure_reference_import",
+            status="running",
+            created_by=account.user.id,
+            notes="Infrastructure reference upload from internal admin endpoint.",
+            metadata={
+                "file_name": filename,
+                "dry_run": dry_run,
+                "bytes": len(content),
+                "layer": layer,
+            },
+        )
+    )
+    temp_path = _write_upload_to_temp_file(content, suffix)
+    try:
+        if not dry_run and get_settings().data_repository_backend != "postgres":
+            failed_job = _fail_import_job(
+                admin_store,
+                job.id,
+                source_label,
+                code="infrastructure_import_requires_postgres",
+                message="Infrastructure reference writes require DATA_REPOSITORY_BACKEND=postgres.",
+                payload={
+                    "backend": get_settings().data_repository_backend,
+                    "file_name": filename,
+                },
+                result=ImportResult(rows_seen=0),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Infrastructure import requires Postgres data repository",
+                    "job_id": failed_job.id if failed_job else job.id,
+                },
+            )
+
+        with SessionLocal() as session:
+            result = import_infrastructure_references(
+                temp_path,
+                session,
+                default_layer=layer,
+                default_source_name=source_label,
+                dry_run=dry_run,
+            )
+            if not dry_run:
+                session.commit()
+    except InfrastructureReferenceImportError as exc:
+        failed_job = _fail_import_job(
+            admin_store,
+            job.id,
+            source_label,
+            code="infrastructure_reference_import_failed",
+            message=str(exc),
+            payload={"file_name": filename, "dry_run": dry_run, "layer": layer},
+            result=_infrastructure_import_to_ingestion_result(
+                InfrastructureReferenceImportResult()
+            ),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Infrastructure reference import failed",
+                "error": str(exc),
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        failed_job = _fail_import_job(
+            admin_store,
+            job.id,
+            source_label,
+            code="infrastructure_reference_write_failed",
+            message=str(exc),
+            payload={"file_name": filename, "exception_type": type(exc).__name__},
+            result=ImportResult(rows_seen=0),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Infrastructure reference import failed while writing to database",
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    errors_count = len(result.errors)
+    finished_job = admin_store.finish_job(
+        job.id,
+        _infrastructure_import_to_ingestion_result(result),
+        status="failed" if errors_count else "succeeded",
+        errors_count=errors_count,
+    )
+    if finished_job is None:
+        raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
+    return InfrastructureReferenceImportResponse(**result.as_dict(), job=finished_job)
+
+
 @router.get("/admin/planned-investments/{investment_id}", response_model=PlannedInvestment)
 def get_admin_planned_investment(
     investment_id: str,
@@ -2517,6 +2655,16 @@ def _planned_import_to_ingestion_result(result: PlannedInvestmentImportResult) -
         rows_seen=result.rows_seen,
         properties_created=result.created,
         properties_updated=result.updated,
+    )
+
+
+def _infrastructure_import_to_ingestion_result(
+    result: InfrastructureReferenceImportResult,
+) -> ImportResult:
+    return ImportResult(
+        rows_seen=result.rows_seen,
+        raw_created=result.created,
+        raw_updated=result.updated,
     )
 
 

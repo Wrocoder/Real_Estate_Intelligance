@@ -1,0 +1,102 @@
+{
+  "source_name": "Wroclaw official open-data sample",
+  "items": [
+    {
+      "layer": "transport_stops",
+      "id": "wro-stop-nowydwor-rondo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Nowy Dwór Rondo",
+      "stop_type": "tram_bus",
+      "lat": 51.1102,
+      "lon": 16.9566,
+      "lines": ["13", "23", "106"],
+      "source_url": "https://open-data.cui.wroclaw.pl/"
+    },
+    {
+      "layer": "transport_routes",
+      "id": "wro-route-13",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "route_number": "13",
+      "route_name": "Tram 13 Nowy Dwór - centrum",
+      "route_type": "tram",
+      "operator": "MPK Wrocław",
+      "status": "active",
+      "stop_ids": ["wro-stop-nowydwor-rondo"]
+    },
+    {
+      "layer": "schools",
+      "id": "wro-school-sp-fabryczna-demo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Szkoła Podstawowa Fabryczna Demo",
+      "school_type": "primary",
+      "operator_type": "public",
+      "lat": 51.1121,
+      "lon": 16.9591,
+      "source_url": "https://geoportal.wroclaw.pl/en/resources/"
+    },
+    {
+      "layer": "kindergartens",
+      "id": "wro-kindergarten-fabryczna-demo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Przedszkole Fabryczna Demo",
+      "kindergarten_type": "public",
+      "operator_type": "public",
+      "lat": 51.113,
+      "lon": 16.9575,
+      "source_url": "https://geoportal.wroclaw.pl/en/resources/"
+    },
+    {
+      "layer": "amenities",
+      "id": "wro-amenity-park-fabryczna-demo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Park Fabryczna Demo",
+      "amenity_type": "park",
+      "lat": 51.1142,
+      "lon": 16.9548,
+      "source_url": "https://geoportal.wroclaw.pl/en/resources/"
+    },
+    {
+      "layer": "amenities",
+      "id": "wro-amenity-healthcare-fabryczna-demo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Przychodnia Fabryczna Demo",
+      "amenity_type": "healthcare",
+      "lat": 51.1116,
+      "lon": 16.9558,
+      "source_url": "https://geoportal.wroclaw.pl/en/resources/"
+    },
+    {
+      "layer": "industrial_zones",
+      "id": "wro-industrial-zone-fabryczna-demo",
+      "municipality_id": "wroclaw",
+      "municipality_name": "Wrocław",
+      "district_id": "wroclaw-fabryczna",
+      "district_name": "Fabryczna",
+      "name": "Fabryczna Industrial Buffer Demo",
+      "zone_type": "industrial_area",
+      "risk_level": "moderate",
+      "impact_radius_m": 900,
+      "lat": 51.1055,
+      "lon": 16.944,
+      "source_url": "https://geoportal.wroclaw.pl/en/resources/"
+    }
+  ]
+}
