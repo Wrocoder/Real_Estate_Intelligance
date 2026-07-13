@@ -98,6 +98,20 @@ def test_object_report_html_endpoint() -> None:
     assert "Ликвидность и тезис роста" in response.text
 
 
+def test_object_report_pdf_endpoint() -> None:
+    client = TestClient(app)
+
+    response = client.get("/api/v1/reports/object/wr-001.pdf?audience=buyer")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"] == (
+        'attachment; filename="domarion-report-wr-001.pdf"'
+    )
+    assert response.content.startswith(b"%PDF-1.4")
+    assert b"/Type /Catalog" in response.content
+
+
 def test_object_report_uses_audience_templates() -> None:
     repository = InMemoryRealEstateRepository()
     listing = repository.get_listing("wr-001")

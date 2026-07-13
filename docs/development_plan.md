@@ -183,7 +183,7 @@
 - [x] Добавить `/api/v1/reports` history endpoints.
 - [x] Добавить report templates для buyer/realtor/investor.
 - [x] Добавить branded realtor report fields.
-- [ ] Добавить native PDF generation.
+- [x] Добавить native PDF generation.
 - [x] Добавить email delivery.
 - [x] Добавить mortgage calculation и total purchase cost в buyer report v1.
 - [x] Добавить buyer report секции: mortgage calculation, seller questions, purchase checklist, total cost.
@@ -446,6 +446,7 @@
 - [x] Commit 49: Stripe/PayU hosted checkout API adapters.
 - [x] Commit 50: official open-data roadmap API.
 - [x] Commit 51: infrastructure reference JSON/CSV import.
+- [x] Commit 52: native PDF report export.
 
 ## Current Sprint
 
@@ -492,6 +493,7 @@
 - [x] Подключить hosted checkout API для Stripe и PayU.
 - [x] Добавить official open-data ingestion roadmap API.
 - [x] Добавить import для schools/kindergartens/transport/healthcare/parks/industrial zones.
+- [x] Добавить native PDF generation для object reports и saved report history.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -527,3 +529,4 @@
 - [x] Сделать Commit 49 и push.
 - [x] Сделать Commit 50 и push.
 - [x] Сделать Commit 51 и push.
+- [x] Сделать Commit 52 и push.

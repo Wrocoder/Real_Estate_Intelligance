@@ -511,8 +511,16 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/templates
 Start-Process http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 ```
 
-HTML рассчитан на печать в PDF через браузер. Это первый отчетный артефакт MVP;
-нативный PDF-рендеринг лучше добавлять отдельным шагом после выбора движка.
+Скачать native PDF без сохранения отчета в history:
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/object/wr-001.pdf `
+  -OutFile wr-001-report.pdf
+```
+
+PDF генерируется backend-ом из того же HTML/JSON content. На Windows/Linux сервис
+пытается встроить системный Unicode TTF-шрифт для русских и польских символов; если
+шрифт недоступен, используется безопасный PDF fallback на Helvetica.
 
 ## История сгенерированных отчетов
 
@@ -549,6 +557,13 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/reports/<report_id>/email `
 
 ```powershell
 Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/content
+```
+
+Скачать PDF-версию сохраненного отчета:
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/pdf `
+  -OutFile domarion-report.pdf
 ```
 
 ## Auth и тарифные лимиты MVP
@@ -860,7 +875,7 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.
 
 Экспортировать saved reports можно на планах с `can_export=true` (`realtor`, `agency`,
 `enterprise`). Export owner-scoped и не включает полный HTML/JSON content, только summary,
-content URL и report metadata:
+content URL, PDF URL и report metadata:
 
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/api/v1/reports/export?format=json" `
@@ -1030,6 +1045,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить native PDF generation.
-2. Добавить invoice/VAT metadata для B2B checkout.
+1. Добавить invoice/VAT metadata для B2B checkout.
+2. Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 3. Добавить deployment workflow после выбора hosting.

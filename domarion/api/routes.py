@@ -200,6 +200,7 @@ from domarion.services.report_generation import (
     generate_and_store_user_submitted_draft_report,
     generate_object_report_html,
 )
+from domarion.services.report_pdf import render_generated_report_pdf, render_report_content_pdf
 from domarion.services.report_products import get_report_product, list_report_products
 from domarion.services.report_templates import list_report_templates
 from domarion.services.reports import build_object_report
@@ -2254,6 +2255,42 @@ def get_object_report_html(
     )
 
 
+@router.get(
+    "/reports/object/{listing_id}.pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def get_object_report_pdf(
+    listing_id: str,
+    repository: RepositoryDep,
+    audience: Annotated[ReportAudience, Query()] = "buyer",
+) -> Response:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    html = generate_object_report_html(repository, listing_id, audience)
+    pdf = render_report_content_pdf(
+        title=listing.title,
+        summary=f"Object report for {listing.address}, {listing.district}, {listing.city}.",
+        content=html,
+        content_type="text/html; charset=utf-8",
+        metadata_lines=[
+            f"Listing: {listing.id}",
+            f"Audience: {audience}",
+            f"Address: {listing.address}",
+            f"District: {listing.district}",
+            f"City: {listing.city}",
+        ],
+    )
+    filename = _safe_pdf_filename(f"domarion-report-{listing_id}")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/reports", response_model=list[GeneratedReportListItem])
 def list_generated_reports(
     report_store: ReportStoreDep,
@@ -2337,6 +2374,29 @@ def email_generated_report(
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
     return deliver_report_email(report, account.user.email, payload)
+
+
+@router.get(
+    "/reports/{report_id}/pdf",
+    response_class=Response,
+    responses={200: {"content": {"application/pdf": {}}}},
+)
+def get_generated_report_pdf(
+    report_id: str,
+    report_store: ReportStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    report = report_store.get_report(report_id, owner_id=account.user.id)
+    if report is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+
+    pdf = render_generated_report_pdf(report)
+    filename = _safe_pdf_filename(f"domarion-report-{report.id}")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/reports/{report_id}", response_model=GeneratedReport)
@@ -2815,6 +2875,7 @@ REPORT_EXPORT_COLUMNS = [
     "summary",
     "created_at",
     "content_url",
+    "pdf_url",
     "report_product_code",
     "report_template_code",
     "report_template_name",
@@ -2852,6 +2913,7 @@ def _report_export_row(report: GeneratedReport) -> dict[str, object]:
         "summary": report.summary,
         "created_at": report.created_at.isoformat(),
         "content_url": f"/api/v1/reports/{report.id}/content",
+        "pdf_url": f"/api/v1/reports/{report.id}/pdf",
     }
     for key in REPORT_EXPORT_COLUMNS:
         if key not in row and key in metadata:
@@ -2863,6 +2925,12 @@ def _report_export_value(value: object) -> object:
     if isinstance(value, str | int | float | bool) or value is None:
         return value if value is not None else ""
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _safe_pdf_filename(value: str) -> str:
+    safe_name = "".join(char if char.isalnum() or char in {"-", "_"} else "-" for char in value)
+    safe_name = safe_name.encode("ascii", "ignore").decode("ascii").strip("-_")
+    return f"{safe_name or 'domarion-report'}.pdf"
 
 
 def _ensure_report_limit(

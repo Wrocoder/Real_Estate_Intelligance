@@ -85,6 +85,16 @@ def test_openapi_exposes_report_templates_as_a_public_contract() -> None:
     assert schema["items"]["$ref"] == "#/components/schemas/ReportTemplateDescriptor"
 
 
+def test_openapi_exposes_pdf_report_exports_as_pdf_contract() -> None:
+    openapi = client.get("/openapi.json").json()
+
+    saved_report = openapi["paths"]["/api/v1/reports/{report_id}/pdf"]["get"]
+    object_report = openapi["paths"]["/api/v1/reports/object/{listing_id}.pdf"]["get"]
+
+    assert "application/pdf" in saved_report["responses"]["200"]["content"]
+    assert "application/pdf" in object_report["responses"]["200"]["content"]
+
+
 def test_openapi_exposes_source_registry_contract() -> None:
     openapi = client.get("/openapi.json").json()
     paths = openapi["paths"]

@@ -104,6 +104,48 @@ def test_get_saved_report_and_content() -> None:
     assert "Инвестиционная оценка" in content_response.text
 
 
+def test_get_saved_html_report_pdf_export_is_owner_scoped() -> None:
+    memory_report_store.clear()
+    owner_headers = {"X-Domarion-User-Id": "report-pdf-owner"}
+    other_headers = {"X-Domarion-User-Id": "report-pdf-other"}
+    created = client.post(
+        "/api/v1/reports/object/generate",
+        headers=owner_headers,
+        json={"listing_id": "wr-001", "audience": "buyer", "report_format": "html"},
+    ).json()
+
+    pdf_response = client.get(f"/api/v1/reports/{created['id']}/pdf", headers=owner_headers)
+    other_response = client.get(f"/api/v1/reports/{created['id']}/pdf", headers=other_headers)
+
+    assert pdf_response.status_code == 200
+    assert pdf_response.headers["content-type"] == "application/pdf"
+    assert pdf_response.headers["content-disposition"] == (
+        f'attachment; filename="domarion-report-{created["id"]}.pdf"'
+    )
+    assert pdf_response.content.startswith(b"%PDF-1.4")
+    assert b"/Type /Catalog" in pdf_response.content
+    assert (
+        b"/CIDToGIDMap" in pdf_response.content
+        or b"/BaseFont /Helvetica" in pdf_response.content
+    )
+    assert other_response.status_code == 404
+    assert other_response.json()["detail"] == "Report not found"
+
+
+def test_get_saved_json_report_pdf_export() -> None:
+    memory_report_store.clear()
+    created = client.post(
+        "/api/v1/reports/object/generate",
+        json={"listing_id": "wr-001", "audience": "buyer", "report_format": "json"},
+    ).json()
+
+    response = client.get(f"/api/v1/reports/{created['id']}/pdf")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.content.startswith(b"%PDF-1.4")
+
+
 def test_export_reports_json_and_csv_for_export_capable_plan() -> None:
     memory_report_store.clear()
     headers = {
@@ -156,7 +198,10 @@ def test_export_reports_json_and_csv_for_export_capable_plan() -> None:
     )
     assert len(csv_rows) == 2
     assert {row["owner_id"] for row in csv_rows} == {"report-export-owner"}
-    assert {"id", "listing_id", "report_template_code", "content_url"} <= set(csv_rows[0])
+    assert {"id", "listing_id", "report_template_code", "content_url", "pdf_url"} <= set(
+        csv_rows[0]
+    )
+    assert csv_rows[0]["pdf_url"].startswith("/api/v1/reports/")
 
 
 def test_export_reports_requires_export_capability() -> None:
