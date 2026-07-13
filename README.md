@@ -18,6 +18,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
 - Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
+- Добавлены B2B invoice/VAT details для checkout: company/NIP/address/email хранятся на order и попадают в payment metadata.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
 - Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
 - Добавлен daily email alert batch runner: admin API и CLI для cron/background worker.
@@ -797,6 +798,32 @@ $checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
   -Body '{"listing_id":"wr-001","product_code":"object_report","report_format":"html"}'
 ```
 
+Для B2B checkout можно передать invoice/VAT metadata. Backend нормализует NIP/VAT,
+хранит детали на owner-scoped order и добавляет invoice summary в audit events и
+payment provider metadata:
+
+```powershell
+$checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{
+    "listing_id":"wr-001",
+    "product_code":"object_report",
+    "report_format":"html",
+    "billing_details":{
+      "invoice_requested":true,
+      "customer_type":"company",
+      "company_name":"Example Realty Sp. z o.o.",
+      "vat_id":"PL1234567890",
+      "country_code":"PL",
+      "street_address":"Rynek 1",
+      "postal_code":"50-101",
+      "city":"Wrocław",
+      "email":"billing@example.com"
+    }
+  }'
+```
+
 Для расширенного paid artifact используйте `product_code:"full_object_analysis"`. Fulfillment
 сохранит отчет с template `full_object_analysis_v1`, расширенными due-diligence, offer strategy
 и scenario sections.
@@ -1045,6 +1072,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Добавить invoice/VAT metadata для B2B checkout.
-2. Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
+1. Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
+2. Добавить team/agency accounts: несколько агентов под одной организацией.
 3. Добавить deployment workflow после выбора hosting.

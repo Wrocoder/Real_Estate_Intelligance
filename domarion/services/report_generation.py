@@ -235,6 +235,7 @@ def generate_and_store_report_bundle_receipt(
     order_id: str,
     credits: int,
     report_format: ReportFormat = "html",
+    report_metadata_extra: dict | None = None,
 ) -> GeneratedReport:
     title = f"{credits} Report Credits Bundle"
     summary = f"Paid bundle fulfilled: {credits} report credits granted to this account."
@@ -272,6 +273,8 @@ def generate_and_store_report_bundle_receipt(
         content=content,
         report_metadata=metadata,
     )
+    if report_metadata_extra:
+        payload.report_metadata.update(report_metadata_extra)
     return report_store.save_report(payload)
 
 

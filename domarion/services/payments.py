@@ -65,7 +65,11 @@ class MockPaymentProvider:
             mode=self.mode,
             checkout_url=f"/api/v1/report-orders/{order.id}/mock-pay",
             external_reference=f"mock:{order.id}",
-            metadata={"order_id": order.id, "amount_grosz": order.amount_grosz},
+            metadata={
+                "order_id": order.id,
+                "amount_grosz": order.amount_grosz,
+                **_billing_metadata(order),
+            },
         )
 
 
@@ -93,6 +97,7 @@ class StripeCheckoutPaymentProvider:
             status_name="cancel",
         )
         product = get_report_product(order.product_code)
+        billing_metadata = _billing_metadata(order)
         form = {
             "mode": "payment",
             "success_url": success_url,
@@ -111,6 +116,13 @@ class StripeCheckoutPaymentProvider:
             "payment_intent_data[metadata][owner_id]": order.owner_id,
             "payment_intent_data[metadata][product_code]": order.product_code,
         }
+        for key, value in billing_metadata.items():
+            form[f"metadata[{key}]"] = value
+            form[f"payment_intent_data[metadata][{key}]"] = value
+        if order.billing_details and order.billing_details.email:
+            form["customer_email"] = order.billing_details.email
+        if order.billing_details and order.billing_details.invoice_requested:
+            form["tax_id_collection[enabled]"] = "true"
         response = _post_form(
             f"{settings.stripe_api_base_url.rstrip('/')}/v1/checkout/sessions",
             form,
@@ -137,6 +149,7 @@ class StripeCheckoutPaymentProvider:
                 "currency": order.currency,
                 "stripe_session_id": stripe_session_id,
                 "checkout_api_status_code": response.status_code,
+                **billing_metadata,
             },
         )
 
@@ -172,6 +185,7 @@ class PayUCheckoutPaymentProvider:
             raise PaymentConfigurationError("PayU OAuth response did not include access_token.")
 
         product = get_report_product(order.product_code)
+        billing_metadata = _billing_metadata(order)
         order_payload: dict[str, Any] = {
             "customerIp": settings.payu_customer_ip,
             "merchantPosId": settings.payu_merchant_pos_id,
@@ -196,6 +210,11 @@ class PayUCheckoutPaymentProvider:
         }
         if settings.payu_notify_url:
             order_payload["notifyUrl"] = settings.payu_notify_url
+        if order.billing_details and order.billing_details.email:
+            order_payload["buyer"] = {
+                "email": order.billing_details.email,
+                "extCustomerId": order.owner_id,
+            }
 
         order_response = _post_json(
             f"{settings.payu_api_base_url.rstrip('/')}/api/v2_1/orders",
@@ -227,6 +246,7 @@ class PayUCheckoutPaymentProvider:
                 "payu_order_id": provider_order_id,
                 "payu_status_code": _payu_status_code(order_response.payload),
                 "checkout_api_status_code": order_response.status_code,
+                **billing_metadata,
             },
         )
 
@@ -245,6 +265,29 @@ def get_payment_provider() -> PaymentProvider:
     raise PaymentConfigurationError(
         "Unsupported PAYMENT_PROVIDER. Use 'mock', 'stripe', or 'payu'."
     )
+
+
+def _billing_metadata(order: ReportOrder) -> dict[str, str]:
+    details = order.billing_details
+    if details is None:
+        return {"invoice_requested": "false"}
+
+    metadata = {
+        "invoice_requested": "true" if details.invoice_requested else "false",
+        "billing_customer_type": details.customer_type,
+        "billing_country_code": details.country_code,
+    }
+    optional_fields = {
+        "billing_company_name": details.company_name,
+        "billing_vat_id": details.vat_id,
+        "billing_city": details.city,
+        "billing_postal_code": details.postal_code,
+        "billing_email": details.email,
+    }
+    for key, value in optional_fields.items():
+        if value:
+            metadata[key] = value[:500]
+    return metadata
 
 
 def verify_payment_webhook(

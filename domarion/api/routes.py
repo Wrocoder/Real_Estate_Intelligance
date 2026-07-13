@@ -1753,6 +1753,7 @@ def create_report_order(
                 "product_code": order.product_code,
                 "amount_grosz": order.amount_grosz,
                 "currency": order.currency,
+                **_order_billing_event_metadata(order),
                 **order_metadata,
             },
         ),
@@ -1855,6 +1856,7 @@ def mock_pay_report_order(
             metadata={
                 "status": order.status,
                 "paid_at": order.paid_at.isoformat() if order.paid_at else None,
+                **_order_billing_event_metadata(order),
             },
         ),
     )
@@ -2043,6 +2045,7 @@ async def receive_payment_webhook(
                 "provider_event_id": verified.provider_event_id,
                 "event_type": verified.event_type,
                 "payment_status": verified.payment_status,
+                **_order_billing_event_metadata(order),
             },
         ),
     )
@@ -3111,6 +3114,7 @@ def _generate_paid_report_for_order(
             order_id=order.id,
             credits=REPORT_BUNDLE_5_CREDITS,
             report_format=order.report_format,
+            report_metadata_extra=_paid_report_metadata(order),
         )
         return _save_report_ai_insights(ai_insight_store, report)
 
@@ -3132,7 +3136,7 @@ def _generate_paid_report_for_order(
             audience=order.audience,
             report_format=order.report_format,
             owner_id=order.owner_id,
-            report_metadata_extra={"paid_order_id": order.id},
+            report_metadata_extra=_paid_report_metadata(order),
         )
         return _save_report_ai_insights(ai_insight_store, report)
 
@@ -3154,7 +3158,7 @@ def _generate_paid_report_for_order(
             report_format=order.report_format,
             owner_id=order.owner_id,
             product_code=order.product_code,
-            report_metadata_extra={"paid_order_id": order.id},
+            report_metadata_extra=_paid_report_metadata(order),
         )
         return _save_report_ai_insights(ai_insight_store, report)
 
@@ -3166,9 +3170,45 @@ def _generate_paid_report_for_order(
         report_format=order.report_format,
         owner_id=order.owner_id,
         product_code=order.product_code,
-        report_metadata_extra={"paid_order_id": order.id},
+        report_metadata_extra=_paid_report_metadata(order),
     )
     return _save_report_ai_insights(ai_insight_store, report)
+
+
+def _paid_report_metadata(order: ReportOrder) -> dict[str, object]:
+    metadata: dict[str, object] = {"paid_order_id": order.id}
+    details = order.billing_details
+    if details is None:
+        metadata["paid_order_invoice_requested"] = False
+        return metadata
+
+    metadata.update(
+        {
+            "paid_order_invoice_requested": details.invoice_requested,
+            "paid_order_billing_customer_type": details.customer_type,
+            "paid_order_billing_country_code": details.country_code,
+        }
+    )
+    return metadata
+
+
+def _order_billing_event_metadata(order: ReportOrder) -> dict[str, object]:
+    details = order.billing_details
+    if details is None:
+        return {"invoice_requested": False}
+
+    metadata: dict[str, object] = {
+        "invoice_requested": details.invoice_requested,
+        "billing_customer_type": details.customer_type,
+        "billing_country_code": details.country_code,
+    }
+    if details.company_name:
+        metadata["billing_company_name"] = details.company_name
+    if details.vat_id:
+        metadata["billing_vat_id"] = details.vat_id
+    if details.email:
+        metadata["billing_email"] = details.email
+    return metadata
 
 
 def _save_report_ai_insights(

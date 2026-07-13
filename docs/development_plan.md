@@ -215,7 +215,7 @@
 - [ ] Добавить team/agency accounts: несколько агентов под одной организацией.
 - [ ] Добавить роли и права для agency owner/admin/agent.
 - [x] Добавить report credits и usage quotas для packages.
-- [ ] Добавить invoice/VAT metadata для B2B checkout.
+- [x] Добавить invoice/VAT metadata для B2B checkout.
 - [x] Добавить lead capture для mortgage/legal/renovation partner referrals.
 
 ## 9. Favorites и Alerts
@@ -447,6 +447,7 @@
 - [x] Commit 50: official open-data roadmap API.
 - [x] Commit 51: infrastructure reference JSON/CSV import.
 - [x] Commit 52: native PDF report export.
+- [x] Commit 53: B2B invoice metadata for checkout.
 
 ## Current Sprint
 
@@ -494,6 +495,7 @@
 - [x] Добавить official open-data ingestion roadmap API.
 - [x] Добавить import для schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить native PDF generation для object reports и saved report history.
+- [x] Добавить invoice/VAT metadata для B2B checkout.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -530,3 +532,4 @@
 - [x] Сделать Commit 50 и push.
 - [x] Сделать Commit 51 и push.
 - [x] Сделать Commit 52 и push.
+- [x] Сделать Commit 53 и push.

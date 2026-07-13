@@ -1051,6 +1051,18 @@ export type ReportProduct = {
   features: string[];
 };
 
+export type ReportOrderBillingDetails = {
+  invoice_requested: boolean;
+  customer_type: "individual" | "company";
+  company_name?: string | null;
+  vat_id?: string | null;
+  country_code: string;
+  street_address?: string | null;
+  postal_code?: string | null;
+  city?: string | null;
+  email?: string | null;
+};
+
 export type ReportOrder = {
   id: string;
   owner_id: string;
@@ -1063,6 +1075,7 @@ export type ReportOrder = {
   currency: string;
   checkout_url: string | null;
   generated_report_id: string | null;
+  billing_details: ReportOrderBillingDetails | null;
   created_at: string;
   updated_at: string;
   paid_at: string | null;
@@ -1669,6 +1682,7 @@ export const api = {
     listing_id: string;
     product_code: ReportProductCode;
     audience?: "buyer" | "realtor" | "investor";
+    billing_details?: ReportOrderBillingDetails | null;
   }) =>
     request<CheckoutSession>("/api/v1/report-orders", {
       method: "POST",

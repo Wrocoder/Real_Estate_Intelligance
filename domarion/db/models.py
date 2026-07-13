@@ -647,6 +647,7 @@ class ReportOrder(Base):
     currency: Mapped[str] = mapped_column(String(8), default="PLN")
     checkout_url: Mapped[str | None] = mapped_column(String(500))
     generated_report_id: Mapped[str | None] = mapped_column(String(36), index=True)
+    billing_details_json: Mapped[dict] = mapped_column(JSONB, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime)

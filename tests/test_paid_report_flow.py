@@ -85,6 +85,59 @@ def test_report_order_mock_payment_and_fulfillment() -> None:
     assert any(event["metadata"].get("generated_report_id") == reports[0]["id"] for event in events)
 
 
+def test_report_order_stores_b2b_invoice_metadata() -> None:
+    headers = {"X-Domarion-User-Id": "b2b-buyer"}
+
+    checkout = client.post(
+        "/api/v1/report-orders",
+        headers=headers,
+        json={
+            "listing_id": "wr-001",
+            "product_code": "object_report",
+            "billing_details": _b2b_billing_details(),
+        },
+    )
+    payload = checkout.json()
+    order = payload["order"]
+    client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
+    fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers)
+    report = client.get(
+        f"/api/v1/reports/{fulfilled.json()['generated_report_id']}",
+        headers=headers,
+    ).json()
+    events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
+
+    assert checkout.status_code == 201
+    assert order["billing_details"]["invoice_requested"] is True
+    assert order["billing_details"]["company_name"] == "Example Realty Sp. z o.o."
+    assert order["billing_details"]["vat_id"] == "PL1234567890"
+    assert order["billing_details"]["email"] == "billing@example.com"
+    assert payload["metadata"]["invoice_requested"] == "true"
+    assert payload["metadata"]["billing_vat_id"] == "PL1234567890"
+    assert fulfilled.json()["billing_details"]["vat_id"] == "PL1234567890"
+    assert report["report_metadata"]["paid_order_invoice_requested"] is True
+    assert report["report_metadata"]["paid_order_billing_country_code"] == "PL"
+    assert any(
+        event["event_type"] == "order_created"
+        and event["metadata"]["billing_vat_id"] == "PL1234567890"
+        for event in events
+    )
+
+
+def test_report_order_rejects_incomplete_invoice_metadata() -> None:
+    response = client.post(
+        "/api/v1/report-orders",
+        json={
+            "listing_id": "wr-001",
+            "product_code": "object_report",
+            "billing_details": {"invoice_requested": True, "vat_id": "PL123"},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Invoice billing details require" in response.text
+
+
 def test_stripe_report_order_uses_hosted_checkout_api(monkeypatch) -> None:
     monkeypatch.setenv("PAYMENT_PROVIDER", "stripe")
     monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_domarion")
@@ -115,7 +168,11 @@ def test_stripe_report_order_uses_hosted_checkout_api(monkeypatch) -> None:
     response = client.post(
         "/api/v1/report-orders",
         headers={"X-Domarion-User-Id": "stripe-checkout-buyer"},
-        json={"listing_id": "wr-001", "product_code": "object_report"},
+        json={
+            "listing_id": "wr-001",
+            "product_code": "object_report",
+            "billing_details": _b2b_billing_details(),
+        },
     )
     payload = response.json()
     checkout_payload = calls[0]["payload"]
@@ -132,10 +189,19 @@ def test_stripe_report_order_uses_hosted_checkout_api(monkeypatch) -> None:
     assert checkout_payload["line_items[0][price_data][unit_amount]"] == "4900"
     assert checkout_payload["line_items[0][price_data][currency]"] == "pln"
     assert checkout_payload["metadata[order_id]"] == payload["order"]["id"]
+    assert checkout_payload["metadata[invoice_requested]"] == "true"
+    assert checkout_payload["metadata[billing_vat_id]"] == "PL1234567890"
     assert checkout_payload["payment_intent_data[metadata][order_id]"] == payload["order"]["id"]
+    assert (
+        checkout_payload["payment_intent_data[metadata][billing_company_name]"]
+        == "Example Realty Sp. z o.o."
+    )
+    assert checkout_payload["customer_email"] == "billing@example.com"
+    assert checkout_payload["tax_id_collection[enabled]"] == "true"
     assert checkout_payload["success_url"].startswith("https://app.example/pricing?payment=success")
     assert checkout_payload["cancel_url"].startswith("https://app.example/pricing?payment=cancel")
     assert payload["order"]["checkout_url"] == payload["checkout_url"]
+    assert payload["metadata"]["billing_vat_id"] == "PL1234567890"
 
 
 def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
@@ -188,7 +254,11 @@ def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
     response = client.post(
         "/api/v1/report-orders",
         headers={"X-Domarion-User-Id": "payu-checkout-buyer"},
-        json={"listing_id": "wr-001", "product_code": "object_report"},
+        json={
+            "listing_id": "wr-001",
+            "product_code": "object_report",
+            "billing_details": _b2b_billing_details(),
+        },
     )
     payload = response.json()
     order_payload = json_calls[0]["payload"]
@@ -213,6 +283,10 @@ def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
     assert order_payload["totalAmount"] == "4900"
     assert order_payload["currencyCode"] == "PLN"
     assert order_payload["notifyUrl"] == "https://api.example/api/v1/payment-webhooks/payu"
+    assert order_payload["buyer"] == {
+        "email": "billing@example.com",
+        "extCustomerId": "payu-checkout-buyer",
+    }
     assert order_payload["continueUrl"].startswith(
         "https://app.example/pricing?payment=success"
     )
@@ -225,6 +299,8 @@ def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
         }
     ]
     assert payload["order"]["checkout_url"] == payload["checkout_url"]
+    assert payload["metadata"]["invoice_requested"] == "true"
+    assert payload["metadata"]["billing_company_name"] == "Example Realty Sp. z o.o."
 
 
 def test_report_orders_are_user_scoped() -> None:
@@ -477,3 +553,17 @@ def test_report_order_rejects_missing_user_submitted_draft() -> None:
 
     assert response.status_code == 404
     assert response.json()["detail"] == "User-submitted listing draft not found"
+
+
+def _b2b_billing_details() -> dict[str, object]:
+    return {
+        "invoice_requested": True,
+        "customer_type": "company",
+        "company_name": "Example Realty Sp. z o.o.",
+        "vat_id": "pl 123-456-78-90",
+        "country_code": "pl",
+        "street_address": "Rynek 1",
+        "postal_code": "50-101",
+        "city": "Wrocław",
+        "email": "Billing@Example.com",
+    }

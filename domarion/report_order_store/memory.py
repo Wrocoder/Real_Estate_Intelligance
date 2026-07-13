@@ -37,6 +37,7 @@ class InMemoryReportOrderStore:
             amount_grosz=product.amount_grosz,
             currency=product.currency,
             checkout_url=checkout_url,
+            billing_details=payload.billing_details,
             created_at=now,
             updated_at=now,
         )

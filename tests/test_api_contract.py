@@ -185,6 +185,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ReportBranding",
         "ReportEmailRequest",
         "ReportEmailResult",
+        "ReportOrderBillingDetails",
         "ReportTemplateDescriptor",
         "SchoolReference",
         "ScoringBacktestResult",
@@ -228,6 +229,16 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     email_operation = openapi["paths"]["/api/v1/reports/{report_id}/email"]["post"]
     email_request_schema = email_operation["requestBody"]["content"]["application/json"]["schema"]
     assert email_request_schema["$ref"] == "#/components/schemas/ReportEmailRequest"
+
+    report_order_operation = openapi["paths"]["/api/v1/report-orders"]["post"]
+    report_order_request_schema = report_order_operation["requestBody"]["content"][
+        "application/json"
+    ]["schema"]
+    assert report_order_request_schema["$ref"] == "#/components/schemas/ReportOrderCreate"
+    report_order_create_schema = schemas["ReportOrderCreate"]
+    assert report_order_create_schema["properties"]["billing_details"]["anyOf"][0]["$ref"] == (
+        "#/components/schemas/ReportOrderBillingDetails"
+    )
 
     mortgage_operation = openapi["paths"]["/api/v1/mortgage/calculate"]["post"]
     mortgage_request_schema = mortgage_operation["requestBody"]["content"]["application/json"][

@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Activity, CheckCircle2, CreditCard, ExternalLink, FileText, RefreshCw } from "lucide-react";
+import {
+  Activity,
+  Building2,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  FileText,
+  ReceiptText,
+  RefreshCw,
+} from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -10,6 +19,7 @@ import {
   type AccountSummary,
   type PlanLimits,
   type ReportOrder,
+  type ReportOrderBillingDetails,
   type ReportOrderEvent,
   type ReportProduct,
 } from "@/lib/api";
@@ -23,6 +33,16 @@ export default function PricingPage() {
   const [events, setEvents] = useState<ReportOrderEvent[]>([]);
   const [listingId, setListingId] = useState("wr-001");
   const [areaId, setAreaId] = useState("wroclaw-fabryczna");
+  const [billingForm, setBillingForm] = useState<BillingForm>({
+    invoiceRequested: false,
+    companyName: "Domarion Demo Sp. z o.o.",
+    vatId: "PL1234567890",
+    email: "billing@example.com",
+    streetAddress: "Rynek 1",
+    postalCode: "50-101",
+    city: "Wrocław",
+    countryCode: "PL",
+  });
   const [status, setStatus] = useState("Загрузка тарифов...");
   const [error, setError] = useState("");
 
@@ -58,6 +78,7 @@ export default function PricingPage() {
       listing_id: listingReference,
       product_code: product.code,
       audience: product.audience,
+      billing_details: billingPayload(billingForm),
     });
     setStatus(`Checkout ${checkout.provider}: ${checkout.external_reference ?? checkout.order.id}`);
 
@@ -73,6 +94,10 @@ export default function PricingPage() {
   async function loadEvents(orderId: string) {
     setEvents(await api.listReportOrderEvents(orderId));
     setStatus(`Audit events: ${orderId}`);
+  }
+
+  function updateBilling(field: keyof Omit<BillingForm, "invoiceRequested">, value: string) {
+    setBillingForm((current) => ({ ...current, [field]: value }));
   }
 
   const planByCode = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.plan, plan])), [plans]);
@@ -138,6 +163,67 @@ export default function PricingPage() {
             </label>
           </div>
 
+          <div className="panel" style={{ marginTop: 14 }}>
+            <div className="panel-header inline">
+              <h3>Invoice</h3>
+              <ReceiptText size={18} />
+            </div>
+            <div className="panel-body">
+              <label className="compare-toggle">
+                <input
+                  type="checkbox"
+                  checked={billingForm.invoiceRequested}
+                  onChange={(event) =>
+                    setBillingForm((current) => ({
+                      ...current,
+                      invoiceRequested: event.target.checked,
+                    }))
+                  }
+                />
+                <span>B2B invoice</span>
+              </label>
+              {billingForm.invoiceRequested ? (
+                <div className="form-grid compact" style={{ marginTop: 12 }}>
+                  <BillingInput
+                    label="Company"
+                    value={billingForm.companyName}
+                    onChange={(value) => updateBilling("companyName", value)}
+                  />
+                  <BillingInput
+                    label="VAT/NIP"
+                    value={billingForm.vatId}
+                    onChange={(value) => updateBilling("vatId", value)}
+                  />
+                  <BillingInput
+                    label="Email"
+                    value={billingForm.email}
+                    onChange={(value) => updateBilling("email", value)}
+                  />
+                  <BillingInput
+                    label="Address"
+                    value={billingForm.streetAddress}
+                    onChange={(value) => updateBilling("streetAddress", value)}
+                  />
+                  <BillingInput
+                    label="Postal code"
+                    value={billingForm.postalCode}
+                    onChange={(value) => updateBilling("postalCode", value)}
+                  />
+                  <BillingInput
+                    label="City"
+                    value={billingForm.city}
+                    onChange={(value) => updateBilling("city", value)}
+                  />
+                  <BillingInput
+                    label="Country"
+                    value={billingForm.countryCode}
+                    onChange={(value) => updateBilling("countryCode", value)}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+
           <div className="pricing-grid">
             {products.map((product) => (
               <article className="pricing-card" key={product.code}>
@@ -181,6 +267,7 @@ export default function PricingPage() {
                   <th>Заказ</th>
                   <th>Объект</th>
                   <th>Статус</th>
+                  <th>Invoice</th>
                   <th>Отчет</th>
                   <th>Audit</th>
                 </tr>
@@ -191,6 +278,15 @@ export default function PricingPage() {
                     <td>{order.product_code}</td>
                     <td>{order.listing_id}</td>
                     <td>{order.status}</td>
+                    <td>
+                      {order.billing_details?.invoice_requested ? (
+                        <span className="status-pill">
+                          <Building2 size={13} /> {order.billing_details.company_name}
+                        </span>
+                      ) : (
+                        <span className="muted">-</span>
+                      )}
+                    </td>
                     <td>
                       {order.generated_report_id ? (
                         <a
@@ -260,6 +356,32 @@ export default function PricingPage() {
   );
 }
 
+type BillingForm = {
+  invoiceRequested: boolean;
+  companyName: string;
+  vatId: string;
+  email: string;
+  streetAddress: string;
+  postalCode: string;
+  city: string;
+  countryCode: string;
+};
+
+function billingPayload(form: BillingForm): ReportOrderBillingDetails | null {
+  if (!form.invoiceRequested) return null;
+  return {
+    invoice_requested: true,
+    customer_type: "company",
+    company_name: form.companyName,
+    vat_id: form.vatId,
+    email: form.email,
+    street_address: form.streetAddress,
+    postal_code: form.postalCode,
+    city: form.city,
+    country_code: form.countryCode,
+  };
+}
+
 function formatGrosz(value: number) {
   return `${new Intl.NumberFormat("pl-PL").format(value / 100)} PLN`;
 }
@@ -268,4 +390,21 @@ function reportOrderReference(product: ReportProduct, listingId: string, areaId:
   if (product.code === "area_report") return `area:${areaId}`;
   if (product.code === "report_bundle_5") return "bundle:reports-5";
   return listingId;
+}
+
+function BillingInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="field">
+      <span>{label}</span>
+      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
+    </label>
+  );
 }

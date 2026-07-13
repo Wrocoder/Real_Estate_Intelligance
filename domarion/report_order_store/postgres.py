@@ -12,6 +12,7 @@ from domarion.schemas import (
     PaymentWebhookEvent,
     PaymentWebhookEventCreate,
     ReportOrder,
+    ReportOrderBillingDetails,
     ReportOrderCreate,
     ReportOrderEvent,
     ReportOrderEventCreate,
@@ -42,6 +43,9 @@ class PostgresReportOrderStore:
             amount_grosz=product.amount_grosz,
             currency=product.currency,
             checkout_url=checkout_url,
+            billing_details_json=(
+                payload.billing_details.compact_dict() if payload.billing_details else {}
+            ),
             created_at=now,
             updated_at=now,
         )
@@ -217,6 +221,7 @@ class PostgresReportOrderStore:
             currency=row.currency,
             checkout_url=row.checkout_url,
             generated_report_id=row.generated_report_id,
+            billing_details=_billing_details_from_json(row.billing_details_json),
             created_at=row.created_at,
             updated_at=row.updated_at,
             paid_at=row.paid_at,
@@ -249,3 +254,9 @@ class PostgresReportOrderStore:
             metadata=row.metadata_json,
             created_at=row.created_at,
         )
+
+
+def _billing_details_from_json(payload: dict | None) -> ReportOrderBillingDetails | None:
+    if not payload:
+        return None
+    return ReportOrderBillingDetails.model_validate(payload)

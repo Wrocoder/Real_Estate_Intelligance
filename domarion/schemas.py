@@ -19,6 +19,7 @@ ReportProductCode = Literal[
     "report_bundle_5",
 ]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+BillingCustomerType = Literal["individual", "company"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
 PartnerReferralType = Literal["mortgage", "legal", "renovation"]
@@ -1262,11 +1263,74 @@ class ReportProduct(BaseModel):
     features: list[str]
 
 
+class ReportOrderBillingDetails(BaseModel):
+    invoice_requested: bool = False
+    customer_type: BillingCustomerType = "company"
+    company_name: str | None = Field(default=None, max_length=160)
+    vat_id: str | None = Field(default=None, max_length=32)
+    country_code: str = Field(default="PL", min_length=2, max_length=2)
+    street_address: str | None = Field(default=None, max_length=240)
+    postal_code: str | None = Field(default=None, max_length=24)
+    city: str | None = Field(default=None, max_length=120)
+    email: str | None = Field(default=None, max_length=160)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_billing_details(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = {}
+        for key, item in value.items():
+            if isinstance(item, str):
+                item = item.strip()
+                normalized[key] = item or None
+            else:
+                normalized[key] = item
+        country_code = normalized.get("country_code")
+        if isinstance(country_code, str):
+            normalized["country_code"] = country_code.upper()
+        vat_id = normalized.get("vat_id")
+        if isinstance(vat_id, str):
+            normalized["vat_id"] = vat_id.replace(" ", "").replace("-", "").upper()
+        email = normalized.get("email")
+        if isinstance(email, str):
+            normalized["email"] = email.lower()
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_invoice_request(self) -> "ReportOrderBillingDetails":
+        if not self.invoice_requested:
+            return self
+
+        required_fields = {
+            "company_name": self.company_name,
+            "vat_id": self.vat_id,
+            "street_address": self.street_address,
+            "postal_code": self.postal_code,
+            "city": self.city,
+            "email": self.email,
+        }
+        missing = [field for field, value in required_fields.items() if not value]
+        if missing:
+            raise ValueError(
+                "Invoice billing details require: " + ", ".join(sorted(missing))
+            )
+        if self.customer_type == "individual":
+            raise ValueError("Invoice billing details require customer_type='company'")
+        if self.email and ("@" not in self.email or "." not in self.email.rsplit("@", 1)[-1]):
+            raise ValueError("Invoice billing email is invalid")
+        return self
+
+    def compact_dict(self) -> dict[str, Any]:
+        return self.model_dump(exclude_none=True)
+
+
 class ReportOrderCreate(BaseModel):
     listing_id: str
     product_code: ReportProductCode = "object_report"
     audience: ReportAudience | None = None
     report_format: ReportFormat = "html"
+    billing_details: ReportOrderBillingDetails | None = None
 
 
 class ReportOrder(BaseModel):
@@ -1281,6 +1345,7 @@ class ReportOrder(BaseModel):
     currency: str = "PLN"
     checkout_url: str | None = None
     generated_report_id: str | None = None
+    billing_details: ReportOrderBillingDetails | None = None
     created_at: datetime
     updated_at: datetime
     paid_at: datetime | None = None
