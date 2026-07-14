@@ -52,6 +52,24 @@ WROCLAW_ADDRESS_POINTS = (
         precision="neighborhood",
         confidence_score=70,
     ),
+    OfflineGeocodingPoint(
+        address_key="piastow-slaskich",
+        city_key="medlow",
+        district_key="dolnoslaskie",
+        lat=51.007355,
+        lon=17.048521,
+        precision="street",
+        confidence_score=76,
+    ),
+    OfflineGeocodingPoint(
+        address_key="piastow-slaskich",
+        city_key="medlow",
+        district_key="medlow",
+        lat=51.007355,
+        lon=17.048521,
+        precision="street",
+        confidence_score=76,
+    ),
 )
 WROCLAW_DISTRICT_CENTROIDS = {
     ("wroclaw", "fabryczna"): GeocodingResult(
@@ -74,6 +92,20 @@ WROCLAW_DISTRICT_CENTROIDS = {
         provider=PROVIDER_NAME,
         precision="district_centroid",
         confidence_score=43,
+    ),
+    ("medlow", "dolnoslaskie"): GeocodingResult(
+        lat=51.007355,
+        lon=17.048521,
+        provider=PROVIDER_NAME,
+        precision="locality_centroid",
+        confidence_score=50,
+    ),
+    ("medlow", "medlow"): GeocodingResult(
+        lat=51.007355,
+        lon=17.048521,
+        provider=PROVIDER_NAME,
+        precision="locality_centroid",
+        confidence_score=55,
     ),
 }
 

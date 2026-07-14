@@ -72,6 +72,19 @@ class InMemoryRealEstateRepository:
                 price_change_90d_pct=2.4,
                 supply_change_90d_pct=3.2,
             ),
+            "medlow-medlow": AreaStatistics(
+                area_id="medlow-medlow",
+                name="Mędłów",
+                city="Mędłów",
+                median_price_per_m2=10400,
+                average_price_per_m2=10650,
+                active_listings=46,
+                new_listings_30d=7,
+                removed_listings_30d=5,
+                average_days_on_market=96,
+                price_change_90d_pct=1.1,
+                supply_change_90d_pct=6.4,
+            ),
         }
 
         self._listings = {
@@ -185,6 +198,117 @@ class InMemoryRealEstateRepository:
                 schools_within_1km=2,
                 planned_investments_within_2km=1,
                 data_quality_score=79,
+            ),
+            "med-001": Listing(
+                id="med-001",
+                title="3 pokoje, niska zabudowa, Mędłów",
+                source_name="Partner Suburban Seed",
+                source_url="https://example.com/listings/med-001",
+                city="Mędłów",
+                district="Mędłów",
+                area_id="medlow-medlow",
+                municipality="Mędłów",
+                address="Piastów Śląskich, Mędłów",
+                market_type="secondary",
+                price=612000,
+                currency="PLN",
+                area_m2=60.1,
+                price_per_m2=10183,
+                rooms=3,
+                floor=1,
+                building_floors=2,
+                building_year=2010,
+                first_seen_at=date(2026, 4, 21),
+                last_seen_at=date(2026, 7, 8),
+                days_on_market=78,
+                price_reductions=1,
+                price_increases=0,
+                relisted=False,
+                lat=51.0071,
+                lon=17.0476,
+                distance_to_center_km=12.8,
+                nearest_stop_m=520,
+                nearest_school_m=1450,
+                nearest_major_road_m=830,
+                nearest_industrial_zone_m=3100,
+                parks_within_1km=1,
+                schools_within_1km=0,
+                planned_investments_within_2km=0,
+                data_quality_score=77,
+            ),
+            "med-002": Listing(
+                id="med-002",
+                title="Mieszkanie 3 pokoje z ogródkiem, Mędłów",
+                source_name="Partner Suburban Seed",
+                source_url="https://example.com/listings/med-002",
+                city="Mędłów",
+                district="Mędłów",
+                area_id="medlow-medlow",
+                municipality="Mędłów",
+                address="Kwiatowa, Mędłów",
+                market_type="secondary",
+                price=639000,
+                currency="PLN",
+                area_m2=58.2,
+                price_per_m2=10979,
+                rooms=3,
+                floor=0,
+                building_floors=2,
+                building_year=2013,
+                first_seen_at=date(2026, 5, 9),
+                last_seen_at=date(2026, 7, 8),
+                days_on_market=61,
+                price_reductions=0,
+                price_increases=0,
+                relisted=False,
+                lat=51.0049,
+                lon=17.0464,
+                distance_to_center_km=13.0,
+                nearest_stop_m=610,
+                nearest_school_m=1510,
+                nearest_major_road_m=760,
+                nearest_industrial_zone_m=3300,
+                parks_within_1km=1,
+                schools_within_1km=0,
+                planned_investments_within_2km=0,
+                data_quality_score=74,
+            ),
+            "med-003": Listing(
+                id="med-003",
+                title="Dwupoziomowe 4 pokoje pod Wrocławiem",
+                source_name="Partner Suburban Seed",
+                source_url="https://example.com/listings/med-003",
+                city="Mędłów",
+                district="Mędłów",
+                area_id="medlow-medlow",
+                municipality="Mędłów",
+                address="Sportowa, Mędłów",
+                market_type="secondary",
+                price=760000,
+                currency="PLN",
+                area_m2=72.5,
+                price_per_m2=10483,
+                rooms=4,
+                floor=1,
+                building_floors=2,
+                building_year=2009,
+                first_seen_at=date(2026, 3, 18),
+                last_seen_at=date(2026, 7, 8),
+                days_on_market=112,
+                price_reductions=2,
+                price_increases=0,
+                relisted=False,
+                lat=51.0083,
+                lon=17.0512,
+                distance_to_center_km=12.6,
+                nearest_stop_m=700,
+                nearest_school_m=1320,
+                nearest_major_road_m=890,
+                nearest_industrial_zone_m=2950,
+                parks_within_1km=2,
+                schools_within_1km=0,
+                planned_investments_within_2km=0,
+                data_quality_score=76,
             ),
         }
 
@@ -429,6 +553,18 @@ class InMemoryRealEstateRepository:
                 PriceHistoryPoint(observed_at=date(2026, 5, 30), price=815000, price_per_m2=10940),
                 PriceHistoryPoint(observed_at=date(2026, 6, 27), price=799000, price_per_m2=10725),
             ],
+            "med-001": [
+                PriceHistoryPoint(observed_at=date(2026, 4, 21), price=629000, price_per_m2=10466),
+                PriceHistoryPoint(observed_at=date(2026, 6, 14), price=612000, price_per_m2=10183),
+            ],
+            "med-002": [
+                PriceHistoryPoint(observed_at=date(2026, 5, 9), price=639000, price_per_m2=10979),
+            ],
+            "med-003": [
+                PriceHistoryPoint(observed_at=date(2026, 3, 18), price=789000, price_per_m2=10883),
+                PriceHistoryPoint(observed_at=date(2026, 5, 30), price=775000, price_per_m2=10690),
+                PriceHistoryPoint(observed_at=date(2026, 6, 29), price=760000, price_per_m2=10483),
+            ],
         }
 
     def list_listings(
@@ -482,37 +618,48 @@ class InMemoryRealEstateRepository:
         return self._areas.get(area_id)
 
     def list_municipalities(self) -> list[MunicipalityReference]:
-        lat, lon = _centroid((listing.lat, listing.lon) for listing in self._listings.values())
-        return [
-            MunicipalityReference(
-                id="wroclaw",
-                name="Wrocław",
-                country_code="PL",
-                region="Dolnośląskie",
-                lat=lat,
-                lon=lon,
-                metadata={"source": "demo_seed"},
+        municipalities = []
+        cities = sorted(
+            {listing.city for listing in self._listings.values()},
+            key=lambda item: (item.casefold() != "Wrocław".casefold(), item),
+        )
+        for city in cities:
+            lat, lon = _centroid(
+                (listing.lat, listing.lon)
+                for listing in self._listings.values()
+                if listing.city == city
             )
-        ]
+            municipalities.append(
+                MunicipalityReference(
+                    id=_municipality_id(city),
+                    name=city,
+                    country_code="PL",
+                    region="Dolnośląskie",
+                    lat=lat,
+                    lon=lon,
+                    metadata={"source": "demo_seed"},
+                )
+            )
+        return municipalities
 
     def list_district_references(
         self,
         municipality_id: str | None = None,
         city: str | None = None,
     ) -> list[DistrictReference]:
-        if municipality_id and municipality_id != "wroclaw":
-            return []
-        if city and city.casefold() != "Wrocław".casefold():
-            return []
-
         districts = []
         for area in sorted(self._areas.values(), key=lambda item: item.name):
+            area_municipality_id = _municipality_id(area.city)
+            if municipality_id and area_municipality_id != municipality_id:
+                continue
+            if city and area.city.casefold() != city.casefold():
+                continue
             lat, lon = self._district_centroid(area.name)
             districts.append(
                 DistrictReference(
                     id=area.area_id,
-                    municipality_id="wroclaw",
-                    municipality_name="Wrocław",
+                    municipality_id=area_municipality_id,
+                    municipality_name=area.city,
                     name=area.name,
                     slug=_slug(area.name),
                     area_id=area.area_id,
@@ -531,28 +678,29 @@ class InMemoryRealEstateRepository:
         query: str | None = None,
         limit: int = 100,
     ) -> list[LocationReference]:
-        if municipality_id and municipality_id != "wroclaw":
-            return []
-
         districts_by_name = {
-            district.name: district for district in self.list_district_references()
+            (district.municipality_id, district.name): district
+            for district in self.list_district_references()
         }
         references = []
         seen_ids = set()
         for listing in self._listings.values():
+            listing_municipality_id = _municipality_id(listing.city)
+            if municipality_id and listing_municipality_id != municipality_id:
+                continue
             name = listing.address.split(",", maxsplit=1)[0].strip()
             if not name:
                 continue
-            district = districts_by_name.get(listing.district)
-            reference_id = f"wroclaw-{_slug(name)}"
+            district = districts_by_name.get((listing_municipality_id, listing.district))
+            reference_id = f"{listing_municipality_id}-{_slug(name)}"
             if reference_id in seen_ids:
                 continue
             seen_ids.add(reference_id)
             references.append(
                 LocationReference(
                     id=reference_id,
-                    municipality_id="wroclaw",
-                    municipality_name="Wrocław",
+                    municipality_id=listing_municipality_id,
+                    municipality_name=listing.city,
                     district_id=district.id if district else None,
                     district_name=listing.district,
                     name=name,
@@ -850,8 +998,36 @@ def _centroid(points: Iterable[tuple[float, float]]) -> tuple[float | None, floa
 
 
 def _slug(value: str) -> str:
+    value = value.translate(
+        str.maketrans(
+            {
+                "ą": "a",
+                "ć": "c",
+                "ę": "e",
+                "ł": "l",
+                "ń": "n",
+                "ó": "o",
+                "ś": "s",
+                "ź": "z",
+                "ż": "z",
+                "Ą": "A",
+                "Ć": "C",
+                "Ę": "E",
+                "Ł": "L",
+                "Ń": "N",
+                "Ó": "O",
+                "Ś": "S",
+                "Ź": "Z",
+                "Ż": "Z",
+            }
+        )
+    )
     normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
     return re.sub(r"[^a-z0-9]+", "-", normalized.lower()).strip("-")
+
+
+def _municipality_id(city: str) -> str:
+    return _slug(city)
 
 
 def _filter_infrastructure(

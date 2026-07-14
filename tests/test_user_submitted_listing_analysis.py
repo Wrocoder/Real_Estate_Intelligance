@@ -428,11 +428,11 @@ def test_user_submitted_listing_analysis_requires_private_confirmation() -> None
     assert response.json()["detail"] == "Private analysis confirmation is required"
 
 
-def test_user_submitted_listing_analysis_uses_nearest_market_proxy_for_uncovered_location() -> None:
+def test_user_submitted_listing_analysis_uses_medlow_market_coverage() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/analyze",
         json={
-            "source_url": "https://www.otodom.pl/pl/oferta/outside-wroclaw-ID4C0bS",
+            "source_url": "https://www.otodom.pl/pl/oferta/medlow-ID4C0bS",
             "address": "Piastów Śląskich, Mędłów",
             "city": "Mędłów",
             "district": "dolnośląskie",
@@ -451,8 +451,42 @@ def test_user_submitted_listing_analysis_uses_nearest_market_proxy_for_uncovered
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["analysis"]["listing"]["city"] == "Wrocław"
+    assert payload["analysis"]["listing"]["city"] == "Mędłów"
+    assert payload["analysis"]["listing"]["district"] == "Mędłów"
+    assert payload["analysis"]["area_statistics"]["area_id"] == "medlow-medlow"
     assert payload["analysis"]["listing"]["municipality"] == "Mędłów"
+    assert payload["analysis"]["comparables"]
+    assert all(
+        comparable["city"] == "Mędłów" for comparable in payload["analysis"]["comparables"]
+    )
+    assert not any("nearest available market proxy" in item for item in payload["warnings"])
+    assert any("normalized to a covered local market area" in item for item in payload["warnings"])
+
+
+def test_user_submitted_listing_analysis_uses_nearest_market_proxy_for_uncovered_location() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/outside-coverage-ID4C0bS",
+            "address": "Rynek, Sobótka",
+            "city": "Sobótka",
+            "district": "dolnośląskie",
+            "market_type": "secondary",
+            "price": 520000,
+            "area_m2": 52.0,
+            "rooms": 2,
+            "floor": 1,
+            "building_floors": 3,
+            "building_year": 2008,
+            "lat": 50.8995,
+            "lon": 16.7442,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["analysis"]["listing"]["municipality"] == "Sobótka"
     assert payload["analysis"]["comparables"]
     assert any("nearest available market proxy" in item for item in payload["warnings"])
 

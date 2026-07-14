@@ -9,8 +9,9 @@ def test_area_market_snapshot_job_builds_current_area_snapshots() -> None:
 
     assert result.dry_run is True
     assert result.snapshots_created == 0
-    assert len(result.snapshots) == 3
+    assert len(result.snapshots) == 4
     assert [snapshot.area_id for snapshot in result.snapshots] == [
+        "medlow-medlow",
         "wroclaw-fabryczna",
         "wroclaw-krzyki",
         "wroclaw-psie-pole",

@@ -70,7 +70,25 @@ DISTRICT_DEFAULTS = {
         "parks_within_1km": 2,
         "schools_within_1km": 1,
     },
+    "medlow-medlow": {
+        "distance_to_center_km": 12.8,
+        "nearest_stop_m": 560,
+        "nearest_school_m": 1450,
+        "nearest_major_road_m": 820,
+        "nearest_industrial_zone_m": 3100,
+        "parks_within_1km": 1,
+        "schools_within_1km": 0,
+    },
 }
+
+AREA_ALIASES = {
+    ("medlow", "dolnoslaskie"): "medlow-medlow",
+    ("medlow", "wroclawski"): "medlow-medlow",
+    ("medlow", "powiat-wroclawski"): "medlow-medlow",
+    ("medlow", "medlow"): "medlow-medlow",
+    ("kobierzyce", "medlow"): "medlow-medlow",
+}
+BROAD_REGION_LABELS = {"dolnoslaskie", "powiat-wroclawski", "wroclawski"}
 
 MANUAL_FIELDS_REQUIRED = ["address", "district", "price", "area_m2", "rooms"]
 MANUAL_FIELDS_RECOMMENDED = ["floor", "building_floors", "building_year", "market_type"]
@@ -107,10 +125,7 @@ def analyze_user_submitted_listing(
         raise ValueError(
             "Area statistics are not available for this city/district in the current MVP data"
         )
-    area_is_proxy = (
-        area_statistics.city.casefold() != payload.city.casefold()
-        or area_statistics.name.casefold() != payload.district.casefold()
-    )
+    area_is_proxy = _is_area_statistics_proxy(area_statistics, payload.city, payload.district)
 
     geocoding = _resolve_location(payload)
     source_domain = _source_domain(payload.source_url)
@@ -120,6 +135,14 @@ def analyze_user_submitted_listing(
             "Object is outside the currently covered market grid; report uses "
             f"{area_statistics.name}, {area_statistics.city} as the nearest available "
             "market proxy. Treat valuation as directional."
+        )
+    elif (
+        area_statistics.city.casefold() != payload.city.casefold()
+        or area_statistics.name.casefold() != payload.district.casefold()
+    ):
+        warnings.append(
+            "Portal/user location label was normalized to a covered local market area; "
+            f"report uses {area_statistics.name}, {area_statistics.city} as the market baseline."
         )
     if geocoding and payload.lat is None and payload.lon is None:
         warnings.append(
@@ -315,6 +338,12 @@ def _resolve_area_statistics(
     lat: float | None = None,
     lon: float | None = None,
 ) -> AreaStatistics | None:
+    alias_area_id = AREA_ALIASES.get((_slug(city), _slug(district)))
+    if alias_area_id:
+        stats = repository.get_area_statistics(alias_area_id)
+        if stats is not None:
+            return stats
+
     area_id = _area_id(city, district)
     stats = repository.get_area_statistics(area_id)
     if stats is not None:
@@ -328,6 +357,26 @@ def _resolve_area_statistics(
     if lat is not None and lon is not None:
         return _nearest_area_statistics_by_coordinates(repository, lat, lon)
     return None
+
+
+def _is_area_statistics_proxy(
+    area_statistics: AreaStatistics,
+    city: str,
+    district: str,
+) -> bool:
+    alias_area_id = AREA_ALIASES.get((_slug(city), _slug(district)))
+    if alias_area_id == area_statistics.area_id:
+        return False
+
+    area_city = area_statistics.city.casefold()
+    input_city = city.casefold()
+    area_name = area_statistics.name.casefold()
+    input_district = district.casefold()
+    if area_city == input_city and area_name == input_district:
+        return False
+    if area_city == input_city and _slug(district) in BROAD_REGION_LABELS:
+        return False
+    return True
 
 
 def _nearest_area_statistics_by_coordinates(
