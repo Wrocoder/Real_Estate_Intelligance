@@ -118,6 +118,7 @@ from domarion.schemas import (
     Listing,
     ListingAnalysis,
     ListingFutureImpact,
+    ListingGrowthAnalysis,
     ListingRentalEstimate,
     ListingRiskProfile,
     ListingSearchResponse,
@@ -200,6 +201,7 @@ from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
+from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 from domarion.services.listing_comparison import build_listing_comparison
@@ -2445,6 +2447,26 @@ def get_listing_future_impact(
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return build_listing_future_impact(repository, listing)
+
+
+@router.get("/listings/{listing_id}/growth-analysis", response_model=ListingGrowthAnalysis)
+def get_listing_growth_analysis(
+    listing_id: str,
+    repository: RepositoryDep,
+) -> ListingGrowthAnalysis:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    area_statistics = repository.get_area_statistics(listing.area_id)
+    if area_statistics is None:
+        raise HTTPException(status_code=404, detail="Area statistics not found")
+    future_area_impact = build_listing_future_impact(repository, listing)
+    return build_listing_growth_analysis(
+        repository,
+        listing,
+        area_statistics,
+        future_area_impact=future_area_impact,
+    )
 
 
 @router.get("/listings/{listing_id}/risk-profile", response_model=ListingRiskProfile)

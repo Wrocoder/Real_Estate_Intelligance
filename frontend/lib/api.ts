@@ -286,6 +286,47 @@ export type ListingFutureImpact = {
   methodology_note: string;
 };
 
+export type GrowthFactorCode =
+  | "transport"
+  | "education"
+  | "parks_greenery"
+  | "healthcare"
+  | "retail_services"
+  | "offices_jobs"
+  | "universities"
+  | "population_jobs_growth";
+
+export type GrowthFactorPosture = "strong" | "moderate" | "weak" | "missing";
+
+export type GrowthAnalysisLabel =
+  | "strong_growth"
+  | "moderate_growth"
+  | "mixed_growth"
+  | "weak_growth";
+
+export type ListingGrowthFactor = {
+  code: GrowthFactorCode;
+  label: string;
+  score: number;
+  weight: number;
+  posture: GrowthFactorPosture;
+  evidence: string[];
+  recommended_checks: string[];
+  data_status: string;
+};
+
+export type ListingGrowthAnalysis = {
+  listing_id: string;
+  growth_score: number;
+  growth_label: GrowthAnalysisLabel;
+  factors: ListingGrowthFactor[];
+  positive_signals: string[];
+  drag_signals: string[];
+  missing_layers: string[];
+  summary: string;
+  methodology_note: string;
+};
+
 export type ListingRiskFactor = {
   code: string;
   category: string;
@@ -561,6 +602,7 @@ export type ListingAnalysis = {
   comparables: Listing[];
   developer_reputation: DeveloperReputation | null;
   future_area_impact: ListingFutureImpact | null;
+  growth_analysis: ListingGrowthAnalysis | null;
   risk_profile: ListingRiskProfile | null;
   rental_estimate: ListingRentalEstimate | null;
   scores: PropertyScores;
@@ -2136,6 +2178,10 @@ export const api = {
   getAnalysis: (id: string) => request<ListingAnalysis>(`/api/v1/listings/${id}/analysis`),
   getListingFutureImpact: (id: string) =>
     request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
+  getListingGrowthAnalysis: (id: string) =>
+    request<ListingGrowthAnalysis>(
+      `/api/v1/listings/${encodeURIComponent(id)}/growth-analysis`,
+    ),
   getListingRiskProfile: (id: string) =>
     request<ListingRiskProfile>(`/api/v1/listings/${encodeURIComponent(id)}/risk-profile`),
   getListingRentalEstimate: (id: string) =>

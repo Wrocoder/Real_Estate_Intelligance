@@ -779,6 +779,7 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     )
     assert payload["analysis"]["analysis"]["risk_profile"]["factors"]
     assert payload["analysis"]["analysis"]["rental_estimate"]["cashflow_scenarios"]
+    assert payload["analysis"]["analysis"]["growth_analysis"]["factors"]
     assert payload["report"]["template_code"] == "buyer_object_report_v1"
     assert payload["report"]["listing_id"].startswith("user-submitted-")
     assert "не финансовая" in payload["report"]["disclaimer"]
@@ -809,6 +810,7 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "Развитие района:" in fit_items
     assert "Future impact score:" in fit_items
     assert "Ближайшие planned investments:" in fit_items
+    assert "Growth analysis:" in fit_items
     assert "Rental estimate:" in fit_items
     developer_section = next(
         section

@@ -99,6 +99,23 @@ ScoreNegotiationLabel = Literal[
     "strong_negotiation",
 ]
 ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
+GrowthFactorCode = Literal[
+    "transport",
+    "education",
+    "parks_greenery",
+    "healthcare",
+    "retail_services",
+    "offices_jobs",
+    "universities",
+    "population_jobs_growth",
+]
+GrowthFactorPosture = Literal["strong", "moderate", "weak", "missing"]
+GrowthAnalysisLabel = Literal[
+    "strong_growth",
+    "moderate_growth",
+    "mixed_growth",
+    "weak_growth",
+]
 DeveloperProjectStatus = Literal["completed", "active", "planned", "unknown"]
 DeveloperSignalType = Literal[
     "track_record",
@@ -509,6 +526,29 @@ class ListingFutureImpact(BaseModel):
     summary: str
     growth_signals: list[str] = Field(default_factory=list)
     risk_signals: list[str] = Field(default_factory=list)
+    methodology_note: str
+
+
+class ListingGrowthFactor(BaseModel):
+    code: GrowthFactorCode
+    label: str
+    score: int = Field(ge=0, le=100)
+    weight: float = Field(ge=0, le=1)
+    posture: GrowthFactorPosture
+    evidence: list[str] = Field(default_factory=list)
+    recommended_checks: list[str] = Field(default_factory=list)
+    data_status: str
+
+
+class ListingGrowthAnalysis(BaseModel):
+    listing_id: str
+    growth_score: int = Field(ge=0, le=100)
+    growth_label: GrowthAnalysisLabel
+    factors: list[ListingGrowthFactor] = Field(default_factory=list)
+    positive_signals: list[str] = Field(default_factory=list)
+    drag_signals: list[str] = Field(default_factory=list)
+    missing_layers: list[str] = Field(default_factory=list)
+    summary: str
     methodology_note: str
 
 
@@ -1088,6 +1128,7 @@ class ListingAnalysis(BaseModel):
     comparables: list[Listing]
     developer_reputation: DeveloperReputation | None = None
     future_area_impact: ListingFutureImpact | None = None
+    growth_analysis: ListingGrowthAnalysis | None = None
     risk_profile: ListingRiskProfile | None = None
     rental_estimate: ListingRentalEstimate | None = None
     scores: PropertyScores

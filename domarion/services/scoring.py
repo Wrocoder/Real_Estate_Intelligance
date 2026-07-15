@@ -14,6 +14,7 @@ from domarion.schemas import (
     ScoreBreakdown,
 )
 from domarion.services.future_impact import build_listing_future_impact
+from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.rental_estimate import build_listing_rental_estimate
 from domarion.services.risk_profile import build_listing_risk_profile
 
@@ -289,6 +290,12 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
     comparables = repository.find_comparables(listing)
     developer_reputation = repository.get_developer_reputation_for_listing(listing.id)
     future_area_impact = build_listing_future_impact(repository, listing)
+    growth_analysis = build_listing_growth_analysis(
+        repository,
+        listing,
+        area_statistics,
+        future_area_impact=future_area_impact,
+    )
     scores = calculate_scores(listing, area_statistics, comparables)
     rental_estimate = build_listing_rental_estimate(
         listing,
@@ -352,6 +359,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         comparables=comparables,
         developer_reputation=developer_reputation,
         future_area_impact=future_area_impact,
+        growth_analysis=growth_analysis,
         risk_profile=risk_profile,
         rental_estimate=rental_estimate,
         scores=scores,

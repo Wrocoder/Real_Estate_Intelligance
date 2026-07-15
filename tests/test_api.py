@@ -314,6 +314,10 @@ def test_listing_analysis() -> None:
     assert payload["future_area_impact"]["impact_score"] > 0
     assert payload["future_area_impact"]["buckets"][0]["radius_m"] == 500
     assert payload["future_area_impact"]["nearest_investments"]
+    assert payload["growth_analysis"]["listing_id"] == "wr-001"
+    assert payload["growth_analysis"]["growth_score"] > 0
+    assert payload["growth_analysis"]["factors"]
+    assert payload["growth_analysis"]["positive_signals"]
     assert payload["risk_profile"]["listing_id"] == "wr-001"
     assert payload["risk_profile"]["risk_score"] == payload["scores"]["risk_score"]
     assert payload["risk_profile"]["factors"]
@@ -337,6 +341,35 @@ def test_listing_future_impact_returns_radius_buckets() -> None:
     assert payload["nearest_investments"][0]["distance_m"] <= 2000
     assert payload["growth_signals"]
     assert "guarantee" in payload["methodology_note"]
+
+
+def test_listing_growth_analysis_returns_structured_factors() -> None:
+    response = client.get("/api/v1/listings/wr-001/growth-analysis")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["listing_id"] == "wr-001"
+    assert 0 <= payload["growth_score"] <= 100
+    assert payload["growth_label"] in {
+        "strong_growth",
+        "moderate_growth",
+        "mixed_growth",
+        "weak_growth",
+    }
+    factor_codes = {factor["code"] for factor in payload["factors"]}
+    assert {
+        "transport",
+        "education",
+        "parks_greenery",
+        "healthcare",
+        "retail_services",
+        "offices_jobs",
+        "universities",
+        "population_jobs_growth",
+    } == factor_codes
+    assert payload["positive_signals"]
+    assert payload["drag_signals"]
+    assert "screening heuristic" in payload["methodology_note"]
 
 
 def test_listing_risk_profile_returns_structured_factors() -> None:
@@ -452,6 +485,8 @@ def test_object_report() -> None:
     assert "Развитие района:" in fit_items
     assert "Future impact score:" in fit_items
     assert "Ближайшие planned investments:" in fit_items
+    assert "Growth analysis:" in fit_items
+    assert "Growth positives:" in fit_items
     developer_section = next(
         section
         for section in payload["sections"]
@@ -486,6 +521,15 @@ def test_investor_object_report_includes_rental_cashflow() -> None:
     assert "Gross yield" in items
     assert "Cash purchase" in items
     assert "80% LTV" in items
+
+    growth_section = next(
+        section
+        for section in payload["sections"]
+        if section["title"] == "Ликвидность и тезис роста"
+    )
+    growth_items = "\n".join(growth_section["items"])
+    assert "Growth analysis score:" in growth_items
+    assert "Growth positive:" in growth_items
 
 
 def test_object_report_accepts_realtor_branding() -> None:

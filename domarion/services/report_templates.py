@@ -154,6 +154,20 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
             items.append(f"Growth signals: {'; '.join(impact.growth_signals[:3])}.")
         if impact.risk_signals:
             items.append(f"Future-area risks/checks: {'; '.join(impact.risk_signals[:3])}.")
+    if analysis.growth_analysis is not None:
+        growth = analysis.growth_analysis
+        items.append(
+            f"Growth analysis: {growth.growth_score}/100 "
+            f"({growth.growth_label}). {growth.summary}"
+        )
+        if growth.positive_signals:
+            items.append(f"Growth positives: {'; '.join(growth.positive_signals[:3])}.")
+        if growth.drag_signals:
+            items.append(f"Growth drags/checks: {'; '.join(growth.drag_signals[:3])}.")
+        if growth.missing_layers:
+            items.append(
+                f"Growth data gaps to verify: {'; '.join(growth.missing_layers[:3])}."
+            )
     if analysis.rental_estimate is not None:
         rental = analysis.rental_estimate
         items.append(
@@ -468,6 +482,16 @@ def _investor_liquidity_growth_section(analysis: ListingAnalysis | None) -> Repo
         thesis.append("Risk thesis: предложение быстро растет; проверьте риск oversupply.")
     else:
         thesis.append("Growth thesis: нейтральный сценарий, решение зависит от цены входа.")
+    if analysis.growth_analysis is not None:
+        growth = analysis.growth_analysis
+        thesis.append(
+            f"Growth analysis score: {growth.growth_score}/100 "
+            f"({growth.growth_label}). {growth.summary}"
+        )
+        thesis.extend(f"Growth positive: {item}" for item in growth.positive_signals[:3])
+        thesis.extend(f"Growth drag/check: {item}" for item in growth.drag_signals[:3])
+        if growth.missing_layers:
+            thesis.append(f"Growth data gaps: {'; '.join(growth.missing_layers[:4])}.")
     if scores.risk_score >= 60:
         thesis.append("Повышенный Risk Score требует дисконта или дополнительных проверок.")
     return ReportSection(title="Ликвидность и тезис роста", items=thesis)
