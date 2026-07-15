@@ -537,7 +537,7 @@ export type AIQuestionDescriptor = {
 
 export type AIAssistantDataContract = {
   prompt_version: string;
-  allowed_subjects: Array<"listing" | "user_submitted_draft">;
+  allowed_subjects: Array<"listing" | "user_submitted_draft" | "compare">;
   allowed_inputs: string[];
   prohibited_inputs: string[];
   citation_policy: string;

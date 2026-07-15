@@ -2,15 +2,17 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, RefreshCw } from "lucide-react";
+import { BarChart3, Brain, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  type AICompareAnswer,
   type CompareItemMetrics,
   type CompareResponse,
   type DeveloperReputation,
   type ListingAnalysis,
+  type ReportAudience,
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import { scoreLabel } from "@/lib/scoreLabels";
@@ -19,6 +21,12 @@ export default function ComparePage() {
   const [available, setAvailable] = useState<ListingAnalysis[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [comparison, setComparison] = useState<CompareResponse | null>(null);
+  const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState<AICompareAnswer | null>(null);
+  const [aiStatus, setAiStatus] = useState("AI verdict не создан");
+  const [aiError, setAiError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
   const [status, setStatus] = useState("Загрузка объектов...");
   const [error, setError] = useState("");
   const items = comparison?.items ?? [];
@@ -68,10 +76,15 @@ export default function ComparePage() {
         const response = await api.compareListings(selectedIds);
         if (cancelled) return;
         setComparison(response);
+        setAiAnswer(null);
+        setAiError("");
+        setAiStatus("AI verdict готов к генерации");
         setStatus(`Сравнивается объектов: ${response.items.length}`);
       } catch (caught) {
         if (cancelled) return;
         setComparison(null);
+        setAiAnswer(null);
+        setAiStatus("AI verdict недоступен");
         setError(caught instanceof Error ? caught.message : "unknown error");
         setStatus("Сравнение недоступно для текущего набора");
       }
@@ -100,6 +113,33 @@ export default function ComparePage() {
       }
       return [...current, listingId];
     });
+  }
+
+  async function generateAIVerdict() {
+    if (!comparison || selectedIds.length < 2) return;
+
+    setAiLoading(true);
+    setAiError("");
+    setAiStatus("AI verdict строится...");
+    try {
+      const response = await api.answerCompareAIQuestion({
+        listing_ids: selectedIds,
+        audience: aiAudience,
+        question: aiQuestion.trim() || null,
+      });
+      setAiAnswer(response);
+      setAiStatus(
+        response.refused
+          ? "AI verdict отклонен guardrail-правилом"
+          : `AI verdict сохранен: ${response.usage_log_id ?? response.subject_id}`,
+      );
+    } catch (caught) {
+      setAiAnswer(null);
+      setAiError(caught instanceof Error ? caught.message : "unknown error");
+      setAiStatus("AI verdict недоступен");
+    } finally {
+      setAiLoading(false);
+    }
   }
 
   return (
@@ -197,6 +237,98 @@ export default function ComparePage() {
             />
           </section>
 
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <div className="panel-header">
+              <h2 className="icon-title">
+                <Brain size={16} /> AI verdict
+              </h2>
+              <span className="status-line">{aiStatus}</span>
+            </div>
+            <div className="panel-body ai-verdict-body">
+              <div className="ai-verdict-controls">
+                <div className="field">
+                  <span>Аудитория</span>
+                  <select
+                    className="select"
+                    value={aiAudience}
+                    onChange={(event) => setAiAudience(event.target.value as ReportAudience)}
+                  >
+                    <option value="buyer">Buyer</option>
+                    <option value="realtor">Realtor</option>
+                    <option value="investor">Investor</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <span>Вопрос</span>
+                  <input
+                    className="input"
+                    value={aiQuestion}
+                    onChange={(event) => setAiQuestion(event.target.value)}
+                    placeholder="Например: что выбрать для семьи или сдачи в аренду?"
+                  />
+                </div>
+                <button
+                  className="button primary"
+                  type="button"
+                  disabled={aiLoading || selectedIds.length < 2}
+                  onClick={() => void generateAIVerdict()}
+                >
+                  <Brain size={16} /> Получить verdict
+                </button>
+              </div>
+
+              {aiError ? <ErrorBlock message={aiError} /> : null}
+
+              {aiAnswer ? (
+                <div className="ai-verdict-result">
+                  <div className="ai-verdict-summary">
+                    <div>
+                      <span className={`status-pill ${aiAnswer.refused ? "warning" : "healthy"}`}>
+                        {aiAnswer.refused ? "Refused" : "Source-grounded"}
+                      </span>
+                      <span className="status-pill info">
+                        Winner: {listingShort(items, aiAnswer.best_listing_id)}
+                      </span>
+                    </div>
+                    <p>{aiAnswer.refusal_reason ?? aiAnswer.answer}</p>
+                  </div>
+
+                  <div className="ai-verdict-grid">
+                    <InsightColumn title="Ключевые выводы" items={aiAnswer.key_points} />
+                    <InsightColumn title="Tradeoffs" items={aiAnswer.tradeoffs} />
+                    <div>
+                      <h3 className="ai-verdict-heading">
+                        <ShieldCheck size={15} /> Источники и ограничения
+                      </h3>
+                      <div className="ai-citation-list">
+                        {aiAnswer.citations.slice(0, 5).map((citation, index) => (
+                          <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                            <strong>{citation.title}</strong>
+                            <small>
+                              {citation.source_type} · {citation.excerpt}
+                            </small>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="meta-row">
+                        {aiAnswer.guardrails.map((guardrail, index) => (
+                          <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                            {guardrail.code}
+                          </span>
+                        ))}
+                      </div>
+                      <small className="muted">{aiAnswer.disclaimer}</small>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <p className="empty-state">
+                  AI verdict появится здесь после генерации для выбранных объектов.
+                </p>
+              )}
+            </div>
+          </section>
+
           <section className="grid-3" style={{ marginBottom: 16 }}>
             {comparison.metrics.map((metric) => {
               const item = items.find((analysis) => analysis.listing.id === metric.listing_id);
@@ -269,6 +401,23 @@ export default function ComparePage() {
         </>
       )}
     </>
+  );
+}
+
+function InsightColumn({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <h3 className="ai-verdict-heading">{title}</h3>
+      {items.length === 0 ? (
+        <p className="muted">Нет данных.</p>
+      ) : (
+        <ul className="ai-verdict-list">
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

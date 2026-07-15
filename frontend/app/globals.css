@@ -229,6 +229,13 @@ button {
   font-size: 15px;
 }
 
+.icon-title,
+.ai-verdict-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
 .panel-header.inline {
   min-height: auto;
   padding: 0 0 10px;
@@ -274,6 +281,84 @@ button {
   margin-top: 8px;
   color: var(--muted);
   font-size: 13px;
+}
+
+.ai-verdict-body {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-verdict-controls {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.ai-verdict-result {
+  display: grid;
+  gap: 14px;
+}
+
+.ai-verdict-summary {
+  display: grid;
+  gap: 9px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: #f7fbfa;
+  padding: 12px;
+}
+
+.ai-verdict-summary > div {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-verdict-summary p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.ai-verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ai-verdict-heading {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.ai-verdict-list {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.45;
+}
+
+.ai-verdict-list li + li {
+  margin-top: 7px;
+}
+
+.ai-citation-list {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-citation strong,
+.ai-citation small {
+  display: block;
+}
+
+.ai-citation strong {
+  font-size: 13px;
+}
+
+.ai-citation small {
+  margin-top: 3px;
+  color: var(--muted);
+  line-height: 1.35;
 }
 
 .metric-grid {
@@ -1045,6 +1130,7 @@ button {
 
   .metric-grid,
   .grid-3,
+  .ai-verdict-grid,
   .plan-grid,
   .pricing-grid,
   .seo-area-grid,
@@ -1058,6 +1144,10 @@ button {
   }
 
   .form-grid.compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ai-verdict-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -1079,6 +1169,7 @@ button {
 
   .metric-grid,
   .grid-3,
+  .ai-verdict-grid,
   .plan-grid,
   .pricing-grid,
   .seo-area-grid,
@@ -1100,6 +1191,10 @@ button {
   }
 
   .form-grid.compact {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-verdict-controls {
     grid-template-columns: 1fr;
   }
 }
