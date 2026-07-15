@@ -271,6 +271,10 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
 
     assert response.status_code == 200
     assert [item["listing"]["id"] for item in payload["items"]] == ["wr-001", "wr-002"]
+    assert [item["developer_reputation"]["developer"]["id"] for item in payload["items"]] == [
+        "fabryczna-estate-partners",
+        "demo-development",
+    ]
     assert payload["mortgage_assumptions"] == {
         "down_payment_pct": 20.0,
         "loan_years": 25,

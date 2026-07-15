@@ -9,6 +9,7 @@ import {
   api,
   type CompareItemMetrics,
   type CompareResponse,
+  type DeveloperReputation,
   type ListingAnalysis,
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
@@ -146,6 +147,12 @@ export default function ComparePage() {
                     {analysis.scores.investment_score} / R {analysis.scores.risk_score} ·{" "}
                     {scoreLabel(analysis.scores.decision_label)}
                   </small>
+                  {analysis.developer_reputation ? (
+                    <small>
+                      Застройщик: {analysis.developer_reputation.developer.name} ·{" "}
+                      {analysis.developer_reputation.reputation_score}/100
+                    </small>
+                  ) : null}
                 </span>
               </label>
             ))
@@ -205,6 +212,14 @@ export default function ComparePage() {
                     <span>{metric.liquidity_score}/100 liquidity</span>
                     <span>{metric.rental_potential_score}/100 rent</span>
                   </div>
+                  {item?.developer_reputation ? (
+                    <div className="meta-row">
+                      <span className={`status-pill ${developerTone(item.developer_reputation)}`}>
+                        {developerLabel(item.developer_reputation)}
+                      </span>
+                      <span>{item.developer_reputation.developer.name}</span>
+                    </div>
+                  ) : null}
                 </article>
               );
             })}
@@ -292,6 +307,21 @@ function comparisonRows(items: ListingAnalysis[], metricById: Map<string, Compar
       id: "decision-label",
       label: "Вердикт",
       values: items.map((item) => scoreLabel(item.scores.decision_label)),
+    },
+    {
+      id: "developer",
+      label: "Застройщик",
+      values: items.map((item) => developerSummary(item.developer_reputation)),
+    },
+    {
+      id: "developer-risk",
+      label: "Риск застройщика",
+      values: items.map((item) => developerRiskSummary(item.developer_reputation)),
+    },
+    {
+      id: "developer-check",
+      label: "Проверить по застройщику",
+      values: items.map((item) => developerCheckSummary(item.developer_reputation)),
     },
     {
       id: "mortgage-payment",
@@ -443,6 +473,41 @@ function Metric({ label, value, detail }: { label: string; value: string; detail
       ) : null}
     </div>
   );
+}
+
+function developerSummary(reputation: DeveloperReputation | null) {
+  if (!reputation) return "Нет сопоставленного застройщика";
+  return `${reputation.developer.name} · ${reputation.reputation_score}/100 · confidence ${reputation.confidence_score}/100`;
+}
+
+function developerRiskSummary(reputation: DeveloperReputation | null) {
+  if (!reputation) return "Нет данных для developer risk";
+  return (
+    reputation.risk_signals[0] ??
+    reputation.positive_signals[0] ??
+    `${reputation.completed_projects_count} сдано · ${reputation.active_projects_count} активно`
+  );
+}
+
+function developerCheckSummary(reputation: DeveloperReputation | null) {
+  if (!reputation) return "Проверить продавца/застройщика вручную";
+  return reputation.due_diligence_questions[0] ?? "Проверить KRS/REGON и проектную компанию.";
+}
+
+function developerLabel(reputation: DeveloperReputation) {
+  return {
+    strong: "сильный застройщик",
+    good: "хороший профиль",
+    mixed: "смешанный профиль",
+    limited_data: "мало данных",
+    risk_review: "нужна проверка",
+  }[reputation.label];
+}
+
+function developerTone(reputation: DeveloperReputation) {
+  if (reputation.label === "strong" || reputation.label === "good") return "healthy";
+  if (reputation.label === "mixed" || reputation.label === "limited_data") return "warning";
+  return "error";
 }
 
 function listingShort(items: ListingAnalysis[], listingId: string) {

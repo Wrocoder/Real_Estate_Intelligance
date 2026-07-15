@@ -279,7 +279,7 @@
 - [x] Сделать developer ranking page.
 - [ ] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
 - [x] Добавить developer block на listing detail page.
-- [ ] Добавить developer block на compare page.
+- [x] Добавить developer block на compare page.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
