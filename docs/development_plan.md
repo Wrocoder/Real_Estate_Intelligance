@@ -205,6 +205,7 @@
 - [x] Добавить email delivery.
 - [x] Добавить mortgage calculation и total purchase cost в buyer report v1.
 - [x] Добавить buyer report секции: mortgage calculation, seller questions, purchase checklist, total cost.
+- [x] Добавить buyer decision summary: рекомендация, max offer, стартовый offer anchor, главные риски и проверки перед zadatek.
 - [x] Добавить buyer object-check report из user-submitted listing draft.
 - [x] Добавить сохранение buyer object-check report из user-submitted draft в report history.
 - [x] Добавить paid checkout/fulfillment для user-submitted draft через `draft:<draft_id>`.
@@ -553,6 +554,7 @@
 - [x] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
 - [x] Добавить developer filters/sort в listings и hidden gems: reputation, confidence, projects и risk signals.
 - [x] Усилить developer due diligence в отчетах: posture, projects, signals, registry checks, citations и disclaimer.
+- [x] Добавить buyer decision summary в object/link reports: recommendation, max offer, risks и pre-zadatek checks.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

@@ -134,8 +134,10 @@ def test_object_report_uses_audience_templates() -> None:
     investor_report = build_object_report(analysis, "investor")
 
     assert buyer_report.template_code == "buyer_object_report_v1"
-    assert buyer_report.sections[0].title == "Решение покупателя"
+    assert buyer_report.sections[0].title == "Краткое решение"
+    assert buyer_report.sections[1].title == "Решение покупателя"
     buyer_section_titles = {section.title for section in buyer_report.sections}
+    assert "Краткое решение" in buyer_section_titles
     assert "Ипотека и бюджет покупки" in buyer_section_titles
     assert "Вопросы продавцу" in buyer_section_titles
     assert "Чеклист проверки перед оффером" in buyer_section_titles

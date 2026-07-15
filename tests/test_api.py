@@ -369,10 +369,18 @@ def test_object_report() -> None:
     assert payload["template_name"] == "Buyer decision report v1"
     assert payload["sections"]
     section_titles = {section["title"] for section in payload["sections"]}
+    assert "Краткое решение" in section_titles
     assert "Ипотека и бюджет покупки" in section_titles
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
     assert "Застройщик и репутация" in section_titles
+    decision_section = next(
+        section for section in payload["sections"] if section["title"] == "Краткое решение"
+    )
+    decision_items = "\n".join(decision_section["items"])
+    assert "Верхняя цена" in decision_items
+    assert "Перед zadatek/umowa rezerwacyjna" in decision_items
+    assert "Score snapshot" in decision_items
     developer_section = next(
         section
         for section in payload["sections"]
@@ -424,6 +432,7 @@ def test_report_templates_endpoint_returns_audience_templates() -> None:
     }
     assert all(item["default_sections"] for item in payload)
     buyer_template = next(item for item in payload if item["audience"] == "buyer")
+    assert "Краткое решение" in buyer_template["default_sections"]
     assert "Вопросы продавцу" in buyer_template["default_sections"]
     assert "Чеклист проверки перед оффером" in buyer_template["default_sections"]
     realtor_template = next(item for item in payload if item["audience"] == "realtor")

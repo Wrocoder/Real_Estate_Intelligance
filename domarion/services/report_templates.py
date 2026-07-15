@@ -42,6 +42,49 @@ def get_report_template(audience: ReportAudience) -> ReportTemplate:
     return REPORT_TEMPLATES[audience]
 
 
+def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Краткое решение", items=[])
+
+    listing = analysis.listing
+    scores = analysis.scores
+    max_offer = _buyer_max_offer(analysis)
+    opening_offer = _buyer_opening_offer(analysis, max_offer)
+    items = [
+        f"Decision: {_buyer_recommendation(analysis)}",
+        (
+            f"Верхняя цена до дополнительных проверок: {_money(max_offer)}; "
+            f"стартовый offer anchor: {_money(opening_offer)}."
+        ),
+        (
+            f"Цена продавца: {_money(listing.price)}; fair range "
+            f"{_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}; "
+            f"delta к fair mid {scores.price_delta_to_fair_mid_pct:+.1f}%."
+        ),
+        (
+            f"Score snapshot: Investment {scores.investment_score}/100, "
+            f"Risk {scores.risk_score}/100, Negotiation {scores.negotiation_score}/100, "
+            f"Data quality {listing.data_quality_score}/100."
+        ),
+    ]
+    risks = _buyer_top_risks(analysis)
+    if risks:
+        items.append(f"Главные риски: {'; '.join(risks)}.")
+    items.append(
+        "Перед zadatek/umowa rezerwacyjna обязательно закрыть проверки: "
+        f"{'; '.join(_buyer_required_checks(analysis))}."
+    )
+    if analysis.developer_reputation is not None:
+        reputation = analysis.developer_reputation
+        items.append(
+            f"Застройщик: {reputation.developer.name}, "
+            f"reputation {reputation.reputation_score}/100, "
+            f"confidence {reputation.confidence_score}/100; "
+            "сверить проектную компанию и договор с due-diligence секцией."
+        )
+    return ReportSection(title="Краткое решение", items=_deduplicate(items))
+
+
 def _buyer_decision_section(analysis: ListingAnalysis | None) -> ReportSection:
     if analysis is None:
         return ReportSection(title="Решение покупателя", items=[])
@@ -405,6 +448,99 @@ def _money(value: int) -> str:
     return f"{value:,} PLN".replace(",", " ")
 
 
+def _buyer_recommendation(analysis: ListingAnalysis) -> str:
+    scores = analysis.scores
+    if scores.risk_score >= 70 or scores.decision_label == "risky":
+        return (
+            "пауза; продолжать только после снятия юридических/технических рисков "
+            "и с заметным дисконтом к fair mid"
+        )
+    if scores.decision_label == "overpriced" or scores.price_delta_to_fair_mid_pct >= 10:
+        return "продолжать только с дисконтом; текущая цена выше расчетной ценности"
+    if scores.decision_label == "weak_fit":
+        return "не спешить; объект слабее альтернатив, нужен сильный аргумент по цене"
+    if scores.decision_label == "strong_candidate":
+        return "можно продолжать; сильный кандидат при чистых документах и осмотре"
+    if scores.decision_label == "good_option":
+        return "можно продолжать; хороший вариант, если проверки не выявят скрытых затрат"
+    return "можно смотреть дальше; решение зависит от документов, состояния и финальной цены"
+
+
+def _buyer_max_offer(analysis: ListingAnalysis) -> int:
+    listing = analysis.listing
+    scores = analysis.scores
+    if scores.risk_score >= 70:
+        return min(scores.fair_price_low, round(listing.price * 0.92))
+    if scores.price_delta_to_fair_mid_pct >= 12:
+        return min(scores.fair_price_mid, round(listing.price * 0.94))
+    if scores.price_delta_to_fair_mid_pct >= 5:
+        return min(scores.fair_price_high, round(listing.price * 0.97))
+    if scores.price_delta_to_fair_mid_pct <= -6 and scores.risk_score <= 50:
+        return min(listing.price, scores.fair_price_high)
+    return min(listing.price, scores.fair_price_high)
+
+
+def _buyer_opening_offer(analysis: ListingAnalysis, max_offer: int) -> int:
+    listing = analysis.listing
+    scores = analysis.scores
+    discount_pct = 0.03
+    if scores.price_delta_to_fair_mid_pct >= 12:
+        discount_pct = 0.08
+    elif scores.price_delta_to_fair_mid_pct >= 5:
+        discount_pct = 0.06
+    elif (
+        listing.price_reductions
+        or listing.days_on_market > analysis.area_statistics.average_days_on_market
+    ):
+        discount_pct = 0.05
+    opening_offer = round(listing.price * (1 - discount_pct))
+    return min(opening_offer, max_offer)
+
+
+def _buyer_top_risks(analysis: ListingAnalysis) -> list[str]:
+    listing = analysis.listing
+    scores = analysis.scores
+    risks = list(scores.warnings[:3])
+    if scores.price_delta_to_fair_mid_pct >= 7:
+        risks.append("цена выше fair mid, нужен дисконт или сильное подтверждение ценности")
+    if listing.data_quality_score < 65:
+        risks.append("качество данных ниже комфортного уровня, параметры нужно подтвердить")
+    if listing.building_year and listing.building_year < 1990:
+        risks.append("старый дом, проверить ремонты здания и состояние инсталляций")
+    if listing.floor == 0:
+        risks.append("parter/нулевой этаж, проверить приватность, шум и влажность")
+    if analysis.developer_reputation is not None and analysis.developer_reputation.risk_signals:
+        risks.append(f"developer risk: {analysis.developer_reputation.risk_signals[0]}")
+    return _deduplicate(risks)[:4]
+
+
+def _buyer_required_checks(analysis: ListingAnalysis) -> list[str]:
+    listing = analysis.listing
+    checks = [
+        "księga wieczysta: владелец, ипотека, roszczenia, służebności",
+        "czynsz/media/fundusz remontowy и отсутствие задолженностей",
+        "фактическая площадь, этаж, состояние инсталляций и влажность",
+    ]
+    if listing.market_type == "primary":
+        checks.append("prospekt informacyjny, rachunek powierniczy, DFG и сроки передачи")
+    else:
+        checks.append("PCC 2%, нотариальные расходы и протоколы wspólnoty/spółdzielni")
+    if analysis.developer_reputation is not None:
+        checks.append("KRS/NIP/REGON и project company застройщика")
+    return checks[:5]
+
+
+def _deduplicate(items: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if item in seen:
+            continue
+        seen.add(item)
+        result.append(item)
+    return result
+
+
 def _estimate_gross_yield_pct(analysis: ListingAnalysis) -> float:
     scores = analysis.scores
     listing = analysis.listing
@@ -426,6 +562,7 @@ REPORT_TEMPLATES: dict[ReportAudience, ReportTemplate] = {
         audience="buyer",
         description="Decision-focused report for a buyer comparing price, risk and negotiation.",
         section_builders=(
+            _buyer_decision_summary_section,
             _buyer_decision_section,
             _price_market_section,
             _mortgage_budget_section,

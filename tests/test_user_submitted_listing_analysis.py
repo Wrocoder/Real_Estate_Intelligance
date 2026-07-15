@@ -782,11 +782,20 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "не финансовая" in payload["report"]["disclaimer"]
     section_titles = {section["title"] for section in payload["report"]["sections"]}
     assert "Источник и надежность отчета" in section_titles
+    assert "Краткое решение" in section_titles
     assert "Цена: fair value и решение" in section_titles
     assert "Что делать дальше" in section_titles
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
     assert "Застройщик и репутация" in section_titles
+    decision_section = next(
+        section
+        for section in payload["report"]["sections"]
+        if section["title"] == "Краткое решение"
+    )
+    decision_items = "\n".join(decision_section["items"])
+    assert "Верхняя цена" in decision_items
+    assert "Перед zadatek/umowa rezerwacyjna" in decision_items
     developer_section = next(
         section
         for section in payload["report"]["sections"]
