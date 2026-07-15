@@ -362,6 +362,7 @@
 - [ ] Добавить SEO pages: flats with growth potential, Dolnośląskie market analysis, mortgage calculator Poland.
 - [ ] Добавить SEO pages: purchase checklist, księga wieczysta checklist, total purchase cost in Poland.
 - [ ] Добавить internal linking между SEO pages, area pages, listings и reports.
+- [x] Связать news с area/listing UI: `/news?area_id=...`, SEO area links и listing detail news panel.
 
 ## 15. Testing, Quality и Observability
 
@@ -573,6 +574,7 @@
 - [x] Подключить compare-A-vs-B AI verdict на compare page: audience, custom question, winner, tradeoffs, citations and guardrails.
 - [x] Добавить source-grounded area impact AI summary API/UI: posture, buyer/investor notes, citations, guardrails and saved area insight.
 - [x] Добавить news v1: article schema/store, manual admin ingestion, public news page, category/area-impact fields and source-grounded news AI summary.
+- [x] Добавить area-aware news linking в UI: area query filter, area SEO links and listing detail related news.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

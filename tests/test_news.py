@@ -20,6 +20,15 @@ def test_news_public_list_and_detail() -> None:
     assert detail["body"]
 
 
+def test_news_public_list_filters_by_area_id() -> None:
+    response = client.get("/api/v1/news", params={"area_id": "wroclaw-fabryczna"})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload
+    assert all("wroclaw-fabryczna" in article["affected_area_ids"] for article in payload)
+
+
 def test_admin_can_manually_create_news_article() -> None:
     headers = {
         "X-Domarion-User-Id": "news-admin",

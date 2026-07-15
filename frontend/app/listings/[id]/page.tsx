@@ -3,7 +3,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Brain, Building2, FileText, Heart, RefreshCw, ShieldCheck } from "lucide-react";
+import {
+  ArrowLeft,
+  Brain,
+  Building2,
+  FileText,
+  Heart,
+  Newspaper,
+  RefreshCw,
+  ShieldCheck,
+} from "lucide-react";
 
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
@@ -15,6 +24,7 @@ import {
   type AIQuestionDescriptor,
   type DeveloperReputation,
   type ListingAnalysis,
+  type NewsArticleListItem,
   type ReportAudience,
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
@@ -24,6 +34,7 @@ export default function ListingDetailPage() {
   const params = useParams<{ id: string }>();
   const listingId = params.id;
   const [analysis, setAnalysis] = useState<ListingAnalysis | null>(null);
+  const [areaNews, setAreaNews] = useState<NewsArticleListItem[]>([]);
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
   const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
@@ -42,6 +53,12 @@ export default function ListingDetailPage() {
       const data = await api.getAnalysis(listingId);
       setAnalysis(data);
       setStatus("Аналитика обновлена");
+      try {
+        const news = await api.listNews({ area_id: data.listing.area_id, limit: 3 });
+        setAreaNews(news);
+      } catch {
+        setAreaNews([]);
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setStatus("Backend API недоступен");
@@ -368,6 +385,24 @@ export default function ListingDetailPage() {
               <li>Средняя экспозиция: {areaStats.average_days_on_market} дней</li>
               <li>Предложение 90 дней: {percent(areaStats.supply_change_90d_pct)}</li>
             </ul>
+            <h2>Новости района</h2>
+            {areaNews.length > 0 ? (
+              <ul className="section-list compact">
+                {areaNews.map((article) => (
+                  <li key={article.id}>
+                    <Newspaper size={16} />{" "}
+                    <Link href={`/news?area_id=${encodeURIComponent(listing.area_id)}`}>
+                      {article.title}
+                    </Link>
+                    <small>
+                      {article.category} · {article.impact_level}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="empty-state">Для района пока нет привязанных новостей.</p>
+            )}
             <h2>Готовый HTML</h2>
             <a
               className="button primary"

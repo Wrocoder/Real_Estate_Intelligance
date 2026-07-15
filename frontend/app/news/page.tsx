@@ -26,6 +26,7 @@ const CATEGORY_OPTIONS: Array<{ value: NewsCategory | ""; label: string }> = [
 
 export default function NewsPage() {
   const [category, setCategory] = useState<NewsCategory | "">("");
+  const [areaId, setAreaId] = useState("");
   const [articles, setArticles] = useState<NewsArticleListItem[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [selectedArticle, setSelectedArticle] = useState<NewsArticle | null>(null);
@@ -36,12 +37,13 @@ export default function NewsPage() {
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
 
-  async function loadArticles(nextCategory = category) {
+  async function loadArticles(nextCategory = category, nextAreaId = areaId) {
     setError("");
     setStatus("Загрузка новостей...");
     try {
       const payload = await api.listNews({
         category: nextCategory || undefined,
+        area_id: nextAreaId.trim() || undefined,
         limit: 50,
       });
       setArticles(payload);
@@ -92,7 +94,10 @@ export default function NewsPage() {
   }
 
   useEffect(() => {
-    void loadArticles();
+    const params = new URLSearchParams(window.location.search);
+    const initialAreaId = params.get("area_id") ?? "";
+    setAreaId(initialAreaId);
+    void loadArticles(category, initialAreaId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -118,13 +123,19 @@ export default function NewsPage() {
           <p>Новости рынка, ипотеки, транспорта, MPZP и их влияние на районы.</p>
         </div>
         <div className="toolbar">
+          <input
+            className="input"
+            placeholder="area_id"
+            value={areaId}
+            onChange={(event) => setAreaId(event.target.value)}
+          />
           <select
             className="select"
             value={category}
             onChange={(event) => {
               const nextCategory = event.target.value as NewsCategory | "";
               setCategory(nextCategory);
-              void loadArticles(nextCategory);
+              void loadArticles(nextCategory, areaId);
             }}
           >
             {CATEGORY_OPTIONS.map((option) => (
@@ -170,6 +181,9 @@ export default function NewsPage() {
                       {new Date(article.published_at).toLocaleDateString("pl-PL")} ·{" "}
                       {article.affected_districts.join(", ") || "all areas"}
                     </small>
+                    {article.affected_area_ids.length > 0 ? (
+                      <small>Area ids: {article.affected_area_ids.join(", ")}</small>
+                    ) : null}
                   </span>
                 </button>
               ))

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Bell, FileText, Search } from "lucide-react";
+import { ArrowLeft, Bell, FileText, Newspaper, Search } from "lucide-react";
 
 import { money, numberValue, percent } from "@/lib/format";
 import { getSeoArea, SEO_AREAS, siteUrl } from "@/lib/seoAreas";
@@ -74,6 +74,9 @@ export default async function AreaPage({ params }: PageProps) {
           </Link>
           <Link className="button" href="/alerts">
             <Bell size={16} /> Alert
+          </Link>
+          <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
+            <Newspaper size={16} /> News
           </Link>
         </div>
       </header>
@@ -154,6 +157,9 @@ export default async function AreaPage({ params }: PageProps) {
 
             <h2>Дальше</h2>
             <div className="area-link-list">
+              <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
+                Новости района
+              </Link>
               {area.internalLinks.map((link) => (
                 <Link className="button" key={link.href} href={link.href}>
                   {link.label}
