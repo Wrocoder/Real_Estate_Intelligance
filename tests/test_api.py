@@ -373,6 +373,16 @@ def test_object_report() -> None:
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
     assert "Застройщик и репутация" in section_titles
+    developer_section = next(
+        section
+        for section in payload["sections"]
+        if section["title"] == "Застройщик и репутация"
+    )
+    developer_items = "\n".join(developer_section["items"])
+    assert "Позиция по застройщику" in developer_items
+    assert "Developer due diligence:" in developer_items
+    assert "Source citation:" in developer_items
+    assert "Registry check: KRS" in developer_items
     assert "не финансовая" in payload["disclaimer"]
 
 

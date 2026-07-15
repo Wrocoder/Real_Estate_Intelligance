@@ -106,18 +106,135 @@ def _developer_reputation_section(reputation: DeveloperReputation) -> ReportSect
             f"technical quality {reputation.technical_quality_score}/100, "
             f"transparency {reputation.transparency_score}/100."
         ),
+        _developer_due_diligence_posture(reputation),
     ]
     if reputation.positive_signals:
         items.append(f"Позитивные сигналы: {'; '.join(reputation.positive_signals[:3])}.")
     if reputation.risk_signals:
         items.append(f"Риски/проверки: {'; '.join(reputation.risk_signals[:3])}.")
-    items.extend(reputation.due_diligence_questions[:4])
-    if reputation.source_citations:
-        sources = ", ".join(
-            citation.source_name for citation in reputation.source_citations[:4]
-        )
-        items.append(f"Источники блока: {sources}. Данные требуют финальной проверки.")
+    items.extend(_developer_project_items(reputation))
+    items.extend(_developer_quality_signal_items(reputation))
+    items.extend(_developer_due_diligence_items(reputation))
+    items.extend(_developer_source_citation_items(reputation))
     return ReportSection(title="Застройщик и репутация", items=_deduplicate(items))
+
+
+def _developer_due_diligence_posture(reputation: DeveloperReputation) -> str:
+    if (
+        reputation.risk_signals
+        or reputation.label == "risk_review"
+        or reputation.reputation_score < 55
+    ):
+        return (
+            "Позиция по застройщику: высокий due-diligence режим; до zadatek/umowa "
+            "rezerwacyjna запросить документы, проверить project company и получить "
+            "независимую техническую/юридическую оценку."
+        )
+    if reputation.confidence_score < 65 or reputation.label == "limited_data":
+        return (
+            "Позиция по застройщику: данных недостаточно для уверенного вывода; "
+            "подтвердить track record минимум двумя независимыми источниками."
+        )
+    if reputation.reputation_score >= 70 and reputation.confidence_score >= 65:
+        return (
+            "Позиция по застройщику: профиль выглядит приемлемо для продолжения сделки, "
+            "но договор, escrow/rachunek powierniczy и сроки сдачи все равно проверять."
+        )
+    return (
+        "Позиция по застройщику: нейтральный профиль; решение должно зависеть от "
+        "документов конкретного проекта, графика платежей и качества договора."
+    )
+
+
+def _developer_project_items(reputation: DeveloperReputation) -> list[str]:
+    completed = [
+        project
+        for project in reputation.projects
+        if project.status == "completed"
+    ]
+    active = [
+        project
+        for project in reputation.projects
+        if project.status in {"active", "planned"}
+    ]
+    items: list[str] = []
+    if completed:
+        items.append(
+            "Сданные проекты для проверки отзывов жильцов: "
+            f"{'; '.join(_developer_project_label(project) for project in completed[:3])}."
+        )
+    if active:
+        items.append(
+            "Активные проекты для проверки сроков и этапа строительства: "
+            f"{'; '.join(_developer_project_label(project) for project in active[:3])}."
+        )
+    return items
+
+
+def _developer_quality_signal_items(reputation: DeveloperReputation) -> list[str]:
+    severity_priority = {"risk": 0, "warning": 1, "positive": 2, "info": 3}
+    signals = sorted(
+        reputation.quality_signals,
+        key=lambda signal: (severity_priority.get(signal.severity, 9), signal.title),
+    )
+    items: list[str] = []
+    for signal in signals[:5]:
+        observed = f", observed {signal.observed_at}" if signal.observed_at else ""
+        items.append(
+            f"Source signal ({_developer_signal_severity_text(signal.severity)}): "
+            f"{signal.title} - {signal.summary} "
+            f"Source: {signal.source_name}; confidence {signal.confidence_score}/100{observed}."
+        )
+    return items
+
+
+def _developer_due_diligence_items(reputation: DeveloperReputation) -> list[str]:
+    items = [
+        f"Developer due diligence: {question}"
+        for question in reputation.due_diligence_questions[:5]
+    ]
+    if reputation.developer.krs:
+        items.append(f"Registry check: KRS {reputation.developer.krs}.")
+    if reputation.developer.nip:
+        items.append(f"Registry check: NIP {reputation.developer.nip}.")
+    if reputation.developer.regon:
+        items.append(f"Registry check: REGON {reputation.developer.regon}.")
+    return items
+
+
+def _developer_source_citation_items(reputation: DeveloperReputation) -> list[str]:
+    items: list[str] = []
+    for citation in reputation.source_citations[:5]:
+        note = f" Note: {citation.note}" if citation.note else ""
+        source_url = f" URL: {citation.source_url}" if citation.source_url else ""
+        items.append(
+            f"Source citation: {citation.source_name}, checked {citation.checked_at}."
+            f"{note}{source_url}"
+        )
+    if items:
+        items.append(
+            "Данные по застройщику являются decision-support; перед платным решением "
+            "нужна финальная проверка документов и актуальных registry records."
+        )
+    return items
+
+
+def _developer_project_label(project) -> str:
+    parts = [project.name, project.city]
+    if project.district:
+        parts.append(project.district)
+    if project.completed_year:
+        parts.append(str(project.completed_year))
+    return " / ".join(parts)
+
+
+def _developer_signal_severity_text(value: str) -> str:
+    return {
+        "positive": "positive",
+        "info": "info",
+        "warning": "warning",
+        "risk": "risk",
+    }.get(value, value)
 
 
 def _developer_label_text(value: str) -> str:

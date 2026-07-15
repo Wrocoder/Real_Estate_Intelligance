@@ -336,7 +336,7 @@
 - [ ] Добавить limited AI endpoint.
 - [ ] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
 - [ ] Добавить compare-A-vs-B AI response template.
-- [ ] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
+- [x] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
 - [ ] Добавить source citations в каждый AI response.
 - [ ] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
 - [ ] Добавить AI summaries для news и area impact.
@@ -552,6 +552,7 @@
 - [x] Добавить text/address search в listings, hidden gems и saved-search alerts.
 - [x] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
 - [x] Добавить developer filters/sort в listings и hidden gems: reputation, confidence, projects и risk signals.
+- [x] Усилить developer due diligence в отчетах: posture, projects, signals, registry checks, citations и disclaimer.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

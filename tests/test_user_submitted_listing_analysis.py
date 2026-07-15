@@ -787,6 +787,15 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
     assert "Застройщик и репутация" in section_titles
+    developer_section = next(
+        section
+        for section in payload["report"]["sections"]
+        if section["title"] == "Застройщик и репутация"
+    )
+    developer_items = "\n".join(developer_section["items"])
+    assert "Позиция по застройщику" in developer_items
+    assert "Developer due diligence:" in developer_items
+    assert "Source citation:" in developer_items
     assert source_url not in str(payload["report"])
 
 
