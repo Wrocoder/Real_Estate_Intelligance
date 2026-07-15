@@ -31,6 +31,8 @@
 - [ ] Описать moat strategy: история цен, дедупликация, snapshots, геоданные, SEO и агентские партнерства.
 - [ ] Описать hybrid user-provided listing strategy: пользователь вводит адрес/URL/параметры, а анализ строится без массового копирования порталов.
 - [x] Зафиксировать hybrid flow spec в `docs/hybrid_listing_analysis.md`.
+- [x] Зафиксировать developer reputation/ranking backlog и candidate sources в `docs/developer_reputation_plan.md`.
+- [ ] Провести legal/data review источников для рейтинга застройщиков: directories, UOKiK, KRS/REGON, DFG, partner inspection data, public reviews.
 - [ ] Обновить 12-месячный roadmap по фактическому состоянию продукта.
 - [ ] Описать минимальную команду запуска и зоны ответственности.
 - [ ] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
@@ -79,6 +81,8 @@
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
 - [x] Добавить таблицы `agencies` и `agency_memberships` для agency workspaces.
+- [ ] Добавить таблицы `developer_profiles`, `developer_projects`, `developer_quality_signals`, `developer_reputation_snapshots`.
+- [ ] Связать listings/user-submitted drafts с `developer_id`, `investment_name` и primary-market project metadata.
 - [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
@@ -103,6 +107,8 @@
 - [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
 - [x] Добавить API для поиска объектов ниже рынка и hidden gems.
 - [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
+- [ ] Добавить developer filters/sort: developer reputation, active projects, completed projects, legal-risk flags, quality confidence.
+- [ ] Добавить public API для рейтинга застройщиков, developer detail и lookup developer-by-listing.
 
 ## 4.1 Hybrid User-Provided Listing Flow
 
@@ -153,6 +159,8 @@
 - [x] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [x] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
+- [ ] Добавить legal-first developer data ingestion: developer feeds, KRS/REGON lookup, UOKiK events, directories, partner inspection datasets.
+- [ ] Добавить нормализацию developer aliases: brand name, legal entity, SPV/project company, parent company.
 - [ ] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
 - [ ] Добавить source-specific retention и delete-request handling.
 
@@ -179,6 +187,7 @@
 - [ ] Добавить risk factors: noise, flood, pollution, airport/rail/industrial zones, oversupply, weak transport, weak rental yield.
 - [ ] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
 - [x] Добавить mortgage affordability и total purchase cost inputs в buyer analytics.
+- [ ] Добавить Developer Reputation Score v1: track record, delivery reliability, defect signals, legal/UOKiK risk, KRS/REGON stability, transparency, confidence.
 - [ ] Добавить backtesting отчеты по drift/ошибке fair price estimate.
 
 ## 7. Reports
@@ -206,6 +215,8 @@
 - [x] Добавить bundles: package of 5 reports.
 - [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Добавить export reports в CSV/JSON для realtor/investor workflows.
+- [ ] Добавить секцию застройщика в buyer/investor/realtor reports: кто строил, сильные стороны, риски, что проверить, source citations.
+- [ ] Добавить developer reputation block в user-submitted link reports для Otodom/OLX/new-build объектов, если застройщик распознан.
 
 ## 8. Users, Auth и Payments
 
@@ -265,6 +276,9 @@
 - [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
 - [x] Сделать страницу истории user-submitted private drafts.
 - [x] Добавить управление agency workspace и участниками на account page.
+- [ ] Сделать developer ranking page.
+- [ ] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
+- [ ] Добавить developer block на listing detail и compare page.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
@@ -303,6 +317,8 @@
 - [x] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
 - [x] Добавить admin view user-submitted listing drafts и source URL references без публичного раскрытия ссылок.
 - [x] Добавить admin review queue для mortgage/legal/renovation partner referrals.
+- [ ] Добавить admin CRUD/import для developer profiles, projects, aliases и quality signals.
+- [ ] Добавить moderation/dispute workflow для developer reputation signals.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [ ] Добавить moderation workflow для data deletion requests.
 - [x] Добавить просмотр source errors и retry actions.
@@ -319,6 +335,7 @@
 - [ ] Добавить limited AI endpoint.
 - [ ] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
 - [ ] Добавить compare-A-vs-B AI response template.
+- [ ] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
 - [ ] Добавить source citations в каждый AI response.
 - [ ] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
 - [ ] Добавить AI summaries для news и area impact.
@@ -470,6 +487,7 @@
 - [x] Commit 62: hidden gems search mode.
 - [x] Commit 63: proximity filters for search and hidden gems.
 - [x] Commit 64: text and address search for listings.
+- [ ] Commit 65: developer reputation data model and source-backed report section.
 
 ## Current Sprint
 
@@ -531,6 +549,7 @@
 - [x] Добавить hidden gems search mode: API, ranked signals и frontend режим с investor-фильтрами.
 - [x] Добавить proximity-фильтры в search/hidden gems: центр, остановка, школа, major road и industrial zone.
 - [x] Добавить text/address search в listings, hidden gems и saved-search alerts.
+- [ ] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
