@@ -62,6 +62,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
         ("/api/v1/ai/data-contract", "get"): "AIAssistantDataContract",
+        ("/api/v1/ai/compare/answer", "post"): "AICompareAnswer",
         ("/api/v1/ai/listings/{listing_id}/answer", "post"): "AIListingAnswer",
         (
             "/api/v1/ai/user-submitted-listing-drafts/{draft_id}/answer",
@@ -179,6 +180,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "AIInsightListItem",
         "AIAnswerCitation",
         "AIAnswerGuardrail",
+        "AICompareAnswer",
+        "AICompareAnswerRequest",
         "AIAssistantDataContract",
         "AIListingAnswer",
         "AIListingAnswerRequest",

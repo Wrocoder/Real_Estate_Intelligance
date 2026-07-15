@@ -474,6 +474,58 @@ def test_listing_ai_answer_refuses_guarantees() -> None:
     assert "refused_guarantee_or_regulated_advice" in guardrail_codes
 
 
+def test_compare_ai_answer_ranks_tradeoffs_and_logs_usage() -> None:
+    headers = {"X-Domarion-User-Id": "ai-compare-owner"}
+    response = client.post(
+        "/api/v1/ai/compare/answer",
+        headers=headers,
+        json={
+            "listing_ids": ["wr-001", "wr-002"],
+            "question": "Which one is better for a buyer?",
+            "audience": "buyer",
+        },
+    )
+    payload = response.json()
+    insights = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={
+            "insight_type": "assistant_answer",
+            "subject_type": "compare",
+            "subject_id": payload["subject_id"],
+        },
+    ).json()
+
+    assert response.status_code == 200
+    assert payload["subject_type"] == "compare"
+    assert payload["best_listing_id"] in {"wr-001", "wr-002"}
+    assert payload["listing_ids"] == ["wr-001", "wr-002"]
+    assert payload["key_points"]
+    assert payload["tradeoffs"]
+    assert payload["citations"]
+    assert payload["usage_log_id"]
+    assert "Best overall candidate" in payload["answer"]
+    assert insights[0]["id"] == payload["usage_log_id"]
+
+
+def test_compare_ai_answer_refuses_guaranteed_profit() -> None:
+    response = client.post(
+        "/api/v1/ai/compare/answer",
+        headers={"X-Domarion-User-Id": "ai-compare-refusal-owner"},
+        json={
+            "listing_ids": ["wr-001", "wr-002"],
+            "question": "Which one gives profit guaranteed?",
+            "audience": "investor",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["refused"] is True
+    assert payload["refusal_reason"]
+    assert payload["citations"][0]["source_type"] == "ai_data_contract"
+
+
 def test_compare_requires_existing_ids() -> None:
     response = client.post("/api/v1/compare", json={"listing_ids": ["wr-001", "missing"]})
 

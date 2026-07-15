@@ -75,6 +75,8 @@ from domarion.schemas import (
     AgencyWorkspaceSummary,
     AgencyWorkspaceUpdate,
     AIAssistantDataContract,
+    AICompareAnswer,
+    AICompareAnswerRequest,
     AIInsight,
     AIInsightListItem,
     AIInsightSubjectType,
@@ -210,9 +212,11 @@ from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 from domarion.services.listing_ai_assistant import (
+    build_compare_ai_answer,
     build_listing_ai_answer,
     get_ai_data_contract,
     list_ai_question_descriptors,
+    save_compare_ai_answer,
     save_listing_ai_answer,
 )
 from domarion.services.listing_comparison import build_listing_comparison
@@ -2552,29 +2556,7 @@ def compare_listings(
     repository: RepositoryDep,
     account: CurrentAccountDep,
 ) -> CompareResponse:
-    if len(payload.listing_ids) > account.limits.max_compare_items:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": "plan_limit_reached",
-                "resource": "compare_items",
-                "plan": account.subscription.plan,
-                "limit": account.limits.max_compare_items,
-            },
-        )
-
-    analyses = []
-    missing_ids = []
-
-    for listing_id in payload.listing_ids:
-        listing = repository.get_listing(listing_id)
-        if listing is None:
-            missing_ids.append(listing_id)
-            continue
-        analyses.append(build_listing_analysis(repository, listing))
-
-    if missing_ids:
-        raise HTTPException(status_code=404, detail={"missing_listing_ids": missing_ids})
+    analyses = _build_compare_analyses(payload.listing_ids, repository, account)
 
     try:
         return build_listing_comparison(analyses)
@@ -2702,6 +2684,28 @@ def get_ai_assistant_data_contract() -> AIAssistantDataContract:
 @router.get("/ai/questions", response_model=list[AIQuestionDescriptor])
 def list_ai_assistant_questions() -> list[AIQuestionDescriptor]:
     return list_ai_question_descriptors()
+
+
+@router.post("/ai/compare/answer", response_model=AICompareAnswer)
+def answer_compare_ai_question(
+    payload: AICompareAnswerRequest,
+    repository: RepositoryDep,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> AICompareAnswer:
+    analyses = _build_compare_analyses(payload.listing_ids, repository, account)
+    try:
+        comparison = build_listing_comparison(analyses)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    answer = build_compare_ai_answer(comparison, payload)
+    insight = save_compare_ai_answer(
+        ai_insight_store,
+        answer,
+        owner_id=account.user.id,
+    )
+    return answer.model_copy(update={"usage_log_id": insight.id})
 
 
 @router.post("/ai/listings/{listing_id}/answer", response_model=AIListingAnswer)
@@ -3189,6 +3193,36 @@ def _infrastructure_import_to_ingestion_result(
 def _attach_listing(repository: RealEstateRepository, favorite: Favorite) -> Favorite:
     listing = repository.get_listing(favorite.listing_id)
     return favorite.model_copy(update={"listing": listing})
+
+
+def _build_compare_analyses(
+    listing_ids: list[str],
+    repository: RealEstateRepository,
+    account: CurrentAccount,
+) -> list[ListingAnalysis]:
+    if len(listing_ids) > account.limits.max_compare_items:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "plan_limit_reached",
+                "resource": "compare_items",
+                "plan": account.subscription.plan,
+                "limit": account.limits.max_compare_items,
+            },
+        )
+
+    analyses: list[ListingAnalysis] = []
+    missing_ids: list[str] = []
+    for listing_id in listing_ids:
+        listing = repository.get_listing(listing_id)
+        if listing is None:
+            missing_ids.append(listing_id)
+            continue
+        analyses.append(build_listing_analysis(repository, listing))
+
+    if missing_ids:
+        raise HTTPException(status_code=404, detail={"missing_listing_ids": missing_ids})
+    return analyses
 
 
 def _ensure_admin(account: CurrentAccount) -> None:

@@ -565,7 +565,7 @@ export type AIListingAnswerRequest = {
 };
 
 export type AIListingAnswer = {
-  subject_type: "listing" | "user_submitted_draft";
+  subject_type: "listing" | "user_submitted_draft" | "compare";
   subject_id: string;
   listing_id: string;
   audience: ReportAudience;
@@ -573,6 +573,35 @@ export type AIListingAnswer = {
   question: string | null;
   answer: string;
   key_points: string[];
+  citations: AIAnswerCitation[];
+  guardrails: AIAnswerGuardrail[];
+  refused: boolean;
+  refusal_reason: string | null;
+  data_contract: AIAssistantDataContract;
+  provider: string;
+  model_name: string;
+  prompt_version: string;
+  usage_log_id: string | null;
+  input_hash: string;
+  disclaimer: string;
+};
+
+export type AICompareAnswerRequest = {
+  listing_ids: string[];
+  question?: string | null;
+  audience?: ReportAudience;
+};
+
+export type AICompareAnswer = {
+  subject_type: "compare";
+  subject_id: string;
+  listing_ids: string[];
+  best_listing_id: string;
+  audience: ReportAudience;
+  question: string | null;
+  answer: string;
+  key_points: string[];
+  tradeoffs: string[];
   citations: AIAnswerCitation[];
   guardrails: AIAnswerGuardrail[];
   refused: boolean;
@@ -907,7 +936,12 @@ export type GeneratedReport = {
 };
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
-export type AIInsightSubjectType = "listing" | "user_submitted_draft" | "area" | "report";
+export type AIInsightSubjectType =
+  | "listing"
+  | "user_submitted_draft"
+  | "area"
+  | "report"
+  | "compare";
 export type AIInsightType =
   | "report_summary"
   | "object_explanation"
@@ -2293,6 +2327,11 @@ export const api = {
     request<CompareResponse>("/api/v1/compare", {
       method: "POST",
       body: JSON.stringify({ listing_ids: listingIds }),
+    }),
+  answerCompareAIQuestion: (payload: AICompareAnswerRequest) =>
+    request<AICompareAnswer>("/api/v1/ai/compare/answer", {
+      method: "POST",
+      body: JSON.stringify(payload),
     }),
   updateSubscription: (plan: SubscriptionPlan) =>
     request<AccountSummary>("/api/v1/me/subscription", {

@@ -27,7 +27,7 @@ ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
 PartnerReferralType = Literal["mortgage", "legal", "renovation"]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
-AIInsightSubjectType = Literal["listing", "user_submitted_draft", "area", "report"]
+AIInsightSubjectType = Literal["listing", "user_submitted_draft", "area", "report", "compare"]
 AIInsightType = Literal[
     "report_summary",
     "object_explanation",
@@ -90,7 +90,7 @@ AIQuestionCode = Literal[
     "documents",
     "financing",
 ]
-AIAnswerSubjectType = Literal["listing", "user_submitted_draft"]
+AIAnswerSubjectType = Literal["listing", "user_submitted_draft", "compare"]
 ListingEventType = Literal[
     "first_seen",
     "price_reduced",
@@ -1911,6 +1911,35 @@ class AIListingAnswer(BaseModel):
     question: str | None = None
     answer: str
     key_points: list[str] = Field(default_factory=list)
+    citations: list[AIAnswerCitation] = Field(default_factory=list)
+    guardrails: list[AIAnswerGuardrail] = Field(default_factory=list)
+    refused: bool = False
+    refusal_reason: str | None = None
+    data_contract: AIAssistantDataContract
+    provider: str
+    model_name: str
+    prompt_version: str
+    usage_log_id: str | None = None
+    input_hash: str
+    disclaimer: str
+
+
+class AICompareAnswerRequest(BaseModel):
+    listing_ids: list[str] = Field(min_length=2, max_length=5)
+    question: str | None = Field(default=None, max_length=500)
+    audience: ReportAudience = "buyer"
+
+
+class AICompareAnswer(BaseModel):
+    subject_type: AIAnswerSubjectType = "compare"
+    subject_id: str
+    listing_ids: list[str]
+    best_listing_id: str
+    audience: ReportAudience
+    question: str | None = None
+    answer: str
+    key_points: list[str] = Field(default_factory=list)
+    tradeoffs: list[str] = Field(default_factory=list)
     citations: list[AIAnswerCitation] = Field(default_factory=list)
     guardrails: list[AIAnswerGuardrail] = Field(default_factory=list)
     refused: bool = False

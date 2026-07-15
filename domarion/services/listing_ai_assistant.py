@@ -9,11 +9,15 @@ from domarion.schemas import (
     AIAnswerGuardrail,
     AIAnswerSubjectType,
     AIAssistantDataContract,
+    AICompareAnswer,
+    AICompareAnswerRequest,
     AIInsight,
     AIInsightCreate,
     AIListingAnswer,
     AIListingAnswerRequest,
     AIQuestionDescriptor,
+    CompareItemMetrics,
+    CompareResponse,
     ListingAnalysis,
     MortgageCalculationRequest,
 )
@@ -29,7 +33,7 @@ LISTING_ASSISTANT_DISCLAIMER = (
 
 DATA_CONTRACT = AIAssistantDataContract(
     prompt_version=LISTING_ASSISTANT_PROMPT_VERSION,
-    allowed_subjects=["listing", "user_submitted_draft"],
+    allowed_subjects=["listing", "user_submitted_draft", "compare"],
     allowed_inputs=[
         "listing basics: price, area, rooms, floor, building year, address area",
         "area statistics and market trend metrics",
@@ -38,6 +42,7 @@ DATA_CONTRACT = AIAssistantDataContract(
         "scoring outputs, risk profile, growth analysis and future-impact analysis",
         "rental estimate, mortgage estimate and buyer checklist outputs",
         "developer reputation summary with source citations when matched",
+        "compare metrics: decision rank, mortgage baseline, value, liquidity, rental and risk",
     ],
     prohibited_inputs=[
         "private source URL disclosure",
@@ -252,6 +257,153 @@ def save_listing_ai_answer(
                 "listing_id": answer.listing_id,
                 "audience": answer.audience,
                 "question_code": answer.question_code,
+                "refused": answer.refused,
+                "citation_source_ids": [
+                    citation.source_id for citation in answer.citations
+                ],
+            },
+        )
+    )
+
+
+def build_compare_ai_answer(
+    comparison: CompareResponse,
+    payload: AICompareAnswerRequest,
+) -> AICompareAnswer:
+    normalized_question = _clean_question(payload.question)
+    subject_id = _compare_subject_id(payload.listing_ids)
+    guardrails = [
+        AIAnswerGuardrail(
+            code="source_grounded_only",
+            message="Answer uses only Domarion compare metrics and listing analyses.",
+        ),
+        AIAnswerGuardrail(
+            code="no_professional_advice",
+            message="No legal, tax, financial or investment guarantee is provided.",
+        ),
+    ]
+
+    if _should_refuse(normalized_question):
+        answer = _compare_answer(
+            comparison=comparison,
+            payload=payload,
+            subject_id=subject_id,
+            question=normalized_question,
+            answer=(
+                "I cannot rank these objects as a guaranteed profit, legal certainty or "
+                "regulated advice. I can compare source-grounded metrics and checks instead."
+            ),
+            key_points=[
+                "Use comparison as screening, not as a binding recommendation.",
+                "Verify legal, mortgage, tax and technical details with professionals.",
+            ],
+            tradeoffs=[],
+            citations=[
+                AIAnswerCitation(
+                    source_id="ai:data-contract",
+                    source_type="ai_data_contract",
+                    title="AI assistant data contract",
+                    excerpt=DATA_CONTRACT.refusal_policy,
+                )
+            ],
+            guardrails=[
+                *guardrails,
+                AIAnswerGuardrail(
+                    code="refused_guarantee_or_regulated_advice",
+                    message="The question asks for certainty or regulated advice.",
+                ),
+            ],
+            refused=True,
+            refusal_reason="Request asks for a guarantee or regulated professional advice.",
+        )
+        return answer
+
+    metrics_by_id = {metric.listing_id: metric for metric in comparison.metrics}
+    listing_by_id = {item.listing.id: item.listing for item in comparison.items}
+    best = metrics_by_id[comparison.summary.best_listing_id]
+    best_listing = listing_by_id[best.listing_id]
+    answer_text = (
+        f"Best overall candidate is {best_listing.title} ({best.listing_id}) with "
+        f"Decision Score {best.decision_score}/100, Investment Score "
+        f"{best.investment_score}/100 and Risk Score {best.risk_score}/100. "
+        "This ranking balances value, risk, liquidity, rental potential and financing baseline."
+    )
+    key_points = [
+        f"Best value: {_listing_short(comparison, comparison.summary.best_value_listing_id)}.",
+        (
+            "Lowest estimated monthly payment: "
+            f"{_listing_short(comparison, comparison.summary.lowest_monthly_payment_listing_id)}."
+        ),
+        (
+            "Strongest liquidity: "
+            f"{_listing_short(comparison, comparison.summary.strongest_liquidity_listing_id)}."
+        ),
+        (
+            "Strongest rental: "
+            f"{_listing_short(comparison, comparison.summary.strongest_rental_listing_id)}."
+        ),
+        (
+            "Riskiest option to check: "
+            f"{_listing_short(comparison, comparison.summary.riskiest_listing_id)}."
+        ),
+    ]
+    tradeoffs = _compare_tradeoffs(comparison)
+    citations = [
+        _compare_summary_citation(comparison),
+        *[_compare_listing_citation(comparison, metric) for metric in comparison.metrics],
+    ]
+    return _compare_answer(
+        comparison=comparison,
+        payload=payload,
+        subject_id=subject_id,
+        question=normalized_question,
+        answer=answer_text,
+        key_points=key_points,
+        tradeoffs=tradeoffs,
+        citations=citations,
+        guardrails=guardrails,
+    )
+
+
+def save_compare_ai_answer(
+    store: AIInsightStore,
+    answer: AICompareAnswer,
+    *,
+    owner_id: str,
+) -> AIInsight:
+    content = "\n".join(
+        [
+            answer.answer,
+            "",
+            "Key points:",
+            *[f"- {item}" for item in answer.key_points],
+            "",
+            "Tradeoffs:",
+            *[f"- {item}" for item in answer.tradeoffs],
+            "",
+            "Citations:",
+            *[f"- {citation.title}: {citation.excerpt}" for citation in answer.citations],
+            "",
+            answer.disclaimer,
+        ]
+    )
+    return store.save_insight(
+        AIInsightCreate(
+            owner_id=owner_id,
+            subject_type="compare",
+            subject_id=answer.subject_id,
+            insight_type="assistant_answer",
+            provider=answer.provider,
+            model_name=answer.model_name,
+            prompt_version=answer.prompt_version,
+            title="Assistant answer: compare",
+            summary=answer.answer,
+            content=content,
+            input_hash=answer.input_hash,
+            metadata={
+                "listing_ids": answer.listing_ids,
+                "best_listing_id": answer.best_listing_id,
+                "audience": answer.audience,
                 "refused": answer.refused,
                 "citation_source_ids": [
                     citation.source_id for citation in answer.citations
@@ -672,6 +824,130 @@ def _rental_citation(analysis: ListingAnalysis) -> AIAnswerCitation:
         title="Rental estimate",
         excerpt=excerpt,
     )
+
+
+def _compare_answer(
+    *,
+    comparison: CompareResponse,
+    payload: AICompareAnswerRequest,
+    subject_id: str,
+    question: str | None,
+    answer: str,
+    key_points: list[str],
+    tradeoffs: list[str],
+    citations: list[AIAnswerCitation],
+    guardrails: list[AIAnswerGuardrail],
+    refused: bool = False,
+    refusal_reason: str | None = None,
+) -> AICompareAnswer:
+    input_payload = {
+        "subject_type": "compare",
+        "subject_id": subject_id,
+        "listing_ids": payload.listing_ids,
+        "audience": payload.audience,
+        "question": question,
+        "best_listing_id": comparison.summary.best_listing_id,
+        "prompt_version": LISTING_ASSISTANT_PROMPT_VERSION,
+    }
+    return AICompareAnswer(
+        subject_id=subject_id,
+        listing_ids=payload.listing_ids,
+        best_listing_id=comparison.summary.best_listing_id,
+        audience=payload.audience,
+        question=question,
+        answer=answer,
+        key_points=_dedupe(key_points),
+        tradeoffs=_dedupe(tradeoffs),
+        citations=[citation for citation in citations if citation.excerpt],
+        guardrails=guardrails,
+        refused=refused,
+        refusal_reason=refusal_reason,
+        data_contract=DATA_CONTRACT,
+        provider=LISTING_ASSISTANT_PROVIDER,
+        model_name=LISTING_ASSISTANT_MODEL,
+        prompt_version=LISTING_ASSISTANT_PROMPT_VERSION,
+        input_hash=_input_hash(input_payload),
+        disclaimer=LISTING_ASSISTANT_DISCLAIMER,
+    )
+
+
+def _compare_tradeoffs(comparison: CompareResponse) -> list[str]:
+    metrics = sorted(comparison.metrics, key=lambda metric: metric.rank)
+    best = metrics[0]
+    tradeoffs: list[str] = []
+    for metric in metrics[1:]:
+        better_than_best: list[str] = []
+        if metric.estimated_monthly_payment_pln < best.estimated_monthly_payment_pln:
+            better_than_best.append("lower monthly payment")
+        if metric.price_delta_to_fair_mid_pct < best.price_delta_to_fair_mid_pct:
+            better_than_best.append("better price-to-fair position")
+        if metric.rental_potential_score > best.rental_potential_score:
+            better_than_best.append("stronger rental potential")
+        if metric.liquidity_score > best.liquidity_score:
+            better_than_best.append("stronger liquidity")
+        if metric.risk_score < best.risk_score:
+            better_than_best.append("lower risk score")
+
+        if better_than_best:
+            tradeoffs.append(
+                f"{metric.listing_id} beats the winner on {', '.join(better_than_best)}, "
+                f"but ranks #{metric.rank} overall with Decision Score "
+                f"{metric.decision_score}/100."
+            )
+        else:
+            tradeoffs.append(
+                f"{metric.listing_id} ranks #{metric.rank}: {metric.recommendation}"
+            )
+    return tradeoffs
+
+
+def _compare_summary_citation(comparison: CompareResponse) -> AIAnswerCitation:
+    summary = comparison.summary
+    return AIAnswerCitation(
+        source_id="compare:summary",
+        source_type="compare_summary",
+        title="Comparison summary",
+        excerpt=(
+            f"Best {summary.best_listing_id}; best value {summary.best_value_listing_id}; "
+            f"lowest payment {summary.lowest_monthly_payment_listing_id}; "
+            f"riskiest {summary.riskiest_listing_id}."
+        ),
+    )
+
+
+def _compare_listing_citation(
+    comparison: CompareResponse,
+    metric: CompareItemMetrics,
+) -> AIAnswerCitation:
+    listing = next(
+        item.listing for item in comparison.items if item.listing.id == metric.listing_id
+    )
+    return AIAnswerCitation(
+        source_id=f"compare:metric:{metric.listing_id}",
+        source_type="compare_item_metrics",
+        title=f"#{metric.rank}: {listing.title}",
+        excerpt=(
+            f"Decision {metric.decision_score}/100, investment "
+            f"{metric.investment_score}/100, risk {metric.risk_score}/100, "
+            f"monthly payment {_money(metric.estimated_monthly_payment_pln)}, "
+            f"gross rental yield {metric.estimated_gross_rental_yield_pct:.2f}%."
+        ),
+    )
+
+
+def _listing_short(comparison: CompareResponse, listing_id: str) -> str:
+    metric = next(item for item in comparison.metrics if item.listing_id == listing_id)
+    listing = next(item.listing for item in comparison.items if item.listing.id == listing_id)
+    return (
+        f"{listing.title} ({listing_id}), rank #{metric.rank}, "
+        f"Decision {metric.decision_score}/100"
+    )
+
+
+def _compare_subject_id(listing_ids: list[str]) -> str:
+    normalized = ",".join(sorted(listing_ids))
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
+    return f"compare:{digest}"
 
 
 def _should_refuse(question: str | None) -> bool:
