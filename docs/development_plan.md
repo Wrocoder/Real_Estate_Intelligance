@@ -98,7 +98,7 @@
 - [x] Добавить saved searches.
 - [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
 - [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
-- [ ] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
+- [x] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
 - [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
 - [x] Добавить API для поиска объектов ниже рынка и hidden gems.
 - [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
@@ -467,6 +467,7 @@
 - [x] Commit 60: source-backed suburban coverage samples.
 - [x] Commit 61: comparison decision metrics and mortgage baseline.
 - [x] Commit 62: hidden gems search mode.
+- [x] Commit 63: proximity filters for search and hidden gems.
 
 ## Current Sprint
 
@@ -526,6 +527,7 @@
 - [x] Перевести suburban coverage seeds в partner/open-data sample files вместо ручных listing blocks.
 - [x] Добавить расширенный compare API/UI: decision rank, ипотечный baseline, cash needed, liquidity и rental potential.
 - [x] Добавить hidden gems search mode: API, ranked signals и frontend режим с investor-фильтрами.
+- [x] Добавить proximity-фильтры в search/hidden gems: центр, остановка, школа, major road и industrial zone.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

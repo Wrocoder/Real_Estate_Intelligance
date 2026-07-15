@@ -22,6 +22,11 @@ def find_hidden_gems(
     market_type: MarketType | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
+    max_distance_to_center_km: float | None = None,
+    max_nearest_stop_m: int | None = None,
+    max_nearest_school_m: int | None = None,
+    min_nearest_major_road_m: int | None = None,
+    min_nearest_industrial_zone_m: int | None = None,
     max_price_delta_to_fair_mid_pct: float = DEFAULT_MAX_PRICE_DELTA_TO_FAIR_MID_PCT,
     min_investment_score: int = DEFAULT_MIN_INVESTMENT_SCORE,
     max_risk_score: int = DEFAULT_MAX_RISK_SCORE,
@@ -45,6 +50,25 @@ def find_hidden_gems(
         if market_type is not None and listing.market_type != market_type:
             continue
         if listing.data_quality_score < min_data_quality_score:
+            continue
+        if (
+            max_distance_to_center_km is not None
+            and listing.distance_to_center_km > max_distance_to_center_km
+        ):
+            continue
+        if max_nearest_stop_m is not None and listing.nearest_stop_m > max_nearest_stop_m:
+            continue
+        if max_nearest_school_m is not None and listing.nearest_school_m > max_nearest_school_m:
+            continue
+        if (
+            min_nearest_major_road_m is not None
+            and listing.nearest_major_road_m < min_nearest_major_road_m
+        ):
+            continue
+        if (
+            min_nearest_industrial_zone_m is not None
+            and listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+        ):
             continue
 
         try:
@@ -103,6 +127,11 @@ def find_hidden_gems(
             market_type=market_type,
             max_price=max_price,
             min_area_m2=min_area_m2,
+            max_distance_to_center_km=max_distance_to_center_km,
+            max_nearest_stop_m=max_nearest_stop_m,
+            max_nearest_school_m=max_nearest_school_m,
+            min_nearest_major_road_m=min_nearest_major_road_m,
+            min_nearest_industrial_zone_m=min_nearest_industrial_zone_m,
             max_price_delta_to_fair_mid_pct=max_price_delta_to_fair_mid_pct,
             min_investment_score=min_investment_score,
             max_risk_score=max_risk_score,

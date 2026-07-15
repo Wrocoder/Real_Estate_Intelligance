@@ -855,6 +855,11 @@ export type ListingSearchQuery = {
   min_area_m2?: number;
   max_area_m2?: number;
   max_days_on_market?: number;
+  max_distance_to_center_km?: number;
+  max_nearest_stop_m?: number;
+  max_nearest_school_m?: number;
+  min_nearest_major_road_m?: number;
+  min_nearest_industrial_zone_m?: number;
   min_investment_score?: number;
   max_risk_score?: number;
   min_negotiation_score?: number;
@@ -886,6 +891,11 @@ export type HiddenGemQuery = {
   market_type?: "primary" | "secondary";
   max_price?: number;
   min_area_m2?: number;
+  max_distance_to_center_km?: number;
+  max_nearest_stop_m?: number;
+  max_nearest_school_m?: number;
+  min_nearest_major_road_m?: number;
+  min_nearest_industrial_zone_m?: number;
   max_price_delta_to_fair_mid_pct?: number;
   min_investment_score?: number;
   max_risk_score?: number;

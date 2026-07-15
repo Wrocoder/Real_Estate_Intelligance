@@ -62,6 +62,33 @@ def test_listings_support_pagination_sorting_and_score_filters() -> None:
     assert all(item["scores"]["risk_score"] <= 70 for item in payload["items"])
 
 
+def test_listings_support_proximity_filters() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={
+            "city": "Wrocław",
+            "max_distance_to_center_km": 8,
+            "max_nearest_stop_m": 700,
+            "max_nearest_school_m": 900,
+            "min_nearest_major_road_m": 100,
+            "min_nearest_industrial_zone_m": 900,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["total"] >= 1
+    assert payload["filters"]["max_distance_to_center_km"] == 8.0
+    for item in payload["items"]:
+        listing = item["listing"]
+        assert listing["distance_to_center_km"] <= 8
+        assert listing["nearest_stop_m"] <= 700
+        assert listing["nearest_school_m"] <= 900
+        assert listing["nearest_major_road_m"] >= 100
+        assert listing["nearest_industrial_zone_m"] >= 900
+
+
 def test_hidden_gems_returns_ranked_candidates() -> None:
     response = client.get(
         "/api/v1/listings/hidden-gems",
@@ -71,6 +98,8 @@ def test_hidden_gems_returns_ranked_candidates() -> None:
             "max_price_delta_to_fair_mid_pct": 5,
             "min_investment_score": 50,
             "max_risk_score": 70,
+            "max_nearest_stop_m": 700,
+            "min_nearest_industrial_zone_m": 900,
         },
     )
     payload = response.json()
@@ -79,10 +108,13 @@ def test_hidden_gems_returns_ranked_candidates() -> None:
     assert payload["total"] >= 1
     assert payload["filters"]["city"] == "Wrocław"
     assert payload["filters"]["max_price_delta_to_fair_mid_pct"] == 5.0
+    assert payload["filters"]["max_nearest_stop_m"] == 700
     scores = [item["gem_score"] for item in payload["items"]]
     assert scores == sorted(scores, reverse=True)
     for item in payload["items"]:
         assert item["analysis"]["listing"]["id"]
+        assert item["analysis"]["listing"]["nearest_stop_m"] <= 700
+        assert item["analysis"]["listing"]["nearest_industrial_zone_m"] >= 900
         assert 0 <= item["gem_score"] <= 100
         assert item["price_delta_to_fair_mid_pct"] <= 5
         assert item["signals"]

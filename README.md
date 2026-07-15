@@ -39,6 +39,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
 - Compare API/UI расширен до decision matrix: rank, ипотечный baseline, cash needed, liquidity и rental potential по каждому объекту.
 - Добавлен hidden gems search mode: `/api/v1/listings/hidden-gems`, ranked signals и frontend режим с investor-фильтрами.
+- Добавлены proximity-фильтры поиска и hidden gems: distance to center, stop, school, major road и industrial zone.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.

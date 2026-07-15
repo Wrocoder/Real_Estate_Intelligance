@@ -29,6 +29,11 @@ def search_listing_analyses(
     min_area_m2: float | None = None,
     max_area_m2: float | None = None,
     max_days_on_market: int | None = None,
+    max_distance_to_center_km: float | None = None,
+    max_nearest_stop_m: int | None = None,
+    max_nearest_school_m: int | None = None,
+    min_nearest_major_road_m: int | None = None,
+    min_nearest_industrial_zone_m: int | None = None,
     min_investment_score: int | None = None,
     max_risk_score: int | None = None,
     min_negotiation_score: int | None = None,
@@ -67,6 +72,11 @@ def search_listing_analyses(
             max_price_per_m2=max_price_per_m2,
             max_area_m2=max_area_m2,
             max_days_on_market=max_days_on_market,
+            max_distance_to_center_km=max_distance_to_center_km,
+            max_nearest_stop_m=max_nearest_stop_m,
+            max_nearest_school_m=max_nearest_school_m,
+            min_nearest_major_road_m=min_nearest_major_road_m,
+            min_nearest_industrial_zone_m=min_nearest_industrial_zone_m,
             min_data_quality_score=min_data_quality_score,
             lat=lat,
             lon=lon,
@@ -121,6 +131,11 @@ def search_listing_analyses(
             "min_area_m2": min_area_m2,
             "max_area_m2": max_area_m2,
             "max_days_on_market": max_days_on_market,
+            "max_distance_to_center_km": max_distance_to_center_km,
+            "max_nearest_stop_m": max_nearest_stop_m,
+            "max_nearest_school_m": max_nearest_school_m,
+            "min_nearest_major_road_m": min_nearest_major_road_m,
+            "min_nearest_industrial_zone_m": min_nearest_industrial_zone_m,
             "min_investment_score": min_investment_score,
             "max_risk_score": max_risk_score,
             "min_negotiation_score": min_negotiation_score,
@@ -143,6 +158,11 @@ def _matches_listing_filters(
     max_price_per_m2: int | None,
     max_area_m2: float | None,
     max_days_on_market: int | None,
+    max_distance_to_center_km: float | None,
+    max_nearest_stop_m: int | None,
+    max_nearest_school_m: int | None,
+    min_nearest_major_road_m: int | None,
+    min_nearest_industrial_zone_m: int | None,
     min_data_quality_score: int | None,
     lat: float | None,
     lon: float | None,
@@ -159,6 +179,25 @@ def _matches_listing_filters(
     if max_area_m2 is not None and listing.area_m2 > max_area_m2:
         return False
     if max_days_on_market is not None and listing.days_on_market > max_days_on_market:
+        return False
+    if (
+        max_distance_to_center_km is not None
+        and listing.distance_to_center_km > max_distance_to_center_km
+    ):
+        return False
+    if max_nearest_stop_m is not None and listing.nearest_stop_m > max_nearest_stop_m:
+        return False
+    if max_nearest_school_m is not None and listing.nearest_school_m > max_nearest_school_m:
+        return False
+    if (
+        min_nearest_major_road_m is not None
+        and listing.nearest_major_road_m < min_nearest_major_road_m
+    ):
+        return False
+    if (
+        min_nearest_industrial_zone_m is not None
+        and listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+    ):
         return False
     if min_data_quality_score is not None and listing.data_quality_score < min_data_quality_score:
         return False

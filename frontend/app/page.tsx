@@ -32,6 +32,11 @@ type Filters = {
   minLiquidity: string;
   minRental: string;
   minDataQuality: string;
+  maxCenterKm: string;
+  maxStopM: string;
+  maxSchoolM: string;
+  minMajorRoadM: string;
+  minIndustrialZoneM: string;
   radiusKm: string;
   sort: ListingSort;
   pageSize: string;
@@ -51,6 +56,11 @@ const defaultFilters: Filters = {
   minLiquidity: "",
   minRental: "",
   minDataQuality: "",
+  maxCenterKm: "",
+  maxStopM: "",
+  maxSchoolM: "",
+  minMajorRoadM: "",
+  minIndustrialZoneM: "",
   radiusKm: "",
   sort: "investment_score_desc",
   pageSize: "10",
@@ -428,6 +438,56 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
+            <span>Макс. до центра, км</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={filters.maxCenterKm}
+              placeholder="8"
+              onChange={(event) => updateFilters({ maxCenterKm: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Макс. до остановки, м</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxStopM}
+              placeholder="600"
+              onChange={(event) => updateFilters({ maxStopM: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Макс. до школы, м</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxSchoolM}
+              placeholder="900"
+              onChange={(event) => updateFilters({ maxSchoolM: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. от дороги, м</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minMajorRoadM}
+              placeholder="150"
+              onChange={(event) => updateFilters({ minMajorRoadM: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. от промзоны, м</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minIndustrialZoneM}
+              placeholder="1000"
+              onChange={(event) => updateFilters({ minIndustrialZoneM: event.target.value })}
+            />
+          </label>
+          <label className="field">
             <span>Режим</span>
             <select
               className="select"
@@ -593,6 +653,15 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     min_data_quality_score: filters.minDataQuality
       ? Number(filters.minDataQuality)
       : undefined,
+    max_distance_to_center_km: filters.maxCenterKm ? Number(filters.maxCenterKm) : undefined,
+    max_nearest_stop_m: filters.maxStopM ? Number(filters.maxStopM) : undefined,
+    max_nearest_school_m: filters.maxSchoolM ? Number(filters.maxSchoolM) : undefined,
+    min_nearest_major_road_m: filters.minMajorRoadM
+      ? Number(filters.minMajorRoadM)
+      : undefined,
+    min_nearest_industrial_zone_m: filters.minIndustrialZoneM
+      ? Number(filters.minIndustrialZoneM)
+      : undefined,
     lat: radiusKm ? WROCLAW_CENTER.lat : undefined,
     lon: radiusKm ? WROCLAW_CENTER.lon : undefined,
     radius_km: radiusKm,
@@ -616,6 +685,15 @@ function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
     min_liquidity_score: filters.minLiquidity ? Number(filters.minLiquidity) : undefined,
     min_rental_potential_score: filters.minRental ? Number(filters.minRental) : undefined,
     min_data_quality_score: filters.minDataQuality ? Number(filters.minDataQuality) : undefined,
+    max_distance_to_center_km: filters.maxCenterKm ? Number(filters.maxCenterKm) : undefined,
+    max_nearest_stop_m: filters.maxStopM ? Number(filters.maxStopM) : undefined,
+    max_nearest_school_m: filters.maxSchoolM ? Number(filters.maxSchoolM) : undefined,
+    min_nearest_major_road_m: filters.minMajorRoadM
+      ? Number(filters.minMajorRoadM)
+      : undefined,
+    min_nearest_industrial_zone_m: filters.minIndustrialZoneM
+      ? Number(filters.minIndustrialZoneM)
+      : undefined,
     page,
     page_size: Number(filters.pageSize),
   };
