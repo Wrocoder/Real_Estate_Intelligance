@@ -17,6 +17,7 @@ from domarion.ingestion.geocoding import GeocodingResult, geocode_partner_addres
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import (
     AreaStatistics,
+    DeveloperReputation,
     Listing,
     SourceReferencePreview,
     SourceReferencePreviewRequest,
@@ -161,7 +162,32 @@ BROAD_REGION_LABELS = {
 }
 
 MANUAL_FIELDS_REQUIRED = ["address", "district", "price", "area_m2", "rooms"]
-MANUAL_FIELDS_RECOMMENDED = ["floor", "building_floors", "building_year", "market_type"]
+MANUAL_FIELDS_RECOMMENDED = [
+    "developer_name",
+    "investment_name",
+    "floor",
+    "building_floors",
+    "building_year",
+    "market_type",
+]
+GENERIC_PROJECT_WORDS = {
+    "apartamenty",
+    "apartments",
+    "budynek",
+    "development",
+    "estate",
+    "garden",
+    "gardens",
+    "green",
+    "homes",
+    "house",
+    "inwestycja",
+    "mieszkania",
+    "park",
+    "residence",
+    "residences",
+    "residential",
+}
 
 
 @dataclass(frozen=True)
@@ -238,6 +264,17 @@ def analyze_user_submitted_listing(
         geocoding=geocoding,
     )
     analysis = build_listing_analysis(repository, listing)
+    developer_reputation = analysis.developer_reputation or _match_user_submitted_developer(
+        repository,
+        payload,
+        listing=listing,
+        area_statistics=area_statistics,
+    )
+    if developer_reputation is not None:
+        warnings.append(
+            "Developer reputation was matched from developer/project/address context; "
+            "verify the legal entity and project SPV before relying on it."
+        )
 
     if not analysis.comparables:
         warnings.append(
@@ -252,6 +289,7 @@ def analyze_user_submitted_listing(
 
     analysis = analysis.model_copy(
         update={
+            "developer_reputation": developer_reputation,
             "data_quality_notes": [
                 *analysis.data_quality_notes,
                 (
@@ -259,6 +297,16 @@ def analyze_user_submitted_listing(
                     "and legal-first comparables."
                 ),
                 "Source URL, if provided, is treated as a private reference only.",
+                *(
+                    [
+                        (
+                            "Developer reputation matched: "
+                            f"{developer_reputation.developer.name}."
+                        )
+                    ]
+                    if developer_reputation is not None
+                    else []
+                ),
             ]
         }
     )
@@ -379,6 +427,8 @@ def import_listing_from_source_url(
 def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListingRequest:
     title = _clean_optional(payload.title)
     source_url = _clean_optional(payload.source_url)
+    developer_name = _clean_optional(payload.developer_name)
+    investment_name = _clean_optional(payload.investment_name)
     address = payload.address.strip()
     city = payload.city.strip()
     district = payload.district.strip()
@@ -394,6 +444,8 @@ def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListing
         update={
             "title": title,
             "source_url": source_url,
+            "developer_name": developer_name,
+            "investment_name": investment_name,
             "address": address,
             "city": city,
             "district": district,
@@ -472,6 +524,202 @@ def _resolve_location(payload: UserSubmittedListingRequest) -> GeocodingResult |
     if geocoding is None:
         raise ValueError("Could not geocode this address/district in the current MVP data")
     return geocoding
+
+
+def _match_user_submitted_developer(
+    repository: RealEstateRepository,
+    payload: UserSubmittedListingRequest,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+) -> DeveloperReputation | None:
+    candidates = repository.list_developer_reputations(city=area_statistics.city)
+    if not candidates:
+        return None
+
+    scored = [
+        (
+            _developer_match_score(
+                reputation,
+                payload,
+                listing=listing,
+                area_statistics=area_statistics,
+            ),
+            reputation,
+        )
+        for reputation in candidates
+    ]
+    score, reputation = max(scored, key=lambda item: item[0])
+    return reputation if score >= 65 else None
+
+
+def _developer_match_score(
+    reputation: DeveloperReputation,
+    payload: UserSubmittedListingRequest,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+) -> int:
+    developer_names = [
+        reputation.developer.name,
+        reputation.developer.legal_name,
+        *reputation.developer.brand_names,
+    ]
+    developer_text = _normalized_match_text(
+        payload.developer_name,
+        payload.title,
+        payload.source_url,
+    )
+    project_text = _normalized_match_text(
+        payload.investment_name,
+        payload.title,
+        payload.address,
+        payload.district,
+        payload.city,
+    )
+    score = 0
+
+    if payload.developer_name:
+        score = max(
+            score,
+            max(
+                (
+                    _name_match_score(payload.developer_name, name)
+                    for name in developer_names
+                ),
+                default=0,
+            ),
+        )
+    else:
+        score = max(
+            score,
+            max(
+                (
+                    _text_contains_name_score(developer_text, name, 58)
+                    for name in developer_names
+                ),
+                default=0,
+            ),
+        )
+
+    for project in reputation.projects:
+        score = max(
+            score,
+            _project_match_score(
+                project_name=project.name,
+                project_city=project.city,
+                project_district=project.district,
+                project_status=project.status,
+                completed_year=project.completed_year,
+                payload=payload,
+                listing=listing,
+                area_statistics=area_statistics,
+                project_text=project_text,
+            ),
+        )
+
+    return min(score, 100)
+
+
+def _project_match_score(
+    *,
+    project_name: str,
+    project_city: str,
+    project_district: str | None,
+    project_status: str,
+    completed_year: int | None,
+    payload: UserSubmittedListingRequest,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+    project_text: str,
+) -> int:
+    score = 0
+    if payload.investment_name:
+        score = max(score, _name_match_score(payload.investment_name, project_name))
+    score = max(score, _text_contains_name_score(project_text, project_name, 72))
+
+    project_tokens = _specific_project_tokens(project_name)
+    context_tokens = _match_tokens(project_text)
+    overlap = len(project_tokens & context_tokens)
+    if overlap >= 2:
+        score = max(score, 44 + overlap * 8)
+    elif overlap == 1 and payload.market_type == "primary":
+        score = max(score, 38)
+
+    if project_city.casefold() == area_statistics.city.casefold():
+        score += 5
+    if project_district and project_district.casefold() == area_statistics.name.casefold():
+        score += 12
+    if completed_year and payload.building_year:
+        year_delta = abs(completed_year - payload.building_year)
+        if year_delta == 0:
+            score += 18
+        elif year_delta <= 3:
+            score += 9
+    if payload.market_type == "primary" and project_status == "active":
+        score += 14
+        if listing.building_year and listing.building_year >= date.today().year:
+            score += 8
+    return min(score, 100)
+
+
+def _name_match_score(value: str | None, candidate: str | None) -> int:
+    if not value or not candidate:
+        return 0
+    value_key = _normalized_match_text(value)
+    candidate_key = _normalized_match_text(candidate)
+    if not value_key or not candidate_key:
+        return 0
+    if value_key == candidate_key:
+        return 92
+    if value_key in candidate_key or candidate_key in value_key:
+        return 82
+    value_tokens = _match_tokens(value_key)
+    candidate_tokens = _match_tokens(candidate_key)
+    if not value_tokens or not candidate_tokens:
+        return 0
+    overlap = len(value_tokens & candidate_tokens)
+    ratio = overlap / max(len(value_tokens), len(candidate_tokens))
+    if ratio >= 0.75:
+        return 72
+    if ratio >= 0.5 and overlap >= 2:
+        return 60
+    return 0
+
+
+def _text_contains_name_score(text: str, candidate: str | None, score: int) -> int:
+    if not candidate:
+        return 0
+    candidate_key = _normalized_match_text(candidate)
+    if not candidate_key:
+        return 0
+    return score if candidate_key in text else 0
+
+
+def _specific_project_tokens(project_name: str) -> set[str]:
+    return {
+        token
+        for token in _match_tokens(project_name)
+        if len(token) > 2 and token not in GENERIC_PROJECT_WORDS
+    }
+
+
+def _match_tokens(value: str) -> set[str]:
+    return {
+        token
+        for token in _normalized_match_text(value).split()
+        if len(token) > 2
+    }
+
+
+def _normalized_match_text(*parts: str | None) -> str:
+    text = " ".join(part for part in parts if part)
+    normalized = (
+        unicodedata.normalize("NFKD", text.casefold())
+        .encode("ascii", "ignore")
+        .decode("ascii")
+    )
+    return re.sub(r"[^a-z0-9]+", " ", normalized).strip()
 
 
 def _build_listing(
@@ -879,6 +1127,38 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     if title:
         fields.title = title
 
+    developer_name = _first_text(
+        lowered,
+        (
+            "developer",
+            "developername",
+            "developerbrand",
+            "deweloper",
+            "builder",
+            "buildername",
+            "investor",
+            "inwestor",
+        ),
+    )
+    if developer_name:
+        fields.developer_name = developer_name
+
+    investment_name = _first_text(
+        lowered,
+        (
+            "investment",
+            "investmentname",
+            "investmenttitle",
+            "project",
+            "projectname",
+            "projecttitle",
+            "estate",
+            "estatename",
+        ),
+    )
+    if investment_name:
+        fields.investment_name = investment_name
+
     price = _first_number(
         lowered,
         (
@@ -1195,6 +1475,32 @@ def _apply_labeled_field(fields: SourceUrlImportFields, label: str, value: objec
 
     if key in {"market", "markettype", "buildingmarket", "rentmarket", "rynek"}:
         fields.market_type = _market_type_from_value(text)
+        return
+
+    if key in {
+        "developer",
+        "developername",
+        "developerbrand",
+        "deweloper",
+        "builder",
+        "buildername",
+        "investor",
+        "inwestor",
+    }:
+        fields.developer_name = text
+        return
+
+    if key in {
+        "investment",
+        "investmentname",
+        "investmenttitle",
+        "inwestycja",
+        "nazwainwestycji",
+        "project",
+        "projectname",
+        "projecttitle",
+    }:
+        fields.investment_name = text
         return
 
     if key in {"address", "streetaddress", "location", "adres", "lokalizacja", "street"}:

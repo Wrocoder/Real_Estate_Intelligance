@@ -105,6 +105,8 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
           "@context": "https://schema.org",
           "@type": "Apartment",
           "name": "Mieszkanie 3 pokoje Fabryczna",
+          "developerName": "Fabryczna Estate Partners",
+          "investmentName": "Nowy Dwór Residence",
           "price": "675000",
           "floorSize": {"value": 58.4, "unitCode": "MTK"},
           "numberOfRooms": 3,
@@ -154,6 +156,8 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
     assert payload["status"] == "extracted"
     assert payload["reference_preview"]["provider"] == "otodom"
     assert payload["fields"]["title"] == "Mieszkanie 3 pokoje Fabryczna"
+    assert payload["fields"]["developer_name"] == "Fabryczna Estate Partners"
+    assert payload["fields"]["investment_name"] == "Nowy Dwór Residence"
     assert payload["fields"]["address"] == "ul. Rogowska 10"
     assert payload["fields"]["city"] == "Wrocław"
     assert payload["fields"]["district"] == "Fabryczna"
@@ -167,6 +171,8 @@ def test_user_submitted_listing_import_from_url_extracts_minimal_fields(monkeypa
     assert payload["fields"]["lat"] == 51.1117
     assert payload["fields"]["lon"] == 16.9653
     assert "price" in payload["fields_extracted"]
+    assert "developer_name" in payload["fields_extracted"]
+    assert "investment_name" in payload["fields_extracted"]
     assert "building_floors" in payload["fields_extracted"]
     assert "description" not in payload["fields"]
     assert "photos" not in payload["fields"]
@@ -194,6 +200,8 @@ def test_user_submitted_listing_import_from_url_extracts_labeled_portal_paramete
                   {"label": "Piętro", "value": "2/4"},
                   {"label": "Rok budowy", "value": "2018"},
                   {"label": "Rynek", "value": "wtórny"},
+                  {"label": "Deweloper", "value": "Demo Development"},
+                  {"label": "Inwestycja", "value": "Jagodno Gardens"},
                   {"label": "Adres", "value": "ul. Kwiatowa 5"},
                   {"label": "Miasto", "value": "Wrocław"},
                   {"label": "Dzielnica", "value": "Krzyki"}
@@ -237,6 +245,8 @@ def test_user_submitted_listing_import_from_url_extracts_labeled_portal_paramete
     assert payload["fields"]["building_floors"] == 4
     assert payload["fields"]["building_year"] == 2018
     assert payload["fields"]["market_type"] == "secondary"
+    assert payload["fields"]["developer_name"] == "Demo Development"
+    assert payload["fields"]["investment_name"] == "Jagodno Gardens"
     assert payload["fields"]["address"] == "ul. Kwiatowa 5"
     assert payload["fields"]["city"] == "Wrocław"
     assert payload["fields"]["district"] == "Krzyki"
@@ -400,6 +410,8 @@ def test_user_submitted_listing_import_from_url_rejects_unsupported_provider(
     assert payload["status"] == "unsupported"
     assert payload["fields"] == {
         "title": None,
+        "developer_name": None,
+        "investment_name": None,
         "address": None,
         "city": None,
         "district": None,
@@ -739,6 +751,8 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
         "/api/v1/user-submitted-listings/report",
         json={
             "source_url": source_url,
+            "developer_name": "Fabryczna Estate Partners",
+            "investment_name": "Nowy Dwór Residence",
             "address": "Nowy Dwór, Wrocław",
             "city": "Wrocław",
             "district": "Fabryczna",
@@ -759,6 +773,10 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert payload["analysis"]["source_url_private"] == source_url
     assert payload["analysis"]["draft_id"]
     assert payload["analysis"]["analysis"]["listing"]["source_url"] != source_url
+    assert (
+        payload["analysis"]["analysis"]["developer_reputation"]["developer"]["id"]
+        == "fabryczna-estate-partners"
+    )
     assert payload["report"]["template_code"] == "buyer_object_report_v1"
     assert payload["report"]["listing_id"].startswith("user-submitted-")
     assert "не финансовая" in payload["report"]["disclaimer"]
@@ -768,7 +786,36 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "Что делать дальше" in section_titles
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
+    assert "Застройщик и репутация" in section_titles
     assert source_url not in str(payload["report"])
+
+
+def test_user_submitted_listing_analysis_matches_developer_from_project_context() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/demo-jagodno-primary",
+            "investment_name": "Jagodno Gardens",
+            "address": "Jagodno, Wrocław",
+            "city": "Wrocław",
+            "district": "Krzyki",
+            "market_type": "primary",
+            "price": 742000,
+            "area_m2": 49.1,
+            "rooms": 2,
+            "floor": 5,
+            "building_floors": 7,
+            "building_year": 2026,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    reputation = payload["analysis"]["developer_reputation"]
+    assert reputation["developer"]["id"] == "demo-development"
+    assert reputation["projects"][0]["developer_id"] == "demo-development"
+    assert any("Developer reputation was matched" in item for item in payload["warnings"])
 
 
 def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:

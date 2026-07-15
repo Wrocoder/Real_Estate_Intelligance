@@ -216,7 +216,7 @@
 - [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Добавить export reports в CSV/JSON для realtor/investor workflows.
 - [x] Добавить секцию застройщика в buyer/investor/realtor reports: кто строил, сильные стороны, риски, что проверить, source citations.
-- [ ] Добавить developer reputation block в user-submitted link reports для Otodom/OLX/new-build объектов, если застройщик распознан.
+- [x] Добавить developer reputation block в user-submitted link reports для Otodom/OLX/new-build объектов, если застройщик распознан.
 
 ## 8. Users, Auth и Payments
 

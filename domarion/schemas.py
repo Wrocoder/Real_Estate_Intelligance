@@ -1033,6 +1033,8 @@ class SourceUrlImportRequest(BaseModel):
 
 class SourceUrlImportFields(BaseModel):
     title: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
     address: str | None = None
     city: str | None = None
     district: str | None = None
@@ -1061,6 +1063,8 @@ class SourceUrlImportResult(BaseModel):
 class UserSubmittedListingRequest(BaseModel):
     title: str | None = None
     source_url: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
     address: str
     city: str = "Wrocław"
     district: str

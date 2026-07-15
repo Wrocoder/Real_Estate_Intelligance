@@ -488,6 +488,8 @@ export type ListingAnalysis = {
 export type UserSubmittedListingRequest = {
   title?: string | null;
   source_url?: string | null;
+  developer_name?: string | null;
+  investment_name?: string | null;
   address: string;
   city?: string;
   district: string;
@@ -529,6 +531,8 @@ export type SourceReferencePreview = {
 
 export type SourceUrlImportFields = {
   title: string | null;
+  developer_name: string | null;
+  investment_name: string | null;
   address: string | null;
   city: string | null;
   district: string | null;

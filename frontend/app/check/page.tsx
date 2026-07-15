@@ -4,6 +4,7 @@ import type { FormEvent } from "react";
 import { useState } from "react";
 import Link from "next/link";
 import {
+  Building2,
   ClipboardCheck,
   ExternalLink,
   FileText,
@@ -17,6 +18,7 @@ import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
   reportContentUrl,
+  type DeveloperReputation,
   type GeneratedReport,
   type SourceReferencePreview,
   type SourceUrlImportFields,
@@ -31,6 +33,8 @@ import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 type CheckFormState = {
   title: string;
   source_url: string;
+  developer_name: string;
+  investment_name: string;
   address: string;
   city: string;
   district: string;
@@ -49,6 +53,8 @@ type CheckFormState = {
 const DEFAULT_FORM: CheckFormState = {
   title: "",
   source_url: "",
+  developer_name: "",
+  investment_name: "",
   address: "",
   city: "Wrocław",
   district: "Fabryczna",
@@ -379,6 +385,24 @@ export default function CheckListingPage() {
                 />
               </label>
               <label className="field">
+                <span>Застройщик</span>
+                <input
+                  className="input"
+                  placeholder="optional"
+                  value={form.developer_name}
+                  onChange={(event) => updateField("developer_name", event.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span>Инвестиция / проект</span>
+                <input
+                  className="input"
+                  placeholder="optional"
+                  value={form.investment_name}
+                  onChange={(event) => updateField("investment_name", event.target.value)}
+                />
+              </label>
+              <label className="field">
                 <span>Адрес</span>
                 <input
                   className="input"
@@ -518,6 +542,9 @@ export default function CheckListingPage() {
                     <strong>{result.draft_expires_at ? dateLabel(result.draft_expires_at) : "—"}</strong>
                   </li>
                 </ul>
+                {analysis.developer_reputation ? (
+                  <DeveloperReputationBlock reputation={analysis.developer_reputation} />
+                ) : null}
                 <div className="button-row" style={{ marginTop: 12 }}>
                   <button
                     className="button primary"
@@ -667,10 +694,41 @@ export default function CheckListingPage() {
   );
 }
 
+function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {
+  return (
+    <>
+      <div className="panel-header inline" style={{ marginTop: 14 }}>
+        <h3>Застройщик</h3>
+        <span className={`status-pill ${developerLabelTone(reputation.label)}`}>
+          {developerLabelText(reputation.label)}
+        </span>
+      </div>
+      <ul className="section-list compact">
+        <li>
+          <Building2 size={16} /> {reputation.developer.name}
+        </li>
+        <li>
+          Рейтинг {reputation.reputation_score}/100, уверенность{" "}
+          {reputation.confidence_score}/100.
+        </li>
+        <li>
+          Сдано проектов: {reputation.completed_projects_count}; активных:{" "}
+          {reputation.active_projects_count}.
+        </li>
+        {(reputation.risk_signals[0] ?? reputation.positive_signals[0]) ? (
+          <li>{reputation.risk_signals[0] ?? reputation.positive_signals[0]}</li>
+        ) : null}
+      </ul>
+    </>
+  );
+}
+
 function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest {
   return {
     title: form.title.trim() || null,
     source_url: form.source_url.trim() || null,
+    developer_name: form.developer_name.trim() || null,
+    investment_name: form.investment_name.trim() || null,
     address: form.address.trim(),
     city: form.city.trim() || "Wrocław",
     district: form.district,
@@ -689,10 +747,28 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
   };
 }
 
+function developerLabelText(label: string) {
+  return {
+    strong: "сильный",
+    good: "хороший",
+    mixed: "смешанный",
+    limited_data: "мало данных",
+    risk_review: "проверить",
+  }[label] ?? label;
+}
+
+function developerLabelTone(label: string) {
+  if (label === "strong" || label === "good") return "healthy";
+  if (label === "mixed" || label === "limited_data") return "warning";
+  return "error";
+}
+
 function mergeImportedFields(current: CheckFormState, fields: SourceUrlImportFields) {
   return {
     ...current,
     title: fields.title ?? current.title,
+    developer_name: fields.developer_name ?? current.developer_name,
+    investment_name: fields.investment_name ?? current.investment_name,
     address: normalizedImportedAddress(fields, current.address),
     city: normalizeCity(fields.city, fields.district, current.city),
     district: normalizeDistrict(fields.district) ?? current.district,
