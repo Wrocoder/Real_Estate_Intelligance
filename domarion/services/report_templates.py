@@ -111,7 +111,11 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
     listing = analysis.listing
     area = analysis.area_statistics
     scores = analysis.scores
-    gross_yield = _estimate_gross_yield_pct(analysis)
+    gross_yield = (
+        analysis.rental_estimate.gross_yield_pct
+        if analysis.rental_estimate is not None
+        else _estimate_gross_yield_pct(analysis)
+    )
     items = [
         f"Для жизни: {_own_living_fit(analysis)}",
         f"Для семьи: {_family_fit(analysis)}",
@@ -150,6 +154,14 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
             items.append(f"Growth signals: {'; '.join(impact.growth_signals[:3])}.")
         if impact.risk_signals:
             items.append(f"Future-area risks/checks: {'; '.join(impact.risk_signals[:3])}.")
+    if analysis.rental_estimate is not None:
+        rental = analysis.rental_estimate
+        items.append(
+            f"Rental estimate: {_money(rental.monthly_rent_low_pln)}-"
+            f"{_money(rental.monthly_rent_high_pln)}/мес.; "
+            f"mid {_money(rental.monthly_rent_mid_pln)}, "
+            f"confidence {rental.confidence_score}/100."
+        )
     location_risks = _location_risk_flags(analysis)
     if location_risks:
         items.append(f"Что проверить на месте: {'; '.join(location_risks)}.")
@@ -337,25 +349,60 @@ def _investor_rental_yield_section(analysis: ListingAnalysis | None) -> ReportSe
         return ReportSection(title="Арендная доходность", items=[])
 
     listing = analysis.listing
-    yield_pct = _estimate_gross_yield_pct(analysis)
-    monthly_rent = round(listing.price * yield_pct / 100 / 12)
-    annual_rent = monthly_rent * 12
+    if analysis.rental_estimate is None:
+        yield_pct = _estimate_gross_yield_pct(analysis)
+        monthly_rent = round(listing.price * yield_pct / 100 / 12)
+        annual_rent = monthly_rent * 12
+        return ReportSection(
+            title="Арендная доходность",
+            items=[
+                (
+                    "MVP estimate: gross yield "
+                    f"{yield_pct:.1f}% при ориентировочной аренде {_money(monthly_rent)}/мес."
+                ),
+                f"Ориентировочная годовая аренда brutto: {_money(annual_rent)}.",
+                f"Rental Potential Score: {analysis.scores.rental_potential_score}/100.",
+                (
+                    "Это грубая эвристика для первичного отбора; перед покупкой нужна проверка "
+                    "реальных арендных comparables, vacancy и налогов."
+                ),
+            ],
+        )
+
+    rental = analysis.rental_estimate
+    scenario_items = [
+        (
+            f"{scenario.label}: cashflow {_money(scenario.net_cashflow_monthly_pln)}/мес., "
+            f"net yield on cash {scenario.net_yield_on_cash_pct:.2f}%."
+        )
+        for scenario in rental.cashflow_scenarios
+    ]
     return ReportSection(
         title="Арендная доходность",
         items=[
             (
-                "MVP estimate: gross yield "
-                f"{yield_pct:.1f}% при ориентировочной аренде {_money(monthly_rent)}/мес."
+                f"Rent estimate: {_money(rental.monthly_rent_low_pln)}-"
+                f"{_money(rental.monthly_rent_high_pln)}/мес.; "
+                f"mid {_money(rental.monthly_rent_mid_pln)} "
+                f"({_money(rental.rent_per_m2_mid_pln)}/m2)."
             ),
-            f"Ориентировочная годовая аренда brutto: {_money(annual_rent)}.",
+            (
+                f"Gross yield {rental.gross_yield_pct:.1f}%, vacancy "
+                f"{rental.vacancy_rate_pct:.1f}%, operating costs "
+                f"{_money(rental.operating_costs_monthly_pln)}/мес."
+            ),
+            f"NOI before financing: {_money(rental.net_operating_income_monthly_pln)}/мес.",
+            *scenario_items,
+            f"Rental estimate confidence: {rental.confidence_score}/100.",
             f"Rental Potential Score: {analysis.scores.rental_potential_score}/100.",
             (
                 f"Транспортный фактор: остановка {listing.nearest_stop_m} m, "
                 f"до центра {listing.distance_to_center_km:.1f} km."
             ),
+            *rental.risk_notes[:3],
             (
-                "Это грубая эвристика для первичного отбора; перед покупкой нужна проверка "
-                "реальных арендных comparables, vacancy и налогов."
+                "Это screening estimate; перед покупкой нужна проверка реальных "
+                "арендных comparables, vacancy, fees, налогов и ремонта."
             ),
         ],
     )

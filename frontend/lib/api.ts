@@ -307,6 +307,37 @@ export type ListingRiskProfile = {
   methodology_note: string;
 };
 
+export type RentalCashflowScenario = {
+  code: string;
+  label: string;
+  monthly_rent_pln: number;
+  vacancy_loss_pln: number;
+  operating_costs_pln: number;
+  mortgage_payment_pln: number;
+  net_cashflow_monthly_pln: number;
+  annual_net_cashflow_pln: number;
+  cash_invested_pln: number;
+  gross_yield_pct: number;
+  net_yield_on_cash_pct: number;
+};
+
+export type ListingRentalEstimate = {
+  listing_id: string;
+  monthly_rent_low_pln: number;
+  monthly_rent_mid_pln: number;
+  monthly_rent_high_pln: number;
+  rent_per_m2_mid_pln: number;
+  gross_yield_pct: number;
+  vacancy_rate_pct: number;
+  operating_costs_monthly_pln: number;
+  net_operating_income_monthly_pln: number;
+  confidence_score: number;
+  cashflow_scenarios: RentalCashflowScenario[];
+  assumptions: string[];
+  risk_notes: string[];
+  methodology_note: string;
+};
+
 export type PlannedInvestmentPayload = {
   name: string;
   investment_type: string;
@@ -531,6 +562,7 @@ export type ListingAnalysis = {
   developer_reputation: DeveloperReputation | null;
   future_area_impact: ListingFutureImpact | null;
   risk_profile: ListingRiskProfile | null;
+  rental_estimate: ListingRentalEstimate | null;
   scores: PropertyScores;
   insights: string[];
   negotiation_arguments: string[];
@@ -2106,6 +2138,10 @@ export const api = {
     request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
   getListingRiskProfile: (id: string) =>
     request<ListingRiskProfile>(`/api/v1/listings/${encodeURIComponent(id)}/risk-profile`),
+  getListingRentalEstimate: (id: string) =>
+    request<ListingRentalEstimate>(
+      `/api/v1/listings/${encodeURIComponent(id)}/rental-estimate`,
+    ),
   addFavorite: (listingId: string, note?: string) =>
     request<Favorite>(`/api/v1/favorites?owner_id=${OWNER_ID}`, {
       method: "POST",

@@ -533,6 +533,37 @@ class ListingRiskProfile(BaseModel):
     methodology_note: str
 
 
+class RentalCashflowScenario(BaseModel):
+    code: str
+    label: str
+    monthly_rent_pln: int = Field(ge=0)
+    vacancy_loss_pln: int = Field(ge=0)
+    operating_costs_pln: int = Field(ge=0)
+    mortgage_payment_pln: int = Field(ge=0)
+    net_cashflow_monthly_pln: int
+    annual_net_cashflow_pln: int
+    cash_invested_pln: int = Field(ge=0)
+    gross_yield_pct: float
+    net_yield_on_cash_pct: float
+
+
+class ListingRentalEstimate(BaseModel):
+    listing_id: str
+    monthly_rent_low_pln: int = Field(ge=0)
+    monthly_rent_mid_pln: int = Field(ge=0)
+    monthly_rent_high_pln: int = Field(ge=0)
+    rent_per_m2_mid_pln: int = Field(ge=0)
+    gross_yield_pct: float = Field(ge=0)
+    vacancy_rate_pct: float = Field(ge=0, le=100)
+    operating_costs_monthly_pln: int = Field(ge=0)
+    net_operating_income_monthly_pln: int
+    confidence_score: int = Field(ge=0, le=100)
+    cashflow_scenarios: list[RentalCashflowScenario] = Field(default_factory=list)
+    assumptions: list[str] = Field(default_factory=list)
+    risk_notes: list[str] = Field(default_factory=list)
+    methodology_note: str
+
+
 class PlannedInvestmentCreate(BaseModel):
     name: str
     investment_type: str
@@ -1058,6 +1089,7 @@ class ListingAnalysis(BaseModel):
     developer_reputation: DeveloperReputation | None = None
     future_area_impact: ListingFutureImpact | None = None
     risk_profile: ListingRiskProfile | None = None
+    rental_estimate: ListingRentalEstimate | None = None
     scores: PropertyScores
     insights: list[str]
     negotiation_arguments: list[str]

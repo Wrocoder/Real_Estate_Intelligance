@@ -318,6 +318,9 @@ def test_listing_analysis() -> None:
     assert payload["risk_profile"]["risk_score"] == payload["scores"]["risk_score"]
     assert payload["risk_profile"]["factors"]
     assert payload["risk_profile"]["priority_checks"]
+    assert payload["rental_estimate"]["listing_id"] == "wr-001"
+    assert payload["rental_estimate"]["monthly_rent_mid_pln"] > 0
+    assert payload["rental_estimate"]["cashflow_scenarios"]
 
 
 def test_listing_future_impact_returns_radius_buckets() -> None:
@@ -349,6 +352,23 @@ def test_listing_risk_profile_returns_structured_factors() -> None:
     assert payload["priority_checks"]
     assert "flood risk" in payload["missing_risk_layers"]
     assert "Missing public layers" in payload["methodology_note"]
+
+
+def test_listing_rental_estimate_returns_cashflow_scenarios() -> None:
+    response = client.get("/api/v1/listings/wr-001/rental-estimate")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["listing_id"] == "wr-001"
+    assert payload["monthly_rent_low_pln"] < payload["monthly_rent_mid_pln"]
+    assert payload["monthly_rent_high_pln"] > payload["monthly_rent_mid_pln"]
+    assert payload["gross_yield_pct"] > 0
+    assert payload["net_operating_income_monthly_pln"] > 0
+    scenario_codes = {scenario["code"] for scenario in payload["cashflow_scenarios"]}
+    assert scenario_codes == {"cash_purchase", "financed_80_ltv"}
+    assert payload["confidence_score"] > 0
+    assert payload["assumptions"]
+    assert "screening" in payload["methodology_note"]
 
 
 def test_compare_requires_existing_ids() -> None:
@@ -448,6 +468,24 @@ def test_object_report() -> None:
     assert "Priority checks:" in risk_items
     assert "Missing public risk layers" in risk_items
     assert "не финансовая" in payload["disclaimer"]
+
+
+def test_investor_object_report_includes_rental_cashflow() -> None:
+    response = client.post(
+        "/api/v1/reports/object",
+        json={"listing_id": "wr-001", "audience": "investor"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    section = next(
+        section for section in payload["sections"] if section["title"] == "Арендная доходность"
+    )
+    items = "\n".join(section["items"])
+    assert "Rent estimate:" in items
+    assert "Gross yield" in items
+    assert "Cash purchase" in items
+    assert "80% LTV" in items
 
 
 def test_object_report_accepts_realtor_branding() -> None:

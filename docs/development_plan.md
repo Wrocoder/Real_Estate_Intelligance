@@ -185,7 +185,7 @@
 - [x] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
 - [ ] Добавить growth factors: transport, schools, parks, hospitals, retail, offices, universities, population/jobs growth.
 - [x] Добавить risk factors v1: price, liquidity/oversupply, weak transport, major-road/noise proxy, industrial zones, weak rental yield, data/developer/future-area risks, plus missing public risk layers for flood/noise/pollution/rail/airport.
-- [ ] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
+- [x] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
 - [x] Добавить mortgage affordability и total purchase cost inputs в buyer analytics.
 - [x] Добавить Developer Reputation Score v1: track record, delivery reliability, defect signals, legal/UOKiK risk, KRS/REGON stability, transparency, confidence.
 - [ ] Добавить backtesting отчеты по drift/ошибке fair price estimate.
@@ -559,6 +559,7 @@
 - [x] Добавить First_prompt-style fit/outlook answers в object/link reports: family, rental, liquidity и future area signals.
 - [x] Добавить listing future-impact API и report integration: radius buckets, nearest planned investments, impact score.
 - [x] Добавить structured listing risk profile API/report integration: risk factors, evidence, checks, missing risk layers.
+- [x] Добавить listing rental estimate API/report integration: rent range, gross yield, NOI, cash/financed cashflow scenarios.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
