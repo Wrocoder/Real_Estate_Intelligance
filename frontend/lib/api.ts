@@ -879,6 +879,40 @@ export type ListingSearchResponse = {
   filters: Record<string, unknown>;
 };
 
+export type HiddenGemQuery = {
+  city?: string;
+  district?: string;
+  rooms?: number;
+  market_type?: "primary" | "secondary";
+  max_price?: number;
+  min_area_m2?: number;
+  max_price_delta_to_fair_mid_pct?: number;
+  min_investment_score?: number;
+  max_risk_score?: number;
+  min_liquidity_score?: number;
+  min_rental_potential_score?: number;
+  min_data_quality_score?: number;
+  page?: number;
+  page_size?: number;
+};
+
+export type HiddenGemItem = {
+  analysis: ListingAnalysis;
+  gem_score: number;
+  price_delta_to_fair_mid_pct: number;
+  estimated_discount_to_fair_mid_pln: number;
+  signals: string[];
+};
+
+export type HiddenGemsResponse = {
+  items: HiddenGemItem[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  filters: Record<string, unknown>;
+};
+
 export type CompareMortgageAssumptions = {
   down_payment_pct: number;
   loan_years: number;
@@ -1436,6 +1470,8 @@ function isLocalApiBaseUrl(value: string) {
 export const api = {
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
+  listHiddenGems: (params: HiddenGemQuery = {}) =>
+    request<HiddenGemsResponse>(`/api/v1/listings/hidden-gems${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
     request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),

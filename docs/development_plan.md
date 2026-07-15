@@ -99,8 +99,8 @@
 - [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
 - [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
 - [ ] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
-- [ ] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
-- [ ] Добавить API для поиска объектов ниже рынка и hidden gems.
+- [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
+- [x] Добавить API для поиска объектов ниже рынка и hidden gems.
 - [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
 
 ## 4.1 Hybrid User-Provided Listing Flow
@@ -269,7 +269,7 @@
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
 - [ ] Добавить charting library и графики price history/market distributions.
 - [ ] Добавить realtor подборки объектов для клиента.
-- [ ] Добавить investor hidden gems view.
+- [x] Добавить investor hidden gems view.
 
 ## 11. Map и GIS
 
@@ -466,6 +466,7 @@
 - [x] Commit 59: stronger URL extraction fixtures.
 - [x] Commit 60: source-backed suburban coverage samples.
 - [x] Commit 61: comparison decision metrics and mortgage baseline.
+- [x] Commit 62: hidden gems search mode.
 
 ## Current Sprint
 
@@ -524,6 +525,7 @@
 - [x] Добавить stronger URL extraction fixtures для Otodom/OLX embedded state variants.
 - [x] Перевести suburban coverage seeds в partner/open-data sample files вместо ручных listing blocks.
 - [x] Добавить расширенный compare API/UI: decision rank, ипотечный baseline, cash needed, liquidity и rental potential.
+- [x] Добавить hidden gems search mode: API, ranked signals и frontend режим с investor-фильтрами.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

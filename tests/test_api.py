@@ -62,6 +62,32 @@ def test_listings_support_pagination_sorting_and_score_filters() -> None:
     assert all(item["scores"]["risk_score"] <= 70 for item in payload["items"])
 
 
+def test_hidden_gems_returns_ranked_candidates() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "city": "Wrocław",
+            "page_size": 5,
+            "max_price_delta_to_fair_mid_pct": 5,
+            "min_investment_score": 50,
+            "max_risk_score": 70,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["total"] >= 1
+    assert payload["filters"]["city"] == "Wrocław"
+    assert payload["filters"]["max_price_delta_to_fair_mid_pct"] == 5.0
+    scores = [item["gem_score"] for item in payload["items"]]
+    assert scores == sorted(scores, reverse=True)
+    for item in payload["items"]:
+        assert item["analysis"]["listing"]["id"]
+        assert 0 <= item["gem_score"] <= 100
+        assert item["price_delta_to_fair_mid_pct"] <= 5
+        assert item["signals"]
+
+
 def test_listings_radius_requires_center() -> None:
     response = client.get("/api/v1/listings", params={"radius_km": 5})
 

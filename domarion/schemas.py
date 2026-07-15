@@ -1046,6 +1046,23 @@ class ListingSearchResponse(BaseModel):
     filters: dict[str, Any] = Field(default_factory=dict)
 
 
+class HiddenGemItem(BaseModel):
+    analysis: ListingAnalysis
+    gem_score: int = Field(ge=0, le=100)
+    price_delta_to_fair_mid_pct: float
+    estimated_discount_to_fair_mid_pln: int = Field(ge=0)
+    signals: list[str] = Field(default_factory=list)
+
+
+class HiddenGemsResponse(BaseModel):
+    items: list[HiddenGemItem]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    total_pages: int = Field(ge=0)
+    filters: dict[str, Any] = Field(default_factory=dict)
+
+
 class CompareRequest(BaseModel):
     listing_ids: list[str] = Field(min_length=2, max_length=5)
 

@@ -105,6 +105,7 @@ from domarion.schemas import (
     GeneratedReportListItem,
     GenerateReportRequest,
     GenerateUserSubmittedDraftReportRequest,
+    HiddenGemsResponse,
     IndustrialZoneReference,
     InfrastructureEnrichmentJobResult,
     InfrastructureReferenceImportResponse,
@@ -193,6 +194,7 @@ from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
+from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
 from domarion.services.listing_comparison import build_listing_comparison
 from domarion.services.market_dashboard import build_market_dashboard
@@ -312,6 +314,43 @@ def list_listings(
         )
     except ListingSearchError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/listings/hidden-gems", response_model=HiddenGemsResponse)
+def list_hidden_gems(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+    rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
+    market_type: Annotated[MarketType | None, Query()] = None,
+    max_price: Annotated[int | None, Query(gt=0)] = None,
+    min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    max_price_delta_to_fair_mid_pct: Annotated[float, Query(ge=-50, le=50)] = 5.0,
+    min_investment_score: Annotated[int, Query(ge=0, le=100)] = 55,
+    max_risk_score: Annotated[int, Query(ge=0, le=100)] = 60,
+    min_liquidity_score: Annotated[int, Query(ge=0, le=100)] = 40,
+    min_rental_potential_score: Annotated[int, Query(ge=0, le=100)] = 40,
+    min_data_quality_score: Annotated[int, Query(ge=0, le=100)] = 60,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> HiddenGemsResponse:
+    return find_hidden_gems(
+        repository,
+        city=city,
+        district=district,
+        rooms=rooms,
+        market_type=market_type,
+        max_price=max_price,
+        min_area_m2=min_area_m2,
+        max_price_delta_to_fair_mid_pct=max_price_delta_to_fair_mid_pct,
+        min_investment_score=min_investment_score,
+        max_risk_score=max_risk_score,
+        min_liquidity_score=min_liquidity_score,
+        min_rental_potential_score=min_rental_potential_score,
+        min_data_quality_score=min_data_quality_score,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/areas", response_model=list[AreaStatistics])
