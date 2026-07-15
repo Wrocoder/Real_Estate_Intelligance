@@ -731,6 +731,10 @@ export type ListingSort =
   | "risk_score_desc"
   | "negotiation_score_desc"
   | "negotiation_score_asc"
+  | "developer_reputation_score_desc"
+  | "developer_reputation_score_asc"
+  | "developer_confidence_score_desc"
+  | "developer_confidence_score_asc"
   | "days_on_market_asc"
   | "days_on_market_desc"
   | "newest"
@@ -967,6 +971,12 @@ export type ListingSearchQuery = {
   min_liquidity_score?: number;
   min_rental_potential_score?: number;
   min_data_quality_score?: number;
+  min_developer_reputation_score?: number;
+  min_developer_confidence_score?: number;
+  min_developer_completed_projects?: number;
+  min_developer_active_projects?: number;
+  require_developer_reputation?: boolean;
+  exclude_developer_risk_signals?: boolean;
   lat?: number;
   lon?: number;
   radius_km?: number;
@@ -1004,6 +1014,12 @@ export type HiddenGemQuery = {
   min_liquidity_score?: number;
   min_rental_potential_score?: number;
   min_data_quality_score?: number;
+  min_developer_reputation_score?: number;
+  min_developer_confidence_score?: number;
+  min_developer_completed_projects?: number;
+  min_developer_active_projects?: number;
+  require_developer_reputation?: boolean;
+  exclude_developer_risk_signals?: boolean;
   page?: number;
   page_size?: number;
 };

@@ -107,7 +107,7 @@
 - [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
 - [x] Добавить API для поиска объектов ниже рынка и hidden gems.
 - [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
-- [ ] Добавить developer filters/sort: developer reputation, active projects, completed projects, legal-risk flags, quality confidence.
+- [x] Добавить developer filters/sort: developer reputation, active projects, completed projects, legal-risk flags, quality confidence.
 - [x] Добавить public API для рейтинга застройщиков, developer detail и lookup developer-by-listing.
 
 ## 4.1 Hybrid User-Provided Listing Flow
@@ -551,6 +551,7 @@
 - [x] Добавить proximity-фильтры в search/hidden gems: центр, остановка, школа, major road и industrial zone.
 - [x] Добавить text/address search в listings, hidden gems и saved-search alerts.
 - [x] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
+- [x] Добавить developer filters/sort в listings и hidden gems: reputation, confidence, projects и risk signals.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

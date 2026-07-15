@@ -33,6 +33,12 @@ type Filters = {
   minLiquidity: string;
   minRental: string;
   minDataQuality: string;
+  minDeveloperReputation: string;
+  minDeveloperConfidence: string;
+  minDeveloperCompleted: string;
+  minDeveloperActive: string;
+  requireDeveloper: boolean;
+  excludeDeveloperRisk: boolean;
   maxCenterKm: string;
   maxStopM: string;
   maxSchoolM: string;
@@ -58,6 +64,12 @@ const defaultFilters: Filters = {
   minLiquidity: "",
   minRental: "",
   minDataQuality: "",
+  minDeveloperReputation: "",
+  minDeveloperConfidence: "",
+  minDeveloperCompleted: "",
+  minDeveloperActive: "",
+  requireDeveloper: false,
+  excludeDeveloperRisk: false,
   maxCenterKm: "",
   maxStopM: "",
   maxSchoolM: "",
@@ -442,6 +454,72 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
+            <span>Мин. рейтинг застройщика</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minDeveloperReputation}
+              placeholder="60"
+              onChange={(event) =>
+                updateFilters({ minDeveloperReputation: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Мин. confidence застройщика</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minDeveloperConfidence}
+              placeholder="60"
+              onChange={(event) =>
+                updateFilters({ minDeveloperConfidence: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Сданных проектов от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minDeveloperCompleted}
+              placeholder="2"
+              onChange={(event) =>
+                updateFilters({ minDeveloperCompleted: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Активных проектов от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minDeveloperActive}
+              placeholder="1"
+              onChange={(event) =>
+                updateFilters({ minDeveloperActive: event.target.value })
+              }
+            />
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.requireDeveloper}
+              onChange={(event) => updateFilters({ requireDeveloper: event.target.checked })}
+            />
+            <span>Только с застройщиком</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.excludeDeveloperRisk}
+              onChange={(event) =>
+                updateFilters({ excludeDeveloperRisk: event.target.checked })
+              }
+            />
+            <span>Без developer risk</span>
+          </label>
+          <label className="field">
             <span>Радиус от центра</span>
             <select
               className="select"
@@ -531,6 +609,10 @@ export default function ExplorerPage() {
               <option value="price_per_m2_asc">Цена/m2: ниже</option>
               <option value="risk_score_asc">Risk: ниже</option>
               <option value="negotiation_score_desc">Negotiation: выше</option>
+              <option value="developer_reputation_score_desc">Застройщик: рейтинг выше</option>
+              <option value="developer_reputation_score_asc">Застройщик: рейтинг ниже</option>
+              <option value="developer_confidence_score_desc">Застройщик: confidence выше</option>
+              <option value="developer_confidence_score_asc">Застройщик: confidence ниже</option>
               <option value="days_on_market_desc">Дольше на рынке</option>
               <option value="newest">Новые</option>
             </select>
@@ -672,6 +754,20 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     min_data_quality_score: filters.minDataQuality
       ? Number(filters.minDataQuality)
       : undefined,
+    min_developer_reputation_score: filters.minDeveloperReputation
+      ? Number(filters.minDeveloperReputation)
+      : undefined,
+    min_developer_confidence_score: filters.minDeveloperConfidence
+      ? Number(filters.minDeveloperConfidence)
+      : undefined,
+    min_developer_completed_projects: filters.minDeveloperCompleted
+      ? Number(filters.minDeveloperCompleted)
+      : undefined,
+    min_developer_active_projects: filters.minDeveloperActive
+      ? Number(filters.minDeveloperActive)
+      : undefined,
+    require_developer_reputation: filters.requireDeveloper || undefined,
+    exclude_developer_risk_signals: filters.excludeDeveloperRisk || undefined,
     max_distance_to_center_km: filters.maxCenterKm ? Number(filters.maxCenterKm) : undefined,
     max_nearest_stop_m: filters.maxStopM ? Number(filters.maxStopM) : undefined,
     max_nearest_school_m: filters.maxSchoolM ? Number(filters.maxSchoolM) : undefined,
@@ -705,6 +801,20 @@ function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
     min_liquidity_score: filters.minLiquidity ? Number(filters.minLiquidity) : undefined,
     min_rental_potential_score: filters.minRental ? Number(filters.minRental) : undefined,
     min_data_quality_score: filters.minDataQuality ? Number(filters.minDataQuality) : undefined,
+    min_developer_reputation_score: filters.minDeveloperReputation
+      ? Number(filters.minDeveloperReputation)
+      : undefined,
+    min_developer_confidence_score: filters.minDeveloperConfidence
+      ? Number(filters.minDeveloperConfidence)
+      : undefined,
+    min_developer_completed_projects: filters.minDeveloperCompleted
+      ? Number(filters.minDeveloperCompleted)
+      : undefined,
+    min_developer_active_projects: filters.minDeveloperActive
+      ? Number(filters.minDeveloperActive)
+      : undefined,
+    require_developer_reputation: filters.requireDeveloper || undefined,
+    exclude_developer_risk_signals: filters.excludeDeveloperRisk || undefined,
     max_distance_to_center_km: filters.maxCenterKm ? Number(filters.maxCenterKm) : undefined,
     max_nearest_stop_m: filters.maxStopM ? Number(filters.maxStopM) : undefined,
     max_nearest_school_m: filters.maxSchoolM ? Number(filters.maxSchoolM) : undefined,

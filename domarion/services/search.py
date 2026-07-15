@@ -8,6 +8,7 @@ from domarion.schemas import (
     ListingSort,
     MarketType,
 )
+from domarion.services.developer_filters import matches_developer_reputation_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -42,6 +43,12 @@ def search_listing_analyses(
     min_liquidity_score: int | None = None,
     min_rental_potential_score: int | None = None,
     min_data_quality_score: int | None = None,
+    min_developer_reputation_score: int | None = None,
+    min_developer_confidence_score: int | None = None,
+    min_developer_completed_projects: int | None = None,
+    min_developer_active_projects: int | None = None,
+    require_developer_reputation: bool = False,
+    exclude_developer_risk_signals: bool = False,
     lat: float | None = None,
     lon: float | None = None,
     radius_km: float | None = None,
@@ -103,6 +110,17 @@ def search_listing_analyses(
         ):
             continue
 
+        if not matches_developer_reputation_filters(
+            analysis,
+            min_developer_reputation_score=min_developer_reputation_score,
+            min_developer_confidence_score=min_developer_confidence_score,
+            min_developer_completed_projects=min_developer_completed_projects,
+            min_developer_active_projects=min_developer_active_projects,
+            require_developer_reputation=require_developer_reputation,
+            exclude_developer_risk_signals=exclude_developer_risk_signals,
+        ):
+            continue
+
         analyses.append(analysis)
 
     sorted_items = sorted(
@@ -146,6 +164,12 @@ def search_listing_analyses(
             "min_liquidity_score": min_liquidity_score,
             "min_rental_potential_score": min_rental_potential_score,
             "min_data_quality_score": min_data_quality_score,
+            "min_developer_reputation_score": min_developer_reputation_score,
+            "min_developer_confidence_score": min_developer_confidence_score,
+            "min_developer_completed_projects": min_developer_completed_projects,
+            "min_developer_active_projects": min_developer_active_projects,
+            "require_developer_reputation": require_developer_reputation,
+            "exclude_developer_risk_signals": exclude_developer_risk_signals,
             "center": (lon, lat) if lat is not None and lon is not None else None,
             "radius_km": radius_km,
             "skipped_missing_area": skipped_missing_area,
@@ -245,6 +269,7 @@ def _matches_score_filters(
 def _sort_key(analysis: ListingAnalysis, sort: ListingSort) -> tuple[Any, str]:
     listing = analysis.listing
     scores = analysis.scores
+    developer_reputation = analysis.developer_reputation
     value: Any
     match sort:
         case "price_asc" | "price_desc":
@@ -257,6 +282,22 @@ def _sort_key(analysis: ListingAnalysis, sort: ListingSort) -> tuple[Any, str]:
             value = scores.risk_score
         case "negotiation_score_asc" | "negotiation_score_desc":
             value = scores.negotiation_score
+        case "developer_reputation_score_desc":
+            value = (
+                developer_reputation.reputation_score if developer_reputation is not None else -1
+            )
+        case "developer_reputation_score_asc":
+            value = (
+                developer_reputation.reputation_score if developer_reputation is not None else 101
+            )
+        case "developer_confidence_score_desc":
+            value = (
+                developer_reputation.confidence_score if developer_reputation is not None else -1
+            )
+        case "developer_confidence_score_asc":
+            value = (
+                developer_reputation.confidence_score if developer_reputation is not None else 101
+            )
         case "days_on_market_asc" | "days_on_market_desc":
             value = listing.days_on_market
         case "newest" | "oldest":
@@ -271,6 +312,8 @@ def _sort_descending(sort: ListingSort) -> bool:
         "investment_score_desc",
         "risk_score_desc",
         "negotiation_score_desc",
+        "developer_reputation_score_desc",
+        "developer_confidence_score_desc",
         "days_on_market_desc",
         "newest",
     }

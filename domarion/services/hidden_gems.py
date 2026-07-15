@@ -3,6 +3,7 @@ from typing import Any
 
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import HiddenGemItem, HiddenGemsResponse, ListingAnalysis, MarketType
+from domarion.services.developer_filters import matches_developer_reputation_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -35,6 +36,12 @@ def find_hidden_gems(
     min_liquidity_score: int = DEFAULT_MIN_LIQUIDITY_SCORE,
     min_rental_potential_score: int = DEFAULT_MIN_RENTAL_POTENTIAL_SCORE,
     min_data_quality_score: int = DEFAULT_MIN_DATA_QUALITY_SCORE,
+    min_developer_reputation_score: int | None = None,
+    min_developer_confidence_score: int | None = None,
+    min_developer_completed_projects: int | None = None,
+    min_developer_active_projects: int | None = None,
+    require_developer_reputation: bool = False,
+    exclude_developer_risk_signals: bool = False,
     page: int = 1,
     page_size: int = 20,
 ) -> HiddenGemsResponse:
@@ -92,6 +99,16 @@ def find_hidden_gems(
             continue
         if scores.rental_potential_score < min_rental_potential_score:
             continue
+        if not matches_developer_reputation_filters(
+            analysis,
+            min_developer_reputation_score=min_developer_reputation_score,
+            min_developer_confidence_score=min_developer_confidence_score,
+            min_developer_completed_projects=min_developer_completed_projects,
+            min_developer_active_projects=min_developer_active_projects,
+            require_developer_reputation=require_developer_reputation,
+            exclude_developer_risk_signals=exclude_developer_risk_signals,
+        ):
+            continue
 
         items.append(
             HiddenGemItem(
@@ -143,6 +160,12 @@ def find_hidden_gems(
             min_liquidity_score=min_liquidity_score,
             min_rental_potential_score=min_rental_potential_score,
             min_data_quality_score=min_data_quality_score,
+            min_developer_reputation_score=min_developer_reputation_score,
+            min_developer_confidence_score=min_developer_confidence_score,
+            min_developer_completed_projects=min_developer_completed_projects,
+            min_developer_active_projects=min_developer_active_projects,
+            require_developer_reputation=require_developer_reputation,
+            exclude_developer_risk_signals=exclude_developer_risk_signals,
             skipped_missing_area=skipped_missing_area,
         ),
     )

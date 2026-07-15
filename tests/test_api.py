@@ -62,6 +62,36 @@ def test_listings_support_pagination_sorting_and_score_filters() -> None:
     assert all(item["scores"]["risk_score"] <= 70 for item in payload["items"])
 
 
+def test_listings_support_developer_reputation_filters_and_sort() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={
+            "city": "Wrocław",
+            "page_size": 20,
+            "sort": "developer_reputation_score_desc",
+            "min_developer_reputation_score": 60,
+            "min_developer_confidence_score": 59,
+            "require_developer_reputation": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["min_developer_reputation_score"] == 60
+    assert payload["filters"]["min_developer_confidence_score"] == 59
+    assert payload["filters"]["require_developer_reputation"] is True
+    assert payload["total"] >= 2
+    reputations = [
+        item["developer_reputation"]["reputation_score"] for item in payload["items"]
+    ]
+    assert reputations == sorted(reputations, reverse=True)
+    for item in payload["items"]:
+        reputation = item["developer_reputation"]
+        assert reputation is not None
+        assert reputation["reputation_score"] >= 60
+        assert reputation["confidence_score"] >= 59
+
+
 def test_listings_support_text_query_search() -> None:
     response = client.get(
         "/api/v1/listings",
@@ -152,6 +182,30 @@ def test_hidden_gems_support_text_query_search() -> None:
     assert payload["total"] == 1
     assert payload["items"][0]["analysis"]["listing"]["id"] == "wr-001"
     assert payload["items"][0]["signals"]
+
+
+def test_hidden_gems_support_developer_reputation_filters() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "city": "Wrocław",
+            "page_size": 20,
+            "min_investment_score": 40,
+            "max_risk_score": 70,
+            "min_developer_reputation_score": 60,
+            "require_developer_reputation": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["min_developer_reputation_score"] == 60
+    assert payload["filters"]["require_developer_reputation"] is True
+    assert payload["total"] >= 1
+    for item in payload["items"]:
+        reputation = item["analysis"]["developer_reputation"]
+        assert reputation is not None
+        assert reputation["reputation_score"] >= 60
 
 
 def test_listings_radius_requires_center() -> None:

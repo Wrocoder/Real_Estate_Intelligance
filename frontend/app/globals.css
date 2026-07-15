@@ -881,6 +881,19 @@ button {
   font-weight: 700;
 }
 
+.checkbox-field {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  min-height: 56px;
+  padding-top: 16px;
+}
+
+.checkbox-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
 .pagination-row {
   display: flex;
   align-items: center;
