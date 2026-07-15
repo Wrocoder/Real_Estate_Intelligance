@@ -2,6 +2,7 @@ import csv
 import json
 from datetime import date
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -114,6 +115,23 @@ def test_read_partner_csv_geocodes_missing_coordinates(tmp_path) -> None:
     assert 35 <= record.listing.data_quality_score <= 72
     assert record.raw_payload["geocoding_provider"] == "offline_wroclaw_v1"
     assert record.raw_payload["geocoding_precision"] == "neighborhood"
+
+
+def test_suburban_partner_sample_parses_as_legal_feed() -> None:
+    path = Path("data/samples/partner_listings_suburban.csv")
+
+    records = read_partner_csv(path, default_source_name="Demo Suburban Partner Feed")
+
+    assert len(records) == 11
+    assert {record.source_type for record in records} == {"partner_csv"}
+    assert {record.listing.area_id for record in records} >= {
+        "medlow-medlow",
+        "kobierzyce-kobierzyce",
+        "wysoka-wysoka",
+        "bielany-wroclawskie-bielany-wroclawskie",
+        "olawa-olawa",
+    }
+    assert all(record.listing.source_name == "Demo Suburban Partner Feed" for record in records)
 
 
 def test_read_partner_csv_rejects_unresolved_missing_coordinates(tmp_path) -> None:

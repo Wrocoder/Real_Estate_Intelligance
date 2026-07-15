@@ -53,6 +53,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен первый suburban coverage seed для Mędłów: local area statistics, comparables и geocoding для Otodom link-to-report без Wrocław proxy.
 - Добавлен suburban coverage pack для Kobierzyce, Wysoka, Bielany Wrocławskie и Oława: local baselines, comparable seeds, aliases и offline geocoding.
 - Добавлены stronger URL extraction fixtures: Otodom/OLX embedded-state variants, assignment scripts, JSON.parse state, nested location и portal parameter dictionaries.
+- Suburban coverage переведен в sample data sources: `partner_listings_suburban.csv` для comparables и `area_statistics_suburban.csv` для local market baselines.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -242,8 +243,9 @@ python scripts\smoke_deployment.py
 ## Импорт партнерского CSV
 
 Первый ingestion-формат рассчитан на легальные партнерские или ручные выгрузки,
-а не на копирование чужих порталов. Пример файла:
-`data/samples/partner_listings_wroclaw.csv`.
+а не на копирование чужих порталов. Примеры файлов:
+`data/samples/partner_listings_wroclaw.csv` и
+`data/samples/partner_listings_suburban.csv`.
 
 Проверить CSV без записи в БД:
 
@@ -1113,6 +1115,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Перевести suburban coverage seeds в легальный ingestion source: partner CSV/open-data snapshots вместо ручных demo seeds.
-2. Добавить URL-import fixture corpus для новых edge cases по мере появления пользовательских ссылок.
-3. Добавить deployment workflow после выбора hosting.
+1. Добавить URL-import fixture corpus для новых edge cases по мере появления пользовательских ссылок.
+2. Добавить deployment workflow после выбора hosting.
+3. Расширить partner/open-data ingestion на новые города после выбора первых пилотных источников.

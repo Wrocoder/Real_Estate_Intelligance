@@ -1,0 +1,6 @@
+area_id,name,city,median_price_per_m2,average_price_per_m2,active_listings,new_listings_30d,removed_listings_30d,average_days_on_market,price_change_90d_pct,supply_change_90d_pct
+medlow-medlow,Mędłów,Mędłów,10400,10650,46,7,5,96,1.1,6.4
+kobierzyce-kobierzyce,Kobierzyce,Kobierzyce,9900,10180,68,9,7,101,0.8,7.2
+wysoka-wysoka,Wysoka,Wysoka,12600,12950,73,13,9,82,1.7,4.6
+bielany-wroclawskie-bielany-wroclawskie,Bielany Wrocławskie,Bielany Wrocławskie,11300,11620,54,8,6,90,1.2,5.9
+olawa-olawa,Oława,Oława,9300,9580,118,17,14,88,0.6,3.8

@@ -26,6 +26,18 @@ def test_listings() -> None:
     assert "price_label" in payload["items"][0]["scores"]
 
 
+def test_suburban_partner_sample_is_loaded_as_repository_data() -> None:
+    response = client.get("/api/v1/listings", params={"city": "Wysoka"})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["total"] >= 2
+    assert {item["listing"]["source_name"] for item in payload["items"]} == {
+        "Demo Suburban Partner Feed"
+    }
+    assert {item["listing"]["area_id"] for item in payload["items"]} == {"wysoka-wysoka"}
+
+
 def test_listings_support_pagination_sorting_and_score_filters() -> None:
     response = client.get(
         "/api/v1/listings",
