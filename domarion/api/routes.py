@@ -118,6 +118,7 @@ from domarion.schemas import (
     Listing,
     ListingAnalysis,
     ListingFutureImpact,
+    ListingRiskProfile,
     ListingSearchResponse,
     ListingSort,
     LocationReference,
@@ -2443,6 +2444,20 @@ def get_listing_future_impact(
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return build_listing_future_impact(repository, listing)
+
+
+@router.get("/listings/{listing_id}/risk-profile", response_model=ListingRiskProfile)
+def get_listing_risk_profile(
+    listing_id: str,
+    repository: RepositoryDep,
+) -> ListingRiskProfile:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    analysis = build_listing_analysis(repository, listing)
+    if analysis.risk_profile is None:
+        raise HTTPException(status_code=404, detail="Risk profile not found")
+    return analysis.risk_profile
 
 
 @router.get("/listings/{listing_id}/developer", response_model=DeveloperReputation)

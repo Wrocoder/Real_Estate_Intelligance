@@ -14,6 +14,7 @@ from domarion.schemas import (
     ScoreBreakdown,
 )
 from domarion.services.future_impact import build_listing_future_impact
+from domarion.services.risk_profile import build_listing_risk_profile
 
 
 class ScoringConfigurationError(ValueError):
@@ -288,6 +289,13 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
     developer_reputation = repository.get_developer_reputation_for_listing(listing.id)
     future_area_impact = build_listing_future_impact(repository, listing)
     scores = calculate_scores(listing, area_statistics, comparables)
+    risk_profile = build_listing_risk_profile(
+        listing=listing,
+        area_statistics=area_statistics,
+        scores=scores,
+        developer_reputation=developer_reputation,
+        future_area_impact=future_area_impact,
+    )
 
     insights = [
         (
@@ -338,6 +346,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         comparables=comparables,
         developer_reputation=developer_reputation,
         future_area_impact=future_area_impact,
+        risk_profile=risk_profile,
         scores=scores,
         insights=insights,
         negotiation_arguments=negotiation_arguments,

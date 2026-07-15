@@ -777,6 +777,7 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
         payload["analysis"]["analysis"]["developer_reputation"]["developer"]["id"]
         == "fabryczna-estate-partners"
     )
+    assert payload["analysis"]["analysis"]["risk_profile"]["factors"]
     assert payload["report"]["template_code"] == "buyer_object_report_v1"
     assert payload["report"]["listing_id"].startswith("user-submitted-")
     assert "не финансовая" in payload["report"]["disclaimer"]
@@ -816,6 +817,12 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "Позиция по застройщику" in developer_items
     assert "Developer due diligence:" in developer_items
     assert "Source citation:" in developer_items
+    risk_section = next(
+        section for section in payload["report"]["sections"] if section["title"] == "Риски"
+    )
+    risk_items = "\n".join(risk_section["items"])
+    assert "Risk profile:" in risk_items
+    assert "Priority checks:" in risk_items
     assert source_url not in str(payload["report"])
 
 

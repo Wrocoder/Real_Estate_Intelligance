@@ -282,6 +282,28 @@ def _purchase_checklist_section(analysis: ListingAnalysis | None) -> ReportSecti
 def _risk_section(analysis: ListingAnalysis | None) -> ReportSection:
     if analysis is None:
         return ReportSection(title="Риски", items=[])
+    if analysis.risk_profile is not None:
+        profile = analysis.risk_profile
+        items = [
+            (
+                f"Risk profile: {profile.overall_severity}; "
+                f"Risk Score {profile.risk_score}/100 ({profile.risk_label})."
+            )
+        ]
+        for factor in profile.factors[:6]:
+            evidence = f" Evidence: {'; '.join(factor.evidence[:2])}" if factor.evidence else ""
+            items.append(
+                f"{factor.category}/{factor.code}: {factor.severity}. "
+                f"{factor.summary}{evidence}"
+            )
+        if profile.priority_checks:
+            items.append(f"Priority checks: {'; '.join(profile.priority_checks[:5])}.")
+        if profile.missing_risk_layers:
+            items.append(
+                "Missing public risk layers to verify separately: "
+                f"{'; '.join(profile.missing_risk_layers)}."
+            )
+        return ReportSection(title="Риски", items=_deduplicate(items))
     return ReportSection(
         title="Риски",
         items=analysis.scores.warnings or ["Критичных рисков в MVP-данных нет."],
@@ -553,6 +575,13 @@ def _buyer_opening_offer(analysis: ListingAnalysis, max_offer: int) -> int:
 
 
 def _buyer_top_risks(analysis: ListingAnalysis) -> list[str]:
+    if analysis.risk_profile is not None:
+        return [
+            f"{factor.category}: {factor.summary}"
+            for factor in analysis.risk_profile.factors
+            if factor.severity in {"high", "medium"}
+        ][:4]
+
     listing = analysis.listing
     scores = analysis.scores
     risks = list(scores.warnings[:3])

@@ -512,6 +512,27 @@ class ListingFutureImpact(BaseModel):
     methodology_note: str
 
 
+class ListingRiskFactor(BaseModel):
+    code: str
+    category: str
+    severity: str
+    score: int = Field(ge=0, le=100)
+    summary: str
+    evidence: list[str] = Field(default_factory=list)
+    recommended_checks: list[str] = Field(default_factory=list)
+
+
+class ListingRiskProfile(BaseModel):
+    listing_id: str
+    risk_score: int = Field(ge=0, le=100)
+    risk_label: ScoreRiskLabel
+    overall_severity: str
+    factors: list[ListingRiskFactor] = Field(default_factory=list)
+    priority_checks: list[str] = Field(default_factory=list)
+    missing_risk_layers: list[str] = Field(default_factory=list)
+    methodology_note: str
+
+
 class PlannedInvestmentCreate(BaseModel):
     name: str
     investment_type: str
@@ -1036,6 +1057,7 @@ class ListingAnalysis(BaseModel):
     comparables: list[Listing]
     developer_reputation: DeveloperReputation | None = None
     future_area_impact: ListingFutureImpact | None = None
+    risk_profile: ListingRiskProfile | None = None
     scores: PropertyScores
     insights: list[str]
     negotiation_arguments: list[str]

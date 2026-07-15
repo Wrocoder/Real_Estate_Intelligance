@@ -314,6 +314,10 @@ def test_listing_analysis() -> None:
     assert payload["future_area_impact"]["impact_score"] > 0
     assert payload["future_area_impact"]["buckets"][0]["radius_m"] == 500
     assert payload["future_area_impact"]["nearest_investments"]
+    assert payload["risk_profile"]["listing_id"] == "wr-001"
+    assert payload["risk_profile"]["risk_score"] == payload["scores"]["risk_score"]
+    assert payload["risk_profile"]["factors"]
+    assert payload["risk_profile"]["priority_checks"]
 
 
 def test_listing_future_impact_returns_radius_buckets() -> None:
@@ -330,6 +334,21 @@ def test_listing_future_impact_returns_radius_buckets() -> None:
     assert payload["nearest_investments"][0]["distance_m"] <= 2000
     assert payload["growth_signals"]
     assert "guarantee" in payload["methodology_note"]
+
+
+def test_listing_risk_profile_returns_structured_factors() -> None:
+    response = client.get("/api/v1/listings/wr-001/risk-profile")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["listing_id"] == "wr-001"
+    assert 0 <= payload["risk_score"] <= 100
+    assert payload["overall_severity"] in {"minimal", "low", "medium", "high"}
+    factor_codes = {factor["code"] for factor in payload["factors"]}
+    assert {"price_position", "market_liquidity", "weak_transport"} <= factor_codes
+    assert payload["priority_checks"]
+    assert "flood risk" in payload["missing_risk_layers"]
+    assert "Missing public layers" in payload["methodology_note"]
 
 
 def test_compare_requires_existing_ids() -> None:
@@ -423,6 +442,11 @@ def test_object_report() -> None:
     assert "Developer due diligence:" in developer_items
     assert "Source citation:" in developer_items
     assert "Registry check: KRS" in developer_items
+    risk_section = next(section for section in payload["sections"] if section["title"] == "Риски")
+    risk_items = "\n".join(risk_section["items"])
+    assert "Risk profile:" in risk_items
+    assert "Priority checks:" in risk_items
+    assert "Missing public risk layers" in risk_items
     assert "не финансовая" in payload["disclaimer"]
 
 

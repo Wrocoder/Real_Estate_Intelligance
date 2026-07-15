@@ -286,6 +286,27 @@ export type ListingFutureImpact = {
   methodology_note: string;
 };
 
+export type ListingRiskFactor = {
+  code: string;
+  category: string;
+  severity: string;
+  score: number;
+  summary: string;
+  evidence: string[];
+  recommended_checks: string[];
+};
+
+export type ListingRiskProfile = {
+  listing_id: string;
+  risk_score: number;
+  risk_label: PropertyScores["risk_label"];
+  overall_severity: string;
+  factors: ListingRiskFactor[];
+  priority_checks: string[];
+  missing_risk_layers: string[];
+  methodology_note: string;
+};
+
 export type PlannedInvestmentPayload = {
   name: string;
   investment_type: string;
@@ -509,6 +530,7 @@ export type ListingAnalysis = {
   comparables: Listing[];
   developer_reputation: DeveloperReputation | null;
   future_area_impact: ListingFutureImpact | null;
+  risk_profile: ListingRiskProfile | null;
   scores: PropertyScores;
   insights: string[];
   negotiation_arguments: string[];
@@ -2082,6 +2104,8 @@ export const api = {
   getAnalysis: (id: string) => request<ListingAnalysis>(`/api/v1/listings/${id}/analysis`),
   getListingFutureImpact: (id: string) =>
     request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
+  getListingRiskProfile: (id: string) =>
+    request<ListingRiskProfile>(`/api/v1/listings/${encodeURIComponent(id)}/risk-profile`),
   addFavorite: (listingId: string, note?: string) =>
     request<Favorite>(`/api/v1/favorites?owner_id=${OWNER_ID}`, {
       method: "POST",
