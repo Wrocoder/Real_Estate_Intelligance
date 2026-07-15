@@ -99,6 +99,18 @@ ScoreNegotiationLabel = Literal[
     "strong_negotiation",
 ]
 ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
+DeveloperProjectStatus = Literal["completed", "active", "planned", "unknown"]
+DeveloperSignalType = Literal[
+    "track_record",
+    "delivery",
+    "technical_quality",
+    "legal",
+    "financial",
+    "transparency",
+    "local_market",
+]
+DeveloperSignalSeverity = Literal["positive", "info", "warning", "risk"]
+DeveloperReputationLabel = Literal["strong", "good", "mixed", "limited_data", "risk_review"]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
@@ -211,6 +223,81 @@ class AreaComparison(BaseModel):
     top_buyer_market_area_id: str | None = None
     top_liquidity_area_id: str | None = None
     areas: list[AreaComparisonItem] = Field(default_factory=list)
+
+
+class DeveloperProfile(BaseModel):
+    id: str
+    name: str
+    legal_name: str | None = None
+    brand_names: list[str] = Field(default_factory=list)
+    krs: str | None = None
+    nip: str | None = None
+    regon: str | None = None
+    website_url: str | None = None
+    headquarters_city: str | None = None
+    founded_year: int | None = Field(default=None, ge=1800, le=2100)
+    source_names: list[str] = Field(default_factory=list)
+    updated_at: date
+
+
+class DeveloperProject(BaseModel):
+    id: str
+    developer_id: str
+    name: str
+    city: str
+    district: str | None = None
+    status: DeveloperProjectStatus = "unknown"
+    units_count: int | None = Field(default=None, ge=0)
+    completed_year: int | None = Field(default=None, ge=1800, le=2100)
+    source_url: str | None = None
+
+
+class DeveloperQualitySignal(BaseModel):
+    id: str
+    developer_id: str
+    signal_type: DeveloperSignalType
+    severity: DeveloperSignalSeverity
+    title: str
+    summary: str
+    source_name: str
+    source_url: str | None = None
+    observed_at: date | None = None
+    confidence_score: int = Field(ge=0, le=100)
+
+
+class DeveloperSourceCitation(BaseModel):
+    source_name: str
+    source_url: str | None = None
+    checked_at: date
+    note: str | None = None
+
+
+class DeveloperReputation(BaseModel):
+    developer: DeveloperProfile
+    reputation_score: int = Field(ge=0, le=100)
+    confidence_score: int = Field(ge=0, le=100)
+    label: DeveloperReputationLabel
+    track_record_score: int = Field(ge=0, le=100)
+    delivery_score: int = Field(ge=0, le=100)
+    technical_quality_score: int = Field(ge=0, le=100)
+    legal_compliance_score: int = Field(ge=0, le=100)
+    financial_stability_score: int = Field(ge=0, le=100)
+    transparency_score: int = Field(ge=0, le=100)
+    local_experience_score: int = Field(ge=0, le=100)
+    completed_projects_count: int = Field(ge=0)
+    active_projects_count: int = Field(ge=0)
+    positive_signals: list[str] = Field(default_factory=list)
+    risk_signals: list[str] = Field(default_factory=list)
+    due_diligence_questions: list[str] = Field(default_factory=list)
+    source_citations: list[DeveloperSourceCitation] = Field(default_factory=list)
+    projects: list[DeveloperProject] = Field(default_factory=list)
+    quality_signals: list[DeveloperQualitySignal] = Field(default_factory=list)
+
+
+class DeveloperRankingResponse(BaseModel):
+    items: list[DeveloperReputation]
+    total: int = Field(ge=0)
+    filters: dict[str, Any] = Field(default_factory=dict)
 
 
 class MunicipalityReference(BaseModel):
@@ -914,6 +1001,7 @@ class ListingAnalysis(BaseModel):
     price_history: list[PriceHistoryPoint]
     listing_events: list[ListingEvent] = Field(default_factory=list)
     comparables: list[Listing]
+    developer_reputation: DeveloperReputation | None = None
     scores: PropertyScores
     insights: list[str]
     negotiation_arguments: list[str]

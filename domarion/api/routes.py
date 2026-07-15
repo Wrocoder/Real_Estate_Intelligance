@@ -97,6 +97,8 @@ from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
+    DeveloperRankingResponse,
+    DeveloperReputation,
     DistrictReference,
     Favorite,
     FavoriteCreate,
@@ -399,6 +401,47 @@ def compare_areas(
         return build_area_comparison(repository, city=city, sort=sort, limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/developers", response_model=DeveloperRankingResponse)
+def list_developers(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query()] = None,
+    min_reputation_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_confidence_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> DeveloperRankingResponse:
+    items = repository.list_developer_reputations(city=city)
+    if min_reputation_score is not None:
+        items = [
+            item for item in items if item.reputation_score >= min_reputation_score
+        ]
+    if min_confidence_score is not None:
+        items = [
+            item for item in items if item.confidence_score >= min_confidence_score
+        ]
+    total = len(items)
+    return DeveloperRankingResponse(
+        items=items[:limit],
+        total=total,
+        filters={
+            "city": city,
+            "min_reputation_score": min_reputation_score,
+            "min_confidence_score": min_confidence_score,
+            "limit": limit,
+        },
+    )
+
+
+@router.get("/developers/{developer_id}", response_model=DeveloperReputation)
+def get_developer(
+    developer_id: str,
+    repository: RepositoryDep,
+) -> DeveloperReputation:
+    reputation = repository.get_developer_reputation(developer_id)
+    if reputation is None:
+        raise HTTPException(status_code=404, detail="Developer not found")
+    return reputation
 
 
 @router.get("/locations/municipalities", response_model=list[MunicipalityReference])
@@ -2363,6 +2406,19 @@ def analyze_listing(listing_id: str, repository: RepositoryDep) -> ListingAnalys
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return build_listing_analysis(repository, listing)
+
+
+@router.get("/listings/{listing_id}/developer", response_model=DeveloperReputation)
+def get_listing_developer(
+    listing_id: str,
+    repository: RepositoryDep,
+) -> DeveloperReputation:
+    if repository.get_listing(listing_id) is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    reputation = repository.get_developer_reputation_for_listing(listing_id)
+    if reputation is None:
+        raise HTTPException(status_code=404, detail="Developer reputation not found")
+    return reputation
 
 
 @router.get("/areas/{area_id}/statistics", response_model=AreaStatistics)

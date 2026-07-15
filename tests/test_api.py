@@ -168,6 +168,33 @@ def test_areas() -> None:
     assert len(response.json()) >= 3
 
 
+def test_developer_ranking_returns_source_backed_scores() -> None:
+    response = client.get(
+        "/api/v1/developers",
+        params={"city": "Wrocław", "min_confidence_score": 50},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["total"] >= 3
+    assert payload["filters"]["city"] == "Wrocław"
+    assert payload["items"][0]["developer"]["id"]
+    assert payload["items"][0]["reputation_score"] >= payload["items"][-1]["reputation_score"]
+    assert payload["items"][0]["source_citations"]
+    assert payload["items"][0]["due_diligence_questions"]
+
+
+def test_listing_developer_lookup_returns_reputation_profile() -> None:
+    response = client.get("/api/v1/listings/wr-002/developer")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["developer"]["id"] == "demo-development"
+    assert payload["reputation_score"] > 0
+    assert payload["projects"]
+    assert payload["quality_signals"]
+
+
 def test_location_reference_endpoints() -> None:
     municipalities_response = client.get("/api/v1/locations/municipalities")
     districts_response = client.get("/api/v1/locations/districts", params={"city": "Wrocław"})
@@ -227,6 +254,8 @@ def test_listing_analysis() -> None:
     assert payload["price_history"]
     assert payload["listing_events"]
     assert payload["listing_events"][0]["event_type"] == "first_seen"
+    assert payload["developer_reputation"]["developer"]["id"] == "fabryczna-estate-partners"
+    assert payload["developer_reputation"]["due_diligence_questions"]
 
 
 def test_compare_requires_existing_ids() -> None:
@@ -285,6 +314,7 @@ def test_object_report() -> None:
     assert "Ипотека и бюджет покупки" in section_titles
     assert "Вопросы продавцу" in section_titles
     assert "Чеклист проверки перед оффером" in section_titles
+    assert "Застройщик и репутация" in section_titles
     assert "не финансовая" in payload["disclaimer"]
 
 

@@ -26,6 +26,8 @@ def test_render_object_report_html_contains_printable_report() -> None:
     assert "Ориентировочный платеж" in html
     assert "Вопросы продавцу" in html
     assert "Чеклист проверки перед оффером" in html
+    assert "Застройщик и репутация" in html
+    assert "Fabryczna Estate Partners" in html
     assert "księga wieczysta" in html
     assert "История цены" in html
     assert "Похожие объекты" in html
@@ -137,6 +139,7 @@ def test_object_report_uses_audience_templates() -> None:
     assert "Ипотека и бюджет покупки" in buyer_section_titles
     assert "Вопросы продавцу" in buyer_section_titles
     assert "Чеклист проверки перед оффером" in buyer_section_titles
+    assert "Застройщик и репутация" in buyer_section_titles
     assert "Арендная доходность" not in buyer_section_titles
     assert realtor_report.template_code == "realtor_client_report_v1"
     realtor_section_titles = {section.title for section in realtor_report.sections}

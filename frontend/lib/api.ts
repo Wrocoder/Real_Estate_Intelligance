@@ -297,6 +297,101 @@ export type PartnerCsvImportResponse = {
   job: IngestionJob;
 };
 
+export type DeveloperProjectStatus = "completed" | "active" | "planned" | "unknown";
+
+export type DeveloperSignalType =
+  | "track_record"
+  | "delivery"
+  | "technical_quality"
+  | "legal"
+  | "financial"
+  | "transparency"
+  | "local_market";
+
+export type DeveloperSignalSeverity = "positive" | "info" | "warning" | "risk";
+
+export type DeveloperReputationLabel =
+  | "strong"
+  | "good"
+  | "mixed"
+  | "limited_data"
+  | "risk_review";
+
+export type DeveloperProfile = {
+  id: string;
+  name: string;
+  legal_name: string | null;
+  brand_names: string[];
+  krs: string | null;
+  nip: string | null;
+  regon: string | null;
+  website_url: string | null;
+  headquarters_city: string | null;
+  founded_year: number | null;
+  source_names: string[];
+  updated_at: string;
+};
+
+export type DeveloperProject = {
+  id: string;
+  developer_id: string;
+  name: string;
+  city: string;
+  district: string | null;
+  status: DeveloperProjectStatus;
+  units_count: number | null;
+  completed_year: number | null;
+  source_url: string | null;
+};
+
+export type DeveloperQualitySignal = {
+  id: string;
+  developer_id: string;
+  signal_type: DeveloperSignalType;
+  severity: DeveloperSignalSeverity;
+  title: string;
+  summary: string;
+  source_name: string;
+  source_url: string | null;
+  observed_at: string | null;
+  confidence_score: number;
+};
+
+export type DeveloperSourceCitation = {
+  source_name: string;
+  source_url: string | null;
+  checked_at: string;
+  note: string | null;
+};
+
+export type DeveloperReputation = {
+  developer: DeveloperProfile;
+  reputation_score: number;
+  confidence_score: number;
+  label: DeveloperReputationLabel;
+  track_record_score: number;
+  delivery_score: number;
+  technical_quality_score: number;
+  legal_compliance_score: number;
+  financial_stability_score: number;
+  transparency_score: number;
+  local_experience_score: number;
+  completed_projects_count: number;
+  active_projects_count: number;
+  positive_signals: string[];
+  risk_signals: string[];
+  due_diligence_questions: string[];
+  source_citations: DeveloperSourceCitation[];
+  projects: DeveloperProject[];
+  quality_signals: DeveloperQualitySignal[];
+};
+
+export type DeveloperRankingResponse = {
+  items: DeveloperReputation[];
+  total: number;
+  filters: Record<string, unknown>;
+};
+
 export type ScoringBacktestItem = {
   listing_id: string;
   title: string;
@@ -383,6 +478,7 @@ export type ListingAnalysis = {
   price_history: PriceHistoryPoint[];
   listing_events: ListingEvent[];
   comparables: Listing[];
+  developer_reputation: DeveloperReputation | null;
   scores: PropertyScores;
   insights: string[];
   negotiation_arguments: string[];
@@ -1488,6 +1584,19 @@ export const api = {
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
     request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),
+  listDevelopers: (params: {
+    city?: string;
+    min_reputation_score?: number;
+    min_confidence_score?: number;
+    limit?: number;
+  } = {}) =>
+    request<DeveloperRankingResponse>(`/api/v1/developers${toQueryString(params)}`),
+  getDeveloper: (developerId: string) =>
+    request<DeveloperReputation>(`/api/v1/developers/${encodeURIComponent(developerId)}`),
+  getListingDeveloper: (listingId: string) =>
+    request<DeveloperReputation>(
+      `/api/v1/listings/${encodeURIComponent(listingId)}/developer`,
+    ),
   listMunicipalities: () =>
     request<MunicipalityReference[]>("/api/v1/locations/municipalities"),
   listDistrictReferences: (params: { municipality_id?: string; city?: string } = {}) =>

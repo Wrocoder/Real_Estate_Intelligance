@@ -284,6 +284,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
     price_history = repository.get_price_history(listing.id)
     listing_events = repository.get_listing_events(listing.id)
     comparables = repository.find_comparables(listing)
+    developer_reputation = repository.get_developer_reputation_for_listing(listing.id)
     scores = calculate_scores(listing, area_statistics, comparables)
 
     insights = [
@@ -333,6 +334,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         price_history=price_history,
         listing_events=listing_events,
         comparables=comparables,
+        developer_reputation=developer_reputation,
         scores=scores,
         insights=insights,
         negotiation_arguments=negotiation_arguments,

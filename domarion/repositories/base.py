@@ -3,6 +3,7 @@ from typing import Protocol
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
     KindergartenReference,
@@ -45,6 +46,21 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
+        raise NotImplementedError
+
+    def list_developer_reputations(
+        self,
+        city: str | None = None,
+    ) -> list[DeveloperReputation]:
+        raise NotImplementedError
+
+    def get_developer_reputation(self, developer_id: str) -> DeveloperReputation | None:
+        raise NotImplementedError
+
+    def get_developer_reputation_for_listing(
+        self,
+        listing_id: str,
+    ) -> DeveloperReputation | None:
         raise NotImplementedError
 
     def list_municipalities(self) -> list[MunicipalityReference]:

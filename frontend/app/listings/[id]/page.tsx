@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, FileText, Heart, RefreshCw } from "lucide-react";
+import { Building2, FileText, Heart, RefreshCw, ArrowLeft } from "lucide-react";
 
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, objectReportUrl, type ListingAnalysis } from "@/lib/api";
+import {
+  api,
+  objectReportUrl,
+  type DeveloperReputation,
+  type ListingAnalysis,
+} from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 
@@ -50,6 +55,7 @@ export default function ListingDetailPage() {
 
   const { listing, scores, area_statistics: areaStats } = analysis;
   const verdictTone = decisionTone(scores);
+  const developer = analysis.developer_reputation;
 
   return (
     <>
@@ -185,6 +191,7 @@ export default function ListingDetailPage() {
           </div>
           <div className="panel-body">
             <ScoreBars scores={scores} />
+            {developer ? <DeveloperReputationBlock reputation={developer} /> : null}
             <h2>Район</h2>
             <ul className="section-list">
               <li>Медиана: {money(areaStats.median_price_per_m2)}/m2</li>
@@ -206,4 +213,46 @@ export default function ListingDetailPage() {
       </div>
     </>
   );
+}
+
+function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {
+  return (
+    <>
+      <h2>Застройщик</h2>
+      <ul className="section-list compact">
+        <li>
+          <Building2 size={16} /> {reputation.developer.name} ·{" "}
+          <span className={`status-pill ${developerLabelTone(reputation.label)}`}>
+            {developerLabelText(reputation.label)}
+          </span>
+        </li>
+        <li>
+          Рейтинг {reputation.reputation_score}/100, уверенность{" "}
+          {reputation.confidence_score}/100.
+        </li>
+        <li>
+          Сдано проектов: {reputation.completed_projects_count}; активных:{" "}
+          {reputation.active_projects_count}.
+        </li>
+        {reputation.risk_signals[0] ? <li>{reputation.risk_signals[0]}</li> : null}
+        {reputation.positive_signals[0] ? <li>{reputation.positive_signals[0]}</li> : null}
+      </ul>
+    </>
+  );
+}
+
+function developerLabelText(label: string) {
+  return {
+    strong: "сильный",
+    good: "хороший",
+    mixed: "смешанный",
+    limited_data: "мало данных",
+    risk_review: "проверить",
+  }[label] ?? label;
+}
+
+function developerLabelTone(label: string) {
+  if (label === "strong" || label === "good") return "healthy";
+  if (label === "mixed" || label === "limited_data") return "warning";
+  return "error";
 }

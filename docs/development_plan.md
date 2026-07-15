@@ -108,7 +108,7 @@
 - [x] Добавить API для поиска объектов ниже рынка и hidden gems.
 - [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
 - [ ] Добавить developer filters/sort: developer reputation, active projects, completed projects, legal-risk flags, quality confidence.
-- [ ] Добавить public API для рейтинга застройщиков, developer detail и lookup developer-by-listing.
+- [x] Добавить public API для рейтинга застройщиков, developer detail и lookup developer-by-listing.
 
 ## 4.1 Hybrid User-Provided Listing Flow
 
@@ -187,7 +187,7 @@
 - [ ] Добавить risk factors: noise, flood, pollution, airport/rail/industrial zones, oversupply, weak transport, weak rental yield.
 - [ ] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
 - [x] Добавить mortgage affordability и total purchase cost inputs в buyer analytics.
-- [ ] Добавить Developer Reputation Score v1: track record, delivery reliability, defect signals, legal/UOKiK risk, KRS/REGON stability, transparency, confidence.
+- [x] Добавить Developer Reputation Score v1: track record, delivery reliability, defect signals, legal/UOKiK risk, KRS/REGON stability, transparency, confidence.
 - [ ] Добавить backtesting отчеты по drift/ошибке fair price estimate.
 
 ## 7. Reports
@@ -215,7 +215,7 @@
 - [x] Добавить bundles: package of 5 reports.
 - [x] Добавить white-label PDF controls для logo, colors, footer и agency disclaimer.
 - [x] Добавить export reports в CSV/JSON для realtor/investor workflows.
-- [ ] Добавить секцию застройщика в buyer/investor/realtor reports: кто строил, сильные стороны, риски, что проверить, source citations.
+- [x] Добавить секцию застройщика в buyer/investor/realtor reports: кто строил, сильные стороны, риски, что проверить, source citations.
 - [ ] Добавить developer reputation block в user-submitted link reports для Otodom/OLX/new-build объектов, если застройщик распознан.
 
 ## 8. Users, Auth и Payments
@@ -276,9 +276,10 @@
 - [x] Сделать страницу “Проверить квартиру” для user-submitted listing: адрес/URL/ручные параметры.
 - [x] Сделать страницу истории user-submitted private drafts.
 - [x] Добавить управление agency workspace и участниками на account page.
-- [ ] Сделать developer ranking page.
+- [x] Сделать developer ranking page.
 - [ ] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
-- [ ] Добавить developer block на listing detail и compare page.
+- [x] Добавить developer block на listing detail page.
+- [ ] Добавить developer block на compare page.
 - [ ] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
@@ -487,7 +488,7 @@
 - [x] Commit 62: hidden gems search mode.
 - [x] Commit 63: proximity filters for search and hidden gems.
 - [x] Commit 64: text and address search for listings.
-- [ ] Commit 65: developer reputation data model and source-backed report section.
+- [x] Commit 65: developer reputation data model and source-backed report section.
 
 ## Current Sprint
 
@@ -549,7 +550,7 @@
 - [x] Добавить hidden gems search mode: API, ranked signals и frontend режим с investor-фильтрами.
 - [x] Добавить proximity-фильтры в search/hidden gems: центр, остановка, школа, major road и industrial zone.
 - [x] Добавить text/address search в listings, hidden gems и saved-search alerts.
-- [ ] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
+- [x] Добавить developer reputation/ranking foundation: data model, sources, score, report section и frontend ranking.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

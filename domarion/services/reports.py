@@ -1,4 +1,5 @@
 from domarion.schemas import (
+    DeveloperReputation,
     ListingAnalysis,
     ObjectReport,
     ReportAudience,
@@ -30,6 +31,9 @@ def build_object_report(
         f"Investment Score {scores.investment_score}/100, "
         f"Risk Score {scores.risk_score}/100, Negotiation Score {scores.negotiation_score}/100."
     )
+    sections = template.build_sections(analysis)
+    if analysis.developer_reputation is not None:
+        sections.append(_developer_reputation_section(analysis.developer_reputation))
 
     return ObjectReport(
         listing_id=listing.id,
@@ -38,7 +42,7 @@ def build_object_report(
         template_name=template.name,
         branding=branding if _has_branding(branding) else None,
         summary=summary,
-        sections=template.build_sections(analysis),
+        sections=sections,
         disclaimer=(
             "Отчет является аналитической оценкой на основе доступных данных платформы. "
             "Это не финансовая, юридическая или инвестиционная рекомендация."
@@ -80,6 +84,49 @@ def _label_text(value: str) -> str:
         "overpriced": "похоже дорого",
         "risky": "высокий риск",
         "weak_fit": "слабое совпадение",
+    }.get(value, value)
+
+
+def _developer_reputation_section(reputation: DeveloperReputation) -> ReportSection:
+    developer = reputation.developer
+    items = [
+        (
+            f"{developer.name}: рейтинг {reputation.reputation_score}/100 "
+            f"({_developer_label_text(reputation.label)}), "
+            f"уверенность данных {reputation.confidence_score}/100."
+        ),
+        (
+            f"История: сдано {reputation.completed_projects_count}, "
+            f"активных проектов {reputation.active_projects_count}; "
+            f"локальный опыт {reputation.local_experience_score}/100."
+        ),
+        (
+            f"Факторы: track record {reputation.track_record_score}/100, "
+            f"delivery {reputation.delivery_score}/100, "
+            f"technical quality {reputation.technical_quality_score}/100, "
+            f"transparency {reputation.transparency_score}/100."
+        ),
+    ]
+    if reputation.positive_signals:
+        items.append(f"Позитивные сигналы: {'; '.join(reputation.positive_signals[:3])}.")
+    if reputation.risk_signals:
+        items.append(f"Риски/проверки: {'; '.join(reputation.risk_signals[:3])}.")
+    items.extend(reputation.due_diligence_questions[:4])
+    if reputation.source_citations:
+        sources = ", ".join(
+            citation.source_name for citation in reputation.source_citations[:4]
+        )
+        items.append(f"Источники блока: {sources}. Данные требуют финальной проверки.")
+    return ReportSection(title="Застройщик и репутация", items=_deduplicate(items))
+
+
+def _developer_label_text(value: str) -> str:
+    return {
+        "strong": "сильный профиль",
+        "good": "хороший профиль",
+        "mixed": "смешанный профиль",
+        "limited_data": "мало данных",
+        "risk_review": "нужна углубленная проверка",
     }.get(value, value)
 
 

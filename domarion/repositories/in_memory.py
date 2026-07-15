@@ -12,6 +12,11 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperProfile,
+    DeveloperProject,
+    DeveloperQualitySignal,
+    DeveloperReputation,
+    DeveloperSourceCitation,
     DistrictReference,
     IndustrialZoneReference,
     KindergartenReference,
@@ -192,6 +197,156 @@ class InMemoryRealEstateRepository:
             ),
         }
         self._load_partner_listing_sample("partner_listings_suburban.csv")
+
+        self._developer_profiles = {
+            "demo-development": DeveloperProfile(
+                id="demo-development",
+                name="Demo Development",
+                legal_name="Demo Development S.A.",
+                brand_names=["Demo Developer"],
+                krs="0000123456",
+                nip="8990000001",
+                regon="930000001",
+                website_url="https://example-developer.test",
+                headquarters_city="Wrocław",
+                founded_year=2012,
+                source_names=["Demo Developer Feed", "KRS/REGON sample"],
+                updated_at=date(2026, 7, 10),
+            ),
+            "fabryczna-estate-partners": DeveloperProfile(
+                id="fabryczna-estate-partners",
+                name="Fabryczna Estate Partners",
+                legal_name="Fabryczna Estate Partners sp. z o.o.",
+                brand_names=["FEP"],
+                krs="0000234567",
+                nip="8990000002",
+                regon="930000002",
+                website_url="https://example.com/developers/fep",
+                headquarters_city="Wrocław",
+                founded_year=2008,
+                source_names=["Partner Agency Demo", "Manual due diligence sample"],
+                updated_at=date(2026, 7, 10),
+            ),
+            "green-north-homes": DeveloperProfile(
+                id="green-north-homes",
+                name="Green North Homes",
+                legal_name="Green North Homes sp. z o.o.",
+                brand_names=["Green North"],
+                krs="0000345678",
+                nip="8990000003",
+                regon="930000003",
+                website_url="https://example.com/developers/green-north",
+                headquarters_city="Wrocław",
+                founded_year=2016,
+                source_names=["Partner Agency Demo", "Technical acceptance sample"],
+                updated_at=date(2026, 7, 10),
+            ),
+        }
+        self._developer_projects = [
+            DeveloperProject(
+                id="demo-jagodno-gardens",
+                developer_id="demo-development",
+                name="Jagodno Gardens",
+                city="Wrocław",
+                district="Krzyki",
+                status="active",
+                units_count=148,
+                completed_year=None,
+                source_url="https://example-developer.test/projects/jagodno-gardens",
+            ),
+            DeveloperProject(
+                id="demo-krzyki-park",
+                developer_id="demo-development",
+                name="Krzyki Park Residence",
+                city="Wrocław",
+                district="Krzyki",
+                status="completed",
+                units_count=96,
+                completed_year=2024,
+                source_url="https://example-developer.test/projects/krzyki-park",
+            ),
+            DeveloperProject(
+                id="fep-nowy-dwor",
+                developer_id="fabryczna-estate-partners",
+                name="Nowy Dwór Residence",
+                city="Wrocław",
+                district="Fabryczna",
+                status="completed",
+                units_count=120,
+                completed_year=2012,
+                source_url="https://example.com/developers/fep/nowy-dwor",
+            ),
+            DeveloperProject(
+                id="green-north-soltysowice",
+                developer_id="green-north-homes",
+                name="Sołtysowice Green",
+                city="Wrocław",
+                district="Psie Pole",
+                status="completed",
+                units_count=84,
+                completed_year=2007,
+                source_url="https://example.com/developers/green-north/soltysowice",
+            ),
+        ]
+        self._developer_quality_signals = [
+            DeveloperQualitySignal(
+                id="demo-transparency",
+                developer_id="demo-development",
+                signal_type="transparency",
+                severity="positive",
+                title="Clear investment documentation",
+                summary="Sample feed includes project pages, schedules and contact-free metadata.",
+                source_name="Demo Developer Feed",
+                source_url="https://example-developer.test",
+                observed_at=date(2026, 7, 10),
+                confidence_score=72,
+            ),
+            DeveloperQualitySignal(
+                id="demo-local-track-record",
+                developer_id="demo-development",
+                signal_type="local_market",
+                severity="positive",
+                title="Recent Wrocław project experience",
+                summary="Two sample projects are linked to Wrocław districts in the demo dataset.",
+                source_name="Demo Developer Feed",
+                source_url="https://example-developer.test/projects",
+                observed_at=date(2026, 7, 10),
+                confidence_score=68,
+            ),
+            DeveloperQualitySignal(
+                id="fep-track-record",
+                developer_id="fabryczna-estate-partners",
+                signal_type="track_record",
+                severity="info",
+                title="Older completed project",
+                summary=(
+                    "The linked building was completed in 2012; "
+                    "verify current management and defects."
+                ),
+                source_name="Partner Agency Demo",
+                source_url="https://example.com/listings/wr-001",
+                observed_at=date(2026, 7, 10),
+                confidence_score=55,
+            ),
+            DeveloperQualitySignal(
+                id="green-north-defects",
+                developer_id="green-north-homes",
+                signal_type="technical_quality",
+                severity="warning",
+                title="Manual inspection recommended",
+                summary="Older low-rise stock; check roof, insulation and common-area maintenance.",
+                source_name="Technical acceptance sample",
+                source_url="https://example.com/developers/green-north/quality",
+                observed_at=date(2026, 7, 10),
+                confidence_score=58,
+            ),
+        ]
+        self._listing_developer_map = {
+            "wr-001": "fabryczna-estate-partners",
+            "wr-002": "demo-development",
+            "wr-003": "green-north-homes",
+            "partner-002": "demo-development",
+        }
 
         self._planned_investments = {
             "pi-001": PlannedInvestment(
@@ -498,6 +653,45 @@ class InMemoryRealEstateRepository:
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
         return self._areas.get(area_id)
 
+    def list_developer_reputations(
+        self,
+        city: str | None = None,
+    ) -> list[DeveloperReputation]:
+        reputations = [
+            reputation
+            for developer_id in self._developer_profiles
+            if (reputation := self._build_developer_reputation(developer_id)) is not None
+        ]
+        if city:
+            city_key = city.casefold()
+            reputations = [
+                item
+                for item in reputations
+                if any(project.city.casefold() == city_key for project in item.projects)
+            ]
+
+        return sorted(
+            reputations,
+            key=lambda item: (
+                item.reputation_score,
+                item.confidence_score,
+                item.completed_projects_count,
+            ),
+            reverse=True,
+        )
+
+    def get_developer_reputation(self, developer_id: str) -> DeveloperReputation | None:
+        return self._build_developer_reputation(developer_id)
+
+    def get_developer_reputation_for_listing(
+        self,
+        listing_id: str,
+    ) -> DeveloperReputation | None:
+        developer_id = self._listing_developer_map.get(listing_id)
+        if developer_id is None:
+            return None
+        return self._build_developer_reputation(developer_id)
+
     def list_municipalities(self) -> list[MunicipalityReference]:
         municipalities = []
         cities = sorted(
@@ -799,6 +993,120 @@ class InMemoryRealEstateRepository:
 
         return [event.to_schema() for event in derive_listing_events(snapshots)]
 
+    def _build_developer_reputation(
+        self,
+        developer_id: str,
+    ) -> DeveloperReputation | None:
+        profile = self._developer_profiles.get(developer_id)
+        if profile is None:
+            return None
+
+        projects = self._developer_projects_for(developer_id)
+        signals = self._developer_signals_for(developer_id)
+        completed_projects_count = sum(1 for project in projects if project.status == "completed")
+        active_projects_count = sum(1 for project in projects if project.status == "active")
+        local_projects_count = sum(
+            1 for project in projects if project.city.casefold() == "Wrocław".casefold()
+        )
+
+        track_record_score = _clamp_score(
+            45 + completed_projects_count * 13 + active_projects_count * 4
+        )
+        delivery_score = _developer_factor_score(signals, "delivery", base=62)
+        technical_quality_score = _developer_factor_score(signals, "technical_quality", base=64)
+        legal_compliance_score = _developer_factor_score(signals, "legal", base=66)
+        financial_stability_score = _developer_factor_score(signals, "financial", base=62)
+        transparency_score = _developer_factor_score(signals, "transparency", base=58)
+        local_experience_score = _clamp_score(42 + local_projects_count * 12)
+
+        reputation_score = _clamp_score(
+            track_record_score * 0.20
+            + delivery_score * 0.15
+            + technical_quality_score * 0.17
+            + legal_compliance_score * 0.14
+            + financial_stability_score * 0.12
+            + transparency_score * 0.10
+            + local_experience_score * 0.12
+        )
+        confidence_score = _clamp_score(
+            34
+            + len(set(profile.source_names)) * 8
+            + min(len(signals), 8) * 5
+            + min(len(projects), 10) * 4
+        )
+        risk_signals = [
+            signal.summary
+            for signal in signals
+            if signal.severity in {"warning", "risk"}
+        ]
+        positive_signals = [
+            signal.summary
+            for signal in signals
+            if signal.severity == "positive"
+        ]
+
+        if any(signal.severity == "risk" for signal in signals):
+            label = "risk_review"
+        elif reputation_score >= 75 and confidence_score >= 60:
+            label = "strong"
+        elif reputation_score >= 65:
+            label = "good"
+        elif reputation_score >= 52:
+            label = "mixed"
+        else:
+            label = "limited_data"
+
+        return DeveloperReputation(
+            developer=profile,
+            reputation_score=reputation_score,
+            confidence_score=confidence_score,
+            label=label,
+            track_record_score=track_record_score,
+            delivery_score=delivery_score,
+            technical_quality_score=technical_quality_score,
+            legal_compliance_score=legal_compliance_score,
+            financial_stability_score=financial_stability_score,
+            transparency_score=transparency_score,
+            local_experience_score=local_experience_score,
+            completed_projects_count=completed_projects_count,
+            active_projects_count=active_projects_count,
+            positive_signals=positive_signals,
+            risk_signals=risk_signals,
+            due_diligence_questions=_developer_due_diligence_questions(
+                reputation_score=reputation_score,
+                confidence_score=confidence_score,
+                risk_signals=risk_signals,
+                active_projects_count=active_projects_count,
+            ),
+            source_citations=_developer_source_citations(profile, signals),
+            projects=projects,
+            quality_signals=signals,
+        )
+
+    def _developer_projects_for(self, developer_id: str) -> list[DeveloperProject]:
+        return sorted(
+            [
+                project
+                for project in self._developer_projects
+                if project.developer_id == developer_id
+            ],
+            key=lambda project: (
+                project.status != "active",
+                -(project.completed_year or 0),
+                project.name,
+            ),
+        )
+
+    def _developer_signals_for(self, developer_id: str) -> list[DeveloperQualitySignal]:
+        return sorted(
+            [
+                signal
+                for signal in self._developer_quality_signals
+                if signal.developer_id == developer_id
+            ],
+            key=lambda signal: (signal.severity != "risk", signal.severity, signal.title),
+        )
+
     def _load_area_statistics_sample(self, file_name: str) -> None:
         sample_path = Path(__file__).resolve().parents[2] / "data" / "samples" / file_name
         if not sample_path.exists():
@@ -856,6 +1164,93 @@ class InMemoryRealEstateRepository:
             for listing in self._listings.values()
             if listing.district == district
         )
+
+
+def _developer_factor_score(
+    signals: list[DeveloperQualitySignal],
+    signal_type: str,
+    *,
+    base: int,
+) -> int:
+    score = base
+    for signal in signals:
+        if signal.signal_type != signal_type:
+            continue
+        if signal.severity == "positive":
+            score += 12
+        elif signal.severity == "info":
+            score += 3
+        elif signal.severity == "warning":
+            score -= 14
+        elif signal.severity == "risk":
+            score -= 28
+    return _clamp_score(score)
+
+
+def _developer_due_diligence_questions(
+    *,
+    reputation_score: int,
+    confidence_score: int,
+    risk_signals: list[str],
+    active_projects_count: int,
+) -> list[str]:
+    questions = [
+        "Запросить стандарт девелоперского договора, prospekt informacyjny и график платежей.",
+        "Проверить KRS/REGON/NIP, представительство подписанта и отсутствие явных судебных рисков.",
+        (
+            "Сверить разрешение на строительство, rachunek powierniczy "
+            "и статус Deweloperski Fundusz Gwarancyjny."
+        ),
+    ]
+    if active_projects_count:
+        questions.append(
+            "По активному проекту проверить срок сдачи, этап строительства и штрафы за задержку."
+        )
+    if reputation_score < 65 or risk_signals:
+        questions.append(
+            "Заказать техническую приемку и проверить отзывы жильцов по уже сданным объектам."
+        )
+    if confidence_score < 65:
+        questions.append(
+            "Данных пока мало: подтвердить историю проектов минимум из двух независимых источников."
+        )
+    return questions
+
+
+def _developer_source_citations(
+    profile: DeveloperProfile,
+    signals: list[DeveloperQualitySignal],
+) -> list[DeveloperSourceCitation]:
+    citations = [
+        DeveloperSourceCitation(
+            source_name=source_name,
+            source_url=profile.website_url,
+            checked_at=profile.updated_at,
+            note=(
+                "Sample or partner source; replace with verified registry data "
+                "before paid decisions."
+            ),
+        )
+        for source_name in profile.source_names
+    ]
+    seen = {citation.source_name for citation in citations}
+    for signal in signals:
+        if signal.source_name in seen:
+            continue
+        seen.add(signal.source_name)
+        citations.append(
+            DeveloperSourceCitation(
+                source_name=signal.source_name,
+                source_url=signal.source_url,
+                checked_at=signal.observed_at or profile.updated_at,
+                note=signal.title,
+            )
+        )
+    return citations
+
+
+def _clamp_score(value: float) -> int:
+    return int(max(0, min(100, round(value))))
 
 
 def _validate_spatial_args(

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   BarChart3,
   Bell,
+  Building2,
   Calculator,
   ClipboardCheck,
   Columns3,
@@ -57,6 +58,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/areas">
                 <MapPinned size={18} />
                 Районы
+              </Link>
+              <Link href="/developers">
+                <Building2 size={18} />
+                Застройщики
               </Link>
               <Link href="/market">
                 <TrendingUp size={18} />

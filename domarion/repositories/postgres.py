@@ -29,6 +29,7 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
     KindergartenReference,
@@ -109,6 +110,21 @@ class PostgresRealEstateRepository:
         if row is None:
             return None
         return self._area_to_schema(row)
+
+    def list_developer_reputations(
+        self,
+        city: str | None = None,
+    ) -> list[DeveloperReputation]:
+        return []
+
+    def get_developer_reputation(self, developer_id: str) -> DeveloperReputation | None:
+        return None
+
+    def get_developer_reputation_for_listing(
+        self,
+        listing_id: str,
+    ) -> DeveloperReputation | None:
+        return None
 
     def list_municipalities(self) -> list[MunicipalityReference]:
         rows = self.session.scalars(select(Municipality).order_by(Municipality.name)).all()
