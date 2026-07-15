@@ -277,7 +277,7 @@
 - [x] Сделать страницу истории user-submitted private drafts.
 - [x] Добавить управление agency workspace и участниками на account page.
 - [x] Сделать developer ranking page.
-- [ ] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
+- [x] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
 - [x] Добавить developer block на listing detail page.
 - [x] Добавить developer block на compare page.
 - [ ] Сделать news page.

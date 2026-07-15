@@ -149,7 +149,11 @@ export default function ComparePage() {
                   </small>
                   {analysis.developer_reputation ? (
                     <small>
-                      Застройщик: {analysis.developer_reputation.developer.name} ·{" "}
+                      Застройщик:{" "}
+                      <Link href={`/developers/${analysis.developer_reputation.developer.id}`}>
+                        {analysis.developer_reputation.developer.name}
+                      </Link>{" "}
+                      ·{" "}
                       {analysis.developer_reputation.reputation_score}/100
                     </small>
                   ) : null}
@@ -217,7 +221,9 @@ export default function ComparePage() {
                       <span className={`status-pill ${developerTone(item.developer_reputation)}`}>
                         {developerLabel(item.developer_reputation)}
                       </span>
-                      <span>{item.developer_reputation.developer.name}</span>
+                      <Link href={`/developers/${item.developer_reputation.developer.id}`}>
+                        {item.developer_reputation.developer.name}
+                      </Link>
                     </div>
                   ) : null}
                 </article>

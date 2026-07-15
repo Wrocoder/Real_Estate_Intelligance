@@ -59,5 +59,5 @@ Every object report should include a developer section when developer data exist
 5. [x] Add developer section to object reports.
 6. [x] Add developer reputation block to user-submitted link reports when developer is recognized.
 7. [x] Frontend ranking page and developer block on listing detail.
-8. [ ] Dedicated developer profile page with source freshness and project timeline.
+8. [x] Dedicated developer profile page with source freshness and project timeline.
 9. [ ] Add source citation and dispute-correction workflow.

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Building2, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
@@ -148,6 +149,7 @@ export default function DevelopersPage() {
                     <th>Уверенность</th>
                     <th>Проекты</th>
                     <th>Сигналы</th>
+                    <th>Профиль</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,6 +175,15 @@ export default function DevelopersPage() {
                         {item.completed_projects_count} сдано / {item.active_projects_count} активно
                       </td>
                       <td>{item.quality_signals.length}</td>
+                      <td>
+                        <Link
+                          className="button"
+                          href={`/developers/${item.developer.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          Открыть
+                        </Link>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -190,7 +201,18 @@ export default function DevelopersPage() {
               ) : null}
             </div>
             <div className="panel-body">
-              {selected ? <DeveloperDetails reputation={selected} /> : "Нет данных"}
+              {selected ? (
+                <>
+                  <div className="button-row" style={{ marginBottom: 12 }}>
+                    <Link className="button primary" href={`/developers/${selected.developer.id}`}>
+                      <Building2 size={16} /> Открыть профиль
+                    </Link>
+                  </div>
+                  <DeveloperDetails reputation={selected} />
+                </>
+              ) : (
+                "Нет данных"
+              )}
             </div>
           </aside>
         </div>

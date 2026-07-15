@@ -708,6 +708,11 @@ function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputat
           <Building2 size={16} /> {reputation.developer.name}
         </li>
         <li>
+          <Link className="button" href={`/developers/${reputation.developer.id}`}>
+            Профиль застройщика
+          </Link>
+        </li>
+        <li>
           Рейтинг {reputation.reputation_score}/100, уверенность{" "}
           {reputation.confidence_score}/100.
         </li>
