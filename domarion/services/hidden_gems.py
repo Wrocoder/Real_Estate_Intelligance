@@ -3,6 +3,7 @@ from typing import Any
 
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import HiddenGemItem, HiddenGemsResponse, ListingAnalysis, MarketType
+from domarion.services.building_filters import matches_building_filters
 from domarion.services.developer_filters import matches_developer_reputation_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
@@ -25,6 +26,11 @@ def find_hidden_gems(
     market_type: MarketType | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
+    min_floor: int | None = None,
+    max_floor: int | None = None,
+    max_building_floors: int | None = None,
+    min_building_year: int | None = None,
+    max_building_year: int | None = None,
     max_distance_to_center_km: float | None = None,
     max_nearest_stop_m: int | None = None,
     max_nearest_school_m: int | None = None,
@@ -59,6 +65,15 @@ def find_hidden_gems(
         if not listing_matches_query(listing, query):
             continue
         if market_type is not None and listing.market_type != market_type:
+            continue
+        if not matches_building_filters(
+            listing,
+            min_floor=min_floor,
+            max_floor=max_floor,
+            max_building_floors=max_building_floors,
+            min_building_year=min_building_year,
+            max_building_year=max_building_year,
+        ):
             continue
         if listing.data_quality_score < min_data_quality_score:
             continue
@@ -149,6 +164,11 @@ def find_hidden_gems(
             market_type=market_type,
             max_price=max_price,
             min_area_m2=min_area_m2,
+            min_floor=min_floor,
+            max_floor=max_floor,
+            max_building_floors=max_building_floors,
+            min_building_year=min_building_year,
+            max_building_year=max_building_year,
             max_distance_to_center_km=max_distance_to_center_km,
             max_nearest_stop_m=max_nearest_stop_m,
             max_nearest_school_m=max_nearest_school_m,

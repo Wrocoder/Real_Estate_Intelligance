@@ -102,6 +102,7 @@
 - [ ] Подключить OpenSearch или PostgreSQL full-text indexes для production-scale поиска.
 - [x] Добавить saved searches.
 - [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
+- [x] Добавить floor/building floors/building year range filters в listings, hidden gems, map и saved-search alerts.
 - [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
 - [x] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
 - [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
@@ -575,6 +576,7 @@
 - [x] Добавить source-grounded area impact AI summary API/UI: posture, buyer/investor notes, citations, guardrails and saved area insight.
 - [x] Добавить news v1: article schema/store, manual admin ingestion, public news page, category/area-impact fields and source-grounded news AI summary.
 - [x] Добавить area-aware news linking в UI: area query filter, area SEO links and listing detail related news.
+- [x] Добавить floor/year filters в search stack: listings API, hidden gems, map query, explorer UI и saved-search alerts.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

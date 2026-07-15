@@ -1338,6 +1338,11 @@ export type ListingSearchQuery = {
   max_price_per_m2?: number;
   min_area_m2?: number;
   max_area_m2?: number;
+  min_floor?: number;
+  max_floor?: number;
+  max_building_floors?: number;
+  min_building_year?: number;
+  max_building_year?: number;
   max_days_on_market?: number;
   max_distance_to_center_km?: number;
   max_nearest_stop_m?: number;
@@ -1382,6 +1387,11 @@ export type HiddenGemQuery = {
   market_type?: "primary" | "secondary";
   max_price?: number;
   min_area_m2?: number;
+  min_floor?: number;
+  max_floor?: number;
+  max_building_floors?: number;
+  min_building_year?: number;
+  max_building_year?: number;
   max_distance_to_center_km?: number;
   max_nearest_stop_m?: number;
   max_nearest_school_m?: number;
@@ -1783,6 +1793,11 @@ export type AlertFilters = {
   rooms?: number | null;
   max_price?: number | null;
   min_area_m2?: number | null;
+  min_floor?: number | null;
+  max_floor?: number | null;
+  max_building_floors?: number | null;
+  min_building_year?: number | null;
+  max_building_year?: number | null;
   min_investment_score?: number | null;
   max_risk_score?: number | null;
 };
@@ -1889,6 +1904,11 @@ export type MapQuery = {
   rooms?: number;
   max_price?: number;
   min_area_m2?: number;
+  min_floor?: number;
+  max_floor?: number;
+  max_building_floors?: number;
+  min_building_year?: number;
+  max_building_year?: number;
   bbox?: string;
   lat?: number;
   lon?: number;

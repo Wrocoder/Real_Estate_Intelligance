@@ -66,6 +66,34 @@ def test_map_features_supports_radius_and_score_filters() -> None:
     )
 
 
+def test_map_features_supports_floor_and_building_year_filters() -> None:
+    response = client.get(
+        "/api/v1/map/features",
+        params={
+            "city": "Wrocław",
+            "min_floor": 2,
+            "max_floor": 4,
+            "max_building_floors": 6,
+            "min_building_year": 2010,
+            "max_building_year": 2013,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["filters"]["min_floor"] == 2
+    assert payload["metadata"]["filters"]["max_building_year"] == 2013
+    listing_features = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "listing"
+    ]
+    assert {feature["properties"]["listing_id"] for feature in listing_features} == {"wr-001"}
+    assert listing_features[0]["properties"]["floor"] == 3
+    assert listing_features[0]["properties"]["building_floors"] == 6
+    assert listing_features[0]["properties"]["building_year"] == 2012
+
+
 def test_map_features_rejects_invalid_bbox() -> None:
     response = client.get("/api/v1/map/features", params={"bbox": "not-a-bbox"})
 

@@ -8,6 +8,7 @@ from domarion.schemas import (
     ListingSort,
     MarketType,
 )
+from domarion.services.building_filters import matches_building_filters
 from domarion.services.developer_filters import matches_developer_reputation_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
@@ -31,6 +32,11 @@ def search_listing_analyses(
     max_price_per_m2: int | None = None,
     min_area_m2: float | None = None,
     max_area_m2: float | None = None,
+    min_floor: int | None = None,
+    max_floor: int | None = None,
+    max_building_floors: int | None = None,
+    min_building_year: int | None = None,
+    max_building_year: int | None = None,
     max_days_on_market: int | None = None,
     max_distance_to_center_km: float | None = None,
     max_nearest_stop_m: int | None = None,
@@ -81,6 +87,11 @@ def search_listing_analyses(
             min_price_per_m2=min_price_per_m2,
             max_price_per_m2=max_price_per_m2,
             max_area_m2=max_area_m2,
+            min_floor=min_floor,
+            max_floor=max_floor,
+            max_building_floors=max_building_floors,
+            min_building_year=min_building_year,
+            max_building_year=max_building_year,
             max_days_on_market=max_days_on_market,
             max_distance_to_center_km=max_distance_to_center_km,
             max_nearest_stop_m=max_nearest_stop_m,
@@ -152,6 +163,11 @@ def search_listing_analyses(
             "max_price_per_m2": max_price_per_m2,
             "min_area_m2": min_area_m2,
             "max_area_m2": max_area_m2,
+            "min_floor": min_floor,
+            "max_floor": max_floor,
+            "max_building_floors": max_building_floors,
+            "min_building_year": min_building_year,
+            "max_building_year": max_building_year,
             "max_days_on_market": max_days_on_market,
             "max_distance_to_center_km": max_distance_to_center_km,
             "max_nearest_stop_m": max_nearest_stop_m,
@@ -186,6 +202,11 @@ def _matches_listing_filters(
     min_price_per_m2: int | None,
     max_price_per_m2: int | None,
     max_area_m2: float | None,
+    min_floor: int | None,
+    max_floor: int | None,
+    max_building_floors: int | None,
+    min_building_year: int | None,
+    max_building_year: int | None,
     max_days_on_market: int | None,
     max_distance_to_center_km: float | None,
     max_nearest_stop_m: int | None,
@@ -208,6 +229,15 @@ def _matches_listing_filters(
     if max_price_per_m2 is not None and listing.price_per_m2 > max_price_per_m2:
         return False
     if max_area_m2 is not None and listing.area_m2 > max_area_m2:
+        return False
+    if not matches_building_filters(
+        listing,
+        min_floor=min_floor,
+        max_floor=max_floor,
+        max_building_floors=max_building_floors,
+        min_building_year=min_building_year,
+        max_building_year=max_building_year,
+    ):
         return False
     if max_days_on_market is not None and listing.days_on_market > max_days_on_market:
         return False

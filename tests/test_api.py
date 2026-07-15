@@ -133,6 +133,36 @@ def test_listings_support_proximity_filters() -> None:
         assert listing["nearest_industrial_zone_m"] >= 900
 
 
+def test_listings_support_floor_and_building_year_filters() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={
+            "city": "Wrocław",
+            "min_floor": 2,
+            "max_floor": 4,
+            "max_building_floors": 6,
+            "min_building_year": 2010,
+            "max_building_year": 2013,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["min_floor"] == 2
+    assert payload["filters"]["max_building_floors"] == 6
+    assert payload["filters"]["min_building_year"] == 2010
+    assert payload["total"] >= 1
+    for item in payload["items"]:
+        listing = item["listing"]
+        assert listing["floor"] is not None
+        assert 2 <= listing["floor"] <= 4
+        assert listing["building_floors"] is not None
+        assert listing["building_floors"] <= 6
+        assert listing["building_year"] is not None
+        assert 2010 <= listing["building_year"] <= 2013
+
+
 def test_hidden_gems_returns_ranked_candidates() -> None:
     response = client.get(
         "/api/v1/listings/hidden-gems",
@@ -182,6 +212,35 @@ def test_hidden_gems_support_text_query_search() -> None:
     assert payload["total"] == 1
     assert payload["items"][0]["analysis"]["listing"]["id"] == "wr-001"
     assert payload["items"][0]["signals"]
+
+
+def test_hidden_gems_support_floor_and_building_year_filters() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "city": "Wrocław",
+            "query": "Nowy Dwor",
+            "min_floor": 2,
+            "max_floor": 4,
+            "max_building_floors": 6,
+            "min_building_year": 2010,
+            "max_building_year": 2013,
+            "min_investment_score": 40,
+            "max_risk_score": 70,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["max_floor"] == 4
+    assert payload["filters"]["max_building_year"] == 2013
+    assert payload["total"] == 1
+    listing = payload["items"][0]["analysis"]["listing"]
+    assert listing["id"] == "wr-001"
+    assert listing["floor"] == 3
+    assert listing["building_floors"] == 6
+    assert listing["building_year"] == 2012
 
 
 def test_hidden_gems_support_developer_reputation_filters() -> None:

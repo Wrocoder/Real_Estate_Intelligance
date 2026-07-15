@@ -2333,6 +2333,11 @@ class AlertFilters(BaseModel):
     rooms: int | None = Field(default=None, ge=1, le=10)
     max_price: int | None = Field(default=None, gt=0)
     min_area_m2: float | None = Field(default=None, gt=0)
+    min_floor: int | None = Field(default=None, ge=0, le=80)
+    max_floor: int | None = Field(default=None, ge=0, le=80)
+    max_building_floors: int | None = Field(default=None, ge=1, le=120)
+    min_building_year: int | None = Field(default=None, ge=1800, le=2100)
+    max_building_year: int | None = Field(default=None, ge=1800, le=2100)
     min_investment_score: int | None = Field(default=None, ge=0, le=100)
     max_risk_score: int | None = Field(default=None, ge=0, le=100)
 

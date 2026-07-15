@@ -18,6 +18,11 @@ export default function AlertsPage() {
     query: "",
     district: "Fabryczna",
     maxPrice: "700000",
+    minFloor: "",
+    maxFloor: "",
+    maxBuildingFloors: "",
+    minBuildingYear: "",
+    maxBuildingYear: "",
     minInvestment: "40",
     channel: "email" as "email" | "telegram",
     frequency: "daily" as "instant" | "daily" | "weekly",
@@ -52,6 +57,13 @@ export default function AlertsPage() {
         query: form.query || null,
         district: form.district || null,
         max_price: form.maxPrice ? Number(form.maxPrice) : null,
+        min_floor: form.minFloor ? Number(form.minFloor) : null,
+        max_floor: form.maxFloor ? Number(form.maxFloor) : null,
+        max_building_floors: form.maxBuildingFloors
+          ? Number(form.maxBuildingFloors)
+          : null,
+        min_building_year: form.minBuildingYear ? Number(form.minBuildingYear) : null,
+        max_building_year: form.maxBuildingYear ? Number(form.maxBuildingYear) : null,
         min_investment_score: form.minInvestment ? Number(form.minInvestment) : null,
       },
       channel: form.channel,
@@ -124,6 +136,57 @@ export default function AlertsPage() {
               inputMode="numeric"
               value={form.maxPrice}
               onChange={(event) => setForm({ ...form, maxPrice: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этаж от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minFloor}
+              onChange={(event) => setForm({ ...form, minFloor: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этаж до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.maxFloor}
+              onChange={(event) => setForm({ ...form, maxFloor: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этажность до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.maxBuildingFloors}
+              onChange={(event) =>
+                setForm({ ...form, maxBuildingFloors: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Год дома от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minBuildingYear}
+              onChange={(event) =>
+                setForm({ ...form, minBuildingYear: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Год дома до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.maxBuildingYear}
+              onChange={(event) =>
+                setForm({ ...form, maxBuildingYear: event.target.value })
+              }
             />
           </label>
           <label className="field">

@@ -1,5 +1,6 @@
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import Alert, AlertFilters, AlertPreview, ListingAnalysis
+from domarion.services.building_filters import matches_building_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -30,6 +31,18 @@ def find_alert_matches(
         min_area_m2=filters.min_area_m2,
     )
     listings = [listing for listing in listings if listing_matches_query(listing, filters.query)]
+    listings = [
+        listing
+        for listing in listings
+        if matches_building_filters(
+            listing,
+            min_floor=filters.min_floor,
+            max_floor=filters.max_floor,
+            max_building_floors=filters.max_building_floors,
+            min_building_year=filters.min_building_year,
+            max_building_year=filters.max_building_year,
+        )
+    ]
 
     analyses = [build_listing_analysis(repository, listing) for listing in listings]
 

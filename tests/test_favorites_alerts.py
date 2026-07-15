@@ -78,6 +78,11 @@ def test_alert_crud_and_preview() -> None:
                 "district": "Fabryczna",
                 "query": "Nowy Dwor",
                 "max_price": 700000,
+                "min_floor": 2,
+                "max_floor": 4,
+                "max_building_floors": 6,
+                "min_building_year": 2010,
+                "max_building_year": 2013,
                 "min_investment_score": 40,
             },
         },
@@ -88,6 +93,8 @@ def test_alert_crud_and_preview() -> None:
     assert payload["name"] == "Fabryczna hidden gems"
     assert payload["filters"]["district"] == "Fabryczna"
     assert payload["filters"]["query"] == "Nowy Dwor"
+    assert payload["filters"]["min_floor"] == 2
+    assert payload["filters"]["max_building_year"] == 2013
     assert payload["is_active"] is True
 
     alert_id = payload["id"]
@@ -97,6 +104,8 @@ def test_alert_crud_and_preview() -> None:
     assert preview["matches"][0]["listing"]["id"] == "wr-001"
     assert preview["applied_filters"]["query"] == "Nowy Dwor"
     assert preview["applied_filters"]["max_price"] == 700000
+    assert preview["applied_filters"]["max_building_floors"] == 6
+    assert preview["applied_filters"]["min_building_year"] == 2010
 
     updated = client.patch(
         f"/api/v1/alerts/{alert_id}?owner_id=buyer-1",

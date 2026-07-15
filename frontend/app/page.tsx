@@ -26,6 +26,11 @@ type Filters = {
   district: string;
   rooms: string;
   maxPrice: string;
+  minFloor: string;
+  maxFloor: string;
+  maxBuildingFloors: string;
+  minBuildingYear: string;
+  maxBuildingYear: string;
   maxFairDelta: string;
   minInvestment: string;
   maxRisk: string;
@@ -57,6 +62,11 @@ const defaultFilters: Filters = {
   district: "",
   rooms: "",
   maxPrice: "",
+  minFloor: "",
+  maxFloor: "",
+  maxBuildingFloors: "",
+  minBuildingYear: "",
+  maxBuildingYear: "",
   maxFairDelta: "",
   minInvestment: "",
   maxRisk: "",
@@ -158,6 +168,17 @@ export default function ExplorerPage() {
       district: filters.district || undefined,
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+      min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
+      max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
+      max_building_floors: filters.maxBuildingFloors
+        ? Number(filters.maxBuildingFloors)
+        : undefined,
+      min_building_year: filters.minBuildingYear
+        ? Number(filters.minBuildingYear)
+        : undefined,
+      max_building_year: filters.maxBuildingYear
+        ? Number(filters.maxBuildingYear)
+        : undefined,
       min_investment_score: filters.minInvestment ? Number(filters.minInvestment) : undefined,
       max_risk_score: filters.maxRisk ? Number(filters.maxRisk) : undefined,
       lat: radiusKm ? WROCLAW_CENTER.lat : undefined,
@@ -259,6 +280,17 @@ export default function ExplorerPage() {
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
+        min_floor: filters.minFloor ? Number(filters.minFloor) : null,
+        max_floor: filters.maxFloor ? Number(filters.maxFloor) : null,
+        max_building_floors: filters.maxBuildingFloors
+          ? Number(filters.maxBuildingFloors)
+          : null,
+        min_building_year: filters.minBuildingYear
+          ? Number(filters.minBuildingYear)
+          : null,
+        max_building_year: filters.maxBuildingYear
+          ? Number(filters.maxBuildingYear)
+          : null,
         min_investment_score: filters.minInvestment
           ? Number(filters.minInvestment)
           : null,
@@ -381,6 +413,56 @@ export default function ExplorerPage() {
               value={filters.maxPrice}
               placeholder="700000"
               onChange={(event) => updateFilters({ maxPrice: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этаж от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minFloor}
+              placeholder="1"
+              onChange={(event) => updateFilters({ minFloor: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этаж до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxFloor}
+              placeholder="5"
+              onChange={(event) => updateFilters({ maxFloor: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Этажность до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxBuildingFloors}
+              placeholder="8"
+              onChange={(event) => updateFilters({ maxBuildingFloors: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Год дома от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.minBuildingYear}
+              placeholder="2010"
+              onChange={(event) => updateFilters({ minBuildingYear: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Год дома до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={filters.maxBuildingYear}
+              placeholder="2026"
+              onChange={(event) => updateFilters({ maxBuildingYear: event.target.value })}
             />
           </label>
           <label className="field">
@@ -742,6 +824,17 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     district: filters.district || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
+    max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
+    max_building_floors: filters.maxBuildingFloors
+      ? Number(filters.maxBuildingFloors)
+      : undefined,
+    min_building_year: filters.minBuildingYear
+      ? Number(filters.minBuildingYear)
+      : undefined,
+    max_building_year: filters.maxBuildingYear
+      ? Number(filters.maxBuildingYear)
+      : undefined,
     min_investment_score: filters.minInvestment
       ? Number(filters.minInvestment)
       : undefined,
@@ -793,6 +886,17 @@ function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
     district: filters.district || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
+    max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
+    max_building_floors: filters.maxBuildingFloors
+      ? Number(filters.maxBuildingFloors)
+      : undefined,
+    min_building_year: filters.minBuildingYear
+      ? Number(filters.minBuildingYear)
+      : undefined,
+    max_building_year: filters.maxBuildingYear
+      ? Number(filters.maxBuildingYear)
+      : undefined,
     max_price_delta_to_fair_mid_pct: filters.maxFairDelta
       ? Number(filters.maxFairDelta)
       : undefined,

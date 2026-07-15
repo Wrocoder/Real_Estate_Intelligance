@@ -4,6 +4,7 @@ from typing import Any
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import Listing, MapFeature, MapFeatureCollection, MapPointGeometry
 from domarion.schemas import PlannedInvestment as PlannedInvestmentSchema
+from domarion.services.building_filters import matches_building_filters
 from domarion.services.scoring import build_listing_analysis
 
 BBox = tuple[float, float, float, float]
@@ -45,6 +46,11 @@ def build_map_feature_collection(
     rooms: int | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
+    min_floor: int | None = None,
+    max_floor: int | None = None,
+    max_building_floors: int | None = None,
+    min_building_year: int | None = None,
+    max_building_year: int | None = None,
     bbox: BBox | None = None,
     lat: float | None = None,
     lon: float | None = None,
@@ -80,6 +86,15 @@ def build_map_feature_collection(
 
     for listing in listings:
         if not _is_inside_spatial_window(listing.lat, listing.lon, bbox, lat, lon, radius_km):
+            continue
+        if not matches_building_filters(
+            listing,
+            min_floor=min_floor,
+            max_floor=max_floor,
+            max_building_floors=max_building_floors,
+            min_building_year=min_building_year,
+            max_building_year=max_building_year,
+        ):
             continue
 
         try:
@@ -128,6 +143,11 @@ def build_map_feature_collection(
                 "rooms": rooms,
                 "max_price": max_price,
                 "min_area_m2": min_area_m2,
+                "min_floor": min_floor,
+                "max_floor": max_floor,
+                "max_building_floors": max_building_floors,
+                "min_building_year": min_building_year,
+                "max_building_year": max_building_year,
                 "bbox": bbox,
                 "center": (lon, lat) if lat is not None and lon is not None else None,
                 "radius_km": radius_km,
@@ -153,6 +173,9 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
         "price_label": _compact_price(listing.price),
         "area_m2": listing.area_m2,
         "rooms": listing.rooms,
+        "floor": listing.floor,
+        "building_floors": listing.building_floors,
+        "building_year": listing.building_year,
         "price_per_m2": listing.price_per_m2,
         "days_on_market": listing.days_on_market,
         "price_reductions": listing.price_reductions,
