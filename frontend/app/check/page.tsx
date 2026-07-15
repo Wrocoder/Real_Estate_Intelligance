@@ -1,9 +1,10 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  Brain,
   Building2,
   ClipboardCheck,
   ExternalLink,
@@ -18,8 +19,12 @@ import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
   reportContentUrl,
+  type AIListingAnswer,
+  type AIQuestionCode,
+  type AIQuestionDescriptor,
   type DeveloperReputation,
   type GeneratedReport,
+  type ReportAudience,
   type SourceReferencePreview,
   type SourceUrlImportFields,
   type SourceUrlImportResult,
@@ -81,12 +86,54 @@ export default function CheckListingPage() {
     useState<SourceUrlImportResult | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
+  const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
+  const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
+  const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
+  const [customAIQuestion, setCustomAIQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState<AIListingAnswer | null>(null);
   const [status, setStatus] = useState("Готово к проверке");
   const [referenceStatus, setReferenceStatus] = useState("Ссылка не добавлена");
   const [urlImportStatus, setUrlImportStatus] = useState("Автоимпорт не запускался");
   const [reportStatus, setReportStatus] = useState("Отчет не создан");
   const [saveStatus, setSaveStatus] = useState("Не сохранен");
+  const [aiStatus, setAiStatus] = useState("AI assistant готов после проверки");
   const [error, setError] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadAIQuestions() {
+      try {
+        const payload = await api.listAIQuestions();
+        setAIQuestions(payload);
+      } catch (caught) {
+        setAiError(caught instanceof Error ? caught.message : "AI questions unavailable");
+        setAiStatus("AI questions недоступны");
+      }
+    }
+
+    void loadAIQuestions();
+  }, []);
+
+  const availableAIQuestions = useMemo(
+    () => questionsForAudience(aiQuestions, aiAudience),
+    [aiQuestions, aiAudience],
+  );
+
+  useEffect(() => {
+    if (
+      availableAIQuestions.length > 0 &&
+      !availableAIQuestions.some((question) => question.code === selectedAIQuestion)
+    ) {
+      setSelectedAIQuestion(availableAIQuestions[0].code);
+    }
+  }, [availableAIQuestions, selectedAIQuestion]);
+
+  function resetAIAnswer(nextStatus = "AI assistant готов после проверки") {
+    setAiAnswer(null);
+    setAiError("");
+    setAiStatus(nextStatus);
+  }
 
   async function analyze(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
@@ -97,6 +144,7 @@ export default function CheckListingPage() {
       setResult(payload);
       setReportResult(null);
       setSavedReport(null);
+      resetAIAnswer(payload.draft_id ? "AI assistant готов" : "AI assistant требует saved draft");
       setStatus("Проверка готова");
       setReportStatus("Отчет не создан");
       setSaveStatus("Не сохранен");
@@ -112,6 +160,7 @@ export default function CheckListingPage() {
 
   async function importFromUrl(options: { generateReport?: boolean } = {}) {
     setError("");
+    resetAIAnswer("AI assistant готов после проверки");
     setReferenceStatus("Загрузка ссылки...");
     setUrlImportStatus("Автоимпорт...");
     try {
@@ -168,6 +217,7 @@ export default function CheckListingPage() {
       setResult(payload.analysis);
       setReportResult(payload);
       setSavedReport(null);
+      resetAIAnswer(payload.analysis.draft_id ? "AI assistant готов" : "AI assistant требует saved draft");
       setStatus("Проверка готова");
       setReportStatus("Отчет готов");
       setSaveStatus("Не сохранен");
@@ -191,6 +241,36 @@ export default function CheckListingPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
       setSaveStatus("Ошибка сохранения");
+    }
+  }
+
+  async function generateAIAnswer() {
+    if (!result?.draft_id) {
+      setAiStatus("Сначала нужно получить проверку с saved draft");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError("");
+    setAiStatus("AI answer строится...");
+    try {
+      const answer = await api.answerUserSubmittedDraftAIQuestion(result.draft_id, {
+        question_code: selectedAIQuestion,
+        question: customAIQuestion.trim() || null,
+        audience: aiAudience,
+      });
+      setAiAnswer(answer);
+      setAiStatus(
+        answer.refused
+          ? "AI answer отклонен guardrail-правилом"
+          : `AI answer сохранен: ${answer.usage_log_id ?? answer.subject_id}`,
+      );
+    } catch (caught) {
+      setAiAnswer(null);
+      setAiError(caught instanceof Error ? caught.message : "unknown error");
+      setAiStatus("AI answer недоступен");
+    } finally {
+      setAiLoading(false);
     }
   }
 
@@ -253,6 +333,7 @@ export default function CheckListingPage() {
                   setUrlImportResult(null);
                   setReferenceStatus("Ссылка не проверена");
                   setUrlImportStatus("Автоимпорт не запускался");
+                  resetAIAnswer("AI assistant готов после проверки");
                 }}
               />
             </label>
@@ -577,6 +658,119 @@ export default function CheckListingPage() {
       </section>
 
       {analysis ? (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <h2 className="icon-title">
+              <Brain size={16} /> AI assistant по private draft
+            </h2>
+            <span className="status-line">{aiStatus}</span>
+          </div>
+          <div className="panel-body ai-verdict-body">
+            <div className="ai-verdict-controls listing-ai-controls">
+              <div className="field">
+                <span>Аудитория</span>
+                <select
+                  className="select"
+                  value={aiAudience}
+                  onChange={(event) => setAiAudience(event.target.value as ReportAudience)}
+                >
+                  <option value="buyer">Buyer</option>
+                  <option value="realtor">Realtor</option>
+                  <option value="investor">Investor</option>
+                </select>
+              </div>
+              <div className="field">
+                <span>Тема</span>
+                <select
+                  className="select"
+                  value={selectedAIQuestion}
+                  onChange={(event) => setSelectedAIQuestion(event.target.value as AIQuestionCode)}
+                >
+                  {availableAIQuestions.map((question) => (
+                    <option key={question.code} value={question.code}>
+                      {question.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <span>Вопрос</span>
+                <input
+                  className="input"
+                  value={customAIQuestion}
+                  onChange={(event) => setCustomAIQuestion(event.target.value)}
+                  placeholder="Например: какие риски проверить до zadatek?"
+                />
+              </div>
+              <button
+                className="button primary"
+                disabled={aiLoading || !result?.draft_id}
+                type="button"
+                onClick={() => void generateAIAnswer()}
+              >
+                <Brain size={16} /> Ответить
+              </button>
+            </div>
+
+            {aiError ? <ErrorBlock message={aiError} /> : null}
+
+            {aiAnswer ? (
+              <div className="ai-verdict-result">
+                <div className="ai-verdict-summary">
+                  <div>
+                    <span className={`status-pill ${aiAnswer.refused ? "warning" : "healthy"}`}>
+                      {aiAnswer.refused ? "Refused" : "Source-grounded"}
+                    </span>
+                    <span className="status-pill info">{aiAnswer.question_code}</span>
+                    <span className="status-pill">
+                      {result?.draft_id ? shortId(result.draft_id) : "no draft"}
+                    </span>
+                  </div>
+                  <p>{aiAnswer.refusal_reason ?? aiAnswer.answer}</p>
+                </div>
+
+                <div className="ai-verdict-grid">
+                  <AssistantColumn title="Ключевые выводы" items={aiAnswer.key_points} />
+                  <div>
+                    <h3 className="ai-verdict-heading">
+                      <ShieldCheck size={15} /> Источники
+                    </h3>
+                    <div className="ai-citation-list">
+                      {aiAnswer.citations.slice(0, 5).map((citation, index) => (
+                        <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                          <strong>{citation.title}</strong>
+                          <small>
+                            {citation.source_type} · {citation.excerpt}
+                          </small>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="ai-verdict-heading">Guardrails</h3>
+                    <div className="meta-row">
+                      {aiAnswer.guardrails.map((guardrail, index) => (
+                        <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                          {guardrail.code}
+                        </span>
+                      ))}
+                    </div>
+                    <small className="muted">{aiAnswer.disclaimer}</small>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="empty-state">
+                {result?.draft_id
+                  ? "AI answer появится после запроса по сохраненному private draft."
+                  : "Для AI assistant нужен saved draft: запусти проверку или отчет заново."}
+              </p>
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {analysis ? (
         <section className="grid-2" style={{ marginTop: 16 }}>
           <div className="panel">
             <div className="panel-header">
@@ -692,6 +886,43 @@ export default function CheckListingPage() {
       ) : null}
     </>
   );
+}
+
+function AssistantColumn({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <h3 className="ai-verdict-heading">{title}</h3>
+      {items.length === 0 ? (
+        <p className="muted">Нет данных.</p>
+      ) : (
+        <ul className="ai-verdict-list">
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function questionsForAudience(
+  questions: AIQuestionDescriptor[],
+  audience: ReportAudience,
+): AIQuestionDescriptor[] {
+  if (questions.length === 0) {
+    return [
+      {
+        code: "summary",
+        label: "Object summary",
+        description: "Short grounded decision summary.",
+        supported_audiences: ["buyer", "realtor", "investor"],
+      },
+    ];
+  }
+  const supported = questions.filter((question) =>
+    question.supported_audiences.includes(audience),
+  );
+  return supported.length > 0 ? supported : questions;
 }
 
 function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {
