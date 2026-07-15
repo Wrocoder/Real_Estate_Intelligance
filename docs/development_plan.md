@@ -337,6 +337,7 @@
 - [x] Добавить AI usage logging.
 - [x] Добавить limited AI endpoint.
 - [x] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
+- [x] Подключить listing AI assistant на listing detail page.
 - [x] Добавить compare-A-vs-B AI response template.
 - [x] Подключить compare-A-vs-B AI verdict на compare page.
 - [x] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
@@ -564,6 +565,7 @@
 - [x] Добавить listing growth analysis API/report integration: transport, education, greenery, healthcare, retail, jobs, universities and market momentum factors.
 - [x] Добавить fair-price backtesting report: error buckets, area/period drift, severity, findings and recalibration recommendations.
 - [x] Добавить source-grounded listing AI assistant API: data contract, question set, citations, guardrails, refusal rules and usage logging.
+- [x] Подключить listing AI assistant UI: audience, question set, custom question, citations, guardrails and saved usage id.
 - [x] Добавить source-grounded compare AI answer API: winner, tradeoffs, citations, refusal rules and usage logging.
 - [x] Подключить compare-A-vs-B AI verdict на compare page: audience, custom question, winner, tradeoffs, citations and guardrails.
 - [x] Сделать Commit 17 и push.
