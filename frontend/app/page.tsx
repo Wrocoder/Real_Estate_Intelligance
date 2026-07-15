@@ -22,6 +22,7 @@ import { money, numberValue, percent } from "@/lib/format";
 
 type Filters = {
   mode: "standard" | "hidden_gems";
+  query: string;
   district: string;
   rooms: string;
   maxPrice: string;
@@ -46,6 +47,7 @@ const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
 
 const defaultFilters: Filters = {
   mode: "standard",
+  query: "",
   district: "",
   rooms: "",
   maxPrice: "",
@@ -122,14 +124,20 @@ export default function ExplorerPage() {
   useEffect(() => {
     if (!appliedUrlFiltersRef.current) {
       appliedUrlFiltersRef.current = true;
-      const district = new URLSearchParams(window.location.search).get("district");
-      if (district && filters.district !== district) {
-        setFilters((current) => ({ ...current, district }));
+      const params = new URLSearchParams(window.location.search);
+      const district = params.get("district");
+      const query = params.get("q");
+      if ((district && filters.district !== district) || (query && filters.query !== query)) {
+        setFilters((current) => ({
+          ...current,
+          district: district || current.district,
+          query: query || current.query,
+        }));
         return;
       }
     }
     void load(page);
-  }, [filters.district, load, page]);
+  }, [filters.district, filters.query, load, page]);
 
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
@@ -235,6 +243,7 @@ export default function ExplorerPage() {
       name: "Saved search from explorer",
       filters: {
         city: "Wrocław",
+        query: filters.query || null,
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
@@ -315,6 +324,15 @@ export default function ExplorerPage() {
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body form-grid wide">
+          <label className="field">
+            <span>Поиск</span>
+            <input
+              className="input"
+              value={filters.query}
+              placeholder="адрес, район, улица"
+              onChange={(event) => updateFilters({ query: event.target.value })}
+            />
+          </label>
           <label className="field">
             <span>Район</span>
             <select
@@ -638,6 +656,7 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
   const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
   return {
     city: "Wrocław",
+    query: filters.query || undefined,
     district: filters.district || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
@@ -674,6 +693,7 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
 function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
   return {
     city: "Wrocław",
+    query: filters.query || undefined,
     district: filters.district || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,

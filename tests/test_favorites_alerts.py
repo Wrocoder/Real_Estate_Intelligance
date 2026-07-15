@@ -76,6 +76,7 @@ def test_alert_crud_and_preview() -> None:
             "filters": {
                 "city": "Wrocław",
                 "district": "Fabryczna",
+                "query": "Nowy Dwor",
                 "max_price": 700000,
                 "min_investment_score": 40,
             },
@@ -86,12 +87,15 @@ def test_alert_crud_and_preview() -> None:
     assert created.status_code == 201
     assert payload["name"] == "Fabryczna hidden gems"
     assert payload["filters"]["district"] == "Fabryczna"
+    assert payload["filters"]["query"] == "Nowy Dwor"
     assert payload["is_active"] is True
 
     alert_id = payload["id"]
     preview = client.get(f"/api/v1/alerts/{alert_id}/preview?owner_id=buyer-1").json()
     assert preview["total_matches"] >= 1
     assert preview["matches"][0]["listing"]["district"] == "Fabryczna"
+    assert preview["matches"][0]["listing"]["id"] == "wr-001"
+    assert preview["applied_filters"]["query"] == "Nowy Dwor"
     assert preview["applied_filters"]["max_price"] == 700000
 
     updated = client.patch(

@@ -1,5 +1,6 @@
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import Alert, AlertFilters, AlertPreview, ListingAnalysis
+from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
 
@@ -28,6 +29,7 @@ def find_alert_matches(
         max_price=filters.max_price,
         min_area_m2=filters.min_area_m2,
     )
+    listings = [listing for listing in listings if listing_matches_query(listing, filters.query)]
 
     analyses = [build_listing_analysis(repository, listing) for listing in listings]
 
@@ -48,4 +50,3 @@ def find_alert_matches(
             item.listing.price,
         ),
     )
-

@@ -94,7 +94,8 @@
 - [x] Добавить pagination.
 - [x] Добавить сортировку.
 - [x] Добавить фильтры по score, price/m2, days_on_market.
-- [ ] Добавить OpenSearch или PostgreSQL full-text search.
+- [x] Добавить API-level text/address search по title, address, district, city и source metadata.
+- [ ] Подключить OpenSearch или PostgreSQL full-text indexes для production-scale поиска.
 - [x] Добавить saved searches.
 - [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
 - [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
@@ -468,6 +469,7 @@
 - [x] Commit 61: comparison decision metrics and mortgage baseline.
 - [x] Commit 62: hidden gems search mode.
 - [x] Commit 63: proximity filters for search and hidden gems.
+- [x] Commit 64: text and address search for listings.
 
 ## Current Sprint
 
@@ -528,6 +530,7 @@
 - [x] Добавить расширенный compare API/UI: decision rank, ипотечный baseline, cash needed, liquidity и rental potential.
 - [x] Добавить hidden gems search mode: API, ranked signals и frontend режим с investor-фильтрами.
 - [x] Добавить proximity-фильтры в search/hidden gems: центр, остановка, школа, major road и industrial zone.
+- [x] Добавить text/address search в listings, hidden gems и saved-search alerts.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

@@ -62,6 +62,20 @@ def test_listings_support_pagination_sorting_and_score_filters() -> None:
     assert all(item["scores"]["risk_score"] <= 70 for item in payload["items"])
 
 
+def test_listings_support_text_query_search() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={"city": "Wrocław", "query": "Nowy Dwor", "page_size": 20},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["query"] == "Nowy Dwor"
+    assert payload["total"] == 1
+    assert payload["items"][0]["listing"]["id"] == "wr-001"
+    assert "Nowy Dwór" in payload["items"][0]["listing"]["address"]
+
+
 def test_listings_support_proximity_filters() -> None:
     response = client.get(
         "/api/v1/listings",
@@ -118,6 +132,26 @@ def test_hidden_gems_returns_ranked_candidates() -> None:
         assert 0 <= item["gem_score"] <= 100
         assert item["price_delta_to_fair_mid_pct"] <= 5
         assert item["signals"]
+
+
+def test_hidden_gems_support_text_query_search() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "city": "Wrocław",
+            "query": "Nowy Dwor",
+            "min_investment_score": 40,
+            "max_risk_score": 70,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["query"] == "Nowy Dwor"
+    assert payload["total"] == 1
+    assert payload["items"][0]["analysis"]["listing"]["id"] == "wr-001"
+    assert payload["items"][0]["signals"]
 
 
 def test_listings_radius_requires_center() -> None:

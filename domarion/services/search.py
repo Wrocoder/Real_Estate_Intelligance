@@ -8,6 +8,7 @@ from domarion.schemas import (
     ListingSort,
     MarketType,
 )
+from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
 
@@ -20,6 +21,7 @@ def search_listing_analyses(
     *,
     city: str | None = None,
     district: str | None = None,
+    query: str | None = None,
     rooms: int | None = None,
     market_type: MarketType | None = None,
     min_price: int | None = None,
@@ -66,6 +68,7 @@ def search_listing_analyses(
     for listing in listings:
         if not _matches_listing_filters(
             listing,
+            query=query,
             market_type=market_type,
             min_price=min_price,
             min_price_per_m2=min_price_per_m2,
@@ -122,6 +125,7 @@ def search_listing_analyses(
         filters={
             "city": city,
             "district": district,
+            "query": query,
             "rooms": rooms,
             "market_type": market_type,
             "min_price": min_price,
@@ -152,6 +156,7 @@ def search_listing_analyses(
 def _matches_listing_filters(
     listing,
     *,
+    query: str | None,
     market_type: MarketType | None,
     min_price: int | None,
     min_price_per_m2: int | None,
@@ -168,6 +173,8 @@ def _matches_listing_filters(
     lon: float | None,
     radius_km: float | None,
 ) -> bool:
+    if not listing_matches_query(listing, query):
+        return False
     if market_type is not None and listing.market_type != market_type:
         return False
     if min_price is not None and listing.price < min_price:

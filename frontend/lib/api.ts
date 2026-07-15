@@ -846,6 +846,7 @@ export type AccountSummary = {
 export type ListingSearchQuery = {
   city?: string;
   district?: string;
+  query?: string;
   rooms?: number;
   market_type?: "primary" | "secondary";
   min_price?: number;
@@ -887,6 +888,7 @@ export type ListingSearchResponse = {
 export type HiddenGemQuery = {
   city?: string;
   district?: string;
+  query?: string;
   rooms?: number;
   market_type?: "primary" | "secondary";
   max_price?: number;
@@ -1282,6 +1284,7 @@ export type Favorite = {
 export type AlertFilters = {
   city?: string | null;
   district?: string | null;
+  query?: string | null;
   rooms?: number | null;
   max_price?: number | null;
   min_area_m2?: number | null;

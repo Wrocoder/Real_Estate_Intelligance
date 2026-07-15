@@ -3,6 +3,7 @@ from typing import Any
 
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import HiddenGemItem, HiddenGemsResponse, ListingAnalysis, MarketType
+from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
 DEFAULT_MAX_PRICE_DELTA_TO_FAIR_MID_PCT = 5.0
@@ -18,6 +19,7 @@ def find_hidden_gems(
     *,
     city: str | None = None,
     district: str | None = None,
+    query: str | None = None,
     rooms: int | None = None,
     market_type: MarketType | None = None,
     max_price: int | None = None,
@@ -47,6 +49,8 @@ def find_hidden_gems(
     items: list[HiddenGemItem] = []
     skipped_missing_area = 0
     for listing in listings:
+        if not listing_matches_query(listing, query):
+            continue
         if market_type is not None and listing.market_type != market_type:
             continue
         if listing.data_quality_score < min_data_quality_score:
@@ -123,6 +127,7 @@ def find_hidden_gems(
         filters=_filters_payload(
             city=city,
             district=district,
+            query=query,
             rooms=rooms,
             market_type=market_type,
             max_price=max_price,

@@ -15,6 +15,7 @@ export default function AlertsPage() {
   const [error, setError] = useState("");
   const [form, setForm] = useState({
     name: "Fabryczna до 700k",
+    query: "",
     district: "Fabryczna",
     maxPrice: "700000",
     minInvestment: "40",
@@ -48,6 +49,7 @@ export default function AlertsPage() {
       name: form.name,
       filters: {
         city: "Wrocław",
+        query: form.query || null,
         district: form.district || null,
         max_price: form.maxPrice ? Number(form.maxPrice) : null,
         min_investment_score: form.minInvestment ? Number(form.minInvestment) : null,
@@ -104,6 +106,15 @@ export default function AlertsPage() {
               className="input"
               value={form.district}
               onChange={(event) => setForm({ ...form, district: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Поиск</span>
+            <input
+              className="input"
+              placeholder="адрес, район, улица"
+              value={form.query}
+              onChange={(event) => setForm({ ...form, query: event.target.value })}
             />
           </label>
           <label className="field">
