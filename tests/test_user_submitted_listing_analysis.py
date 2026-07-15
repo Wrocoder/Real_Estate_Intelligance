@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
@@ -461,6 +462,109 @@ def test_user_submitted_listing_analysis_uses_medlow_market_coverage() -> None:
     )
     assert not any("nearest available market proxy" in item for item in payload["warnings"])
     assert any("normalized to a covered local market area" in item for item in payload["warnings"])
+
+
+@pytest.mark.parametrize(
+    (
+        "address",
+        "city",
+        "district",
+        "price",
+        "area_m2",
+        "rooms",
+        "expected_area_id",
+        "expected_city",
+    ),
+    [
+        (
+            "Wrocławska, Kobierzyce",
+            "Kobierzyce",
+            "dolnośląskie",
+            540000,
+            54.8,
+            3,
+            "kobierzyce-kobierzyce",
+            "Kobierzyce",
+        ),
+        (
+            "Radosna, Wysoka",
+            "Wysoka",
+            "dolnośląskie",
+            735000,
+            58.0,
+            3,
+            "wysoka-wysoka",
+            "Wysoka",
+        ),
+        (
+            "Czekoladowa, Bielany Wrocławskie",
+            "Bielany Wrocławskie",
+            "dolnośląskie",
+            665000,
+            58.9,
+            3,
+            "bielany-wroclawskie-bielany-wroclawskie",
+            "Bielany Wrocławskie",
+        ),
+        (
+            "Rynek, Oława",
+            "Oława",
+            "dolnośląskie",
+            448000,
+            47.4,
+            2,
+            "olawa-olawa",
+            "Oława",
+        ),
+        (
+            "Radosna, Wysoka",
+            "Kobierzyce",
+            "Wysoka",
+            735000,
+            58.0,
+            3,
+            "wysoka-wysoka",
+            "Wysoka",
+        ),
+    ],
+)
+def test_user_submitted_listing_analysis_uses_suburban_market_coverage(
+    address: str,
+    city: str,
+    district: str,
+    price: int,
+    area_m2: float,
+    rooms: int,
+    expected_area_id: str,
+    expected_city: str,
+) -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "source_url": f"https://www.otodom.pl/pl/oferta/{expected_area_id}-demo",
+            "address": address,
+            "city": city,
+            "district": district,
+            "market_type": "secondary",
+            "price": price,
+            "area_m2": area_m2,
+            "rooms": rooms,
+            "floor": 1,
+            "building_floors": 3,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["analysis"]["area_statistics"]["area_id"] == expected_area_id
+    assert payload["analysis"]["listing"]["city"] == expected_city
+    assert payload["analysis"]["comparables"]
+    assert all(
+        comparable["city"] == expected_city for comparable in payload["analysis"]["comparables"]
+    )
+    assert not any("nearest available market proxy" in item for item in payload["warnings"])
 
 
 def test_user_submitted_listing_analysis_uses_nearest_market_proxy_for_uncovered_location() -> None:

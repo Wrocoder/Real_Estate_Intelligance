@@ -121,6 +121,7 @@
 - [x] Добавить enhanced private listing report: источник/надежность, fair value, action plan, warnings и no source URL leak.
 - [x] Добавить proxy-market fallback для объектов вне текущего coverage с явным warning.
 - [x] Добавить первый suburban coverage seed для Mędłów: area statistics, local comparables, geocoding и normalization из broad portal region label.
+- [x] Добавить suburban coverage pack для Kobierzyce/Wysoka/Bielany Wrocławskie/Oława: area statistics, local comparables, aliases и geocoding.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
@@ -459,6 +460,7 @@
 - [x] Commit 55: agency workspaces and memberships.
 - [x] Commit 56: stronger link-to-report flow for user-submitted URLs.
 - [x] Commit 57: suburban Mędłów coverage for link reports.
+- [x] Commit 58: suburban coverage pack for link reports.
 
 ## Current Sprint
 
@@ -513,6 +515,7 @@
 - [x] Доработать one-click Otodom/OLX link-to-report flow с enhanced private listing report.
 - [x] Добавить nearest covered market fallback для объектов вне текущего coverage.
 - [x] Добавить Mędłów coverage seed для Otodom link-to-report без proxy-market fallback.
+- [x] Добавить Kobierzyce/Wysoka/Bielany/Oława coverage pack для link-to-report.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -554,3 +557,4 @@
 - [x] Сделать Commit 55 и push.
 - [x] Сделать Commit 56 и push.
 - [x] Сделать Commit 57 и push.
+- [x] Сделать Commit 58 и push.

@@ -289,9 +289,13 @@ def test_admin_can_dry_run_area_market_snapshot_job() -> None:
     assert response.status_code == 200
     assert payload["dry_run"] is True
     assert payload["snapshots_created"] == 0
-    assert len(payload["snapshots"]) == 4
+    assert len(payload["snapshots"]) == 8
     assert {snapshot["area_id"] for snapshot in payload["snapshots"]} >= {
+        "bielany-wroclawskie-bielany-wroclawskie",
+        "kobierzyce-kobierzyce",
         "medlow-medlow",
+        "olawa-olawa",
+        "wysoka-wysoka",
         "wroclaw-fabryczna",
         "wroclaw-krzyki",
         "wroclaw-psie-pole",

@@ -79,6 +79,42 @@ DISTRICT_DEFAULTS = {
         "parks_within_1km": 1,
         "schools_within_1km": 0,
     },
+    "kobierzyce-kobierzyce": {
+        "distance_to_center_km": 16.5,
+        "nearest_stop_m": 640,
+        "nearest_school_m": 780,
+        "nearest_major_road_m": 740,
+        "nearest_industrial_zone_m": 2400,
+        "parks_within_1km": 1,
+        "schools_within_1km": 1,
+    },
+    "wysoka-wysoka": {
+        "distance_to_center_km": 8.9,
+        "nearest_stop_m": 420,
+        "nearest_school_m": 920,
+        "nearest_major_road_m": 520,
+        "nearest_industrial_zone_m": 2600,
+        "parks_within_1km": 1,
+        "schools_within_1km": 1,
+    },
+    "bielany-wroclawskie-bielany-wroclawskie": {
+        "distance_to_center_km": 10.8,
+        "nearest_stop_m": 560,
+        "nearest_school_m": 1180,
+        "nearest_major_road_m": 360,
+        "nearest_industrial_zone_m": 1800,
+        "parks_within_1km": 1,
+        "schools_within_1km": 0,
+    },
+    "olawa-olawa": {
+        "distance_to_center_km": 27.5,
+        "nearest_stop_m": 480,
+        "nearest_school_m": 650,
+        "nearest_major_road_m": 620,
+        "nearest_industrial_zone_m": 2200,
+        "parks_within_1km": 2,
+        "schools_within_1km": 1,
+    },
 }
 
 AREA_ALIASES = {
@@ -87,8 +123,42 @@ AREA_ALIASES = {
     ("medlow", "powiat-wroclawski"): "medlow-medlow",
     ("medlow", "medlow"): "medlow-medlow",
     ("kobierzyce", "medlow"): "medlow-medlow",
+    ("kobierzyce", "dolnoslaskie"): "kobierzyce-kobierzyce",
+    ("kobierzyce", "wroclawski"): "kobierzyce-kobierzyce",
+    ("kobierzyce", "powiat-wroclawski"): "kobierzyce-kobierzyce",
+    ("kobierzyce", "kobierzyce"): "kobierzyce-kobierzyce",
+    ("wysoka", "dolnoslaskie"): "wysoka-wysoka",
+    ("wysoka", "wroclawski"): "wysoka-wysoka",
+    ("wysoka", "powiat-wroclawski"): "wysoka-wysoka",
+    ("wysoka", "wysoka"): "wysoka-wysoka",
+    ("kobierzyce", "wysoka"): "wysoka-wysoka",
+    ("bielany-wroclawskie", "dolnoslaskie"): (
+        "bielany-wroclawskie-bielany-wroclawskie"
+    ),
+    ("bielany-wroclawskie", "wroclawski"): (
+        "bielany-wroclawskie-bielany-wroclawskie"
+    ),
+    ("bielany-wroclawskie", "powiat-wroclawski"): (
+        "bielany-wroclawskie-bielany-wroclawskie"
+    ),
+    ("bielany-wroclawskie", "bielany-wroclawskie"): (
+        "bielany-wroclawskie-bielany-wroclawskie"
+    ),
+    ("kobierzyce", "bielany-wroclawskie"): (
+        "bielany-wroclawskie-bielany-wroclawskie"
+    ),
+    ("olawa", "dolnoslaskie"): "olawa-olawa",
+    ("olawa", "olawski"): "olawa-olawa",
+    ("olawa", "powiat-olawski"): "olawa-olawa",
+    ("olawa", "olawa"): "olawa-olawa",
 }
-BROAD_REGION_LABELS = {"dolnoslaskie", "powiat-wroclawski", "wroclawski"}
+BROAD_REGION_LABELS = {
+    "dolnoslaskie",
+    "olawski",
+    "powiat-olawski",
+    "powiat-wroclawski",
+    "wroclawski",
+}
 
 MANUAL_FIELDS_REQUIRED = ["address", "district", "price", "area_m2", "rooms"]
 MANUAL_FIELDS_RECOMMENDED = ["floor", "building_floors", "building_year", "market_type"]

@@ -9,11 +9,15 @@ def test_area_market_snapshot_job_builds_current_area_snapshots() -> None:
 
     assert result.dry_run is True
     assert result.snapshots_created == 0
-    assert len(result.snapshots) == 4
+    assert len(result.snapshots) == 8
     assert [snapshot.area_id for snapshot in result.snapshots] == [
+        "bielany-wroclawskie-bielany-wroclawskie",
+        "kobierzyce-kobierzyce",
         "medlow-medlow",
+        "olawa-olawa",
         "wroclaw-fabryczna",
         "wroclaw-krzyki",
         "wroclaw-psie-pole",
+        "wysoka-wysoka",
     ]
     assert result.snapshots[0].median_price_per_m2 > 0

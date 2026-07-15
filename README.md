@@ -51,6 +51,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
 - Доработан link-to-report flow: пользовательская Otodom/OLX ссылка автозаполняет параметры, строит buyer report, не хранит фото/контакты/raw HTML и явно маркирует proxy-market fallback вне текущего coverage.
 - Добавлен первый suburban coverage seed для Mędłów: local area statistics, comparables и geocoding для Otodom link-to-report без Wrocław proxy.
+- Добавлен suburban coverage pack для Kobierzyce, Wysoka, Bielany Wrocławskie и Oława: local baselines, comparable seeds, aliases и offline geocoding.
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
@@ -1111,6 +1112,6 @@ git push -u origin feature/mvp-api-foundation
 
 ## Следующий технический шаг
 
-1. Масштабировать suburban coverage beyond Wrocław: Kobierzyce/Wysoka/Bielany/Oława + area statistics и comparables для ссылок.
-2. Добавить stronger URL extraction fixtures под реальные Otodom/OLX варианты HTML/embedded state.
+1. Добавить stronger URL extraction fixtures под реальные Otodom/OLX варианты HTML/embedded state.
+2. Перевести suburban coverage seeds в легальный ingestion source: partner CSV/open-data snapshots вместо ручных demo seeds.
 3. Добавить deployment workflow после выбора hosting.
