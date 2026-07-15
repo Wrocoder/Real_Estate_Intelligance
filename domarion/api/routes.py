@@ -165,6 +165,7 @@ from domarion.schemas import (
     ReportRequest,
     ReportTemplateDescriptor,
     SchoolReference,
+    ScoringBacktestReport,
     ScoringBacktestResult,
     SourceCheckJob,
     SourceCheckJobCreate,
@@ -198,7 +199,7 @@ from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
-from domarion.services.backtesting import run_scoring_backtest
+from domarion.services.backtesting import build_scoring_backtest_report, run_scoring_backtest
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.growth_analysis import build_listing_growth_analysis
@@ -1216,6 +1217,23 @@ def get_admin_scoring_backtest(
 ) -> ScoringBacktestResult:
     _ensure_admin(account)
     return run_scoring_backtest(
+        repository,
+        city=city,
+        district=district,
+        item_limit=limit,
+    )
+
+
+@router.get("/admin/scoring/backtest-report", response_model=ScoringBacktestReport)
+def get_admin_scoring_backtest_report(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    city: Annotated[str | None, Query()] = None,
+    district: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> ScoringBacktestReport:
+    _ensure_admin(account)
+    return build_scoring_backtest_report(
         repository,
         city=city,
         district=district,

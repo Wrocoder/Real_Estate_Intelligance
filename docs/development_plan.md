@@ -188,7 +188,7 @@
 - [x] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
 - [x] Добавить mortgage affordability и total purchase cost inputs в buyer analytics.
 - [x] Добавить Developer Reputation Score v1: track record, delivery reliability, defect signals, legal/UOKiK risk, KRS/REGON stability, transparency, confidence.
-- [ ] Добавить backtesting отчеты по drift/ошибке fair price estimate.
+- [x] Добавить backtesting отчеты по drift/ошибке fair price estimate.
 
 ## 7. Reports
 
@@ -561,6 +561,7 @@
 - [x] Добавить structured listing risk profile API/report integration: risk factors, evidence, checks, missing risk layers.
 - [x] Добавить listing rental estimate API/report integration: rent range, gross yield, NOI, cash/financed cashflow scenarios.
 - [x] Добавить listing growth analysis API/report integration: transport, education, greenery, healthcare, retail, jobs, universities and market momentum factors.
+- [x] Добавить fair-price backtesting report: error buckets, area/period drift, severity, findings and recalibration recommendations.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

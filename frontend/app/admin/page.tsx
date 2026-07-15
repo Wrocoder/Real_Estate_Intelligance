@@ -28,6 +28,7 @@ import {
   type PlannedInvestmentPayload,
   type PropertyDeduplicationMatch,
   type RawListingSummary,
+  type ScoringBacktestReport,
   type ScoringBacktestResult,
   type SourceCheckJob,
   type SourceError,
@@ -103,6 +104,8 @@ export default function AdminPage() {
   const [sources, setSources] = useState<SourceRegistryEntry[]>([]);
   const [scoringBacktest, setScoringBacktest] =
     useState<ScoringBacktestResult | null>(null);
+  const [scoringBacktestReport, setScoringBacktestReport] =
+    useState<ScoringBacktestReport | null>(null);
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [dedupMatches, setDedupMatches] = useState<PropertyDeduplicationMatch[]>([]);
@@ -148,6 +151,7 @@ export default function AdminPage() {
         sourceErrorData,
         sourceData,
         backtestData,
+        backtestReportData,
         logData,
         rawData,
         dedupData,
@@ -161,6 +165,7 @@ export default function AdminPage() {
           api.listAdminSourceErrors({ limit: 50 }),
           api.listAdminIngestionSources(),
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
+          api.getAdminScoringBacktestReport({ city: "Wrocław", limit: 10 }),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
           api.listAdminRawListings({ limit: 50 }),
           api.listAdminDeduplicationMatches({
@@ -176,6 +181,7 @@ export default function AdminPage() {
       setSourceErrors(sourceErrorData);
       setSources(sourceData);
       setScoringBacktest(backtestData);
+      setScoringBacktestReport(backtestReportData);
       setLogs(logData);
       setRawListings(rawData);
       setDedupMatches(dedupData);
@@ -1280,6 +1286,123 @@ export default function AdminPage() {
                       <strong>{pct(scoringBacktest.within_10_pct)}</strong>
                     </div>
                   </div>
+                  {scoringBacktestReport ? (
+                    <>
+                      <div className="metric-grid compact" style={{ marginTop: 14 }}>
+                        <div className="metric">
+                          <span>Report status</span>
+                          <strong>
+                            <span
+                              className={`status-pill ${backtestSeverityClass(
+                                scoringBacktestReport.overall_severity,
+                              )}`}
+                            >
+                              {scoringBacktestReport.overall_severity}
+                            </span>
+                          </strong>
+                        </div>
+                        <div className="metric">
+                          <span>Quality label</span>
+                          <strong style={{ fontSize: 14 }}>
+                            {scoringBacktestReport.quality_label}
+                          </strong>
+                        </div>
+                        <div className="metric">
+                          <span>Worst area</span>
+                          <strong style={{ fontSize: 14 }}>
+                            {scoringBacktestReport.area_drift[0]?.label ?? "-"}
+                          </strong>
+                        </div>
+                        <div className="metric">
+                          <span>Worst period</span>
+                          <strong style={{ fontSize: 14 }}>
+                            {scoringBacktestReport.period_drift[0]?.label ?? "-"}
+                          </strong>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 14 }}>
+                        <h3>Findings</h3>
+                        <ul className="section-list compact">
+                          {scoringBacktestReport.findings.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div style={{ marginTop: 14 }}>
+                        <h3>Recommendations</h3>
+                        <ul className="section-list compact">
+                          {scoringBacktestReport.recommendations.map((item) => (
+                            <li key={item}>{item}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div className="table-scroll" style={{ marginTop: 14 }}>
+                        <table className="table">
+                          <thead>
+                            <tr>
+                              <th>Error bucket</th>
+                              <th>Points</th>
+                              <th>Share</th>
+                              <th>Mean error</th>
+                              <th>Over / under</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {scoringBacktestReport.error_buckets.map((bucket) => (
+                              <tr key={bucket.code}>
+                                <td>{bucket.label}</td>
+                                <td>{numberValue(bucket.evaluated_points)}</td>
+                                <td>{pct(bucket.share_pct)}</td>
+                                <td>{pct(bucket.mean_absolute_error_pct)}</td>
+                                <td>
+                                  {numberValue(bucket.overestimate_count)} /{" "}
+                                  {numberValue(bucket.underestimate_count)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="table-scroll" style={{ marginTop: 14 }}>
+                        <table className="table">
+                          <thead>
+                            <tr>
+                              <th>Drift segment</th>
+                              <th>Points</th>
+                              <th>Mean</th>
+                              <th>Within 10%</th>
+                              <th>Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {[
+                              ...scoringBacktestReport.area_drift.slice(0, 3),
+                              ...scoringBacktestReport.period_drift.slice(0, 3),
+                            ].map((segment) => (
+                              <tr key={`${segment.segment_type}-${segment.key}`}>
+                                <td>
+                                  <strong>{segment.label}</strong>
+                                  <small>{segment.trend_note}</small>
+                                </td>
+                                <td>{numberValue(segment.evaluated_points)}</td>
+                                <td>{pct(segment.mean_absolute_error_pct)}</td>
+                                <td>{pct(segment.within_10_pct)}</td>
+                                <td>
+                                  <span
+                                    className={`status-pill ${backtestSeverityClass(
+                                      segment.severity,
+                                    )}`}
+                                  >
+                                    {segment.severity}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : null}
                   <div className="table-scroll" style={{ marginTop: 14 }}>
                     <table className="table">
                       <thead>
@@ -1834,6 +1957,12 @@ function dedupDecisionClass(match: PropertyDeduplicationMatch) {
     return "warning";
   }
   return "failed";
+}
+
+function backtestSeverityClass(severity: ScoringBacktestReport["overall_severity"]) {
+  if (severity === "healthy") return "healthy";
+  if (severity === "critical") return "failed";
+  return "warning";
 }
 
 function dedupPayloadText(payload: Record<string, unknown>, key: string) {

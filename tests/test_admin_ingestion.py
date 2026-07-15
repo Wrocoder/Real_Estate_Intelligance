@@ -278,6 +278,28 @@ def test_admin_can_run_scoring_backtest() -> None:
     assert payload["items"][0]["absolute_error_pct"] >= 0
 
 
+def test_admin_can_get_scoring_backtest_report() -> None:
+    response = client.get(
+        "/api/v1/admin/scoring/backtest-report",
+        headers=ADMIN_HEADERS,
+        params={"city": "Wrocław", "limit": 3},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["backtest"]["formula_version"] == "domarion-scoring-v1"
+    assert payload["backtest"]["evaluated_points"] == 6
+    assert payload["overall_severity"] in {"healthy", "watch", "drift", "critical"}
+    assert payload["quality_label"]
+    assert payload["error_buckets"]
+    assert payload["area_drift"]
+    assert payload["period_drift"]
+    assert payload["high_error_examples"]
+    assert payload["findings"]
+    assert payload["recommendations"]
+    assert "model monitoring" in payload["methodology_note"]
+
+
 def test_admin_can_dry_run_area_market_snapshot_job() -> None:
     response = client.post(
         "/api/v1/admin/area-market-snapshots",

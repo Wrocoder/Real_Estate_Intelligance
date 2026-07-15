@@ -99,6 +99,8 @@ ScoreNegotiationLabel = Literal[
     "strong_negotiation",
 ]
 ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
+ScoringBacktestSeverity = Literal["healthy", "watch", "drift", "critical"]
+ScoringBacktestSegmentType = Literal["area", "period"]
 GrowthFactorCode = Literal[
     "transport",
     "education",
@@ -1118,6 +1120,46 @@ class ScoringBacktestResult(BaseModel):
     within_5_pct: float | None = Field(default=None, ge=0, le=100)
     within_10_pct: float | None = Field(default=None, ge=0, le=100)
     items: list[ScoringBacktestItem] = Field(default_factory=list)
+
+
+class ScoringBacktestErrorBucket(BaseModel):
+    code: str
+    label: str
+    min_error_pct: float = Field(ge=0)
+    max_error_pct: float | None = Field(default=None, ge=0)
+    evaluated_points: int = Field(ge=0)
+    share_pct: float = Field(ge=0, le=100)
+    mean_absolute_error_pct: float | None = Field(default=None, ge=0)
+    overestimate_count: int = Field(ge=0)
+    underestimate_count: int = Field(ge=0)
+
+
+class ScoringBacktestDriftSegment(BaseModel):
+    segment_type: ScoringBacktestSegmentType
+    key: str
+    label: str
+    evaluated_points: int = Field(ge=0)
+    mean_absolute_error_pct: float | None = Field(default=None, ge=0)
+    median_absolute_error_pct: float | None = Field(default=None, ge=0)
+    within_10_pct: float | None = Field(default=None, ge=0, le=100)
+    severity: ScoringBacktestSeverity
+    trend_note: str
+
+
+class ScoringBacktestReport(BaseModel):
+    generated_at: datetime
+    city: str | None = None
+    district: str | None = None
+    overall_severity: ScoringBacktestSeverity
+    quality_label: str
+    backtest: ScoringBacktestResult
+    error_buckets: list[ScoringBacktestErrorBucket] = Field(default_factory=list)
+    area_drift: list[ScoringBacktestDriftSegment] = Field(default_factory=list)
+    period_drift: list[ScoringBacktestDriftSegment] = Field(default_factory=list)
+    high_error_examples: list[ScoringBacktestItem] = Field(default_factory=list)
+    findings: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    methodology_note: str
 
 
 class ListingAnalysis(BaseModel):

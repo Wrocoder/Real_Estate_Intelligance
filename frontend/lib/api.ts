@@ -540,6 +540,48 @@ export type ScoringBacktestResult = {
   items: ScoringBacktestItem[];
 };
 
+export type ScoringBacktestSeverity = "healthy" | "watch" | "drift" | "critical";
+
+export type ScoringBacktestErrorBucket = {
+  code: string;
+  label: string;
+  min_error_pct: number;
+  max_error_pct: number | null;
+  evaluated_points: number;
+  share_pct: number;
+  mean_absolute_error_pct: number | null;
+  overestimate_count: number;
+  underestimate_count: number;
+};
+
+export type ScoringBacktestDriftSegment = {
+  segment_type: "area" | "period";
+  key: string;
+  label: string;
+  evaluated_points: number;
+  mean_absolute_error_pct: number | null;
+  median_absolute_error_pct: number | null;
+  within_10_pct: number | null;
+  severity: ScoringBacktestSeverity;
+  trend_note: string;
+};
+
+export type ScoringBacktestReport = {
+  generated_at: string;
+  city: string | null;
+  district: string | null;
+  overall_severity: ScoringBacktestSeverity;
+  quality_label: string;
+  backtest: ScoringBacktestResult;
+  error_buckets: ScoringBacktestErrorBucket[];
+  area_drift: ScoringBacktestDriftSegment[];
+  period_drift: ScoringBacktestDriftSegment[];
+  high_error_examples: ScoringBacktestItem[];
+  findings: string[];
+  recommendations: string[];
+  methodology_note: string;
+};
+
 export type PriceHistoryPoint = {
   observed_at: string;
   price: number;
@@ -2016,6 +2058,15 @@ export const api = {
     request<ScoringBacktestResult>(`/api/v1/admin/scoring/backtest${toQueryString(params)}`, {
       headers: ADMIN_HEADERS,
     }),
+  getAdminScoringBacktestReport: (params: {
+    city?: string;
+    district?: string;
+    limit?: number;
+  } = {}) =>
+    request<ScoringBacktestReport>(
+      `/api/v1/admin/scoring/backtest-report${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
   enrichAdminInfrastructure: (params: { dry_run?: boolean; limit?: number } = {}) =>
     request<InfrastructureEnrichmentJobResult>(
       `/api/v1/admin/infrastructure/enrich${toQueryString(params)}`,
