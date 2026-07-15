@@ -748,6 +748,119 @@ def _json_documents(page_html: str) -> Iterator[object]:
         except json.JSONDecodeError:
             continue
 
+    yield from _json_assignment_documents(page_html)
+
+
+def _json_assignment_documents(page_html: str) -> Iterator[object]:
+    state_names = (
+        "__INITIAL_STATE__",
+        "__PRERENDERED_STATE__",
+        "__APOLLO_STATE__",
+        "__OTODOM_STATE__",
+        "__OLX_STATE__",
+        "__STATE__",
+        "__NUXT__",
+    )
+    pattern = re.compile(
+        rf"(?:window\.|globalThis\.)?(?:{'|'.join(re.escape(name) for name in state_names)})"
+        r"\s*=\s*",
+        flags=re.IGNORECASE,
+    )
+    for script_body in _script_bodies(page_html):
+        script = html.unescape(script_body)
+        for match in pattern.finditer(script):
+            document = _json_document_after_assignment(script, match.end())
+            if document is not None:
+                yield document
+
+
+def _script_bodies(page_html: str) -> Iterator[str]:
+    for match in re.finditer(
+        r"<script\b[^>]*>(.*?)</script>",
+        page_html,
+        flags=re.IGNORECASE | re.DOTALL,
+    ):
+        yield match.group(1)
+
+
+def _json_document_after_assignment(script: str, start_index: int) -> object | None:
+    index = start_index
+    while index < len(script) and script[index].isspace():
+        index += 1
+
+    json_parse_match = re.match(r"JSON\.parse\(\s*([\"'])", script[index:], flags=re.IGNORECASE)
+    if json_parse_match:
+        quote = json_parse_match.group(1)
+        string_start = index + json_parse_match.end()
+        encoded, _ = _quoted_string_content(script, string_start, quote)
+        if encoded is None:
+            return None
+        try:
+            decoded = json.loads(f"{quote}{encoded}{quote}")
+            return json.loads(decoded)
+        except json.JSONDecodeError:
+            return None
+
+    if index >= len(script) or script[index] not in "{[":
+        return None
+
+    raw_json = _balanced_json(script, index)
+    if raw_json is None:
+        return None
+    try:
+        return json.loads(raw_json)
+    except json.JSONDecodeError:
+        return None
+
+
+def _quoted_string_content(
+    value: str,
+    start_index: int,
+    quote: str,
+) -> tuple[str | None, int | None]:
+    escaped = False
+    index = start_index
+    while index < len(value):
+        character = value[index]
+        if escaped:
+            escaped = False
+        elif character == "\\":
+            escaped = True
+        elif character == quote:
+            return value[start_index:index], index + 1
+        index += 1
+    return None, None
+
+
+def _balanced_json(value: str, start_index: int) -> str | None:
+    opening = value[start_index]
+    closing = "}" if opening == "{" else "]"
+    stack = [closing]
+    in_string = False
+    escaped = False
+    index = start_index + 1
+    while index < len(value):
+        character = value[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+        elif character == '"':
+            in_string = True
+        elif character in "{[":
+            stack.append("}" if character == "{" else "]")
+        elif character in "}]":
+            if not stack or character != stack[-1]:
+                return None
+            stack.pop()
+            if not stack:
+                return value[start_index : index + 1]
+        index += 1
+    return None
+
 
 def _fields_from_json_value(value: object) -> SourceUrlImportFields:
     fields = SourceUrlImportFields()
@@ -762,13 +875,22 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     fields = SourceUrlImportFields()
     lowered = {_json_key(key): value for key, value in item.items()}
 
-    title = _first_text(lowered, ("name", "title", "headline"))
+    title = _first_text(lowered, ("name", "title", "headline", "subject", "adtitle"))
     if title:
         fields.title = title
 
     price = _first_number(
         lowered,
-        ("price", "priceamount", "amount", "totalprice", "askingprice", "cena"),
+        (
+            "price",
+            "priceamount",
+            "amount",
+            "totalprice",
+            "askingprice",
+            "cena",
+            "regularprice",
+            "displayprice",
+        ),
     )
     if price:
         fields.price = int(round(price))
@@ -787,6 +909,9 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
             "powierzchnia",
             "powierzchniam2",
             "m",
+            "m2",
+            "metraz",
+            "meterage",
         ),
     )
     if area and fields.area_m2 is None:
@@ -800,6 +925,7 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
             "roomsnumber",
             "roomnumber",
             "roomsnum",
+            "roomsnumbervalue",
             "liczbapokoi",
             "pokoje",
         ),
@@ -807,15 +933,21 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     if rooms:
         fields.rooms = int(round(rooms))
 
-    floor = _first_number(lowered, ("floor", "floornumber", "floorno", "pietro", "pitro"))
+    floor, building_floors_from_floor = _first_floor_values(
+        lowered,
+        ("floor", "floornumber", "floorno", "floorlevel", "pietro", "pitro"),
+    )
     if floor is not None:
-        fields.floor = int(round(floor))
+        fields.floor = floor
+    if building_floors_from_floor is not None:
+        fields.building_floors = building_floors_from_floor
 
     building_floors = _first_number(
         lowered,
         (
             "buildingfloors",
             "buildingfloorsnum",
+            "buildingfloorcount",
             "totalfloors",
             "floorcount",
             "numberoffloors",
@@ -836,7 +968,7 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
         fields.building_year = int(round(building_year))
 
     market_type = _market_type_from_value(
-        _first_text(lowered, ("market", "markettype", "buildingmarket", "rynek"))
+        _first_text(lowered, ("market", "markettype", "buildingmarket", "rynek", "rentmarket"))
     )
     if market_type:
         fields.market_type = market_type
@@ -848,24 +980,99 @@ def _fields_from_json_object(item: dict) -> SourceUrlImportFields:
     if lon is not None:
         fields.lon = lon
 
-    address = lowered.get("address")
-    if isinstance(address, dict):
-        address_lowered = {_json_key(key): value for key, value in address.items()}
-        fields.address = _first_text(address_lowered, ("streetaddress", "address"))
-        fields.city = _first_text(address_lowered, ("addresslocality", "locality", "city"))
-        fields.district = _first_text(
-            address_lowered,
-            ("district", "neighborhood", "addressregion"),
-        )
-    else:
-        fields.address = _first_text(lowered, ("streetaddress", "address", "location", "adres"))
-        fields.city = _first_text(lowered, ("city", "locality", "addresslocality"))
-        fields.district = _first_text(
-            lowered,
-            ("district", "neighborhood", "addressregion", "dzielnica"),
-        )
-
+    fields = _merge_import_fields(fields, _fields_from_location_json_object(item))
     return _merge_import_fields(fields, _fields_from_labeled_json_object(item))
+
+
+def _fields_from_location_json_object(item: dict) -> SourceUrlImportFields:
+    fields = SourceUrlImportFields()
+    lowered = {_json_key(key): value for key, value in item.items()}
+
+    address_like = _first_location_text(
+        lowered,
+        (
+            "streetaddress",
+            "address",
+            "addressline",
+            "displayaddress",
+            "fulladdress",
+            "adres",
+            "street",
+            "streetname",
+        ),
+    )
+    street_number = _first_location_text(lowered, ("streetnumber", "number", "housenumber"))
+    if address_like and street_number and street_number not in address_like:
+        address_like = f"{address_like} {street_number}"
+    if address_like:
+        fields.address = address_like
+
+    city = _first_location_text(
+        lowered,
+        (
+            "city",
+            "cityname",
+            "town",
+            "locality",
+            "addresslocality",
+            "municipality",
+            "miasto",
+        ),
+    )
+    if city:
+        fields.city = city
+
+    district = _first_location_text(
+        lowered,
+        (
+            "district",
+            "districtname",
+            "neighborhood",
+            "addressregion",
+            "region",
+            "province",
+            "voivodeship",
+            "dzielnica",
+        ),
+    )
+    if district:
+        fields.district = district
+
+    for nested_key in ("location", "lokalizacja", "address", "geoaddress"):
+        nested = lowered.get(nested_key)
+        if isinstance(nested, dict):
+            fields = _merge_import_fields(fields, _fields_from_location_json_object(nested))
+    return fields
+
+
+def _first_location_text(values: dict[str, object], keys: tuple[str, ...]) -> str | None:
+    for key in keys:
+        text = _location_text(values.get(key))
+        if text:
+            return text
+    return None
+
+
+def _location_text(value: object) -> str | None:
+    if isinstance(value, str):
+        return _coerce_text(value)
+    if isinstance(value, int | float):
+        return str(value)
+    if isinstance(value, dict):
+        lowered = {_json_key(key): nested_value for key, nested_value in value.items()}
+        return _first_location_text(
+            lowered,
+            (
+                "name",
+                "label",
+                "value",
+                "displayname",
+                "localizedname",
+                "fullname",
+                "text",
+            ),
+        )
+    return None
 
 
 def _fields_from_labeled_json_object(item: dict) -> SourceUrlImportFields:
@@ -894,6 +1101,9 @@ def _field_label(item: dict) -> str | None:
             "slug",
             "parameter",
             "attributename",
+            "displayname",
+            "field",
+            "id",
             "localizedname",
         ),
     )
@@ -905,8 +1115,11 @@ def _field_value(item: dict) -> object | None:
         "value",
         "values",
         "displayvalue",
+        "formattedvalue",
         "localizedvalue",
         "localizedvalues",
+        "numericvalue",
+        "rawvalue",
         "text",
         "content",
     ):
@@ -926,15 +1139,34 @@ def _apply_labeled_field(fields: SourceUrlImportFields, label: str, value: objec
         fields.price = _money_from_text(text) or _int_from_text(text)
         return
 
-    if key in {"area", "aream2", "usablearea", "floorarea", "powierzchnia", "m"}:
+    if key in {
+        "area",
+        "aream2",
+        "usablearea",
+        "floorarea",
+        "powierzchnia",
+        "m",
+        "m2",
+        "metraz",
+        "meterage",
+    }:
         fields.area_m2 = _area_from_text(text) or _coerce_float(text)
         return
 
-    if key in {"rooms", "numberofrooms", "roomsnumber", "roomnumber", "liczbapokoi", "pokoje"}:
+    if key in {
+        "rooms",
+        "numberofrooms",
+        "roomsnumber",
+        "roomnumber",
+        "roomsnum",
+        "roomsnumbervalue",
+        "liczbapokoi",
+        "pokoje",
+    }:
         fields.rooms = _int_from_text(text)
         return
 
-    if key in {"floor", "floornumber", "pietro", "pitro"}:
+    if key in {"floor", "floornumber", "floorno", "floorlevel", "pietro", "pitro"}:
         floor, building_floors = _floor_pair_from_text(text)
         if floor is not None:
             fields.floor = floor
@@ -944,6 +1176,8 @@ def _apply_labeled_field(fields: SourceUrlImportFields, label: str, value: objec
 
     if key in {
         "buildingfloors",
+        "buildingfloorsnum",
+        "buildingfloorcount",
         "totalfloors",
         "floorcount",
         "numberoffloors",
@@ -959,19 +1193,19 @@ def _apply_labeled_field(fields: SourceUrlImportFields, label: str, value: objec
         fields.building_year = _year_from_text(text)
         return
 
-    if key in {"market", "markettype", "buildingmarket", "rynek"}:
+    if key in {"market", "markettype", "buildingmarket", "rentmarket", "rynek"}:
         fields.market_type = _market_type_from_value(text)
         return
 
-    if key in {"address", "streetaddress", "location", "adres", "lokalizacja"}:
+    if key in {"address", "streetaddress", "location", "adres", "lokalizacja", "street"}:
         fields.address = text
         return
 
-    if key in {"city", "locality", "addresslocality", "miasto"}:
+    if key in {"city", "cityname", "locality", "addresslocality", "miasto"}:
         fields.city = text
         return
 
-    if key in {"district", "neighborhood", "addressregion", "dzielnica"}:
+    if key in {"district", "districtname", "neighborhood", "addressregion", "dzielnica"}:
         fields.district = text
 
 
@@ -1071,6 +1305,23 @@ def _first_number(values: dict[str, object], keys: tuple[str, ...]) -> float | N
     return None
 
 
+def _first_floor_values(
+    values: dict[str, object],
+    keys: tuple[str, ...],
+) -> tuple[int | None, int | None]:
+    for key in keys:
+        text = _value_text(values.get(key))
+        if not text:
+            continue
+        floor, building_floors = _floor_pair_from_text(text)
+        if floor is not None:
+            return floor, building_floors
+        floor_number = _int_from_text(text)
+        if floor_number is not None:
+            return floor_number, None
+    return None, None
+
+
 def _coerce_text(value: object) -> str | None:
     if isinstance(value, str):
         cleaned = re.sub(r"\s+", " ", value).strip()
@@ -1091,8 +1342,16 @@ def _value_text(value: object) -> str | None:
         parts = []
         for key in (
             "value",
+            "rawValue",
+            "rawvalue",
             "displayValue",
+            "displayvalue",
+            "formattedValue",
+            "formattedvalue",
             "localizedValue",
+            "localizedvalue",
+            "numericValue",
+            "numericvalue",
             "label",
             "name",
             "text",
@@ -1109,6 +1368,9 @@ def _value_text(value: object) -> str | None:
 def _coerce_float(value: object) -> float | None:
     if isinstance(value, int | float):
         return float(value)
+    if isinstance(value, dict | list):
+        text = _value_text(value)
+        return _coerce_float(text) if text else None
     if not isinstance(value, str):
         return None
     normalized = value.replace("\xa0", " ").replace(" ", "").replace(",", ".")

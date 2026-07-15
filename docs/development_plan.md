@@ -122,6 +122,7 @@
 - [x] Добавить proxy-market fallback для объектов вне текущего coverage с явным warning.
 - [x] Добавить первый suburban coverage seed для Mędłów: area statistics, local comparables, geocoding и normalization из broad portal region label.
 - [x] Добавить suburban coverage pack для Kobierzyce/Wysoka/Bielany Wrocławskie/Oława: area statistics, local comparables, aliases и geocoding.
+- [x] Добавить stronger URL extraction fixtures под Otodom/OLX embedded-state variants: assignment scripts, JSON.parse state, nested location и parameter dictionaries.
 - [x] Добавить пользовательское подтверждение: “я имею право использовать эту ссылку/данные для личного анализа”.
 - [x] Добавить retention policy для user-submitted drafts и ссылок.
 - [x] Покрыть API contract tests и frontend typecheck для address-first flow.
@@ -461,6 +462,7 @@
 - [x] Commit 56: stronger link-to-report flow for user-submitted URLs.
 - [x] Commit 57: suburban Mędłów coverage for link reports.
 - [x] Commit 58: suburban coverage pack for link reports.
+- [x] Commit 59: stronger URL extraction fixtures.
 
 ## Current Sprint
 
@@ -516,6 +518,7 @@
 - [x] Добавить nearest covered market fallback для объектов вне текущего coverage.
 - [x] Добавить Mędłów coverage seed для Otodom link-to-report без proxy-market fallback.
 - [x] Добавить Kobierzyce/Wysoka/Bielany/Oława coverage pack для link-to-report.
+- [x] Добавить stronger URL extraction fixtures для Otodom/OLX embedded state variants.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
@@ -558,3 +561,4 @@
 - [x] Сделать Commit 56 и push.
 - [x] Сделать Commit 57 и push.
 - [x] Сделать Commit 58 и push.
+- [x] Сделать Commit 59 и push.

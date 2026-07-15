@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -238,6 +240,142 @@ def test_user_submitted_listing_import_from_url_extracts_labeled_portal_paramete
     assert payload["fields"]["address"] == "ul. Kwiatowa 5"
     assert payload["fields"]["city"] == "Wrocław"
     assert payload["fields"]["district"] == "Krzyki"
+
+
+def test_user_submitted_listing_import_from_url_extracts_otodom_embedded_state(
+    monkeypatch,
+) -> None:
+    page_html = """
+    <html>
+      <head>
+        <script>
+          window.__INITIAL_STATE__ = {
+            "ad": {
+              "title": "Funkcjonalne 3 pokoje pod Wrocławiem",
+              "price": {"value": "625000", "currency": "PLN"},
+              "characteristics": [
+                {"key": "m", "value": "59,74 m²"},
+                {"key": "rooms_num", "value": "3"},
+                {"key": "floor_no", "value": "1/2"},
+                {"key": "build_year", "value": "2011"},
+                {"key": "market", "value": "Rynek wtórny"}
+              ],
+              "location": {
+                "address": {
+                  "street": {"name": "Piastów Śląskich"},
+                  "city": {"name": "Mędłów"},
+                  "district": {"name": "dolnośląskie"}
+                },
+                "coordinates": {"latitude": 51.007355, "longitude": 17.048521}
+              }
+            }
+          };
+        </script>
+      </head>
+    </html>
+    """
+
+    def fake_fetch(source_url: str, timeout_seconds: float):
+        return user_submitted_listing_service.SourceFetchResult(
+            body=page_html,
+            final_url=source_url,
+            status_code=200,
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fake_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.otodom.pl/pl/oferta/demo-medlow-ID4state"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "extracted"
+    assert payload["fields"]["title"] == "Funkcjonalne 3 pokoje pod Wrocławiem"
+    assert payload["fields"]["price"] == 625000
+    assert payload["fields"]["area_m2"] == 59.74
+    assert payload["fields"]["rooms"] == 3
+    assert payload["fields"]["floor"] == 1
+    assert payload["fields"]["building_floors"] == 2
+    assert payload["fields"]["building_year"] == 2011
+    assert payload["fields"]["market_type"] == "secondary"
+    assert payload["fields"]["address"] == "Piastów Śląskich"
+    assert payload["fields"]["city"] == "Mędłów"
+    assert payload["fields"]["district"] == "dolnośląskie"
+    assert payload["fields"]["lat"] == 51.007355
+    assert payload["fields"]["lon"] == 17.048521
+
+
+def test_user_submitted_listing_import_from_url_extracts_olx_prerendered_state(
+    monkeypatch,
+) -> None:
+    embedded_state = {
+        "advert": {
+            "subject": "2 pokoje z balkonem, Wysoka",
+            "params": {
+                "price": {"label": "Cena", "formattedValue": "589 000 zł"},
+                "m": {"name": "Powierzchnia", "value": {"displayValue": "46,8 m²"}},
+                "rooms": {"key": "rooms_num", "value": "2 pokoje"},
+                "floor": {"key": "floor_no", "value": "parter/3"},
+                "buildingFloors": {"key": "building_floors_num", "rawValue": 3},
+                "buildYear": {"key": "build_year", "value": "2018"},
+                "market": {"key": "market", "value": "pierwotny"},
+            },
+            "location": {
+                "address": "Brzozowa",
+                "cityName": "Wysoka",
+                "districtName": "dolnośląskie",
+                "map": {"lat": 51.0351, "lng": 17.0292},
+            },
+        }
+    }
+    page_html = (
+        "<html><head><script>"
+        f"window.__PRERENDERED_STATE__ = JSON.parse({json.dumps(json.dumps(embedded_state))});"
+        "</script></head></html>"
+    )
+
+    def fake_fetch(source_url: str, timeout_seconds: float):
+        return user_submitted_listing_service.SourceFetchResult(
+            body=page_html,
+            final_url=source_url,
+            status_code=200,
+            content_type="text/html",
+        )
+
+    monkeypatch.setattr(
+        user_submitted_listing_service,
+        "_fetch_source_url_html",
+        fake_fetch,
+    )
+
+    response = client.post(
+        "/api/v1/user-submitted-listings/import-from-url",
+        json={"source_url": "https://www.olx.pl/d/oferta/wysoka-demo-IDolxstate.html"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "extracted"
+    assert payload["fields"]["title"] == "2 pokoje z balkonem, Wysoka"
+    assert payload["fields"]["price"] == 589000
+    assert payload["fields"]["area_m2"] == 46.8
+    assert payload["fields"]["rooms"] == 2
+    assert payload["fields"]["floor"] == 0
+    assert payload["fields"]["building_floors"] == 3
+    assert payload["fields"]["building_year"] == 2018
+    assert payload["fields"]["market_type"] == "primary"
+    assert payload["fields"]["address"] == "Brzozowa"
+    assert payload["fields"]["city"] == "Wysoka"
+    assert payload["fields"]["district"] == "dolnośląskie"
+    assert payload["fields"]["lat"] == 51.0351
+    assert payload["fields"]["lon"] == 17.0292
 
 
 def test_user_submitted_listing_import_from_url_rejects_unsupported_provider(
