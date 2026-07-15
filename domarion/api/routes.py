@@ -194,6 +194,7 @@ from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
+from domarion.services.listing_comparison import build_listing_comparison
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.mortgage import calculate_mortgage
 from domarion.services.open_data_roadmap import list_open_data_roadmap
@@ -2333,7 +2334,10 @@ def compare_listings(
     if missing_ids:
         raise HTTPException(status_code=404, detail={"missing_listing_ids": missing_ids})
 
-    return CompareResponse(items=analyses)
+    try:
+        return build_listing_comparison(analyses)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/reports/object", response_model=ObjectReport)

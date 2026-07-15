@@ -16,6 +16,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/price-history/rebuild", "post"): "PriceHistoryRebuildResult",
         ("/api/v1/admin/infrastructure/enrich", "post"): "InfrastructureEnrichmentJobResult",
         ("/api/v1/areas/compare", "get"): "AreaComparison",
+        ("/api/v1/compare", "post"): "CompareResponse",
         ("/api/v1/market/dashboard", "get"): "MarketDashboard",
         ("/api/v1/mortgage/calculate", "post"): "MortgageCalculationResult",
         (
@@ -169,6 +170,10 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "AreaComparisonItem",
         "AmenityReference",
         "AreaMarketSnapshotJobResult",
+        "CompareItemMetrics",
+        "CompareMortgageAssumptions",
+        "CompareResponse",
+        "CompareSummary",
         "DistrictReference",
         "GenerateUserSubmittedDraftReportRequest",
         "IndustrialZoneReference",

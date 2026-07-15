@@ -879,6 +879,58 @@ export type ListingSearchResponse = {
   filters: Record<string, unknown>;
 };
 
+export type CompareMortgageAssumptions = {
+  down_payment_pct: number;
+  loan_years: number;
+  annual_interest_rate_pct: number;
+  rate_type: "fixed" | "variable";
+};
+
+export type CompareItemMetrics = {
+  listing_id: string;
+  rank: number;
+  decision_score: number;
+  decision_label: PropertyScores["decision_label"];
+  price_label: PropertyScores["price_label"];
+  risk_label: PropertyScores["risk_label"];
+  liquidity_label: PropertyScores["liquidity_label"];
+  rental_potential_label: PropertyScores["rental_potential_label"];
+  investment_score: number;
+  risk_score: number;
+  negotiation_score: number;
+  liquidity_score: number;
+  rental_potential_score: number;
+  price_per_m2_pln: number;
+  fair_price_mid_pln: number;
+  price_delta_to_fair_mid_pct: number;
+  fair_price_gap_pln: number;
+  estimated_discount_to_fair_mid_pln: number;
+  down_payment_pln: number;
+  loan_amount_pln: number;
+  estimated_monthly_payment_pln: number;
+  estimated_monthly_payment_per_m2_pln: number;
+  upfront_cash_needed_pln: number;
+  estimated_gross_rental_yield_pct: number;
+  estimated_monthly_rent_pln: number;
+  recommendation: string;
+  reasons: string[];
+  warnings: string[];
+};
+
+export type CompareSummary = {
+  best_listing_id: string;
+  best_value_listing_id: string;
+  lowest_monthly_payment_listing_id: string;
+  strongest_liquidity_listing_id: string;
+  strongest_rental_listing_id: string;
+  riskiest_listing_id: string;
+  average_price_per_m2: number;
+  average_estimated_monthly_payment_pln: number;
+  average_liquidity_score: number;
+  average_rental_potential_score: number;
+  notes: string[];
+};
+
 export type IngestionJob = {
   id: string;
   source_name: string;
@@ -1100,6 +1152,9 @@ export type PropertyDeduplicationMatch = {
 
 export type CompareResponse = {
   items: ListingAnalysis[];
+  metrics: CompareItemMetrics[];
+  summary: CompareSummary;
+  mortgage_assumptions: CompareMortgageAssumptions;
 };
 
 export type ReportProduct = {

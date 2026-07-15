@@ -1050,8 +1050,63 @@ class CompareRequest(BaseModel):
     listing_ids: list[str] = Field(min_length=2, max_length=5)
 
 
+class CompareMortgageAssumptions(BaseModel):
+    down_payment_pct: float = Field(ge=0, le=100)
+    loan_years: int = Field(ge=1, le=35)
+    annual_interest_rate_pct: float = Field(ge=0, le=30)
+    rate_type: MortgageRateType
+
+
+class CompareItemMetrics(BaseModel):
+    listing_id: str
+    rank: int = Field(ge=1)
+    decision_score: int = Field(ge=0, le=100)
+    decision_label: ScoreDecisionLabel
+    price_label: ScorePriceLabel
+    risk_label: ScoreRiskLabel
+    liquidity_label: ScorePotentialLabel
+    rental_potential_label: ScorePotentialLabel
+    investment_score: int = Field(ge=0, le=100)
+    risk_score: int = Field(ge=0, le=100)
+    negotiation_score: int = Field(ge=0, le=100)
+    liquidity_score: int = Field(ge=0, le=100)
+    rental_potential_score: int = Field(ge=0, le=100)
+    price_per_m2_pln: int = Field(ge=0)
+    fair_price_mid_pln: int
+    price_delta_to_fair_mid_pct: float
+    fair_price_gap_pln: int
+    estimated_discount_to_fair_mid_pln: int = Field(ge=0)
+    down_payment_pln: int = Field(ge=0)
+    loan_amount_pln: int = Field(ge=0)
+    estimated_monthly_payment_pln: int = Field(ge=0)
+    estimated_monthly_payment_per_m2_pln: int = Field(ge=0)
+    upfront_cash_needed_pln: int = Field(ge=0)
+    estimated_gross_rental_yield_pct: float = Field(ge=0)
+    estimated_monthly_rent_pln: int = Field(ge=0)
+    recommendation: str
+    reasons: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class CompareSummary(BaseModel):
+    best_listing_id: str
+    best_value_listing_id: str
+    lowest_monthly_payment_listing_id: str
+    strongest_liquidity_listing_id: str
+    strongest_rental_listing_id: str
+    riskiest_listing_id: str
+    average_price_per_m2: int = Field(ge=0)
+    average_estimated_monthly_payment_pln: int = Field(ge=0)
+    average_liquidity_score: int = Field(ge=0, le=100)
+    average_rental_potential_score: int = Field(ge=0, le=100)
+    notes: list[str] = Field(default_factory=list)
+
+
 class CompareResponse(BaseModel):
     items: list[ListingAnalysis]
+    metrics: list[CompareItemMetrics]
+    summary: CompareSummary
+    mortgage_assumptions: CompareMortgageAssumptions
 
 
 class MarketDistributionBucket(BaseModel):

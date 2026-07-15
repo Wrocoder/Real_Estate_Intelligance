@@ -144,6 +144,42 @@ def test_compare_requires_existing_ids() -> None:
     assert response.json()["detail"]["missing_listing_ids"] == ["missing"]
 
 
+def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
+    response = client.post("/api/v1/compare", json={"listing_ids": ["wr-001", "wr-002"]})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert [item["listing"]["id"] for item in payload["items"]] == ["wr-001", "wr-002"]
+    assert payload["mortgage_assumptions"] == {
+        "down_payment_pct": 20.0,
+        "loan_years": 25,
+        "annual_interest_rate_pct": 7.5,
+        "rate_type": "fixed",
+    }
+
+    metrics = payload["metrics"]
+    assert len(metrics) == 2
+    assert sorted(metric["rank"] for metric in metrics) == [1, 2]
+    assert {metric["listing_id"] for metric in metrics} == {"wr-001", "wr-002"}
+    for metric in metrics:
+        assert 0 <= metric["decision_score"] <= 100
+        assert metric["estimated_monthly_payment_pln"] > 0
+        assert metric["upfront_cash_needed_pln"] > 0
+        assert metric["estimated_gross_rental_yield_pct"] > 0
+        assert metric["estimated_monthly_rent_pln"] > 0
+        assert metric["liquidity_score"] >= 0
+        assert metric["rental_potential_score"] >= 0
+        assert metric["recommendation"]
+
+    summary = payload["summary"]
+    assert summary["best_listing_id"] in {"wr-001", "wr-002"}
+    assert summary["lowest_monthly_payment_listing_id"] in {"wr-001", "wr-002"}
+    assert summary["strongest_liquidity_listing_id"] in {"wr-001", "wr-002"}
+    assert summary["strongest_rental_listing_id"] in {"wr-001", "wr-002"}
+    assert summary["average_estimated_monthly_payment_pln"] > 0
+    assert summary["notes"]
+
+
 def test_object_report() -> None:
     response = client.post("/api/v1/reports/object", json={"listing_id": "wr-001"})
     payload = response.json()

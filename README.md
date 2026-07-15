@@ -37,6 +37,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены AI insights: generated reports сохраняют owner-scoped summaries, area summaries и object explanations через `/api/v1/ai-insights`.
 - Добавлен S3-compatible report artifact storage abstraction: HTML/JSON отчеты можно дублировать в local/S3 backend без изменения report API.
 - Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
+- Compare API/UI расширен до decision matrix: rank, ипотечный baseline, cash needed, liquidity и rental potential по каждому объекту.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.

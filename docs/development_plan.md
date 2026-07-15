@@ -101,7 +101,7 @@
 - [ ] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
 - [ ] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
 - [ ] Добавить API для поиска объектов ниже рынка и hidden gems.
-- [ ] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
+- [x] Добавить API сравнения 2-5 объектов с mortgage payment, rental potential и liquidity fields.
 
 ## 4.1 Hybrid User-Provided Listing Flow
 
@@ -465,6 +465,7 @@
 - [x] Commit 58: suburban coverage pack for link reports.
 - [x] Commit 59: stronger URL extraction fixtures.
 - [x] Commit 60: source-backed suburban coverage samples.
+- [x] Commit 61: comparison decision metrics and mortgage baseline.
 
 ## Current Sprint
 
@@ -522,6 +523,7 @@
 - [x] Добавить Kobierzyce/Wysoka/Bielany/Oława coverage pack для link-to-report.
 - [x] Добавить stronger URL extraction fixtures для Otodom/OLX embedded state variants.
 - [x] Перевести suburban coverage seeds в partner/open-data sample files вместо ручных listing blocks.
+- [x] Добавить расширенный compare API/UI: decision rank, ипотечный baseline, cash needed, liquidity и rental potential.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
