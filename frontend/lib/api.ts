@@ -257,6 +257,35 @@ export type PlannedInvestment = {
   notes: string | null;
 };
 
+export type PlannedInvestmentImpactItem = {
+  investment: PlannedInvestment;
+  distance_m: number;
+  radius_m: number;
+  impact_weight: number;
+};
+
+export type FutureImpactRadiusBucket = {
+  radius_m: number;
+  count: number;
+  high_confidence_count: number;
+  investment_types: string[];
+  statuses: string[];
+  nearest_distance_m: number | null;
+};
+
+export type ListingFutureImpact = {
+  listing_id: string;
+  max_radius_m: number;
+  radii_m: number[];
+  buckets: FutureImpactRadiusBucket[];
+  nearest_investments: PlannedInvestmentImpactItem[];
+  impact_score: number;
+  summary: string;
+  growth_signals: string[];
+  risk_signals: string[];
+  methodology_note: string;
+};
+
 export type PlannedInvestmentPayload = {
   name: string;
   investment_type: string;
@@ -479,6 +508,7 @@ export type ListingAnalysis = {
   listing_events: ListingEvent[];
   comparables: Listing[];
   developer_reputation: DeveloperReputation | null;
+  future_area_impact: ListingFutureImpact | null;
   scores: PropertyScores;
   insights: string[];
   negotiation_arguments: string[];
@@ -2050,6 +2080,8 @@ export const api = {
     request<MapFeatureCollection>(`/api/v1/map/features${toQueryString(params)}`),
   getListing: (id: string) => request<Listing>(`/api/v1/listings/${id}`),
   getAnalysis: (id: string) => request<ListingAnalysis>(`/api/v1/listings/${id}/analysis`),
+  getListingFutureImpact: (id: string) =>
+    request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
   addFavorite: (listingId: string, note?: string) =>
     request<Favorite>(`/api/v1/favorites?owner_id=${OWNER_ID}`, {
       method: "POST",

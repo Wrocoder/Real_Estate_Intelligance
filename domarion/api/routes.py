@@ -117,6 +117,7 @@ from domarion.schemas import (
     KindergartenReference,
     Listing,
     ListingAnalysis,
+    ListingFutureImpact,
     ListingSearchResponse,
     ListingSort,
     LocationReference,
@@ -195,6 +196,7 @@ from domarion.services.alerts import build_alert_preview
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
+from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
@@ -2430,6 +2432,17 @@ def analyze_listing(listing_id: str, repository: RepositoryDep) -> ListingAnalys
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return build_listing_analysis(repository, listing)
+
+
+@router.get("/listings/{listing_id}/future-impact", response_model=ListingFutureImpact)
+def get_listing_future_impact(
+    listing_id: str,
+    repository: RepositoryDep,
+) -> ListingFutureImpact:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    return build_listing_future_impact(repository, listing)
 
 
 @router.get("/listings/{listing_id}/developer", response_model=DeveloperReputation)

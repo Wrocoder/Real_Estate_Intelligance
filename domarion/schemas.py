@@ -483,6 +483,35 @@ class PlannedInvestment(BaseModel):
     notes: str | None = None
 
 
+class PlannedInvestmentImpactItem(BaseModel):
+    investment: PlannedInvestment
+    distance_m: int = Field(ge=0)
+    radius_m: int = Field(ge=0)
+    impact_weight: float = Field(ge=0)
+
+
+class FutureImpactRadiusBucket(BaseModel):
+    radius_m: int = Field(ge=0)
+    count: int = Field(ge=0)
+    high_confidence_count: int = Field(ge=0)
+    investment_types: list[str] = Field(default_factory=list)
+    statuses: list[str] = Field(default_factory=list)
+    nearest_distance_m: int | None = Field(default=None, ge=0)
+
+
+class ListingFutureImpact(BaseModel):
+    listing_id: str
+    max_radius_m: int = Field(ge=0)
+    radii_m: list[int] = Field(default_factory=list)
+    buckets: list[FutureImpactRadiusBucket] = Field(default_factory=list)
+    nearest_investments: list[PlannedInvestmentImpactItem] = Field(default_factory=list)
+    impact_score: int = Field(ge=0, le=100)
+    summary: str
+    growth_signals: list[str] = Field(default_factory=list)
+    risk_signals: list[str] = Field(default_factory=list)
+    methodology_note: str
+
+
 class PlannedInvestmentCreate(BaseModel):
     name: str
     investment_type: str
@@ -1006,6 +1035,7 @@ class ListingAnalysis(BaseModel):
     listing_events: list[ListingEvent] = Field(default_factory=list)
     comparables: list[Listing]
     developer_reputation: DeveloperReputation | None = None
+    future_area_impact: ListingFutureImpact | None = None
     scores: PropertyScores
     insights: list[str]
     negotiation_arguments: list[str]

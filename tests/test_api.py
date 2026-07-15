@@ -310,6 +310,26 @@ def test_listing_analysis() -> None:
     assert payload["listing_events"][0]["event_type"] == "first_seen"
     assert payload["developer_reputation"]["developer"]["id"] == "fabryczna-estate-partners"
     assert payload["developer_reputation"]["due_diligence_questions"]
+    assert payload["future_area_impact"]["listing_id"] == "wr-001"
+    assert payload["future_area_impact"]["impact_score"] > 0
+    assert payload["future_area_impact"]["buckets"][0]["radius_m"] == 500
+    assert payload["future_area_impact"]["nearest_investments"]
+
+
+def test_listing_future_impact_returns_radius_buckets() -> None:
+    response = client.get("/api/v1/listings/wr-001/future-impact")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["listing_id"] == "wr-001"
+    assert payload["radii_m"] == [500, 1000, 2000, 5000, 10000]
+    assert payload["impact_score"] > 0
+    assert payload["buckets"][0]["radius_m"] == 500
+    assert payload["buckets"][2]["radius_m"] == 2000
+    assert payload["buckets"][2]["count"] >= 1
+    assert payload["nearest_investments"][0]["distance_m"] <= 2000
+    assert payload["growth_signals"]
+    assert "guarantee" in payload["methodology_note"]
 
 
 def test_compare_requires_existing_ids() -> None:
@@ -391,6 +411,8 @@ def test_object_report() -> None:
     assert "Для жизни:" in fit_items
     assert "Для аренды:" in fit_items
     assert "Развитие района:" in fit_items
+    assert "Future impact score:" in fit_items
+    assert "Ближайшие planned investments:" in fit_items
     developer_section = next(
         section
         for section in payload["sections"]

@@ -805,6 +805,8 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     fit_items = "\n".join(fit_section["items"])
     assert "Для семьи:" in fit_items
     assert "Развитие района:" in fit_items
+    assert "Future impact score:" in fit_items
+    assert "Ближайшие planned investments:" in fit_items
     developer_section = next(
         section
         for section in payload["report"]["sections"]

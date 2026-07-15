@@ -182,7 +182,7 @@
 - [x] Добавить market dashboards: active/new/removed listings, exposure time, price/rooms/area distributions.
 - [x] Добавить district/city comparison analytics.
 - [x] Добавить market indexes: overheated area, buyer market, seller market, area liquidity.
-- [ ] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
+- [x] Добавить future-area-development analysis по радиусам 500 м, 1 км, 2 км, 5 км, 10 км.
 - [ ] Добавить growth factors: transport, schools, parks, hospitals, retail, offices, universities, population/jobs growth.
 - [ ] Добавить risk factors: noise, flood, pollution, airport/rail/industrial zones, oversupply, weak transport, weak rental yield.
 - [ ] Добавить rental estimate и gross yield/cashflow inputs для investor flow.
@@ -557,6 +557,7 @@
 - [x] Усилить developer due diligence в отчетах: posture, projects, signals, registry checks, citations и disclaimer.
 - [x] Добавить buyer decision summary в object/link reports: recommendation, max offer, risks и pre-zadatek checks.
 - [x] Добавить First_prompt-style fit/outlook answers в object/link reports: family, rental, liquidity и future area signals.
+- [x] Добавить listing future-impact API и report integration: radius buckets, nearest planned investments, impact score.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

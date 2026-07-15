@@ -132,6 +132,24 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
             f"предложение 90d {area.supply_change_90d_pct:+.1f}%."
         ),
     ]
+    if analysis.future_area_impact is not None:
+        impact = analysis.future_area_impact
+        items.append(
+            f"Future impact score: {impact.impact_score}/100. {impact.summary}"
+        )
+        if impact.nearest_investments:
+            nearest = "; ".join(
+                (
+                    f"{item.investment.name} ({item.investment.investment_type}, "
+                    f"{item.distance_m} m, confidence {item.investment.confidence_score}/100)"
+                )
+                for item in impact.nearest_investments[:3]
+            )
+            items.append(f"Ближайшие planned investments: {nearest}.")
+        if impact.growth_signals:
+            items.append(f"Growth signals: {'; '.join(impact.growth_signals[:3])}.")
+        if impact.risk_signals:
+            items.append(f"Future-area risks/checks: {'; '.join(impact.risk_signals[:3])}.")
     location_risks = _location_risk_flags(analysis)
     if location_risks:
         items.append(f"Что проверить на месте: {'; '.join(location_risks)}.")
@@ -641,6 +659,8 @@ def _liquidity_fit(analysis: ListingAnalysis) -> str:
 
 
 def _future_area_outlook(analysis: ListingAnalysis) -> str:
+    if analysis.future_area_impact is not None:
+        return analysis.future_area_impact.summary
     listing = analysis.listing
     area = analysis.area_statistics
     if listing.planned_investments_within_2km >= 2 and area.price_change_90d_pct >= 0:
@@ -657,6 +677,8 @@ def _future_area_outlook(analysis: ListingAnalysis) -> str:
 def _location_risk_flags(analysis: ListingAnalysis) -> list[str]:
     listing = analysis.listing
     risks: list[str] = []
+    if analysis.future_area_impact is not None:
+        risks.extend(analysis.future_area_impact.risk_signals[:2])
     if listing.nearest_major_road_m < 200:
         risks.append(f"шум/трафик от major road {listing.nearest_major_road_m} m")
     if listing.nearest_industrial_zone_m < 1000:
