@@ -104,6 +104,43 @@ def _buyer_decision_section(analysis: ListingAnalysis | None) -> ReportSection:
     return ReportSection(title="Решение покупателя", items=items)
 
 
+def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Жизнь, аренда и развитие района", items=[])
+
+    listing = analysis.listing
+    area = analysis.area_statistics
+    scores = analysis.scores
+    gross_yield = _estimate_gross_yield_pct(analysis)
+    items = [
+        f"Для жизни: {_own_living_fit(analysis)}",
+        f"Для семьи: {_family_fit(analysis)}",
+        (
+            f"Для аренды: {_rental_fit(analysis)} Rental Potential "
+            f"{scores.rental_potential_score}/100; ориентировочная gross yield "
+            f"{gross_yield:.1f}%."
+        ),
+        (
+            f"Ликвидность: {_liquidity_fit(analysis)} Liquidity Score "
+            f"{scores.liquidity_score}/100; средняя экспозиция района "
+            f"{area.average_days_on_market} дней, объект {listing.days_on_market} дней."
+        ),
+        (
+            f"Развитие района: {_future_area_outlook(analysis)} "
+            f"Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}; "
+            f"цены 90d {area.price_change_90d_pct:+.1f}%, "
+            f"предложение 90d {area.supply_change_90d_pct:+.1f}%."
+        ),
+    ]
+    location_risks = _location_risk_flags(analysis)
+    if location_risks:
+        items.append(f"Что проверить на месте: {'; '.join(location_risks)}.")
+    return ReportSection(
+        title="Жизнь, аренда и развитие района",
+        items=_deduplicate(items),
+    )
+
+
 def _price_market_section(analysis: ListingAnalysis | None) -> ReportSection:
     if analysis is None:
         return ReportSection(title="Цена и рынок", items=[])
@@ -530,6 +567,109 @@ def _buyer_required_checks(analysis: ListingAnalysis) -> list[str]:
     return checks[:5]
 
 
+def _own_living_fit(analysis: ListingAnalysis) -> str:
+    listing = analysis.listing
+    strengths: list[str] = []
+    tradeoffs: list[str] = []
+    if listing.distance_to_center_km <= 8:
+        strengths.append(f"до центра {listing.distance_to_center_km:.1f} km")
+    else:
+        tradeoffs.append(f"до центра {listing.distance_to_center_km:.1f} km")
+    if listing.nearest_stop_m <= 600:
+        strengths.append(f"остановка {listing.nearest_stop_m} m")
+    else:
+        tradeoffs.append(f"остановка {listing.nearest_stop_m} m")
+    if listing.parks_within_1km:
+        strengths.append(f"парки в 1 km: {listing.parks_within_1km}")
+    if listing.floor == 0:
+        tradeoffs.append("parter/нулевой этаж")
+    if listing.nearest_major_road_m < 150:
+        tradeoffs.append(f"близко к major road: {listing.nearest_major_road_m} m")
+
+    if strengths and not tradeoffs:
+        return f"хороший everyday-fit ({'; '.join(strengths)})."
+    if strengths:
+        return f"смешанный fit: плюсы {', '.join(strengths)}; проверить {', '.join(tradeoffs)}."
+    return f"нужна очная проверка удобства: {', '.join(tradeoffs) or 'мало lifestyle signals'}."
+
+
+def _family_fit(analysis: ListingAnalysis) -> str:
+    listing = analysis.listing
+    strengths: list[str] = []
+    constraints: list[str] = []
+    if listing.rooms >= 3:
+        strengths.append(f"{listing.rooms} комнаты")
+    else:
+        constraints.append(f"{listing.rooms} комнаты")
+    if listing.nearest_school_m <= 1000 or listing.schools_within_1km > 0:
+        strengths.append(f"школа {listing.nearest_school_m} m")
+    else:
+        constraints.append(f"школа {listing.nearest_school_m} m")
+    if listing.parks_within_1km:
+        strengths.append(f"парки в 1 km: {listing.parks_within_1km}")
+    else:
+        constraints.append("нет парка в 1 km в MVP-данных")
+    if listing.nearest_major_road_m < 150:
+        constraints.append(f"major road {listing.nearest_major_road_m} m")
+
+    if len(strengths) >= 3 and not constraints:
+        return f"хороший семейный профиль ({'; '.join(strengths)})."
+    if strengths:
+        return f"частично подходит: {', '.join(strengths)}; проверить {', '.join(constraints)}."
+    return f"семейный fit слабый по MVP-сигналам: {', '.join(constraints)}."
+
+
+def _rental_fit(analysis: ListingAnalysis) -> str:
+    listing = analysis.listing
+    score = analysis.scores.rental_potential_score
+    if score >= 65 and listing.nearest_stop_m <= 600:
+        return "выглядит интересно для аренды благодаря rental score и транспорту."
+    if score >= 50:
+        return "средний арендный сценарий; проверить реальные ставки аренды и vacancy."
+    return "арендный сценарий слабее среднего; не считать доходность главным аргументом."
+
+
+def _liquidity_fit(analysis: ListingAnalysis) -> str:
+    listing = analysis.listing
+    area = analysis.area_statistics
+    score = analysis.scores.liquidity_score
+    if score >= 65 and listing.days_on_market <= area.average_days_on_market:
+        return "ликвидность выглядит сильной относительно района."
+    if score >= 50:
+        return "ликвидность средняя; важны цена входа и состояние объекта."
+    return "ликвидность требует осторожности; выход из сделки может занять дольше."
+
+
+def _future_area_outlook(analysis: ListingAnalysis) -> str:
+    listing = analysis.listing
+    area = analysis.area_statistics
+    if listing.planned_investments_within_2km >= 2 and area.price_change_90d_pct >= 0:
+        return "есть позитивный infrastructure/growth сигнал, но проверить сроки реализации."
+    if area.supply_change_90d_pct > 15:
+        return "предложение растет быстро, проверить риск oversupply и давление на цену."
+    if area.price_change_90d_pct < -3:
+        return "район просел по цене за 90 дней, нужен консервативный сценарий."
+    if listing.planned_investments_within_2km:
+        return "есть planned-investment сигнал, но влияние зависит от конкретного проекта."
+    return "сильных future-growth сигналов в MVP-данных нет."
+
+
+def _location_risk_flags(analysis: ListingAnalysis) -> list[str]:
+    listing = analysis.listing
+    risks: list[str] = []
+    if listing.nearest_major_road_m < 200:
+        risks.append(f"шум/трафик от major road {listing.nearest_major_road_m} m")
+    if listing.nearest_industrial_zone_m < 1000:
+        risks.append(f"промзона {listing.nearest_industrial_zone_m} m")
+    if listing.nearest_stop_m > 900:
+        risks.append(f"остановка далеко: {listing.nearest_stop_m} m")
+    if listing.nearest_school_m > 1200 and listing.rooms >= 3:
+        risks.append(f"для семьи школа далековато: {listing.nearest_school_m} m")
+    if analysis.area_statistics.supply_change_90d_pct > 15:
+        risks.append("рост предложения может снижать переговорную позицию продавцов")
+    return risks[:4]
+
+
 def _deduplicate(items: list[str]) -> list[str]:
     result: list[str] = []
     seen: set[str] = set()
@@ -565,6 +705,7 @@ REPORT_TEMPLATES: dict[ReportAudience, ReportTemplate] = {
             _buyer_decision_summary_section,
             _buyer_decision_section,
             _price_market_section,
+            _buyer_lifestyle_rental_outlook_section,
             _mortgage_budget_section,
             _insights_section,
             _negotiation_section,

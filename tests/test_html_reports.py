@@ -138,6 +138,7 @@ def test_object_report_uses_audience_templates() -> None:
     assert buyer_report.sections[1].title == "Решение покупателя"
     buyer_section_titles = {section.title for section in buyer_report.sections}
     assert "Краткое решение" in buyer_section_titles
+    assert "Жизнь, аренда и развитие района" in buyer_section_titles
     assert "Ипотека и бюджет покупки" in buyer_section_titles
     assert "Вопросы продавцу" in buyer_section_titles
     assert "Чеклист проверки перед оффером" in buyer_section_titles
