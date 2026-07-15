@@ -27,13 +27,32 @@ ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
 PartnerReferralType = Literal["mortgage", "legal", "renovation"]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
-AIInsightSubjectType = Literal["listing", "user_submitted_draft", "area", "report", "compare"]
+AIInsightSubjectType = Literal[
+    "listing",
+    "user_submitted_draft",
+    "area",
+    "report",
+    "compare",
+    "news",
+]
 AIInsightType = Literal[
     "report_summary",
     "object_explanation",
     "area_summary",
+    "news_summary",
     "assistant_answer",
 ]
+NewsCategory = Literal[
+    "market",
+    "mortgage",
+    "tax",
+    "legal",
+    "developer",
+    "city_investment",
+    "transport",
+    "mpzp",
+]
+NewsImpactLevel = Literal["positive", "neutral", "negative", "mixed", "unknown"]
 ReportOrderEventType = Literal[
     "order_created",
     "checkout_created",
@@ -1969,6 +1988,84 @@ class AreaImpactSummary(BaseModel):
     overheated_index: int = Field(ge=0, le=100)
     positive_signals: list[str] = Field(default_factory=list)
     risk_signals: list[str] = Field(default_factory=list)
+    buyer_notes: list[str] = Field(default_factory=list)
+    investor_notes: list[str] = Field(default_factory=list)
+    citations: list[AIAnswerCitation] = Field(default_factory=list)
+    guardrails: list[AIAnswerGuardrail] = Field(default_factory=list)
+    provider: str
+    model_name: str
+    prompt_version: str
+    usage_log_id: str | None = None
+    input_hash: str
+    disclaimer: str
+
+
+class NewsArticleCreate(BaseModel):
+    title: str = Field(min_length=3, max_length=220)
+    summary: str = Field(min_length=3, max_length=600)
+    body: str = Field(min_length=3)
+    category: NewsCategory = "market"
+    source_name: str = Field(min_length=2, max_length=120)
+    source_url: str | None = Field(default=None, max_length=500)
+    published_at: datetime
+    affected_area_ids: list[str] = Field(default_factory=list, max_length=20)
+    affected_districts: list[str] = Field(default_factory=list, max_length=20)
+    price_impact_hypothesis: str | None = Field(default=None, max_length=700)
+    audience_relevance: list[ReportAudience] = Field(default_factory=lambda: ["buyer"])
+    impact_level: NewsImpactLevel = "unknown"
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    is_published: bool = True
+
+
+class NewsArticleUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=3, max_length=220)
+    summary: str | None = Field(default=None, min_length=3, max_length=600)
+    body: str | None = Field(default=None, min_length=3)
+    category: NewsCategory | None = None
+    source_name: str | None = Field(default=None, min_length=2, max_length=120)
+    source_url: str | None = Field(default=None, max_length=500)
+    published_at: datetime | None = None
+    affected_area_ids: list[str] | None = Field(default=None, max_length=20)
+    affected_districts: list[str] | None = Field(default=None, max_length=20)
+    price_impact_hypothesis: str | None = Field(default=None, max_length=700)
+    audience_relevance: list[ReportAudience] | None = None
+    impact_level: NewsImpactLevel | None = None
+    tags: list[str] | None = Field(default=None, max_length=20)
+    is_published: bool | None = None
+
+
+class NewsArticleListItem(BaseModel):
+    id: str
+    title: str
+    summary: str
+    category: NewsCategory
+    source_name: str
+    source_url: str | None = None
+    published_at: datetime
+    affected_area_ids: list[str] = Field(default_factory=list)
+    affected_districts: list[str] = Field(default_factory=list)
+    price_impact_hypothesis: str | None = None
+    audience_relevance: list[ReportAudience] = Field(default_factory=list)
+    impact_level: NewsImpactLevel
+    tags: list[str] = Field(default_factory=list)
+    is_published: bool
+    created_at: datetime
+    updated_at: datetime
+
+
+class NewsArticle(NewsArticleListItem):
+    body: str
+
+
+class NewsArticleAISummary(BaseModel):
+    subject_type: AIInsightSubjectType = "news"
+    subject_id: str
+    article_id: str
+    category: NewsCategory
+    headline: str
+    summary: str
+    key_points: list[str] = Field(default_factory=list)
+    area_impact: list[str] = Field(default_factory=list)
     buyer_notes: list[str] = Field(default_factory=list)
     investor_notes: list[str] = Field(default_factory=list)
     citations: list[AIAnswerCitation] = Field(default_factory=list)

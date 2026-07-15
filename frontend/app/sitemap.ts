@@ -11,6 +11,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/areas/compare",
     "/compare",
     "/developers",
+    "/news",
     "/market",
     "/mortgage",
     "/pricing",

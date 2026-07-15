@@ -12,6 +12,7 @@ import {
   Database,
   FileText,
   MapPinned,
+  Newspaper,
   Search,
   TrendingUp,
   UserCircle,
@@ -62,6 +63,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/developers">
                 <Building2 size={18} />
                 Застройщики
+              </Link>
+              <Link href="/news">
+                <Newspaper size={18} />
+                News
               </Link>
               <Link href="/market">
                 <TrendingUp size={18} />

@@ -55,6 +55,8 @@ from domarion.ingestion_admin_store.system_sources import (
     USER_SUBMITTED_REFERENCE_SOURCE_NAME,
     USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
 )
+from domarion.news_store.base import NewsStore
+from domarion.news_store.factory import get_news_store
 from domarion.partner_referral_store.base import PartnerReferralStore
 from domarion.partner_referral_store.factory import get_partner_referral_store
 from domarion.report_order_store.base import ReportOrderStore
@@ -138,6 +140,12 @@ from domarion.schemas import (
     MortgageCalculationRequest,
     MortgageCalculationResult,
     MunicipalityReference,
+    NewsArticle,
+    NewsArticleAISummary,
+    NewsArticleCreate,
+    NewsArticleListItem,
+    NewsArticleUpdate,
+    NewsCategory,
     ObjectReport,
     OpenDataRoadmapItem,
     OpenDataRoadmapStatus,
@@ -227,6 +235,7 @@ from domarion.services.listing_ai_assistant import (
 from domarion.services.listing_comparison import build_listing_comparison
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.mortgage import calculate_mortgage
+from domarion.services.news_ai_summary import build_news_ai_summary, save_news_ai_summary
 from domarion.services.open_data_roadmap import list_open_data_roadmap
 from domarion.services.payments import (
     PaymentConfigurationError,
@@ -270,6 +279,7 @@ UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
 AgencyStoreDep = Annotated[AgencyStore, Depends(get_agency_store)]
 PartnerReferralStoreDep = Annotated[PartnerReferralStore, Depends(get_partner_referral_store)]
+NewsStoreDep = Annotated[NewsStore, Depends(get_news_store)]
 UserSubmittedListingStoreDep = Annotated[
     UserSubmittedListingStore,
     Depends(get_user_submitted_listing_store),
@@ -451,6 +461,52 @@ def compare_areas(
         return build_area_comparison(repository, city=city, sort=sort, limit=limit)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/news", response_model=list[NewsArticleListItem])
+def list_news_articles(
+    news_store: NewsStoreDep,
+    category: Annotated[NewsCategory | None, Query()] = None,
+    area_id: Annotated[str | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[NewsArticleListItem]:
+    return news_store.list_articles(category=category, area_id=area_id, limit=limit)
+
+
+@router.get("/news/{article_id}", response_model=NewsArticle)
+def get_news_article(article_id: str, news_store: NewsStoreDep) -> NewsArticle:
+    article = news_store.get_article(article_id)
+    if article is None:
+        raise HTTPException(status_code=404, detail="News article not found")
+    return article
+
+
+@router.post(
+    "/admin/news/articles",
+    response_model=NewsArticle,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_news_article(
+    payload: NewsArticleCreate,
+    news_store: NewsStoreDep,
+    account: CurrentAccountDep,
+) -> NewsArticle:
+    _ensure_admin(account)
+    return news_store.create_article(payload)
+
+
+@router.patch("/admin/news/articles/{article_id}", response_model=NewsArticle)
+def update_admin_news_article(
+    article_id: str,
+    payload: NewsArticleUpdate,
+    news_store: NewsStoreDep,
+    account: CurrentAccountDep,
+) -> NewsArticle:
+    _ensure_admin(account)
+    article = news_store.update_article(article_id, payload)
+    if article is None:
+        raise HTTPException(status_code=404, detail="News article not found")
+    return article
 
 
 @router.get("/developers", response_model=DeveloperRankingResponse)
@@ -2704,6 +2760,27 @@ def summarize_area_impact(
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
     insight = save_area_impact_summary(
+        ai_insight_store,
+        summary,
+        owner_id=account.user.id,
+    )
+    return summary.model_copy(update={"usage_log_id": insight.id})
+
+
+@router.post("/ai/news/{article_id}/summary", response_model=NewsArticleAISummary)
+def summarize_news_article(
+    article_id: str,
+    repository: RepositoryDep,
+    news_store: NewsStoreDep,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> NewsArticleAISummary:
+    article = news_store.get_article(article_id)
+    if article is None:
+        raise HTTPException(status_code=404, detail="News article not found")
+
+    summary = build_news_ai_summary(repository, article)
+    insight = save_news_ai_summary(
         ai_insight_store,
         summary,
         owner_id=account.user.id,

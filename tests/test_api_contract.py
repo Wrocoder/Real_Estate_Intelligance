@@ -24,6 +24,8 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/listings/hidden-gems", "get"): "HiddenGemsResponse",
         ("/api/v1/market/dashboard", "get"): "MarketDashboard",
         ("/api/v1/mortgage/calculate", "post"): "MortgageCalculationResult",
+        ("/api/v1/news/{article_id}", "get"): "NewsArticle",
+        ("/api/v1/admin/news/articles/{article_id}", "patch"): "NewsArticle",
         (
             "/api/v1/user-submitted-listings/reference-preview",
             "post",
@@ -63,6 +65,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
         ("/api/v1/ai/data-contract", "get"): "AIAssistantDataContract",
         ("/api/v1/ai/areas/{area_id}/summary", "post"): "AreaImpactSummary",
+        ("/api/v1/ai/news/{article_id}/summary", "post"): "NewsArticleAISummary",
         ("/api/v1/ai/compare/answer", "post"): "AICompareAnswer",
         ("/api/v1/ai/listings/{listing_id}/answer", "post"): "AIListingAnswer",
         (
@@ -92,9 +95,15 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
     assert questions_schema["type"] == "array"
     assert questions_schema["items"]["$ref"] == "#/components/schemas/AIQuestionDescriptor"
 
+    news_operation = openapi["paths"]["/api/v1/news"]["get"]
+    news_schema = news_operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert news_schema["type"] == "array"
+    assert news_schema["items"]["$ref"] == "#/components/schemas/NewsArticleListItem"
+
     expected_created_refs = {
         ("/api/v1/admin/ingestion/source-checks", "post"): "SourceCheckJob",
         ("/api/v1/admin/ingestion/source-errors", "post"): "SourceError",
+        ("/api/v1/admin/news/articles", "post"): "NewsArticle",
         ("/api/v1/agencies", "post"): "AgencyWorkspace",
         ("/api/v1/agencies/{agency_id}/members", "post"): "AgencyMembership",
     }
@@ -228,6 +237,11 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "MortgageCostBreakdown",
         "MortgageScenario",
         "MunicipalityReference",
+        "NewsArticle",
+        "NewsArticleAISummary",
+        "NewsArticleCreate",
+        "NewsArticleListItem",
+        "NewsArticleUpdate",
         "ObjectReport",
         "OpenDataRoadmapItem",
         "AlertDeliveryBatchRequest",

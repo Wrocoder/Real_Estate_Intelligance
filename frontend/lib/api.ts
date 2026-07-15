@@ -515,6 +515,16 @@ export type DeveloperRankingResponse = {
 };
 
 export type ReportAudience = "buyer" | "realtor" | "investor";
+export type NewsCategory =
+  | "market"
+  | "mortgage"
+  | "tax"
+  | "legal"
+  | "developer"
+  | "city_investment"
+  | "transport"
+  | "mpzp";
+export type NewsImpactLevel = "positive" | "neutral" | "negative" | "mixed" | "unknown";
 
 export type AIQuestionCode =
   | "summary"
@@ -631,6 +641,67 @@ export type AreaImpactSummary = {
   overheated_index: number;
   positive_signals: string[];
   risk_signals: string[];
+  buyer_notes: string[];
+  investor_notes: string[];
+  citations: AIAnswerCitation[];
+  guardrails: AIAnswerGuardrail[];
+  provider: string;
+  model_name: string;
+  prompt_version: string;
+  usage_log_id: string | null;
+  input_hash: string;
+  disclaimer: string;
+};
+
+export type NewsArticleListItem = {
+  id: string;
+  title: string;
+  summary: string;
+  category: NewsCategory;
+  source_name: string;
+  source_url: string | null;
+  published_at: string;
+  affected_area_ids: string[];
+  affected_districts: string[];
+  price_impact_hypothesis: string | null;
+  audience_relevance: ReportAudience[];
+  impact_level: NewsImpactLevel;
+  tags: string[];
+  is_published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NewsArticle = NewsArticleListItem & {
+  body: string;
+};
+
+export type NewsArticlePayload = {
+  title: string;
+  summary: string;
+  body: string;
+  category?: NewsCategory;
+  source_name: string;
+  source_url?: string | null;
+  published_at: string;
+  affected_area_ids?: string[];
+  affected_districts?: string[];
+  price_impact_hypothesis?: string | null;
+  audience_relevance?: ReportAudience[];
+  impact_level?: NewsImpactLevel;
+  tags?: string[];
+  is_published?: boolean;
+};
+
+export type NewsArticleAISummary = {
+  subject_type: "news";
+  subject_id: string;
+  article_id: string;
+  category: NewsCategory;
+  headline: string;
+  summary: string;
+  key_points: string[];
+  area_impact: string[];
   buyer_notes: string[];
   investor_notes: string[];
   citations: AIAnswerCitation[];
@@ -969,11 +1040,13 @@ export type AIInsightSubjectType =
   | "user_submitted_draft"
   | "area"
   | "report"
-  | "compare";
+  | "compare"
+  | "news";
 export type AIInsightType =
   | "report_summary"
   | "object_explanation"
   | "area_summary"
+  | "news_summary"
   | "assistant_answer";
 
 export type AIInsightListItem = {
@@ -1910,6 +1983,15 @@ export const api = {
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
     request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),
+  listNews: (params: { category?: NewsCategory; area_id?: string; limit?: number } = {}) =>
+    request<NewsArticleListItem[]>(`/api/v1/news${toQueryString(params)}`),
+  getNewsArticle: (articleId: string) =>
+    request<NewsArticle>(`/api/v1/news/${encodeURIComponent(articleId)}`),
+  createAdminNewsArticle: (payload: NewsArticlePayload) =>
+    request<NewsArticle>("/api/v1/admin/news/articles", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   listDevelopers: (params: {
     city?: string;
     min_reputation_score?: number;
@@ -2387,6 +2469,13 @@ export const api = {
   summarizeAreaImpact: (areaId: string) =>
     request<AreaImpactSummary>(
       `/api/v1/ai/areas/${encodeURIComponent(areaId)}/summary`,
+      {
+        method: "POST",
+      },
+    ),
+  summarizeNewsArticle: (articleId: string) =>
+    request<NewsArticleAISummary>(
+      `/api/v1/ai/news/${encodeURIComponent(articleId)}/summary`,
       {
         method: "POST",
       },

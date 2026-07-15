@@ -282,7 +282,7 @@
 - [x] Сделать developer profile page: projects, reputation score, quality/legal signals, source freshness.
 - [x] Добавить developer block на listing detail page.
 - [x] Добавить developer block на compare page.
-- [ ] Сделать news page.
+- [x] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
 - [ ] Добавить charting library и графики price history/market distributions.
@@ -344,20 +344,20 @@
 - [x] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
 - [x] Добавить source citations в каждый AI response.
 - [x] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
-- [ ] Добавить AI summaries для news и area impact.
+- [x] Добавить AI summaries для news и area impact.
 - [x] Добавить AI area impact summary: source-grounded API, saved `area_summary` insight и UI на area comparison page.
 
 ## 14. News и SEO
 
-- [ ] Добавить news_articles schema.
-- [ ] Добавить ручной news ingestion v1.
-- [ ] Добавить AI summary для новости.
+- [x] Добавить news_articles schema.
+- [x] Добавить ручной news ingestion v1.
+- [x] Добавить AI summary для новости.
 - [x] Добавить SEO area pages.
 - [x] Добавить sitemap.
 - [x] Добавить robots.txt.
 - [x] Добавить structured data.
-- [ ] Добавить news categories: market, mortgage, tax, legal, developer, city investment, transport, MPZP.
-- [ ] Добавить area impact fields для news: affected districts, price impact hypothesis, audience relevance.
+- [x] Добавить news categories: market, mortgage, tax, legal, developer, city investment, transport, MPZP.
+- [x] Добавить area impact fields для news: affected districts, price impact hypothesis, audience relevance.
 - [ ] Добавить SEO pages: Wrocław price per m2, best districts, where to buy near Wrocław, district comparison.
 - [ ] Добавить SEO pages: flats with growth potential, Dolnośląskie market analysis, mortgage calculator Poland.
 - [ ] Добавить SEO pages: purchase checklist, księga wieczysta checklist, total purchase cost in Poland.
@@ -572,6 +572,7 @@
 - [x] Добавить source-grounded compare AI answer API: winner, tradeoffs, citations, refusal rules and usage logging.
 - [x] Подключить compare-A-vs-B AI verdict на compare page: audience, custom question, winner, tradeoffs, citations and guardrails.
 - [x] Добавить source-grounded area impact AI summary API/UI: posture, buyer/investor notes, citations, guardrails and saved area insight.
+- [x] Добавить news v1: article schema/store, manual admin ingestion, public news page, category/area-impact fields and source-grounded news AI summary.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

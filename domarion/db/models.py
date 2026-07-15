@@ -325,6 +325,28 @@ class AreaStatistic(Base):
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class NewsArticle(Base):
+    __tablename__ = "news_articles"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    title: Mapped[str] = mapped_column(String(220))
+    summary: Mapped[str] = mapped_column(String(600))
+    body: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(40), index=True)
+    source_name: Mapped[str] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    published_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    affected_area_ids_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    affected_districts_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    price_impact_hypothesis: Mapped[str | None] = mapped_column(Text)
+    audience_relevance_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    impact_level: Mapped[str] = mapped_column(String(40), default="unknown", index=True)
+    tags_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    is_published: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Municipality(Base):
     __tablename__ = "municipalities"
 

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     user_submitted_listing_store_backend: str = "memory"
     partner_referral_store_backend: str = "memory"
     ai_insight_store_backend: str = "memory"
+    news_store_backend: str = "memory"
     report_artifact_storage_backend: str = "disabled"
     report_artifact_local_dir: str = ".domarion/report-artifacts"
     report_artifact_public_base_url: str | None = None
