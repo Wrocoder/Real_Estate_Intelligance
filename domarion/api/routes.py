@@ -74,10 +74,14 @@ from domarion.schemas import (
     AgencyWorkspaceCreate,
     AgencyWorkspaceSummary,
     AgencyWorkspaceUpdate,
+    AIAssistantDataContract,
     AIInsight,
     AIInsightListItem,
     AIInsightSubjectType,
     AIInsightType,
+    AIListingAnswer,
+    AIListingAnswerRequest,
+    AIQuestionDescriptor,
     Alert,
     AlertCreate,
     AlertDeliveryBatchRequest,
@@ -205,6 +209,12 @@ from domarion.services.geo import MapQueryError, build_map_feature_collection, p
 from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
+from domarion.services.listing_ai_assistant import (
+    build_listing_ai_answer,
+    get_ai_data_contract,
+    list_ai_question_descriptors,
+    save_listing_ai_answer,
+)
 from domarion.services.listing_comparison import build_listing_comparison
 from domarion.services.market_dashboard import build_market_dashboard
 from domarion.services.mortgage import calculate_mortgage
@@ -2682,6 +2692,70 @@ def list_generated_reports(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
 ) -> list[GeneratedReportListItem]:
     return report_store.list_reports(limit=limit, owner_id=account.user.id)
+
+
+@router.get("/ai/data-contract", response_model=AIAssistantDataContract)
+def get_ai_assistant_data_contract() -> AIAssistantDataContract:
+    return get_ai_data_contract()
+
+
+@router.get("/ai/questions", response_model=list[AIQuestionDescriptor])
+def list_ai_assistant_questions() -> list[AIQuestionDescriptor]:
+    return list_ai_question_descriptors()
+
+
+@router.post("/ai/listings/{listing_id}/answer", response_model=AIListingAnswer)
+def answer_listing_ai_question(
+    listing_id: str,
+    payload: AIListingAnswerRequest,
+    repository: RepositoryDep,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> AIListingAnswer:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    answer = build_listing_ai_answer(
+        build_listing_analysis(repository, listing),
+        payload,
+        subject_type="listing",
+        subject_id=listing.id,
+    )
+    insight = save_listing_ai_answer(
+        ai_insight_store,
+        answer,
+        owner_id=account.user.id,
+    )
+    return answer.model_copy(update={"usage_log_id": insight.id})
+
+
+@router.post(
+    "/ai/user-submitted-listing-drafts/{draft_id}/answer",
+    response_model=AIListingAnswer,
+)
+def answer_user_submitted_listing_ai_question(
+    draft_id: str,
+    payload: AIListingAnswerRequest,
+    draft_store: UserSubmittedListingStoreDep,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> AIListingAnswer:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    user_analysis = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
+    answer = build_listing_ai_answer(
+        user_analysis.analysis,
+        payload,
+        subject_type="user_submitted_draft",
+        subject_id=draft.id,
+    )
+    insight = save_listing_ai_answer(
+        ai_insight_store,
+        answer,
+        owner_id=account.user.id,
+    )
+    return answer.model_copy(update={"usage_log_id": insight.id})
 
 
 @router.get("/ai-insights", response_model=list[AIInsightListItem])

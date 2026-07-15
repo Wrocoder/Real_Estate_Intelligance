@@ -514,6 +514,78 @@ export type DeveloperRankingResponse = {
   filters: Record<string, unknown>;
 };
 
+export type ReportAudience = "buyer" | "realtor" | "investor";
+
+export type AIQuestionCode =
+  | "summary"
+  | "price"
+  | "negotiation"
+  | "risks"
+  | "future_plans"
+  | "family_fit"
+  | "rental_fit"
+  | "seller_questions"
+  | "documents"
+  | "financing";
+
+export type AIQuestionDescriptor = {
+  code: AIQuestionCode;
+  label: string;
+  description: string;
+  supported_audiences: ReportAudience[];
+};
+
+export type AIAssistantDataContract = {
+  prompt_version: string;
+  allowed_subjects: Array<"listing" | "user_submitted_draft">;
+  allowed_inputs: string[];
+  prohibited_inputs: string[];
+  citation_policy: string;
+  privacy_policy: string;
+  refusal_policy: string;
+  disclaimer: string;
+};
+
+export type AIAnswerCitation = {
+  source_id: string;
+  source_type: string;
+  title: string;
+  excerpt: string;
+};
+
+export type AIAnswerGuardrail = {
+  code: string;
+  message: string;
+};
+
+export type AIListingAnswerRequest = {
+  question_code?: AIQuestionCode;
+  question?: string | null;
+  audience?: ReportAudience;
+};
+
+export type AIListingAnswer = {
+  subject_type: "listing" | "user_submitted_draft";
+  subject_id: string;
+  listing_id: string;
+  audience: ReportAudience;
+  question_code: AIQuestionCode;
+  question: string | null;
+  answer: string;
+  key_points: string[];
+  citations: AIAnswerCitation[];
+  guardrails: AIAnswerGuardrail[];
+  refused: boolean;
+  refusal_reason: string | null;
+  data_contract: AIAssistantDataContract;
+  provider: string;
+  model_name: string;
+  prompt_version: string;
+  usage_log_id: string | null;
+  input_hash: string;
+  disclaimer: string;
+};
+
 export type ScoringBacktestItem = {
   listing_id: string;
   title: string;
@@ -836,7 +908,11 @@ export type GeneratedReport = {
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
 export type AIInsightSubjectType = "listing" | "user_submitted_draft" | "area" | "report";
-export type AIInsightType = "report_summary" | "object_explanation" | "area_summary";
+export type AIInsightType =
+  | "report_summary"
+  | "object_explanation"
+  | "area_summary"
+  | "assistant_answer";
 
 export type AIInsightListItem = {
   id: string;
@@ -2238,6 +2314,27 @@ export const api = {
   getListingRentalEstimate: (id: string) =>
     request<ListingRentalEstimate>(
       `/api/v1/listings/${encodeURIComponent(id)}/rental-estimate`,
+    ),
+  getAIDataContract: () => request<AIAssistantDataContract>("/api/v1/ai/data-contract"),
+  listAIQuestions: () => request<AIQuestionDescriptor[]>("/api/v1/ai/questions"),
+  answerListingAIQuestion: (listingId: string, payload: AIListingAnswerRequest) =>
+    request<AIListingAnswer>(
+      `/api/v1/ai/listings/${encodeURIComponent(listingId)}/answer`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  answerUserSubmittedDraftAIQuestion: (
+    draftId: string,
+    payload: AIListingAnswerRequest,
+  ) =>
+    request<AIListingAnswer>(
+      `/api/v1/ai/user-submitted-listing-drafts/${encodeURIComponent(draftId)}/answer`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
     ),
   addFavorite: (listingId: string, note?: string) =>
     request<Favorite>(`/api/v1/favorites?owner_id=${OWNER_ID}`, {

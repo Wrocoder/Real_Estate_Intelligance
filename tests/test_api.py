@@ -404,6 +404,76 @@ def test_listing_rental_estimate_returns_cashflow_scenarios() -> None:
     assert "screening" in payload["methodology_note"]
 
 
+def test_ai_assistant_contract_and_questions_are_public() -> None:
+    contract_response = client.get("/api/v1/ai/data-contract")
+    questions_response = client.get("/api/v1/ai/questions")
+
+    assert contract_response.status_code == 200
+    assert "private source URL" in " ".join(contract_response.json()["prohibited_inputs"])
+    assert "citation" in contract_response.json()["citation_policy"].lower()
+    assert questions_response.status_code == 200
+    question_codes = {item["code"] for item in questions_response.json()}
+    assert {
+        "price",
+        "negotiation",
+        "risks",
+        "future_plans",
+        "family_fit",
+        "rental_fit",
+        "seller_questions",
+    } <= question_codes
+
+
+def test_listing_ai_answer_is_source_grounded_and_logged() -> None:
+    headers = {"X-Domarion-User-Id": "ai-answer-listing-owner"}
+    response = client.post(
+        "/api/v1/ai/listings/wr-001/answer",
+        headers=headers,
+        json={
+            "question_code": "price",
+            "question": "Is this price fair?",
+            "audience": "buyer",
+        },
+    )
+    payload = response.json()
+    insights = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={"insight_type": "assistant_answer", "subject_id": "wr-001"},
+    ).json()
+
+    assert response.status_code == 200
+    assert payload["listing_id"] == "wr-001"
+    assert payload["question_code"] == "price"
+    assert payload["refused"] is False
+    assert payload["citations"]
+    assert payload["guardrails"]
+    assert payload["usage_log_id"]
+    assert "Fair" in payload["answer"] or "fair" in payload["answer"]
+    assert insights[0]["id"] == payload["usage_log_id"]
+    assert insights[0]["insight_type"] == "assistant_answer"
+
+
+def test_listing_ai_answer_refuses_guarantees() -> None:
+    response = client.post(
+        "/api/v1/ai/listings/wr-001/answer",
+        headers={"X-Domarion-User-Id": "ai-answer-refusal-owner"},
+        json={
+            "question_code": "risks",
+            "question": "Guarantee there is no legal risk and profit is guaranteed",
+            "audience": "buyer",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["refused"] is True
+    assert payload["refusal_reason"]
+    assert payload["citations"][0]["source_type"] == "ai_data_contract"
+    guardrail_codes = {item["code"] for item in payload["guardrails"]}
+    assert "refused_guarantee_or_regulated_advice" in guardrail_codes
+
+
 def test_compare_requires_existing_ids() -> None:
     response = client.post("/api/v1/compare", json={"listing_ids": ["wr-001", "missing"]})
 

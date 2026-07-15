@@ -28,7 +28,12 @@ PaymentProviderName = Literal["mock", "stripe", "payu"]
 PartnerReferralType = Literal["mortgage", "legal", "renovation"]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
 AIInsightSubjectType = Literal["listing", "user_submitted_draft", "area", "report"]
-AIInsightType = Literal["report_summary", "object_explanation", "area_summary"]
+AIInsightType = Literal[
+    "report_summary",
+    "object_explanation",
+    "area_summary",
+    "assistant_answer",
+]
 ReportOrderEventType = Literal[
     "order_created",
     "checkout_created",
@@ -73,6 +78,19 @@ LocationReferenceType = Literal[
     "landmark",
     "transport_node",
 ]
+AIQuestionCode = Literal[
+    "summary",
+    "price",
+    "negotiation",
+    "risks",
+    "future_plans",
+    "family_fit",
+    "rental_fit",
+    "seller_questions",
+    "documents",
+    "financing",
+]
+AIAnswerSubjectType = Literal["listing", "user_submitted_draft"]
 ListingEventType = Literal[
     "first_seen",
     "price_reduced",
@@ -1846,6 +1864,64 @@ class GeneratedReportListItem(BaseModel):
 class GeneratedReport(GeneratedReportListItem):
     content: str
     report_metadata: dict
+
+
+class AIQuestionDescriptor(BaseModel):
+    code: AIQuestionCode
+    label: str
+    description: str
+    supported_audiences: list[ReportAudience] = Field(default_factory=list)
+
+
+class AIAssistantDataContract(BaseModel):
+    prompt_version: str
+    allowed_subjects: list[AIAnswerSubjectType] = Field(default_factory=list)
+    allowed_inputs: list[str] = Field(default_factory=list)
+    prohibited_inputs: list[str] = Field(default_factory=list)
+    citation_policy: str
+    privacy_policy: str
+    refusal_policy: str
+    disclaimer: str
+
+
+class AIAnswerCitation(BaseModel):
+    source_id: str
+    source_type: str
+    title: str
+    excerpt: str
+
+
+class AIAnswerGuardrail(BaseModel):
+    code: str
+    message: str
+
+
+class AIListingAnswerRequest(BaseModel):
+    question_code: AIQuestionCode = "summary"
+    question: str | None = Field(default=None, max_length=500)
+    audience: ReportAudience = "buyer"
+
+
+class AIListingAnswer(BaseModel):
+    subject_type: AIAnswerSubjectType
+    subject_id: str
+    listing_id: str
+    audience: ReportAudience
+    question_code: AIQuestionCode
+    question: str | None = None
+    answer: str
+    key_points: list[str] = Field(default_factory=list)
+    citations: list[AIAnswerCitation] = Field(default_factory=list)
+    guardrails: list[AIAnswerGuardrail] = Field(default_factory=list)
+    refused: bool = False
+    refusal_reason: str | None = None
+    data_contract: AIAssistantDataContract
+    provider: str
+    model_name: str
+    prompt_version: str
+    usage_log_id: str | None = None
+    input_hash: str
+    disclaimer: str
 
 
 class AIInsightCreate(BaseModel):

@@ -61,6 +61,12 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/partner-referrals/{referral_id}", "get"): "PartnerReferral",
         ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
+        ("/api/v1/ai/data-contract", "get"): "AIAssistantDataContract",
+        ("/api/v1/ai/listings/{listing_id}/answer", "post"): "AIListingAnswer",
+        (
+            "/api/v1/ai/user-submitted-listing-drafts/{draft_id}/answer",
+            "post",
+        ): "AIListingAnswer",
         ("/api/v1/reports/object", "post"): "ObjectReport",
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
         ("/api/v1/agencies/{agency_id}", "get"): "AgencyWorkspace",
@@ -76,6 +82,13 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
 
         assert schema["$ref"] == f"#/components/schemas/{schema_name}"
+
+    questions_operation = openapi["paths"]["/api/v1/ai/questions"]["get"]
+    questions_schema = questions_operation["responses"]["200"]["content"]["application/json"][
+        "schema"
+    ]
+    assert questions_schema["type"] == "array"
+    assert questions_schema["items"]["$ref"] == "#/components/schemas/AIQuestionDescriptor"
 
     expected_created_refs = {
         ("/api/v1/admin/ingestion/source-checks", "post"): "SourceCheckJob",
@@ -164,6 +177,12 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     expected_schemas = {
         "AIInsight",
         "AIInsightListItem",
+        "AIAnswerCitation",
+        "AIAnswerGuardrail",
+        "AIAssistantDataContract",
+        "AIListingAnswer",
+        "AIListingAnswerRequest",
+        "AIQuestionDescriptor",
         "AgencyMemberCreate",
         "AgencyMemberUpdate",
         "AgencyMembership",

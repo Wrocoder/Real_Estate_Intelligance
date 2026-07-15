@@ -329,18 +329,18 @@
 
 ## 13. AI Assistant
 
-- [ ] Добавить AI data contract: какие данные можно использовать.
-- [ ] Добавить object summary prompt.
-- [ ] Добавить buyer/realtor/investor answer templates.
-- [ ] Добавить source-grounded responses.
-- [ ] Добавить hallucination guardrails.
-- [ ] Добавить AI usage logging.
-- [ ] Добавить limited AI endpoint.
-- [ ] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
+- [x] Добавить AI data contract: какие данные можно использовать.
+- [x] Добавить object summary prompt.
+- [x] Добавить buyer/realtor/investor answer templates.
+- [x] Добавить source-grounded responses.
+- [x] Добавить hallucination guardrails.
+- [x] Добавить AI usage logging.
+- [x] Добавить limited AI endpoint.
+- [x] Добавить AI question set из `First_prompt_ru.md`: price, negotiation, risks, future plans, family/rental fit, seller questions.
 - [ ] Добавить compare-A-vs-B AI response template.
 - [x] Добавить source-grounded AI template для developer due diligence: positives, risks, questions to ask, citations, disclaimers.
-- [ ] Добавить source citations в каждый AI response.
-- [ ] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
+- [x] Добавить source citations в каждый AI response.
+- [x] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
 - [ ] Добавить AI summaries для news и area impact.
 
 ## 14. News и SEO
@@ -562,6 +562,7 @@
 - [x] Добавить listing rental estimate API/report integration: rent range, gross yield, NOI, cash/financed cashflow scenarios.
 - [x] Добавить listing growth analysis API/report integration: transport, education, greenery, healthcare, retail, jobs, universities and market momentum factors.
 - [x] Добавить fair-price backtesting report: error buckets, area/period drift, severity, findings and recalibration recommendations.
+- [x] Добавить source-grounded listing AI assistant API: data contract, question set, citations, guardrails, refusal rules and usage logging.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

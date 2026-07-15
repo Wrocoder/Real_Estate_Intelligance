@@ -1006,6 +1006,51 @@ def test_user_submitted_listing_draft_can_generate_saved_report_without_url_leak
     assert reports[0]["id"] == payload["id"]
 
 
+def test_user_submitted_listing_draft_ai_answer_is_owner_scoped_without_url_leak() -> None:
+    headers = {"X-Domarion-User-Id": "draft-ai-answer-owner"}
+    source_url = "https://www.otodom.pl/pl/oferta/demo-ai-answer-private"
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/ai/user-submitted-listing-drafts/{created['draft_id']}/answer",
+        headers=headers,
+        json={"question_code": "seller_questions", "audience": "buyer"},
+    )
+    payload = response.json()
+    serialized = str(payload)
+    insights = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={
+            "insight_type": "assistant_answer",
+            "subject_id": created["draft_id"],
+        },
+    ).json()
+
+    assert response.status_code == 200
+    assert payload["subject_type"] == "user_submitted_draft"
+    assert payload["subject_id"] == created["draft_id"]
+    assert payload["listing_id"].startswith("user-submitted-")
+    assert payload["citations"]
+    assert payload["usage_log_id"]
+    assert source_url not in serialized
+    assert insights[0]["id"] == payload["usage_log_id"]
+
+
 def test_user_submitted_listing_draft_report_generation_is_owner_scoped() -> None:
     owner_a = {"X-Domarion-User-Id": "draft-report-owner-a"}
     owner_b = {"X-Domarion-User-Id": "draft-report-owner-b"}
