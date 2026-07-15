@@ -2,10 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, BarChart3, RefreshCw } from "lucide-react";
+import { ArrowLeft, BarChart3, Brain, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, type AreaComparison, type AreaComparisonItem } from "@/lib/api";
+import {
+  api,
+  type AreaComparison,
+  type AreaComparisonItem,
+  type AreaImpactSummary,
+} from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
 
 const SORT_OPTIONS = [
@@ -22,8 +27,13 @@ export default function AreaComparisonPage() {
   const [city, setCity] = useState("Wrocław");
   const [sort, setSort] = useState("value");
   const [comparison, setComparison] = useState<AreaComparison | null>(null);
+  const [selectedAreaId, setSelectedAreaId] = useState("");
+  const [areaSummary, setAreaSummary] = useState<AreaImpactSummary | null>(null);
   const [status, setStatus] = useState("Загрузка сравнения...");
+  const [aiStatus, setAiStatus] = useState("AI area summary не создан");
   const [error, setError] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   async function load() {
     setError("");
@@ -35,6 +45,15 @@ export default function AreaComparisonPage() {
         limit: 50,
       });
       setComparison(payload);
+      setSelectedAreaId((current) => {
+        if (current && payload.areas.some((area) => area.area_id === current)) {
+          return current;
+        }
+        return payload.areas[0]?.area_id ?? "";
+      });
+      setAreaSummary(null);
+      setAiError("");
+      setAiStatus("AI area summary готов к генерации");
       setStatus("Готово");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown area comparison error");
@@ -56,6 +75,24 @@ export default function AreaComparisonPage() {
       topArea(comparison, comparison.top_liquidity_area_id, "Liquidity"),
     ].filter((item): item is { label: string; area: AreaComparisonItem } => item !== null);
   }, [comparison]);
+
+  async function generateAreaSummary() {
+    if (!selectedAreaId) return;
+    setAiLoading(true);
+    setAiError("");
+    setAiStatus("AI area summary строится...");
+    try {
+      const payload = await api.summarizeAreaImpact(selectedAreaId);
+      setAreaSummary(payload);
+      setAiStatus(`AI area summary сохранен: ${payload.usage_log_id ?? payload.area_id}`);
+    } catch (caught) {
+      setAreaSummary(null);
+      setAiError(caught instanceof Error ? caught.message : "unknown area summary error");
+      setAiStatus("AI area summary недоступен");
+    } finally {
+      setAiLoading(false);
+    }
+  }
 
   if (error) return <ErrorBlock message={error} />;
   if (!comparison) return <LoadingBlock label="Загрузка сравнения районов" />;
@@ -177,6 +214,109 @@ export default function AreaComparisonPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
+          <h2 className="icon-title">
+            <Brain size={16} /> AI area impact summary
+          </h2>
+          <span className="status-line">{aiStatus}</span>
+        </div>
+        <div className="panel-body ai-verdict-body">
+          <div className="ai-verdict-controls">
+            <div className="field">
+              <span>Район</span>
+              <select
+                className="select"
+                value={selectedAreaId}
+                onChange={(event) => {
+                  setSelectedAreaId(event.target.value);
+                  setAreaSummary(null);
+                  setAiError("");
+                  setAiStatus("AI area summary готов к генерации");
+                }}
+              >
+                {comparison.areas.map((area) => (
+                  <option key={area.area_id} value={area.area_id}>
+                    {area.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <span>Scope</span>
+              <input
+                className="input"
+                readOnly
+                value="market metrics, buyer/investor notes, planned investments"
+              />
+            </div>
+            <button
+              className="button primary"
+              disabled={aiLoading || !selectedAreaId}
+              type="button"
+              onClick={() => void generateAreaSummary()}
+            >
+              <Brain size={16} /> Summary
+            </button>
+          </div>
+
+          {aiError ? <ErrorBlock message={aiError} /> : null}
+
+          {areaSummary ? (
+            <div className="ai-verdict-result">
+              <div className="ai-verdict-summary">
+                <div>
+                  <span className="status-pill healthy">Source-grounded</span>
+                  <span className="status-pill info">{areaSummary.posture}</span>
+                  <span className="status-pill">
+                    V {areaSummary.value_index}/100 · G {areaSummary.growth_index}/100
+                  </span>
+                </div>
+                <p>{areaSummary.summary}</p>
+              </div>
+
+              <div className="ai-verdict-grid">
+                <SummaryColumn title="Positive signals" items={areaSummary.positive_signals} />
+                <SummaryColumn title="Risk signals" items={areaSummary.risk_signals} />
+                <div>
+                  <h3 className="ai-verdict-heading">
+                    <ShieldCheck size={15} /> Sources
+                  </h3>
+                  <div className="ai-citation-list">
+                    {areaSummary.citations.map((citation, index) => (
+                      <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                        <strong>{citation.title}</strong>
+                        <small>
+                          {citation.source_type} · {citation.excerpt}
+                        </small>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="ai-verdict-grid">
+                <SummaryColumn title="Buyer notes" items={areaSummary.buyer_notes} />
+                <SummaryColumn title="Investor notes" items={areaSummary.investor_notes} />
+                <div>
+                  <h3 className="ai-verdict-heading">Guardrails</h3>
+                  <div className="meta-row">
+                    {areaSummary.guardrails.map((guardrail, index) => (
+                      <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                        {guardrail.code}
+                      </span>
+                    ))}
+                  </div>
+                  <small className="muted">{areaSummary.disclaimer}</small>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="empty-state">AI summary появится после генерации для выбранного района.</p>
+          )}
+        </div>
+      </section>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
           <h2>Районы</h2>
           <span className="muted">{comparison.areas.length} rows</span>
         </div>
@@ -246,6 +386,23 @@ function Metric({ label, value }: { label: string; value: string }) {
     <div className="metric">
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+function SummaryColumn({ title, items }: { title: string; items: string[] }) {
+  return (
+    <div>
+      <h3 className="ai-verdict-heading">{title}</h3>
+      {items.length === 0 ? (
+        <p className="muted">Нет данных.</p>
+      ) : (
+        <ul className="ai-verdict-list">
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

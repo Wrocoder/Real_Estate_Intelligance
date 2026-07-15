@@ -94,6 +94,7 @@ from domarion.schemas import (
     AlertUpdate,
     AmenityReference,
     AreaComparison,
+    AreaImpactSummary,
     AreaMarketSnapshotJobResult,
     AreaStatistics,
     AuthIdentity,
@@ -203,6 +204,10 @@ from domarion.services.ai_insights import persist_generated_report_insights
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
+from domarion.services.area_ai_summary import (
+    build_area_impact_summary,
+    save_area_impact_summary,
+)
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import build_scoring_backtest_report, run_scoring_backtest
@@ -2684,6 +2689,26 @@ def get_ai_assistant_data_contract() -> AIAssistantDataContract:
 @router.get("/ai/questions", response_model=list[AIQuestionDescriptor])
 def list_ai_assistant_questions() -> list[AIQuestionDescriptor]:
     return list_ai_question_descriptors()
+
+
+@router.post("/ai/areas/{area_id}/summary", response_model=AreaImpactSummary)
+def summarize_area_impact(
+    area_id: str,
+    repository: RepositoryDep,
+    ai_insight_store: AIInsightStoreDep,
+    account: CurrentAccountDep,
+) -> AreaImpactSummary:
+    try:
+        summary = build_area_impact_summary(repository, area_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+    insight = save_area_impact_summary(
+        ai_insight_store,
+        summary,
+        owner_id=account.user.id,
+    )
+    return summary.model_copy(update={"usage_log_id": insight.id})
 
 
 @router.post("/ai/compare/answer", response_model=AICompareAnswer)

@@ -1953,6 +1953,34 @@ class AICompareAnswer(BaseModel):
     disclaimer: str
 
 
+class AreaImpactSummary(BaseModel):
+    subject_type: AIInsightSubjectType = "area"
+    subject_id: str
+    area_id: str
+    name: str
+    city: str
+    posture: str
+    summary: str
+    value_index: int = Field(ge=0, le=100)
+    growth_index: int = Field(ge=0, le=100)
+    buyer_market_index: int = Field(ge=0, le=100)
+    seller_market_index: int = Field(ge=0, le=100)
+    liquidity_index: int = Field(ge=0, le=100)
+    overheated_index: int = Field(ge=0, le=100)
+    positive_signals: list[str] = Field(default_factory=list)
+    risk_signals: list[str] = Field(default_factory=list)
+    buyer_notes: list[str] = Field(default_factory=list)
+    investor_notes: list[str] = Field(default_factory=list)
+    citations: list[AIAnswerCitation] = Field(default_factory=list)
+    guardrails: list[AIAnswerGuardrail] = Field(default_factory=list)
+    provider: str
+    model_name: str
+    prompt_version: str
+    usage_log_id: str | None = None
+    input_hash: str
+    disclaimer: str
+
+
 class AIInsightCreate(BaseModel):
     owner_id: str = "demo-user"
     subject_type: AIInsightSubjectType

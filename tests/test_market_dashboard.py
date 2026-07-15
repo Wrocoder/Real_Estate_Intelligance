@@ -138,3 +138,40 @@ def test_area_comparison_api_rejects_unknown_sort() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Unsupported area comparison sort: unknown"
+
+
+def test_area_ai_summary_api_persists_area_insight() -> None:
+    headers = {"X-Domarion-User-Id": "area-summary-owner"}
+    response = client.post(
+        "/api/v1/ai/areas/wroclaw-fabryczna/summary",
+        headers=headers,
+    )
+    payload = response.json()
+    insights = client.get(
+        "/api/v1/ai-insights",
+        headers=headers,
+        params={
+            "subject_type": "area",
+            "subject_id": "wroclaw-fabryczna",
+            "insight_type": "area_summary",
+        },
+    ).json()
+
+    assert response.status_code == 200
+    assert payload["subject_type"] == "area"
+    assert payload["area_id"] == "wroclaw-fabryczna"
+    assert payload["summary"]
+    assert payload["positive_signals"]
+    assert payload["risk_signals"]
+    assert payload["buyer_notes"]
+    assert payload["investor_notes"]
+    assert payload["citations"]
+    assert payload["usage_log_id"]
+    assert insights[0]["id"] == payload["usage_log_id"]
+
+
+def test_area_ai_summary_api_returns_404_for_unknown_area() -> None:
+    response = client.post("/api/v1/ai/areas/missing-area/summary")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Area not found: missing-area"

@@ -345,6 +345,7 @@
 - [x] Добавить source citations в каждый AI response.
 - [x] Добавить refusal rules для юридических гарантий, финансовых рекомендаций и прогнозов без disclaimer.
 - [ ] Добавить AI summaries для news и area impact.
+- [x] Добавить AI area impact summary: source-grounded API, saved `area_summary` insight и UI на area comparison page.
 
 ## 14. News и SEO
 
@@ -570,6 +571,7 @@
 - [x] Подключить user-submitted draft AI assistant UI для Otodom/OLX link-to-report flow без раскрытия private source URL.
 - [x] Добавить source-grounded compare AI answer API: winner, tradeoffs, citations, refusal rules and usage logging.
 - [x] Подключить compare-A-vs-B AI verdict на compare page: audience, custom question, winner, tradeoffs, citations and guardrails.
+- [x] Добавить source-grounded area impact AI summary API/UI: posture, buyer/investor notes, citations, guardrails and saved area insight.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

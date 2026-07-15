@@ -615,6 +615,34 @@ export type AICompareAnswer = {
   disclaimer: string;
 };
 
+export type AreaImpactSummary = {
+  subject_type: "area";
+  subject_id: string;
+  area_id: string;
+  name: string;
+  city: string;
+  posture: string;
+  summary: string;
+  value_index: number;
+  growth_index: number;
+  buyer_market_index: number;
+  seller_market_index: number;
+  liquidity_index: number;
+  overheated_index: number;
+  positive_signals: string[];
+  risk_signals: string[];
+  buyer_notes: string[];
+  investor_notes: string[];
+  citations: AIAnswerCitation[];
+  guardrails: AIAnswerGuardrail[];
+  provider: string;
+  model_name: string;
+  prompt_version: string;
+  usage_log_id: string | null;
+  input_hash: string;
+  disclaimer: string;
+};
+
 export type ScoringBacktestItem = {
   listing_id: string;
   title: string;
@@ -2356,6 +2384,13 @@ export const api = {
     ),
   getAIDataContract: () => request<AIAssistantDataContract>("/api/v1/ai/data-contract"),
   listAIQuestions: () => request<AIQuestionDescriptor[]>("/api/v1/ai/questions"),
+  summarizeAreaImpact: (areaId: string) =>
+    request<AreaImpactSummary>(
+      `/api/v1/ai/areas/${encodeURIComponent(areaId)}/summary`,
+      {
+        method: "POST",
+      },
+    ),
   answerListingAIQuestion: (listingId: string, payload: AIListingAnswerRequest) =>
     request<AIListingAnswer>(
       `/api/v1/ai/listings/${encodeURIComponent(listingId)}/answer`,
