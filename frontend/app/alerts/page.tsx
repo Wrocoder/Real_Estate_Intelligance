@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Eye, RefreshCw, Send } from "lucide-react";
+import { Bell, Eye, RefreshCw, Send, Trash2 } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -128,6 +128,26 @@ export default function AlertsPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown alert update error");
       setStatus("Не удалось обновить alert");
+    } finally {
+      setSavingAlertId(null);
+    }
+  }
+
+  async function deleteAlert(alert: Alert) {
+    if (!window.confirm(`Удалить alert "${alert.name}"?`)) {
+      return;
+    }
+
+    setSavingAlertId(alert.id);
+    setError("");
+    try {
+      await api.deleteAlert(alert.id);
+      setAlerts((current) => current.filter((item) => item.id !== alert.id));
+      setPreview((current) => (current?.alert.id === alert.id ? null : current));
+      setStatus(`Alert удален: ${alert.name}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown alert delete error");
+      setStatus("Не удалось удалить alert");
     } finally {
       setSavingAlertId(null);
     }
@@ -470,14 +490,37 @@ export default function AlertsPage() {
                       ) : null}
                     </div>
                     <div className="button-row">
-                      <button className="button" type="button" onClick={() => void loadPreview(alert.id)}>
+                      <button
+                        className="button"
+                        type="button"
+                        disabled={savingAlertId === alert.id}
+                        onClick={() => void loadPreview(alert.id)}
+                      >
                         <Eye size={16} /> Preview
                       </button>
-                      <button className="button" type="button" onClick={() => void deliver(alert.id, true)}>
+                      <button
+                        className="button"
+                        type="button"
+                        disabled={savingAlertId === alert.id}
+                        onClick={() => void deliver(alert.id, true)}
+                      >
                         <Send size={16} /> Dry run
                       </button>
-                      <button className="button" type="button" onClick={() => void deliver(alert.id, false)}>
+                      <button
+                        className="button"
+                        type="button"
+                        disabled={savingAlertId === alert.id}
+                        onClick={() => void deliver(alert.id, false)}
+                      >
                         <Send size={16} /> Check send
+                      </button>
+                      <button
+                        className="button danger"
+                        type="button"
+                        disabled={savingAlertId === alert.id}
+                        onClick={() => void deleteAlert(alert)}
+                      >
+                        <Trash2 size={16} /> Удалить
                       </button>
                     </div>
                   </article>

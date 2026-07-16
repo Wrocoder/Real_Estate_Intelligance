@@ -257,7 +257,7 @@
 - [x] Добавить advanced investor alerts v1: below market, price drop/fresh candidate, negotiation, liquidity and high rental potential.
 - [ ] Добавить realtor saved-search digests для клиентов.
 - [x] Добавить alert frequency controls: instant, daily, weekly.
-- [ ] Добавить unsubscribe/manage preferences flow.
+- [x] Добавить unsubscribe/manage preferences flow.
 
 ## 10. Frontend MVP
 
@@ -502,6 +502,7 @@
 - [x] Commit 64: text and address search for listings.
 - [x] Commit 65: developer reputation data model and source-backed report section.
 - [x] Commit 66: alert preference controls.
+- [x] Commit 67: alert unsubscribe action.
 
 ## Current Sprint
 
@@ -592,6 +593,7 @@
 - [x] Добавить granular amenity sublayers на карту: parks, healthcare, retail, office/university/jobs, public services.
 - [x] Добавить admin dedup review actions: filter open/all, mark resolved and reopen.
 - [x] Добавить alert preference controls на `/alerts`: instant/daily/weekly, channel, active/pause и delivery target update.
+- [x] Добавить alert unsubscribe/delete action на `/alerts` с подтверждением и очисткой preview.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

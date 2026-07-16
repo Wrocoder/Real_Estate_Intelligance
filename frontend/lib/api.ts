@@ -2623,6 +2623,19 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
+  deleteAlert: async (alertId: string) => {
+    const response = await fetch(
+      `${currentApiBaseUrl()}/api/v1/alerts/${encodeURIComponent(alertId)}?owner_id=${OWNER_ID}`,
+      {
+        method: "DELETE",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
   previewAlert: (alertId: string) =>
     request<AlertPreview>(`/api/v1/alerts/${alertId}/preview?owner_id=${OWNER_ID}`),
   deliverAlert: (alertId: string, dryRun = true, maxMatches = 10) =>
