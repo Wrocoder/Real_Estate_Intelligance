@@ -380,7 +380,7 @@
 - [x] Добавить agency accounts API/contract tests.
 - [x] Добавить optional repository integration tests с Postgres.
 - [x] Добавить contract tests для API.
-- [ ] Добавить coverage report.
+- [x] Добавить coverage report.
 - [x] Добавить structured logging.
 - [ ] Добавить error tracking.
 - [ ] Добавить performance smoke tests.
@@ -524,6 +524,7 @@
 - [x] Commit 79: developer aliases for brand, legal entity, SPV and parent-company matching.
 - [x] Commit 80: developer registry, UOKiK, directory and partner-inspection evidence ingestion.
 - [x] Commit 81: structured API request logging.
+- [x] Commit 82: backend coverage report in CI.
 
 ## Current Sprint
 

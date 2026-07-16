@@ -74,6 +74,12 @@ FastAPI backend для поиска объектов, сравнения, ско
 .\.venv\Scripts\python.exe -m uvicorn main:app --reload --reload-dir domarion --reload-dir tests
 ```
 
+Coverage report для backend:
+
+```powershell
+.\.venv\Scripts\python.exe -m pytest --cov=domarion --cov-report=term-missing --cov-report=xml
+```
+
 Если установлен `make`, основные dev-команды доступны через единый интерфейс:
 
 ```powershell

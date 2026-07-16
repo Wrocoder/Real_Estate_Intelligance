@@ -35,8 +35,14 @@ jobs:
       - name: Ruff
         run: python -m ruff check .
 
-      - name: Pytest
-        run: python -m pytest
+      - name: Pytest with coverage
+        run: python -m pytest --cov=domarion --cov-report=term-missing --cov-report=xml
+
+      - name: Upload backend coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-xml
+          path: coverage.xml
 
       - name: Validate Alembic migrations
         env:
