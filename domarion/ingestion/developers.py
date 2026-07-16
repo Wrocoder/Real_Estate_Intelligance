@@ -127,6 +127,7 @@ def read_developer_feed(
         _project_from_row(row, known_developer_ids=profile_ids)
         for row in _optional_list(payload, "projects")
     ]
+    project_ids = {project.id for project in projects}
     quality_signals = [
         _quality_signal_from_row(
             row,
@@ -135,6 +136,39 @@ def read_developer_feed(
         )
         for row in _optional_list(payload, "quality_signals")
     ]
+    quality_signals.extend(
+        _registry_check_to_signal(
+            row,
+            known_developer_ids=profile_ids,
+            default_source_name=feed_source_name,
+        )
+        for row in _optional_list(payload, "registry_checks")
+    )
+    quality_signals.extend(
+        _uokik_event_to_signal(
+            row,
+            known_developer_ids=profile_ids,
+            default_source_name=feed_source_name,
+        )
+        for row in _optional_list(payload, "uokik_events")
+    )
+    quality_signals.extend(
+        _directory_entry_to_signal(
+            row,
+            known_developer_ids=profile_ids,
+            default_source_name=feed_source_name,
+        )
+        for row in _optional_list(payload, "directory_entries")
+    )
+    quality_signals.extend(
+        _partner_inspection_to_signal(
+            row,
+            known_developer_ids=profile_ids,
+            known_project_ids=project_ids,
+            default_source_name=feed_source_name,
+        )
+        for row in _optional_list(payload, "partner_inspections")
+    )
     return DeveloperFeedRecords(
         profiles=profiles,
         aliases=aliases,
@@ -355,6 +389,134 @@ def _quality_signal_from_row(
     )
 
 
+def _registry_check_to_signal(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    default_source_name: str | None,
+) -> DeveloperQualitySignal:
+    if not isinstance(row, dict):
+        raise DeveloperFeedError("Developer registry check row must be an object.")
+    developer_id = _known_developer_id(row, known_developer_ids, context="registry check")
+    registry = _required_str(row, "registry").casefold()
+    identifier = _optional_str(row.get("identifier")) or _profile_identifier_label(row)
+    status = _optional_str(row.get("status")) or "unknown"
+    severity = _typed_severity(
+        _optional_str(row.get("severity")) or _registry_status_severity(status)
+    )
+    source_name = _source_name(row, default_source_name, context="registry check")
+    title = _optional_str(row.get("title")) or f"{registry.upper()} registry status: {status}"
+    summary = _optional_str(row.get("summary")) or _registry_summary(
+        registry=registry,
+        identifier=identifier,
+        status=status,
+    )
+    return DeveloperQualitySignal(
+        id=_optional_str(row.get("id"))
+        or slugify(f"{developer_id}-registry-{registry}-{identifier or status}"),
+        developer_id=developer_id,
+        signal_type="legal",
+        severity=severity,
+        title=title,
+        summary=summary,
+        source_name=source_name,
+        source_url=_optional_str(row.get("source_url")),
+        observed_at=_optional_date(row.get("observed_at")),
+        confidence_score=_optional_int(row.get("confidence_score")) or 70,
+    )
+
+
+def _uokik_event_to_signal(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    default_source_name: str | None,
+) -> DeveloperQualitySignal:
+    if not isinstance(row, dict):
+        raise DeveloperFeedError("Developer UOKiK event row must be an object.")
+    developer_id = _known_developer_id(row, known_developer_ids, context="UOKiK event")
+    source_name = _source_name(row, default_source_name, context="UOKiK event")
+    event_type = _optional_str(row.get("event_type")) or "uokik_event"
+    title = _required_str(row, "title")
+    severity = _typed_severity(_optional_str(row.get("severity")) or "warning")
+    return DeveloperQualitySignal(
+        id=_optional_str(row.get("id")) or slugify(f"{developer_id}-uokik-{event_type}-{title}"),
+        developer_id=developer_id,
+        signal_type="legal",
+        severity=severity,
+        title=title,
+        summary=_required_str(row, "summary"),
+        source_name=source_name,
+        source_url=_optional_str(row.get("source_url")),
+        observed_at=_optional_date(row.get("observed_at")),
+        confidence_score=_optional_int(row.get("confidence_score")) or 65,
+    )
+
+
+def _directory_entry_to_signal(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    default_source_name: str | None,
+) -> DeveloperQualitySignal:
+    if not isinstance(row, dict):
+        raise DeveloperFeedError("Developer directory entry row must be an object.")
+    developer_id = _known_developer_id(row, known_developer_ids, context="directory entry")
+    directory_name = _required_str(row, "directory_name")
+    source_name = _source_name(row, default_source_name, context="directory entry")
+    signal_type = _typed_signal_type(_optional_str(row.get("signal_type")) or "transparency")
+    severity = _typed_severity(_optional_str(row.get("severity")) or "info")
+    title = _optional_str(row.get("title")) or f"{directory_name} developer directory entry"
+    summary = _optional_str(row.get("summary")) or _directory_summary(row, directory_name)
+    return DeveloperQualitySignal(
+        id=_optional_str(row.get("id")) or slugify(f"{developer_id}-directory-{directory_name}"),
+        developer_id=developer_id,
+        signal_type=signal_type,
+        severity=severity,
+        title=title,
+        summary=summary,
+        source_name=source_name,
+        source_url=_optional_str(row.get("source_url")) or _optional_str(row.get("profile_url")),
+        observed_at=_optional_date(row.get("observed_at")),
+        confidence_score=_optional_int(row.get("confidence_score")) or 58,
+    )
+
+
+def _partner_inspection_to_signal(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    known_project_ids: set[str],
+    default_source_name: str | None,
+) -> DeveloperQualitySignal:
+    if not isinstance(row, dict):
+        raise DeveloperFeedError("Developer partner inspection row must be an object.")
+    developer_id = _known_developer_id(row, known_developer_ids, context="partner inspection")
+    project_id = _optional_str(row.get("project_id"))
+    if project_id is not None and project_id not in known_project_ids:
+        raise DeveloperFeedError(f"Unknown project_id for partner inspection: {project_id}.")
+    source_name = _source_name(row, default_source_name, context="partner inspection")
+    title = _required_str(row, "title")
+    summary = _required_str(row, "summary")
+    if project_id:
+        summary = f"Project {project_id}: {summary}"
+    return DeveloperQualitySignal(
+        id=_optional_str(row.get("id"))
+        or slugify(f"{developer_id}-inspection-{project_id or title}"),
+        developer_id=developer_id,
+        signal_type=_typed_signal_type(
+            _optional_str(row.get("signal_type")) or "technical_quality"
+        ),
+        severity=_typed_severity(_optional_str(row.get("severity")) or "warning"),
+        title=title,
+        summary=summary,
+        source_name=source_name,
+        source_url=_optional_str(row.get("source_url")),
+        observed_at=_optional_date(row.get("observed_at")),
+        confidence_score=_optional_int(row.get("confidence_score")) or 60,
+    )
+
+
 def _upsert_profile(session: Session, profile: DeveloperProfile) -> bool:
     row = session.get(DeveloperProfileRow, profile.id)
     created = row is None
@@ -433,6 +595,77 @@ def _rows_seen(records: DeveloperFeedRecords) -> int:
         + len(records.projects)
         + len(records.quality_signals)
     )
+
+
+def _known_developer_id(
+    row: dict,
+    known_developer_ids: set[str],
+    *,
+    context: str,
+) -> str:
+    developer_id = _required_str(row, "developer_id")
+    if developer_id not in known_developer_ids:
+        raise DeveloperFeedError(f"Unknown developer_id for {context}: {developer_id}.")
+    return developer_id
+
+
+def _source_name(
+    row: dict,
+    default_source_name: str | None,
+    *,
+    context: str,
+) -> str:
+    source_name = _optional_str(row.get("source_name")) or default_source_name
+    if not source_name:
+        raise DeveloperFeedError(f"Developer {context} requires source_name.")
+    return source_name
+
+
+def _typed_signal_type(signal_type: str) -> DeveloperSignalType:
+    if signal_type not in SIGNAL_TYPES:
+        raise DeveloperFeedError(f"Invalid developer signal_type: {signal_type}.")
+    return cast(DeveloperSignalType, signal_type)
+
+
+def _typed_severity(severity: str) -> DeveloperSignalSeverity:
+    if severity not in SIGNAL_SEVERITIES:
+        raise DeveloperFeedError(f"Invalid developer signal severity: {severity}.")
+    return cast(DeveloperSignalSeverity, severity)
+
+
+def _registry_status_severity(status: str) -> DeveloperSignalSeverity:
+    normalized = status.casefold()
+    if any(token in normalized for token in ("active", "aktywn", "registered")):
+        return "positive"
+    if any(token in normalized for token in ("suspended", "blocked", "liquidation", "insolv")):
+        return "risk"
+    if any(token in normalized for token in ("unknown", "missing", "unconfirmed")):
+        return "warning"
+    return "info"
+
+
+def _profile_identifier_label(row: dict) -> str | None:
+    for key in ("krs", "nip", "regon"):
+        value = _optional_str(row.get(key))
+        if value:
+            return f"{key.upper()} {value}"
+    return None
+
+
+def _registry_summary(*, registry: str, identifier: str | None, status: str) -> str:
+    identifier_text = f" {identifier}" if identifier else ""
+    return f"{registry.upper()}{identifier_text} status was imported as {status}."
+
+
+def _directory_summary(row: dict, directory_name: str) -> str:
+    city = _optional_str(row.get("city"))
+    active_projects = _optional_int(row.get("active_projects_count"))
+    parts = [f"{directory_name} directory profile was imported."]
+    if city:
+        parts.append(f"Coverage city: {city}.")
+    if active_projects is not None:
+        parts.append(f"Active projects in directory: {active_projects}.")
+    return " ".join(parts)
 
 
 def _required_list(payload: dict, key: str) -> list:

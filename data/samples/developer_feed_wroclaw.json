@@ -130,5 +130,59 @@
       "observed_at": "2026-07-10",
       "confidence_score": 55
     }
+  ],
+  "registry_checks": [
+    {
+      "id": "demo-krs-active",
+      "developer_id": "demo-development",
+      "registry": "krs",
+      "identifier": "0000123456",
+      "status": "active",
+      "source_name": "KRS/REGON sample",
+      "source_url": "https://example-developer.test/krs/demo-development",
+      "observed_at": "2026-07-10",
+      "confidence_score": 82
+    }
+  ],
+  "uokik_events": [
+    {
+      "id": "fep-uokik-contract-review",
+      "developer_id": "fabryczna-estate-partners",
+      "event_type": "contract_clause_review",
+      "severity": "info",
+      "title": "Consumer-protection source checked",
+      "summary": "Sample UOKiK-style source was checked; no enforcement decision is stored in this demo feed.",
+      "source_name": "UOKiK sample",
+      "source_url": "https://example.com/uokik/fep",
+      "observed_at": "2026-07-10",
+      "confidence_score": 54
+    }
+  ],
+  "directory_entries": [
+    {
+      "id": "demo-directory-rynekpierwotny",
+      "developer_id": "demo-development",
+      "directory_name": "RynekPierwotny sample",
+      "city": "Wrocław",
+      "active_projects_count": 1,
+      "source_name": "Developer directory sample",
+      "profile_url": "https://example-developer.test/directories/demo-development",
+      "observed_at": "2026-07-10",
+      "confidence_score": 60
+    }
+  ],
+  "partner_inspections": [
+    {
+      "id": "fep-partner-inspection-common-areas",
+      "developer_id": "fabryczna-estate-partners",
+      "project_id": "fep-nowy-dwor",
+      "severity": "warning",
+      "title": "Common-area inspection recommended",
+      "summary": "Partner inspection dataset flags older common areas for technical review before purchase.",
+      "source_name": "Partner inspection sample",
+      "source_url": "https://example.com/inspections/fep-nowy-dwor",
+      "observed_at": "2026-07-10",
+      "confidence_score": 62
+    }
   ]
 }

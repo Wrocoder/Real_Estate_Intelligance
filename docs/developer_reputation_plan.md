@@ -9,7 +9,7 @@
 - Добавлен первый in-memory слой: developer profiles, projects, quality signals и listing-to-developer mapping.
 - Добавлены PostgreSQL таблицы для developer profiles, projects, quality signals и reputation snapshots.
 - Добавлены developer aliases для brand/legal entity/SPV/project company/parent company matching.
-- Добавлен legal-first JSON feed importer для source-backed developer data и aliases без копирования персональных данных.
+- Добавлен legal-first JSON feed importer для source-backed developer data, aliases, registry checks, UOKiK events, directories и partner inspections без копирования персональных данных.
 - Public API уже отдает ranking, developer detail и lookup by listing для MVP/demo данных.
 - В object reports добавлена секция о застройщике, если для объекта есть сопоставление.
 
@@ -64,5 +64,6 @@ Every object report should include a developer section when developer data exist
 7. [x] Frontend ranking page and developer block on listing detail.
 8. [x] Dedicated developer profile page with source freshness and project timeline.
 9. [x] Developer aliases for brand, legal entity, SPV, project company and parent company matching.
-10. [ ] Add admin manual editor for developer profiles and quality signals.
-11. [ ] Add source citation and dispute-correction workflow.
+10. [x] Legal-first evidence sections for KRS/REGON checks, UOKiK events, directories and partner inspections.
+11. [ ] Add admin manual editor for developer profiles and quality signals.
+12. [ ] Add source citation and dispute-correction workflow.

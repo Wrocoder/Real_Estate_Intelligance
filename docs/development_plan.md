@@ -162,7 +162,7 @@
 - [x] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
 - [x] Добавить legal-first developer feed ingestion для профилей, проектов и quality signals.
-- [ ] Расширить legal-first developer ingestion: KRS/REGON lookup, UOKiK events, directories, partner inspection datasets.
+- [x] Расширить legal-first developer ingestion: KRS/REGON lookup evidence, UOKiK events, directories, partner inspection datasets.
 - [x] Добавить нормализацию developer aliases: brand name, legal entity, SPV/project company, parent company.
 - [x] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
 - [ ] Добавить source-specific retention и delete-request handling.
@@ -517,6 +517,7 @@
 - [x] Commit 77: developer reputation Postgres tables and legal-first feed importer.
 - [x] Commit 78: normalized developer metadata for listings and private drafts.
 - [x] Commit 79: developer aliases for brand, legal entity, SPV and parent-company matching.
+- [x] Commit 80: developer registry, UOKiK, directory and partner-inspection evidence ingestion.
 
 ## Current Sprint
 
@@ -617,6 +618,7 @@
 - [x] Добавить developer reputation Postgres tables и legal-first JSON feed importer.
 - [x] Добавить normalized developer/project metadata для listings, partner CSV и private drafts.
 - [x] Добавить developer aliases для brand/legal entity/SPV/project company/parent company matching.
+- [x] Добавить developer evidence ingestion для registry checks, UOKiK events, directories и partner inspections.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

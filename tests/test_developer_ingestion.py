@@ -16,13 +16,18 @@ def test_developer_feed_sample_parses_profiles_projects_and_signals() -> None:
     assert len(records.profiles) == 2
     assert len(records.aliases) == 3
     assert len(records.projects) == 3
-    assert len(records.quality_signals) == 3
+    assert len(records.quality_signals) == 7
     demo = next(profile for profile in records.profiles if profile.id == "demo-development")
     demo_aliases = [alias for alias in records.aliases if alias.developer_id == "demo-development"]
+    signal_ids = {signal.id for signal in records.quality_signals}
     assert "Developer Demo" in demo.source_names
     assert demo.krs == "0000123456"
     assert any(alias.alias_type == "spv" for alias in demo_aliases)
     assert any(alias.alias == "Demo Development Jagodno sp. z o.o." for alias in demo_aliases)
+    assert "demo-krs-active" in signal_ids
+    assert "fep-uokik-contract-review" in signal_ids
+    assert "demo-directory-rynekpierwotny" in signal_ids
+    assert "fep-partner-inspection-common-areas" in signal_ids
 
 
 def test_developer_feed_dry_run_returns_counts_without_writes() -> None:
@@ -32,7 +37,7 @@ def test_developer_feed_dry_run_returns_counts_without_writes() -> None:
         dry_run=True,
     )
 
-    assert result.rows_seen == 11
+    assert result.rows_seen == 15
     assert result.dry_run is True
     assert result.developer_ids == ("demo-development", "fabryczna-estate-partners")
 
@@ -51,6 +56,38 @@ def test_developer_feed_rejects_unknown_project_developer(tmp_path: Path) -> Non
     )
 
     with pytest.raises(DeveloperFeedError, match="Unknown developer_id"):
+        read_developer_feed(path)
+
+
+def test_developer_feed_rejects_unknown_partner_inspection_project(tmp_path: Path) -> None:
+    path = tmp_path / "developer_feed.json"
+    path.write_text(
+        """
+        {
+          "source_name": "Bad Feed",
+          "profiles": [{"id": "known", "name": "Known", "source_names": ["Bad Feed"]}],
+          "projects": [
+            {
+              "id": "known-project",
+              "developer_id": "known",
+              "name": "Known",
+              "city": "Wrocław"
+            }
+          ],
+          "partner_inspections": [
+            {
+              "developer_id": "known",
+              "project_id": "missing-project",
+              "title": "Inspection",
+              "summary": "Bad project reference."
+            }
+          ]
+        }
+        """,
+        encoding="utf-8",
+    )
+
+    with pytest.raises(DeveloperFeedError, match="Unknown project_id"):
         read_developer_feed(path)
 
 
