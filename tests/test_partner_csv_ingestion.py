@@ -10,6 +10,7 @@ import pytest
 
 from domarion.cli import main
 from domarion.ingestion.db_writer import (
+    DeduplicationCandidateContext,
     _description_hash_from_record,
     _evaluate_deduplication_candidate,
     _is_duplicate_property_match,
@@ -280,6 +281,53 @@ def test_partner_import_dedup_explains_review_required_match() -> None:
     assert decision.match_score == 90
     assert "coordinates differ beyond tolerance" in decision.reasons
     assert decision.candidate_payload["property_id"] == 123
+
+
+def test_partner_import_dedup_v2_blocks_auto_match_when_floor_differs() -> None:
+    listing = _dedup_listing(address="Nowy Dwór 12", floor=4)
+    existing_property = _dedup_property(
+        id=123,
+        canonical_address="ul. Nowy Dwór 12",
+        floor=2,
+    )
+
+    decision = _evaluate_deduplication_candidate(existing_property, listing)
+
+    assert decision.decision == "review_required"
+    assert decision.match_score == 100
+    assert "floor differs; requires dedup review" in decision.reasons
+    assert decision.candidate_payload["floor"] == 2
+
+
+def test_partner_import_dedup_v2_adds_text_source_and_description_evidence() -> None:
+    listing = _dedup_listing(
+        address="Nowy Dwór 12",
+        title="Jasne mieszkanie Nowy Dwor balkon",
+        source_name="Partner B",
+    )
+    existing_property = _dedup_property(id=321, canonical_address="ul. Nowy Dwór 12")
+    context = DeduplicationCandidateContext(
+        source_names=("Partner A",),
+        source_listing_ids=("source-a-001",),
+        latest_title="Jasne mieszkanie Nowy Dwor po remoncie",
+        latest_description_hash="description-v1",
+    )
+
+    decision = _evaluate_deduplication_candidate(
+        existing_property,
+        listing,
+        candidate_context=context,
+        incoming_description_hash="description-v1",
+        incoming_source_name="Partner B",
+        incoming_source_listing_id="source-b-001",
+    )
+
+    assert decision.decision == "matched"
+    assert "title text similarity is high" in " ".join(decision.reasons)
+    assert "description hash matches" in decision.reasons
+    assert "candidate source set differs from incoming source" in decision.reasons
+    assert decision.candidate_payload["source_names"] == ["Partner A"]
+    assert decision.candidate_payload["latest_description_hash"] == "description-v1"
 
 
 def test_partner_import_dedup_explains_rejected_match() -> None:

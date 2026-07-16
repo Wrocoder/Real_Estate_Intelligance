@@ -76,6 +76,14 @@ class DeduplicationCandidateDecision:
     candidate_payload: dict
 
 
+@dataclass(frozen=True)
+class DeduplicationCandidateContext:
+    source_names: tuple[str, ...] = ()
+    source_listing_ids: tuple[str, ...] = ()
+    latest_title: str | None = None
+    latest_description_hash: str | None = None
+
+
 def import_partner_csv(
     path: str,
     source_name: str,
@@ -430,7 +438,7 @@ def _upsert_property_source(
         session.flush()
         return property_source, False
 
-    property_, deduplication_decisions = _find_duplicate_property(session, listing)
+    property_, deduplication_decisions = _find_duplicate_property(session, record)
     if deduplication_decisions:
         _write_deduplication_decision(
             session,
@@ -462,8 +470,9 @@ def _upsert_property_source(
 
 def _find_duplicate_property(
     session: Session,
-    listing: Listing,
+    record: PartnerListingRecord,
 ) -> tuple[Property | None, list[DeduplicationCandidateDecision]]:
+    listing = record.listing
     candidates = session.scalars(
         select(Property).where(
             Property.city == listing.city,
@@ -471,7 +480,17 @@ def _find_duplicate_property(
         )
     ).all()
     decisions = sorted(
-        [_evaluate_deduplication_candidate(candidate, listing) for candidate in candidates],
+        [
+            _evaluate_deduplication_candidate(
+                candidate,
+                listing,
+                candidate_context=_dedup_context_for_property(session, candidate),
+                incoming_description_hash=_description_hash_from_record(record),
+                incoming_source_name=record.source_name,
+                incoming_source_listing_id=record.source_listing_id,
+            )
+            for candidate in candidates
+        ],
         key=lambda decision: (-decision.match_score, decision.property_id),
     )
     for decision in decisions:
@@ -488,9 +507,16 @@ def _is_duplicate_property_match(property_: Property, listing: Listing) -> bool:
 def _evaluate_deduplication_candidate(
     property_: Property,
     listing: Listing,
+    *,
+    candidate_context: DeduplicationCandidateContext | None = None,
+    incoming_description_hash: str | None = None,
+    incoming_source_name: str | None = None,
+    incoming_source_listing_id: str | None = None,
 ) -> DeduplicationCandidateDecision:
     score = 0
     reasons = []
+    auto_match_blockers = []
+    candidate_context = candidate_context or DeduplicationCandidateContext()
 
     def check(condition: bool, points: int, passed: str, failed: str) -> bool:
         nonlocal score
@@ -543,6 +569,20 @@ def _evaluate_deduplication_candidate(
         "coordinates are within tolerance",
         "coordinates differ beyond tolerance",
     )
+    _append_building_dedup_signals(
+        property_,
+        listing,
+        reasons,
+        auto_match_blockers,
+    )
+    _append_text_source_dedup_signals(
+        listing,
+        candidate_context,
+        reasons,
+        incoming_description_hash=incoming_description_hash,
+        incoming_source_name=incoming_source_name,
+        incoming_source_listing_id=incoming_source_listing_id,
+    )
 
     strict_match = all(
         (
@@ -555,7 +595,7 @@ def _evaluate_deduplication_candidate(
             coordinate_match,
         )
     )
-    if strict_match and score >= DEDUP_AUTO_MATCH_THRESHOLD:
+    if strict_match and score >= DEDUP_AUTO_MATCH_THRESHOLD and not auto_match_blockers:
         decision = "matched"
     elif score >= DEDUP_REVIEW_THRESHOLD:
         decision = "review_required"
@@ -566,9 +606,93 @@ def _evaluate_deduplication_candidate(
         property_id=getattr(property_, "id", 0) or 0,
         decision=decision,
         match_score=score,
-        reasons=reasons,
-        candidate_payload=_property_dedup_payload(property_),
+        reasons=[*reasons, *auto_match_blockers],
+        candidate_payload=_property_dedup_payload(property_, candidate_context),
     )
+
+
+def _append_building_dedup_signals(
+    property_: Property,
+    listing: Listing,
+    reasons: list[str],
+    auto_match_blockers: list[str],
+) -> None:
+    _append_optional_exact_signal(
+        getattr(property_, "floor", None),
+        listing.floor,
+        "floor",
+        reasons,
+        auto_match_blockers,
+    )
+    _append_optional_exact_signal(
+        getattr(property_, "building_floors", None),
+        listing.building_floors,
+        "building_floors",
+        reasons,
+        auto_match_blockers,
+    )
+    _append_optional_exact_signal(
+        getattr(property_, "building_year", None),
+        listing.building_year,
+        "building_year",
+        reasons,
+        auto_match_blockers,
+    )
+
+
+def _append_optional_exact_signal(
+    left,
+    right,
+    field_name: str,
+    reasons: list[str],
+    auto_match_blockers: list[str],
+) -> None:
+    if left is None or right is None:
+        reasons.append(f"{field_name} unavailable for dedup v2")
+        return
+    if int(left) == int(right):
+        reasons.append(f"{field_name} matches")
+        return
+    auto_match_blockers.append(f"{field_name} differs; requires dedup review")
+
+
+def _append_text_source_dedup_signals(
+    listing: Listing,
+    candidate_context: DeduplicationCandidateContext,
+    reasons: list[str],
+    *,
+    incoming_description_hash: str | None,
+    incoming_source_name: str | None,
+    incoming_source_listing_id: str | None,
+) -> None:
+    title_similarity = _title_similarity(candidate_context.latest_title, listing.title)
+    if title_similarity is None:
+        reasons.append("title text similarity unavailable")
+    elif title_similarity >= 0.65:
+        reasons.append(f"title text similarity is high ({title_similarity:.2f})")
+    else:
+        reasons.append(f"title text similarity is low ({title_similarity:.2f})")
+
+    if incoming_description_hash and candidate_context.latest_description_hash:
+        if incoming_description_hash == candidate_context.latest_description_hash:
+            reasons.append("description hash matches")
+        else:
+            reasons.append("description hash differs")
+    else:
+        reasons.append("description hash unavailable for dedup v2")
+
+    if incoming_source_name and incoming_source_name in candidate_context.source_names:
+        reasons.append("candidate already has listing from the same source")
+    elif incoming_source_name:
+        reasons.append("candidate source set differs from incoming source")
+    else:
+        reasons.append("incoming source unavailable for dedup v2")
+
+    if (
+        incoming_source_listing_id
+        and incoming_source_listing_id in candidate_context.source_listing_ids
+    ):
+        reasons.append("candidate already has same source listing id")
 
 
 def _write_deduplication_decision(
@@ -593,7 +717,7 @@ def _write_deduplication_decision(
             ),
             match_score=decision.match_score,
             reasons_json=decision.reasons,
-            incoming_payload=_listing_dedup_payload(record.listing),
+            incoming_payload=_listing_dedup_payload(record),
             candidate_payload=decision.candidate_payload,
             created_at=datetime.utcnow(),
         )
@@ -804,6 +928,60 @@ def _listing_snapshot_payload(record: PartnerListingRecord) -> dict:
     return payload
 
 
+def _dedup_context_for_property(
+    session: Session,
+    property_: Property,
+) -> DeduplicationCandidateContext:
+    property_id = getattr(property_, "id", None)
+    if property_id is None:
+        return DeduplicationCandidateContext()
+
+    property_sources = session.scalars(
+        select(PropertySource).where(PropertySource.property_id == property_id)
+    ).all()
+    if not property_sources:
+        return DeduplicationCandidateContext()
+
+    source_ids = sorted({property_source.source_id for property_source in property_sources})
+    sources = session.scalars(
+        select(ListingSource).where(ListingSource.id.in_(source_ids))
+    ).all()
+    source_names_by_id = {source.id: source.name for source in sources}
+    source_names = tuple(
+        sorted(
+            {
+                source_names_by_id.get(property_source.source_id, "")
+                for property_source in property_sources
+                if source_names_by_id.get(property_source.source_id)
+            }
+        )
+    )
+    source_listing_ids = tuple(
+        sorted({property_source.source_listing_id for property_source in property_sources})
+    )
+    latest_snapshot = session.scalar(
+        select(ListingSnapshot)
+        .where(
+            ListingSnapshot.property_source_id.in_(
+                [property_source.id for property_source in property_sources]
+            )
+        )
+        .order_by(ListingSnapshot.observed_at.desc(), ListingSnapshot.id.desc())
+        .limit(1)
+    )
+    if latest_snapshot is None:
+        return DeduplicationCandidateContext(
+            source_names=source_names,
+            source_listing_ids=source_listing_ids,
+        )
+    return DeduplicationCandidateContext(
+        source_names=source_names,
+        source_listing_ids=source_listing_ids,
+        latest_title=latest_snapshot.title,
+        latest_description_hash=latest_snapshot.description_hash,
+    )
+
+
 def _event_metadata_from_payload(payload: dict) -> dict:
     metadata = {}
     for key in (
@@ -896,7 +1074,8 @@ def _update_property_from_listing(property_: Property, listing: Listing) -> None
     property_.data_quality_score = listing.data_quality_score
 
 
-def _listing_dedup_payload(listing: Listing) -> dict[str, object]:
+def _listing_dedup_payload(record: PartnerListingRecord) -> dict[str, object]:
+    listing = record.listing
     return {
         "listing_id": listing.id,
         "address": listing.address,
@@ -913,15 +1092,25 @@ def _listing_dedup_payload(listing: Listing) -> dict[str, object]:
         "parking_type": listing.parking_type,
         "heating_type": listing.heating_type,
         "rooms": listing.rooms,
+        "floor": listing.floor,
+        "building_floors": listing.building_floors,
+        "building_year": listing.building_year,
         "area_m2": listing.area_m2,
         "lat": listing.lat,
         "lon": listing.lon,
         "price": listing.price,
         "source_name": listing.source_name,
+        "source_listing_id": record.source_listing_id,
+        "description_hash": _description_hash_from_record(record),
+        "photo_hashes_used": False,
     }
 
 
-def _property_dedup_payload(property_: Property) -> dict[str, object]:
+def _property_dedup_payload(
+    property_: Property,
+    candidate_context: DeduplicationCandidateContext | None = None,
+) -> dict[str, object]:
+    candidate_context = candidate_context or DeduplicationCandidateContext()
     return {
         "property_id": getattr(property_, "id", None),
         "address": property_.canonical_address,
@@ -938,9 +1127,17 @@ def _property_dedup_payload(property_: Property) -> dict[str, object]:
         "parking_type": getattr(property_, "parking_type", None),
         "heating_type": getattr(property_, "heating_type", None),
         "rooms": property_.rooms,
+        "floor": getattr(property_, "floor", None),
+        "building_floors": getattr(property_, "building_floors", None),
+        "building_year": getattr(property_, "building_year", None),
         "area_m2": _optional_float_value(property_.area_m2),
         "lat": _optional_float_value(property_.lat),
         "lon": _optional_float_value(property_.lon),
+        "source_names": list(candidate_context.source_names),
+        "source_listing_ids": list(candidate_context.source_listing_ids),
+        "latest_title": candidate_context.latest_title,
+        "latest_description_hash": candidate_context.latest_description_hash,
+        "photo_hashes_used": False,
     }
 
 
@@ -956,6 +1153,15 @@ def _date_to_datetime(value) -> datetime:
 
 def _same_dedup_text(left: str | None, right: str | None) -> bool:
     return _dedup_text(left) == _dedup_text(right)
+
+
+def _title_similarity(left: str | None, right: str | None) -> float | None:
+    left_tokens = set(_dedup_text(left).split("-")) - {""}
+    right_tokens = set(_dedup_text(right).split("-")) - {""}
+    if not left_tokens or not right_tokens:
+        return None
+    overlap = len(left_tokens & right_tokens)
+    return round(overlap / max(len(left_tokens), len(right_tokens)), 2)
 
 
 def _dedup_text(value: str | None) -> str:

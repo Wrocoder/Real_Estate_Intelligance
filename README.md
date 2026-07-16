@@ -30,7 +30,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
 - Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
 - Добавлен `listing_events` pipeline из snapshots: first seen, price moves, parameter/status/description hash changes, removed/republished и relist events.
-- Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
+- Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison, dedup v2 evidence по этажу/title/source/description hash и admin UI.
 - Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
 - Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
 - Добавлен infrastructure enrichment pipeline: PostGIS пересчитывает расстояния до центра, остановок, школ, industrial zones и counts для парков/школ/planned investments.

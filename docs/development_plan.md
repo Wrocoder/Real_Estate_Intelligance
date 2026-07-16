@@ -163,7 +163,7 @@
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
 - [ ] Добавить legal-first developer data ingestion: developer feeds, KRS/REGON lookup, UOKiK events, directories, partner inspection datasets.
 - [ ] Добавить нормализацию developer aliases: brand name, legal entity, SPV/project company, parent company.
-- [ ] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
+- [x] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
 - [ ] Добавить source-specific retention и delete-request handling.
 
 ## 6. Scoring и Analytics
@@ -512,6 +512,7 @@
 - [x] Commit 73: lifestyle search filters.
 - [x] Commit 74: PostgreSQL full-text indexes for listing search.
 - [x] Commit 75: listing event pipeline for removed, republished and description changes.
+- [x] Commit 76: deduplication v2 evidence and review blockers.
 
 ## Current Sprint
 
