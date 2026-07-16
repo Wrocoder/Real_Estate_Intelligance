@@ -86,6 +86,15 @@ const OSM_RASTER_STYLE: StyleSpecification = {
   ],
 };
 
+function normalizeVisibleLayers(
+  visibleLayers: Partial<VisibleMapLayers> | null | undefined,
+): VisibleMapLayers {
+  return {
+    ...DEFAULT_VISIBLE_LAYERS,
+    ...visibleLayers,
+  };
+}
+
 export function PropertyMap({ collection, isLoading = false, error = "" }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
@@ -93,7 +102,10 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const markersRef = useRef<MaplibreMarker[]>([]);
   const collectionRef = useRef<MapFeatureCollection | null>(collection);
   const visibleLayersRef = useRef<VisibleMapLayers>(DEFAULT_VISIBLE_LAYERS);
-  const [visibleLayers, setVisibleLayers] = useState<VisibleMapLayers>(DEFAULT_VISIBLE_LAYERS);
+  const [visibleLayersState, setVisibleLayersState] = useState<VisibleMapLayers>(
+    DEFAULT_VISIBLE_LAYERS,
+  );
+  const visibleLayers = normalizeVisibleLayers(visibleLayersState);
 
   useEffect(() => {
     collectionRef.current = collection;
@@ -109,17 +121,18 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   }, [collection]);
 
   useEffect(() => {
-    visibleLayersRef.current = visibleLayers;
+    const nextVisibleLayers = normalizeVisibleLayers(visibleLayersState);
+    visibleLayersRef.current = nextVisibleLayers;
     if (mapRef.current && maplibreRef.current) {
       syncMapData(
         mapRef.current,
         maplibreRef.current,
         markersRef.current,
         collectionRef.current,
-        visibleLayers,
+        nextVisibleLayers,
       );
     }
-  }, [visibleLayers]);
+  }, [visibleLayersState]);
 
   useEffect(() => {
     let disposed = false;
@@ -180,8 +193,8 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
-    setVisibleLayers((current) => ({
-      ...current,
+    setVisibleLayersState((current) => ({
+      ...normalizeVisibleLayers(current),
       [key]: checked,
     }));
   };
