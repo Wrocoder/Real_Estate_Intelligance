@@ -23,6 +23,7 @@ def search_listing_analyses(
     *,
     city: str | None = None,
     district: str | None = None,
+    municipality: str | None = None,
     query: str | None = None,
     rooms: int | None = None,
     market_type: MarketType | None = None,
@@ -68,6 +69,7 @@ def search_listing_analyses(
     listings = repository.list_listings(
         city=city,
         district=district,
+        municipality=municipality,
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,
@@ -154,6 +156,7 @@ def search_listing_analyses(
         filters={
             "city": city,
             "district": district,
+            "municipality": municipality,
             "query": query,
             "rooms": rooms,
             "market_type": market_type,

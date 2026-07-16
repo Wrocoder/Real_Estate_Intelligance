@@ -659,6 +659,7 @@ class InMemoryRealEstateRepository:
         self,
         city: str | None = None,
         district: str | None = None,
+        municipality: str | None = None,
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
@@ -674,6 +675,11 @@ class InMemoryRealEstateRepository:
             listings = [item for item in listings if item.city.lower() == city.lower()]
         if district:
             listings = [item for item in listings if item.district.lower() == district.lower()]
+        if municipality:
+            municipality_key = municipality.casefold()
+            listings = [
+                item for item in listings if item.municipality.casefold() == municipality_key
+            ]
         if rooms:
             listings = [item for item in listings if item.rooms == rooms]
         if max_price:

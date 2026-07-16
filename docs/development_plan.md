@@ -101,7 +101,8 @@
 - [x] Добавить API-level text/address search по title, address, district, city и source metadata.
 - [ ] Подключить OpenSearch или PostgreSQL full-text indexes для production-scale поиска.
 - [x] Добавить saved searches.
-- [ ] Расширить фильтры: gmina, voivodeship, floor, building floors, building year, building type, renovation state.
+- [ ] Расширить фильтры: voivodeship, building type, renovation state.
+- [x] Добавить gmina/municipality filters в listings, hidden gems, map и saved-search alerts.
 - [x] Добавить floor/building floors/building year range filters в listings, hidden gems, map и saved-search alerts.
 - [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
 - [x] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
@@ -506,6 +507,7 @@
 - [x] Commit 68: realtor saved-search client digests.
 - [x] Commit 69: realtor client shortlist preview.
 - [x] Commit 70: lightweight market and price history charts.
+- [x] Commit 71: gmina/municipality search filters.
 
 ## Current Sprint
 
@@ -538,6 +540,7 @@
 - [x] Добавить человекочитаемые score labels в API/UI/report metadata.
 - [x] Добавить `user_submitted_reference` source type и sanitized telemetry для private URL import.
 - [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
+- [x] Добавить gmina/municipality filter в search API, hidden gems, map и alerts UI.
 - [x] Добавить geometry columns и GiST spatial indexes для `properties` и `planned_investments`.
 - [x] Добавить PostGIS distance calculations для listing/map radius queries и private draft scoring.
 - [x] Добавить `listing_events` timeline из snapshots для price/parameter/status changes.

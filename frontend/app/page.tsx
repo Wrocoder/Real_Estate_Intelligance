@@ -23,6 +23,7 @@ import { money, numberValue, percent } from "@/lib/format";
 type Filters = {
   mode: "standard" | "hidden_gems";
   query: string;
+  municipality: string;
   district: string;
   rooms: string;
   maxPrice: string;
@@ -59,6 +60,7 @@ const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
 const defaultFilters: Filters = {
   mode: "standard",
   query: "",
+  municipality: "",
   district: "",
   rooms: "",
   maxPrice: "",
@@ -147,11 +149,17 @@ export default function ExplorerPage() {
     if (!appliedUrlFiltersRef.current) {
       appliedUrlFiltersRef.current = true;
       const params = new URLSearchParams(window.location.search);
+      const municipality = params.get("municipality");
       const district = params.get("district");
       const query = params.get("q");
-      if ((district && filters.district !== district) || (query && filters.query !== query)) {
+      if (
+        (municipality && filters.municipality !== municipality) ||
+        (district && filters.district !== district) ||
+        (query && filters.query !== query)
+      ) {
         setFilters((current) => ({
           ...current,
+          municipality: municipality || current.municipality,
           district: district || current.district,
           query: query || current.query,
         }));
@@ -159,13 +167,14 @@ export default function ExplorerPage() {
       }
     }
     void load(page);
-  }, [filters.district, filters.query, load, page]);
+  }, [filters.district, filters.municipality, filters.query, load, page]);
 
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
     return {
-      city: "Wrocław",
+      city: filters.municipality ? undefined : "Wrocław",
       district: filters.district || undefined,
+      municipality: filters.municipality || undefined,
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
       min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
@@ -215,11 +224,27 @@ export default function ExplorerPage() {
     };
   }, [mapQuery]);
 
-  const districts = areas.map((area) => area.name);
+  const municipalities = Array.from(new Set(areas.map((area) => area.city))).sort((left, right) => {
+    if (left === "Wrocław") return -1;
+    if (right === "Wrocław") return 1;
+    return left.localeCompare(right);
+  });
+  const districts = areas
+    .filter((area) =>
+      filters.municipality ? area.city === filters.municipality : area.city === "Wrocław",
+    )
+    .map((area) => area.name);
   const best = analyses[0];
   const bestGem = hiddenGemItems[0] ?? null;
   const selectedArea =
-    areas.find((area) => area.name === filters.district) ?? areas[0] ?? null;
+    areas.find(
+      (area) =>
+        area.name === filters.district &&
+        (filters.municipality ? area.city === filters.municipality : area.city === "Wrocław"),
+    ) ??
+    areas.find((area) => area.city === (filters.municipality || "Wrocław")) ??
+    areas[0] ??
+    null;
   const compareHref = `/compare?ids=${compareIds.join(",")}`;
 
   function updateFilters(next: Partial<Filters>) {
@@ -275,7 +300,8 @@ export default function ExplorerPage() {
     await api.createAlert({
       name: "Saved search from explorer",
       filters: {
-        city: "Wrocław",
+        city: filters.municipality ? null : "Wrocław",
+        municipality: filters.municipality || null,
         query: filters.query || null,
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
@@ -386,13 +412,32 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
+            <span>Gmina</span>
+            <select
+              className="select"
+              value={filters.municipality}
+              onChange={(event) =>
+                updateFilters({ municipality: event.target.value, district: "" })
+              }
+            >
+              <option value="">Wrocław city</option>
+              {municipalities
+                .filter((municipality) => municipality !== "Wrocław")
+                .map((municipality) => (
+                  <option key={municipality} value={municipality}>
+                    {municipality}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="field">
             <span>Район</span>
             <select
               className="select"
               value={filters.district}
               onChange={(event) => updateFilters({ district: event.target.value })}
             >
-              <option value="">Все районы</option>
+              <option value="">Все районы/местности</option>
               {districts.map((district) => (
                 <option key={district} value={district}>
                   {district}
@@ -827,9 +872,10 @@ export default function ExplorerPage() {
 function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
   const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
   return {
-    city: "Wrocław",
+    city: filters.municipality ? undefined : "Wrocław",
     query: filters.query || undefined,
     district: filters.district || undefined,
+    municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
@@ -889,9 +935,10 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
 
 function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
   return {
-    city: "Wrocław",
+    city: filters.municipality ? undefined : "Wrocław",
     query: filters.query || undefined,
     district: filters.district || undefined,
+    municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,

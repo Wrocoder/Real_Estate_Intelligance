@@ -33,6 +33,7 @@ export default function AlertsPage() {
   const [form, setForm] = useState({
     name: "Fabryczna до 700k",
     query: "",
+    municipality: "",
     district: "Fabryczna",
     maxPrice: "700000",
     minFloor: "",
@@ -76,7 +77,8 @@ export default function AlertsPage() {
     const alert = await api.createAlert({
       name: form.name,
       filters: {
-        city: "Wrocław",
+        city: form.municipality ? null : "Wrocław",
+        municipality: form.municipality || null,
         query: form.query || null,
         district: form.district || null,
         max_price: form.maxPrice ? Number(form.maxPrice) : null,
@@ -208,6 +210,17 @@ export default function AlertsPage() {
               className="input"
               value={form.name}
               onChange={(event) => setForm({ ...form, name: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Gmina</span>
+            <input
+              className="input"
+              placeholder="Wrocław / Kobierzyce"
+              value={form.municipality}
+              onChange={(event) =>
+                setForm({ ...form, municipality: event.target.value, district: "" })
+              }
             />
           </label>
           <label className="field">

@@ -38,6 +38,20 @@ def test_suburban_partner_sample_is_loaded_as_repository_data() -> None:
     assert {item["listing"]["area_id"] for item in payload["items"]} == {"wysoka-wysoka"}
 
 
+def test_listings_support_municipality_filter() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={"municipality": "Kobierzyce", "page_size": 20},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["municipality"] == "Kobierzyce"
+    assert payload["total"] == 2
+    assert {item["listing"]["municipality"] for item in payload["items"]} == {"Kobierzyce"}
+    assert {item["listing"]["id"] for item in payload["items"]} == {"kob-001", "kob-002"}
+
+
 def test_listings_support_pagination_sorting_and_score_filters() -> None:
     response = client.get(
         "/api/v1/listings",
@@ -104,6 +118,30 @@ def test_listings_support_text_query_search() -> None:
     assert payload["total"] == 1
     assert payload["items"][0]["listing"]["id"] == "wr-001"
     assert "Nowy Dwór" in payload["items"][0]["listing"]["address"]
+
+
+def test_hidden_gems_support_municipality_filter() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "municipality": "Wysoka",
+            "max_price_delta_to_fair_mid_pct": 50,
+            "min_investment_score": 0,
+            "max_risk_score": 100,
+            "min_liquidity_score": 0,
+            "min_rental_potential_score": 0,
+            "min_data_quality_score": 0,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["municipality"] == "Wysoka"
+    assert payload["total"] == 2
+    assert {item["analysis"]["listing"]["municipality"] for item in payload["items"]} == {
+        "Wysoka"
+    }
 
 
 def test_listings_support_proximity_filters() -> None:

@@ -51,6 +51,7 @@ def build_map_feature_collection(
     *,
     city: str | None = None,
     district: str | None = None,
+    municipality: str | None = None,
     rooms: int | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
@@ -72,6 +73,7 @@ def build_map_feature_collection(
     listings = repository.list_listings(
         city=city,
         district=district,
+        municipality=municipality,
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,
@@ -80,8 +82,9 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    location_city = municipality or city
     planned_investments = repository.list_planned_investments(
-        city=city,
+        city=location_city,
         district=district,
         bbox=bbox,
         lat=lat,
@@ -90,8 +93,9 @@ def build_map_feature_collection(
     )
     infrastructure_features = _infrastructure_features(
         repository,
-        city=city,
+        city=location_city,
         district=district,
+        municipality=municipality,
         bbox=bbox,
         lat=lat,
         lon=lon,
@@ -167,6 +171,7 @@ def build_map_feature_collection(
             "filters": {
                 "city": city,
                 "district": district,
+                "municipality": municipality,
                 "rooms": rooms,
                 "max_price": max_price,
                 "min_area_m2": min_area_m2,
@@ -190,6 +195,7 @@ def _infrastructure_features(
     *,
     city: str | None,
     district: str | None,
+    municipality: str | None,
     bbox: BBox | None,
     lat: float | None,
     lon: float | None,
@@ -221,6 +227,8 @@ def _infrastructure_features(
 
     for references, builder in layer_builders:
         for reference in references:
+            if not _reference_matches_municipality(reference, municipality):
+                continue
             if not _reference_matches_district(reference, district):
                 continue
             if reference.lat is None or reference.lon is None:
@@ -239,6 +247,12 @@ def _infrastructure_features(
     return features
 
 
+def _reference_matches_municipality(reference: Any, municipality: str | None) -> bool:
+    if not municipality:
+        return True
+    return getattr(reference, "municipality_name", "").casefold() == municipality.casefold()
+
+
 def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
     properties: dict[str, Any] = {
         "feature_type": "listing",
@@ -248,6 +262,7 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
         "source_url": listing.source_url,
         "city": listing.city,
         "district": listing.district,
+        "municipality": listing.municipality,
         "address": listing.address,
         "market_type": listing.market_type,
         "price": listing.price,

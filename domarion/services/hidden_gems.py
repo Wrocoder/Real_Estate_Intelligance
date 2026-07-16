@@ -21,6 +21,7 @@ def find_hidden_gems(
     *,
     city: str | None = None,
     district: str | None = None,
+    municipality: str | None = None,
     query: str | None = None,
     rooms: int | None = None,
     market_type: MarketType | None = None,
@@ -54,6 +55,7 @@ def find_hidden_gems(
     listings = repository.list_listings(
         city=city,
         district=district,
+        municipality=municipality,
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,
@@ -159,6 +161,7 @@ def find_hidden_gems(
         filters=_filters_payload(
             city=city,
             district=district,
+            municipality=municipality,
             query=query,
             rooms=rooms,
             market_type=market_type,

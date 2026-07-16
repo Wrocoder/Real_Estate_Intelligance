@@ -92,6 +92,30 @@ def test_map_features_supports_district_infrastructure_filter() -> None:
     }
 
 
+def test_map_features_supports_municipality_filter() -> None:
+    response = client.get(
+        "/api/v1/map/features",
+        params={"municipality": "Kobierzyce"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["filters"]["municipality"] == "Kobierzyce"
+    assert payload["metadata"]["listing_count"] == 2
+    listing_features = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "listing"
+    ]
+    assert {feature["properties"]["listing_id"] for feature in listing_features} == {
+        "kob-001",
+        "kob-002",
+    }
+    assert {feature["properties"]["municipality"] for feature in listing_features} == {
+        "Kobierzyce"
+    }
+
+
 def test_map_features_supports_radius_and_score_filters() -> None:
     response = client.get(
         "/api/v1/map/features",

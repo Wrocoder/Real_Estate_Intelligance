@@ -1329,6 +1329,7 @@ export type AccountSummary = {
 export type ListingSearchQuery = {
   city?: string;
   district?: string;
+  municipality?: string;
   query?: string;
   rooms?: number;
   market_type?: "primary" | "secondary";
@@ -1382,6 +1383,7 @@ export type ListingSearchResponse = {
 export type HiddenGemQuery = {
   city?: string;
   district?: string;
+  municipality?: string;
   query?: string;
   rooms?: number;
   market_type?: "primary" | "secondary";
@@ -1840,6 +1842,7 @@ export type Favorite = {
 export type AlertFilters = {
   city?: string | null;
   district?: string | null;
+  municipality?: string | null;
   query?: string | null;
   rooms?: number | null;
   max_price?: number | null;
@@ -2025,6 +2028,7 @@ export type MapFeatureCollection = {
 export type MapQuery = {
   city?: string;
   district?: string;
+  municipality?: string;
   rooms?: number;
   max_price?: number;
   min_area_m2?: number;

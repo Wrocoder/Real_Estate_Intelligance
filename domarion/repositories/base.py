@@ -29,6 +29,7 @@ class RealEstateRepository(Protocol):
         self,
         city: str | None = None,
         district: str | None = None,
+        municipality: str | None = None,
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,

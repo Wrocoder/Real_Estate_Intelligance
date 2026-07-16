@@ -26,6 +26,7 @@ def find_alert_matches(
     listings = repository.list_listings(
         city=filters.city,
         district=filters.district,
+        municipality=filters.municipality,
         rooms=filters.rooms,
         max_price=filters.max_price,
         min_area_m2=filters.min_area_m2,

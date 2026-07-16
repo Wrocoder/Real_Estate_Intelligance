@@ -123,6 +123,31 @@ def test_alert_crud_and_preview() -> None:
     assert client.get("/api/v1/alerts?owner_id=buyer-1").json() == []
 
 
+def test_alert_preview_supports_municipality_filter() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/alerts?owner_id=buyer-1",
+        json={
+            "name": "Kobierzyce value watch",
+            "filters": {
+                "municipality": "Kobierzyce",
+                "max_price": 600000,
+            },
+        },
+    )
+    payload = created.json()
+
+    assert created.status_code == 201
+    assert payload["filters"]["municipality"] == "Kobierzyce"
+
+    preview = client.get(f"/api/v1/alerts/{payload['id']}/preview?owner_id=buyer-1").json()
+
+    assert preview["applied_filters"]["municipality"] == "Kobierzyce"
+    assert preview["total_matches"] == 2
+    assert {item["listing"]["municipality"] for item in preview["matches"]} == {"Kobierzyce"}
+
+
 def test_alert_owner_scope() -> None:
     memory_user_store.clear()
 
