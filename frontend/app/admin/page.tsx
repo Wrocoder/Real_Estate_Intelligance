@@ -16,6 +16,9 @@ import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
   type AlertDeliveryBatchResult,
+  type DataDeletionRequest,
+  type DataDeletionRequestStatus,
+  type DataDeletionTargetType,
   type DataQualityLog,
   type IngestionJob,
   type IngestionSourceHealth,
@@ -36,6 +39,7 @@ import {
   type SourceLegalStatus,
   type SourceRegistryEntry,
   type SourceRegistryEntryPayload,
+  type SourceRetentionPruneResult,
 } from "@/lib/api";
 import { numberValue } from "@/lib/format";
 
@@ -65,7 +69,18 @@ type SourceForm = {
   robots_txt_url: string;
   terms_url: string;
   notes: string;
+  raw_payload_retention_days: string;
+  private_url_retention_days: string;
+  retention_notes: string;
   is_active: boolean;
+};
+
+type DataDeletionRequestForm = {
+  target_type: DataDeletionTargetType;
+  target_id: string;
+  target_owner_id: string;
+  source_name: string;
+  reason: string;
 };
 
 const defaultInvestmentForm: InvestmentForm = {
@@ -94,7 +109,18 @@ const defaultSourceForm: SourceForm = {
   robots_txt_url: "https://agency.example/robots.txt",
   terms_url: "https://agency.example/terms",
   notes: "",
+  raw_payload_retention_days: "90",
+  private_url_retention_days: "",
+  retention_notes: "Prune raw payloads after QA window.",
   is_active: true,
+};
+
+const defaultDeletionRequestForm: DataDeletionRequestForm = {
+  target_type: "user_submitted_draft",
+  target_id: "",
+  target_owner_id: "",
+  source_name: "User Submitted Private References",
+  reason: "User requested deletion of private source reference.",
 };
 
 export default function AdminPage() {
@@ -112,15 +138,19 @@ export default function AdminPage() {
   const [dedupMatches, setDedupMatches] = useState<PropertyDeduplicationMatch[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
   const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
+  const [dataDeletionRequests, setDataDeletionRequests] = useState<DataDeletionRequest[]>([]);
   const [dailyAlertRun, setDailyAlertRun] =
     useState<AlertDeliveryBatchResult | null>(null);
   const [enrichmentRun, setEnrichmentRun] =
     useState<InfrastructureEnrichmentJobResult | null>(null);
+  const [retentionPruneRun, setRetentionPruneRun] =
+    useState<SourceRetentionPruneResult | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
   const [dedupReviewFilter, setDedupReviewFilter] =
     useState<PropertyDeduplicationReviewStatus | "">("open");
   const dedupReviewFilterRef = useRef<PropertyDeduplicationReviewStatus | "">("open");
   const [selectedSourceId, setSelectedSourceId] = useState("");
+  const [selectedDeletionRequestId, setSelectedDeletionRequestId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
   const [selectedReferralId, setSelectedReferralId] = useState("");
   const [referralStatus, setReferralStatus] =
@@ -129,6 +159,12 @@ export default function AdminPage() {
   const [referralPartnerName, setReferralPartnerName] = useState("");
   const [referralNotes, setReferralNotes] = useState("");
   const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
+  const [deletionRequestForm, setDeletionRequestForm] =
+    useState<DataDeletionRequestForm>(defaultDeletionRequestForm);
+  const [deletionActionSummary, setDeletionActionSummary] = useState(
+    "Processed from admin moderation workflow.",
+  );
+  const [executeDeletionTarget, setExecuteDeletionTarget] = useState(true);
   const [investmentForm, setInvestmentForm] =
     useState<InvestmentForm>(defaultInvestmentForm);
   const [partnerCsvFile, setPartnerCsvFile] = useState<File | null>(null);
@@ -165,6 +201,7 @@ export default function AdminPage() {
         dedupData,
         investmentData,
         referralData,
+        deletionRequestData,
       ] =
         await Promise.all([
           api.listAdminIngestionJobs(),
@@ -183,6 +220,7 @@ export default function AdminPage() {
           }),
           api.listAdminPlannedInvestments({ city: "Wrocław" }),
           api.listAdminPartnerReferrals({ limit: 100 }),
+          api.listAdminDataDeletionRequests({ limit: 50 }),
         ]);
       setJobs(jobData);
       setSourceHealth(healthData);
@@ -196,6 +234,7 @@ export default function AdminPage() {
       setDedupMatches(dedupData);
       setPlannedInvestments(investmentData);
       setPartnerReferrals(referralData);
+      setDataDeletionRequests(deletionRequestData);
       setStatus("Admin dashboard обновлен");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
@@ -223,6 +262,9 @@ export default function AdminPage() {
     (investment) => investment.id === selectedInvestmentId,
   );
   const selectedSource = sources.find((source) => source.id === selectedSourceId);
+  const selectedDeletionRequest = dataDeletionRequests.find(
+    (request) => request.id === selectedDeletionRequestId,
+  );
   const selectedReferral = partnerReferrals.find(
     (referral) => referral.id === selectedReferralId,
   );
@@ -230,6 +272,9 @@ export default function AdminPage() {
     () => Array.from(new Set(rawListings.map((item) => item.source_name))),
     [rawListings],
   );
+  const openDeletionRequestCount = dataDeletionRequests.filter(
+    (request) => request.status === "open",
+  ).length;
 
   async function createManualJob() {
     const created = await api.createAdminIngestionJob({
@@ -302,6 +347,66 @@ export default function AdminPage() {
     });
     await load(selectedJobId);
     setStatus(`Source check создан: ${created.id}`);
+  }
+
+  async function runRetentionPrune(dryRun: boolean) {
+    setError("");
+    setStatus(dryRun ? "Retention prune dry-run..." : "Retention prune apply...");
+    try {
+      const result = await api.pruneAdminRetainedRawPayloads({
+        dry_run: dryRun,
+        source_name: selectedSource?.name,
+        limit: 500,
+      });
+      setRetentionPruneRun(result);
+      await load(selectedJobId);
+      setStatus(
+        `Retention prune: ${result.raw_payloads_pruned} payloads ` +
+          `${dryRun ? "would be pruned" : "pruned"}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown retention prune error");
+      setStatus("Retention prune failed");
+    }
+  }
+
+  async function createDataDeletionRequest() {
+    if (!deletionRequestForm.target_id.trim()) {
+      setStatus("Укажи target id для deletion request");
+      return;
+    }
+    const created = await api.createAdminDataDeletionRequest({
+      target_type: deletionRequestForm.target_type,
+      target_id: deletionRequestForm.target_id.trim(),
+      target_owner_id: blankToNull(deletionRequestForm.target_owner_id),
+      source_name: blankToNull(deletionRequestForm.source_name),
+      reason: blankToNull(deletionRequestForm.reason),
+      request_payload: { created_from: "admin_dashboard" },
+    });
+    setSelectedDeletionRequestId(created.id);
+    setDeletionActionSummary("Processed from admin moderation workflow.");
+    await load(selectedJobId);
+    setStatus(`Deletion request создан: ${created.id}`);
+  }
+
+  async function processDataDeletionRequest(statusValue: Exclude<DataDeletionRequestStatus, "open">) {
+    if (!selectedDeletionRequestId) {
+      setStatus("Выбери deletion request для обработки");
+      return;
+    }
+    if (!deletionActionSummary.trim()) {
+      setStatus("Укажи action summary для audit trail");
+      return;
+    }
+    const updated = await api.processAdminDataDeletionRequest(selectedDeletionRequestId, {
+      status: statusValue,
+      action_summary: deletionActionSummary.trim(),
+      execute_target_deletion: executeDeletionTarget,
+      result_payload: { processed_from: "admin_dashboard" },
+    });
+    setSelectedDeletionRequestId(updated.id);
+    await load(selectedJobId);
+    setStatus(`Deletion request ${updated.status}: ${updated.id}`);
   }
 
   async function retrySourceError(errorId: string) {
@@ -509,6 +614,12 @@ export default function AdminPage() {
         <div className="metric">
           <span>Partner leads</span>
           <strong>{numberValue(partnerReferrals.length)}</strong>
+        </div>
+        <div className="metric">
+          <span>Deletion requests</span>
+          <strong>
+            {numberValue(openDeletionRequestCount)} / {numberValue(dataDeletionRequests.length)}
+          </strong>
         </div>
         <div className="metric">
           <span>Warnings / errors</span>
@@ -1151,6 +1262,7 @@ export default function AdminPage() {
                       <th>Legal</th>
                       <th>Method</th>
                       <th>Cadence</th>
+                      <th>Retention</th>
                       <th>Owner</th>
                       <th>Active</th>
                     </tr>
@@ -1180,6 +1292,12 @@ export default function AdminPage() {
                         </td>
                         <td>{source.ingestion_method}</td>
                         <td>{source.refresh_cadence}</td>
+                        <td>
+                          raw {retentionDaysLabel(source.raw_payload_retention_days)}
+                          <small>
+                            private {retentionDaysLabel(source.private_url_retention_days)}
+                          </small>
+                        </td>
                         <td>{source.owner}</td>
                         <td>
                           <span className={`status-pill ${source.is_active ? "healthy" : "failed"}`}>
@@ -1259,6 +1377,20 @@ export default function AdminPage() {
                     value={sourceForm.allowed_use}
                     onChange={(value) => setSourceForm({ ...sourceForm, allowed_use: value })}
                   />
+                  <Field
+                    label="Raw retention days"
+                    value={sourceForm.raw_payload_retention_days}
+                    onChange={(value) =>
+                      setSourceForm({ ...sourceForm, raw_payload_retention_days: value })
+                    }
+                  />
+                  <Field
+                    label="Private URL days"
+                    value={sourceForm.private_url_retention_days}
+                    onChange={(value) =>
+                      setSourceForm({ ...sourceForm, private_url_retention_days: value })
+                    }
+                  />
                   <label className="field checkbox-field">
                     <span>Active</span>
                     <input
@@ -1312,6 +1444,16 @@ export default function AdminPage() {
                     }
                   />
                 </label>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Retention notes</span>
+                  <textarea
+                    className="textarea"
+                    value={sourceForm.retention_notes}
+                    onChange={(event) =>
+                      setSourceForm({ ...sourceForm, retention_notes: event.target.value })
+                    }
+                  />
+                </label>
                 <div className="toolbar" style={{ marginTop: 12 }}>
                   <button className="button primary" type="button" onClick={() => void createSource()}>
                     Create
@@ -1323,6 +1465,238 @@ export default function AdminPage() {
                     onClick={() => void updateSource()}
                   >
                     Update
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedSourceId}
+                    onClick={() => void runRetentionPrune(true)}
+                  >
+                    Retention dry-run
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedSourceId}
+                    onClick={() => void runRetentionPrune(false)}
+                  >
+                    Apply prune
+                  </button>
+                </div>
+                {retentionPruneRun ? (
+                  <p className="muted" style={{ marginTop: 10 }}>
+                    Retention prune: {numberValue(retentionPruneRun.raw_payloads_pruned)} payloads ·{" "}
+                    {retentionPruneRun.dry_run ? "dry-run" : "applied"}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Data Deletion Requests</h2>
+              <span className="muted">
+                {numberValue(openDeletionRequestCount)} open ·{" "}
+                {numberValue(dataDeletionRequests.length)} total
+              </span>
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="table-scroll">
+                {dataDeletionRequests.length === 0 ? (
+                  <EmptyBlock label="Нет data deletion requests." />
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Target</th>
+                        <th>Status</th>
+                        <th>Source</th>
+                        <th>Requested</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dataDeletionRequests.map((request) => (
+                        <tr
+                          key={request.id}
+                          className={
+                            selectedDeletionRequestId === request.id
+                              ? "selected-row"
+                              : undefined
+                          }
+                          onClick={() => {
+                            setSelectedDeletionRequestId(request.id);
+                            setDeletionActionSummary(
+                              request.action_summary ??
+                                "Processed from admin moderation workflow.",
+                            );
+                          }}
+                        >
+                          <td>
+                            <strong>{request.target_type}</strong>
+                            <small>
+                              {request.target_id}
+                              {request.target_owner_id
+                                ? ` · owner ${request.target_owner_id}`
+                                : ""}
+                            </small>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${deletionStatusClass(request.status)}`}>
+                              {request.status}
+                            </span>
+                            <small>
+                              {request.processed_at
+                                ? `processed ${formatDate(request.processed_at)}`
+                                : "pending"}
+                            </small>
+                          </td>
+                          <td>
+                            {request.source_name ?? "-"}
+                            <small>
+                              {request.source_url_hash
+                                ? `hash ${request.source_url_hash.slice(0, 10)}`
+                                : ""}
+                            </small>
+                          </td>
+                          <td>
+                            {request.requested_by}
+                            <small>{formatDate(request.created_at)}</small>
+                          </td>
+                          <td>{request.reason ?? "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>Moderation</h3>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setSelectedDeletionRequestId("");
+                      setDeletionRequestForm(defaultDeletionRequestForm);
+                      setDeletionActionSummary("Processed from admin moderation workflow.");
+                    }}
+                  >
+                    Сброс
+                  </button>
+                </div>
+                {selectedDeletionRequest ? (
+                  <ul className="section-list compact" style={{ marginBottom: 12 }}>
+                    <li>
+                      <span className={`status-pill ${deletionStatusClass(selectedDeletionRequest.status)}`}>
+                        {selectedDeletionRequest.status}
+                      </span>
+                      <strong>{selectedDeletionRequest.target_id}</strong>
+                      <p className="muted">
+                        {selectedDeletionRequest.target_type}
+                        {selectedDeletionRequest.target_owner_id
+                          ? ` · ${selectedDeletionRequest.target_owner_id}`
+                          : ""}
+                      </p>
+                    </li>
+                  </ul>
+                ) : null}
+                <div className="form-grid compact">
+                  <label className="field">
+                    <span>Target type</span>
+                    <select
+                      className="select"
+                      value={deletionRequestForm.target_type}
+                      onChange={(event) =>
+                        setDeletionRequestForm({
+                          ...deletionRequestForm,
+                          target_type: event.target.value as DataDeletionTargetType,
+                        })
+                      }
+                    >
+                      <option value="user_submitted_draft">user_submitted_draft</option>
+                      <option value="raw_listing">raw_listing</option>
+                      <option value="generated_report">generated_report</option>
+                      <option value="source_reference">source_reference</option>
+                      <option value="other">other</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Target ID"
+                    value={deletionRequestForm.target_id}
+                    onChange={(value) =>
+                      setDeletionRequestForm({ ...deletionRequestForm, target_id: value })
+                    }
+                  />
+                  <Field
+                    label="Owner ID"
+                    value={deletionRequestForm.target_owner_id}
+                    onChange={(value) =>
+                      setDeletionRequestForm({ ...deletionRequestForm, target_owner_id: value })
+                    }
+                  />
+                  <Field
+                    label="Source name"
+                    value={deletionRequestForm.source_name}
+                    onChange={(value) =>
+                      setDeletionRequestForm({ ...deletionRequestForm, source_name: value })
+                    }
+                  />
+                </div>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Reason</span>
+                  <textarea
+                    className="textarea"
+                    value={deletionRequestForm.reason}
+                    onChange={(event) =>
+                      setDeletionRequestForm({
+                        ...deletionRequestForm,
+                        reason: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Action summary</span>
+                  <textarea
+                    className="textarea"
+                    value={deletionActionSummary}
+                    onChange={(event) => setDeletionActionSummary(event.target.value)}
+                  />
+                </label>
+                <label className="field checkbox-field" style={{ marginTop: 10 }}>
+                  <span>Execute target deletion</span>
+                  <input
+                    type="checkbox"
+                    checked={executeDeletionTarget}
+                    onChange={(event) => setExecuteDeletionTarget(event.target.checked)}
+                  />
+                </label>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button
+                    className="button primary"
+                    type="button"
+                    onClick={() => void createDataDeletionRequest()}
+                  >
+                    Create request
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedDeletionRequest || selectedDeletionRequest.status !== "open"}
+                    onClick={() => void processDataDeletionRequest("processed")}
+                  >
+                    Process
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    disabled={!selectedDeletionRequest || selectedDeletionRequest.status !== "open"}
+                    onClick={() => void processDataDeletionRequest("rejected")}
+                  >
+                    Reject
                   </button>
                 </div>
               </div>
@@ -1915,6 +2289,9 @@ function sourcePayload(form: SourceForm): Required<SourceRegistryEntryPayload> {
     robots_txt_url: blankToNull(form.robots_txt_url),
     terms_url: blankToNull(form.terms_url),
     notes: blankToNull(form.notes),
+    raw_payload_retention_days: numberOrNull(form.raw_payload_retention_days),
+    private_url_retention_days: numberOrNull(form.private_url_retention_days),
+    retention_notes: blankToNull(form.retention_notes),
     is_active: form.is_active,
   };
 }
@@ -1932,6 +2309,11 @@ function formFromSource(source: SourceRegistryEntry): SourceForm {
     robots_txt_url: source.robots_txt_url ?? "",
     terms_url: source.terms_url ?? "",
     notes: source.notes ?? "",
+    raw_payload_retention_days:
+      source.raw_payload_retention_days === null ? "" : String(source.raw_payload_retention_days),
+    private_url_retention_days:
+      source.private_url_retention_days === null ? "" : String(source.private_url_retention_days),
+    retention_notes: source.retention_notes ?? "",
     is_active: source.is_active,
   };
 }
@@ -1989,6 +2371,11 @@ function blankToNull(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function numberOrNull(value: string) {
+  const trimmed = value.trim();
+  return trimmed ? Number(trimmed) : null;
+}
+
 function domainFromUrl(value: string | null) {
   if (!value) return null;
   try {
@@ -2003,6 +2390,16 @@ function legalStatusClass(status: SourceLegalStatus) {
   if (status === "blocked") return "failed";
   if (status === "review_required") return "warning";
   return "queued";
+}
+
+function retentionDaysLabel(value: number | null) {
+  return value === null ? "off" : `${value}d`;
+}
+
+function deletionStatusClass(status: DataDeletionRequestStatus) {
+  if (status === "processed") return "healthy";
+  if (status === "rejected") return "failed";
+  return "warning";
 }
 
 function sourceErrorStatusClass(sourceError: SourceError) {

@@ -330,7 +330,7 @@
 - [ ] Добавить admin CRUD/import для developer profiles, projects, aliases и quality signals.
 - [ ] Добавить moderation/dispute workflow для developer reputation signals.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
-- [ ] Добавить moderation workflow для data deletion requests.
+- [x] Добавить moderation workflow для data deletion requests.
 - [x] Добавить просмотр source errors и retry actions.
 - [ ] Добавить admin audit log UI.
 
@@ -508,6 +508,8 @@
 - [x] Commit 68: realtor saved-search client digests.
 - [x] Commit 69: realtor client shortlist preview.
 - [x] Commit 70: lightweight market and price history charts.
+- [x] Commit 71: source retention governance and deletion request backend.
+- [x] Commit 72: data deletion request admin moderation workflow.
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.

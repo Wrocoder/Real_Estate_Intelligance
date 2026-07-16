@@ -1139,6 +1139,13 @@ export type SourceCheckType =
   | "manual_review";
 export type SourceCheckJobStatus = "queued" | "running" | "succeeded" | "failed" | "blocked";
 export type SourceErrorStatus = "open" | "retry_scheduled" | "resolved" | "ignored";
+export type DataDeletionRequestStatus = "open" | "processed" | "rejected";
+export type DataDeletionTargetType =
+  | "raw_listing"
+  | "user_submitted_draft"
+  | "generated_report"
+  | "source_reference"
+  | "other";
 export type ListingSort =
   | "price_asc"
   | "price_desc"
@@ -1747,6 +1754,9 @@ export type SourceRegistryEntry = {
   robots_txt_url: string | null;
   terms_url: string | null;
   notes: string | null;
+  raw_payload_retention_days: number | null;
+  private_url_retention_days: number | null;
+  retention_notes: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -1764,7 +1774,57 @@ export type SourceRegistryEntryPayload = {
   robots_txt_url?: string | null;
   terms_url?: string | null;
   notes?: string | null;
+  raw_payload_retention_days?: number | null;
+  private_url_retention_days?: number | null;
+  retention_notes?: string | null;
   is_active?: boolean;
+};
+
+export type SourceRetentionPruneResult = {
+  dry_run: boolean;
+  source_name: string | null;
+  sources_checked: number;
+  raw_listings_seen: number;
+  raw_payloads_pruned: number;
+  item_ids: string[];
+  cutoff_by_source: Record<string, string>;
+};
+
+export type DataDeletionRequest = {
+  id: string;
+  target_type: DataDeletionTargetType;
+  target_id: string;
+  target_owner_id: string | null;
+  source_name: string | null;
+  source_url_hash: string | null;
+  status: DataDeletionRequestStatus;
+  requested_by: string;
+  processed_by: string | null;
+  reason: string | null;
+  request_payload: Record<string, unknown>;
+  result_payload: Record<string, unknown>;
+  action_summary: string | null;
+  created_at: string;
+  updated_at: string;
+  processed_at: string | null;
+};
+
+export type DataDeletionRequestPayload = {
+  target_type: DataDeletionTargetType;
+  target_id: string;
+  target_owner_id?: string | null;
+  source_name?: string | null;
+  source_url_hash?: string | null;
+  requested_by?: string | null;
+  reason?: string | null;
+  request_payload?: Record<string, unknown>;
+};
+
+export type DataDeletionRequestProcessPayload = {
+  status?: Exclude<DataDeletionRequestStatus, "open">;
+  action_summary: string;
+  result_payload?: Record<string, unknown>;
+  execute_target_deletion?: boolean;
 };
 
 export type DataQualityLog = {
@@ -2491,6 +2551,39 @@ export const api = {
   updateAdminIngestionSource: (sourceId: string, payload: SourceRegistryEntryPayload) =>
     request<SourceRegistryEntry>(`/api/v1/admin/ingestion/sources/${sourceId}`, {
       method: "PATCH",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  pruneAdminRetainedRawPayloads: (params: {
+    dry_run?: boolean;
+    source_name?: string;
+    limit?: number;
+  } = {}) =>
+    request<SourceRetentionPruneResult>(
+      `/api/v1/admin/ingestion/sources/prune-retained-raw-payloads${toQueryString(params)}`,
+      { method: "POST", headers: ADMIN_HEADERS },
+    ),
+  listAdminDataDeletionRequests: (params: {
+    status?: DataDeletionRequestStatus;
+    target_type?: DataDeletionTargetType;
+    limit?: number;
+  } = {}) =>
+    request<DataDeletionRequest[]>(
+      `/api/v1/admin/data-deletion-requests${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  createAdminDataDeletionRequest: (payload: DataDeletionRequestPayload) =>
+    request<DataDeletionRequest>("/api/v1/admin/data-deletion-requests", {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
+  processAdminDataDeletionRequest: (
+    requestId: string,
+    payload: DataDeletionRequestProcessPayload,
+  ) =>
+    request<DataDeletionRequest>(`/api/v1/admin/data-deletion-requests/${requestId}/process`, {
+      method: "POST",
       headers: ADMIN_HEADERS,
       body: JSON.stringify(payload),
     }),
