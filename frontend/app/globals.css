@@ -567,6 +567,7 @@ button {
   bottom: 12px;
   display: grid;
   gap: 7px;
+  max-width: min(220px, calc(100% - 24px));
   padding: 9px;
   color: var(--ink);
   font-size: 12px;
@@ -584,6 +585,15 @@ button {
   width: 14px;
   height: 14px;
   accent-color: var(--accent);
+}
+
+.map-layer-controls input:disabled + span {
+  opacity: 0.58;
+}
+
+.map-layer-subtoggle {
+  padding-left: 18px;
+  color: var(--muted);
 }
 
 .map-legend {

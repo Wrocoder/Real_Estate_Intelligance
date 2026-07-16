@@ -22,6 +22,11 @@ type VisibleMapLayers = {
   priceHeatmap: boolean;
   planned: boolean;
   infrastructure: boolean;
+  transportStops: boolean;
+  schools: boolean;
+  kindergartens: boolean;
+  amenities: boolean;
+  industrialZones: boolean;
 };
 
 type Props = {
@@ -41,7 +46,26 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   priceHeatmap: false,
   planned: true,
   infrastructure: true,
+  transportStops: true,
+  schools: true,
+  kindergartens: true,
+  amenities: true,
+  industrialZones: true,
 };
+
+const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
+  key: keyof Pick<
+    VisibleMapLayers,
+    "transportStops" | "schools" | "kindergartens" | "amenities" | "industrialZones"
+  >;
+  label: string;
+}> = [
+  { key: "transportStops", label: "Транспорт" },
+  { key: "schools", label: "Школы" },
+  { key: "kindergartens", label: "Сады" },
+  { key: "amenities", label: "Сервисы" },
+  { key: "industrialZones", label: "Промзоны" },
+];
 
 const OSM_RASTER_STYLE: StyleSpecification = {
   version: 8,
@@ -155,6 +179,12 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const listingCount = collection?.metadata.listing_count ?? 0;
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
+  const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
+    setVisibleLayers((current) => ({
+      ...current,
+      [key]: checked,
+    }));
+  };
 
   return (
     <div className="map-shell">
@@ -169,12 +199,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           <input
             type="checkbox"
             checked={visibleLayers.listings}
-            onChange={(event) =>
-              setVisibleLayers((current) => ({
-                ...current,
-                listings: event.target.checked,
-              }))
-            }
+            onChange={(event) => updateVisibleLayer("listings", event.target.checked)}
           />
           <span>Объекты</span>
         </label>
@@ -182,12 +207,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           <input
             type="checkbox"
             checked={visibleLayers.priceHeatmap}
-            onChange={(event) =>
-              setVisibleLayers((current) => ({
-                ...current,
-                priceHeatmap: event.target.checked,
-              }))
-            }
+            onChange={(event) => updateVisibleLayer("priceHeatmap", event.target.checked)}
           />
           <span>Цена/m2</span>
         </label>
@@ -195,12 +215,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           <input
             type="checkbox"
             checked={visibleLayers.planned}
-            onChange={(event) =>
-              setVisibleLayers((current) => ({
-                ...current,
-                planned: event.target.checked,
-              }))
-            }
+            onChange={(event) => updateVisibleLayer("planned", event.target.checked)}
           />
           <span>Планы</span>
         </label>
@@ -208,15 +223,21 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           <input
             type="checkbox"
             checked={visibleLayers.infrastructure}
-            onChange={(event) =>
-              setVisibleLayers((current) => ({
-                ...current,
-                infrastructure: event.target.checked,
-              }))
-            }
+            onChange={(event) => updateVisibleLayer("infrastructure", event.target.checked)}
           />
           <span>Инфраструктура</span>
         </label>
+        {INFRASTRUCTURE_LAYER_CONTROLS.map((control) => (
+          <label className="map-layer-subtoggle" key={control.key}>
+            <input
+              type="checkbox"
+              checked={visibleLayers[control.key]}
+              disabled={!visibleLayers.infrastructure}
+              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+            />
+            <span>{control.label}</span>
+          </label>
+        ))}
       </div>
       <div className="map-legend" aria-label="Легенда карты">
         <span>
@@ -508,7 +529,7 @@ function visibleMapCollection(
 function isFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
   if (featureType === "listing") return visibleLayers.listings || visibleLayers.priceHeatmap;
   if (featureType === "planned_investment") return visibleLayers.planned;
-  return visibleLayers.infrastructure;
+  return isInfrastructureFeatureVisible(featureType, visibleLayers);
 }
 
 function markerMapCollection(
@@ -529,7 +550,20 @@ function markerMapCollection(
 function isMarkerFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
-  return visibleLayers.infrastructure;
+  return isInfrastructureFeatureVisible(featureType, visibleLayers);
+}
+
+function isInfrastructureFeatureVisible(
+  featureType: MapFeatureType,
+  visibleLayers: VisibleMapLayers,
+) {
+  if (!visibleLayers.infrastructure) return false;
+  if (featureType === "transport_stop") return visibleLayers.transportStops;
+  if (featureType === "school") return visibleLayers.schools;
+  if (featureType === "kindergarten") return visibleLayers.kindergartens;
+  if (featureType === "amenity") return visibleLayers.amenities;
+  if (featureType === "industrial_zone") return visibleLayers.industrialZones;
+  return false;
 }
 
 function setMapLayerVisibility(map: MaplibreMap, layerId: string, visible: boolean) {
