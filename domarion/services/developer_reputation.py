@@ -1,6 +1,7 @@
 from datetime import date
 
 from domarion.schemas import (
+    DeveloperAlias,
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
@@ -13,7 +14,9 @@ def build_developer_reputation(
     profile: DeveloperProfile,
     projects: list[DeveloperProject],
     signals: list[DeveloperQualitySignal],
+    aliases: list[DeveloperAlias] | None = None,
 ) -> DeveloperReputation:
+    aliases = aliases or []
     completed_projects_count = sum(1 for project in projects if project.status == "completed")
     active_projects_count = sum(1 for project in projects if project.status == "active")
     local_projects_count = sum(
@@ -81,7 +84,8 @@ def build_developer_reputation(
             risk_signals=risk_signals,
             active_projects_count=active_projects_count,
         ),
-        source_citations=_developer_source_citations(profile, signals),
+        source_citations=_developer_source_citations(profile, signals, aliases),
+        aliases=aliases,
         projects=projects,
         quality_signals=signals,
     )
@@ -132,6 +136,7 @@ def _developer_due_diligence_questions(
 def _developer_source_citations(
     profile: DeveloperProfile,
     signals: list[DeveloperQualitySignal],
+    aliases: list[DeveloperAlias],
 ) -> list[DeveloperSourceCitation]:
     citations = [
         DeveloperSourceCitation(
@@ -148,6 +153,15 @@ def _developer_source_citations(
                 source_url=signal.source_url,
                 checked_at=signal.observed_at or date.today(),
                 note=signal.title,
+            )
+        )
+    for alias in aliases:
+        citations.append(
+            DeveloperSourceCitation(
+                source_name=alias.source_name,
+                source_url=alias.source_url,
+                checked_at=profile.updated_at,
+                note=f"Developer alias: {alias.alias} ({alias.alias_type}).",
             )
         )
     unique = {}

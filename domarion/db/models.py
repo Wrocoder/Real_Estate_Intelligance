@@ -321,6 +321,24 @@ class DeveloperProjectRow(Base):
     developer: Mapped[DeveloperProfileRow] = relationship()
 
 
+class DeveloperAliasRow(Base):
+    __tablename__ = "developer_aliases"
+
+    id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    developer_id: Mapped[str] = mapped_column(
+        ForeignKey("developer_profiles.id"),
+        index=True,
+    )
+    alias: Mapped[str] = mapped_column(String(220), index=True)
+    alias_type: Mapped[str] = mapped_column(String(40), index=True)
+    source_name: Mapped[str] = mapped_column(String(160), index=True)
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    confidence_score: Mapped[int] = mapped_column(Integer, default=50)
+    active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    developer: Mapped[DeveloperProfileRow] = relationship()
+
+
 class DeveloperQualitySignalRow(Base):
     __tablename__ = "developer_quality_signals"
 

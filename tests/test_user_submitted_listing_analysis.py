@@ -863,6 +863,36 @@ def test_user_submitted_listing_analysis_matches_developer_from_project_context(
     assert any("Developer reputation was matched" in item for item in payload["warnings"])
 
 
+def test_user_submitted_listing_analysis_matches_developer_from_spv_alias() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/demo-spv-primary",
+            "developer_name": "Demo Development Jagodno sp. z o.o.",
+            "address": "Jagodno, Wrocław",
+            "city": "Wrocław",
+            "district": "Krzyki",
+            "market_type": "primary",
+            "price": 742000,
+            "area_m2": 49.1,
+            "rooms": 2,
+            "floor": 5,
+            "building_floors": 7,
+            "building_year": 2026,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    reputation = payload["analysis"]["developer_reputation"]
+    listing = payload["analysis"]["listing"]
+    assert reputation["developer"]["id"] == "demo-development"
+    assert any(alias["alias_type"] == "spv" for alias in reputation["aliases"])
+    assert listing["developer_id"] == "demo-development"
+    assert listing["developer_name"] == "Demo Development"
+
+
 def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
     owner_a = {"X-Domarion-User-Id": "draft-owner-a"}
     owner_b = {"X-Domarion-User-Id": "draft-owner-b"}

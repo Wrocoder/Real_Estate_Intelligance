@@ -652,6 +652,7 @@ def _developer_match_score(
         reputation.developer.name,
         reputation.developer.legal_name,
         *reputation.developer.brand_names,
+        *(alias.alias for alias in reputation.aliases if alias.active),
     ]
     developer_text = _normalized_match_text(
         payload.developer_name,

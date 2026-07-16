@@ -452,6 +452,15 @@ export type DeveloperReputationLabel =
   | "limited_data"
   | "risk_review";
 
+export type DeveloperAliasType =
+  | "brand"
+  | "legal_entity"
+  | "spv"
+  | "project_company"
+  | "parent_company"
+  | "source_name"
+  | "other";
+
 export type DeveloperProfile = {
   id: string;
   name: string;
@@ -492,6 +501,17 @@ export type DeveloperQualitySignal = {
   confidence_score: number;
 };
 
+export type DeveloperAlias = {
+  id: string;
+  developer_id: string;
+  alias: string;
+  alias_type: DeveloperAliasType;
+  source_name: string;
+  source_url: string | null;
+  confidence_score: number;
+  active: boolean;
+};
+
 export type DeveloperSourceCitation = {
   source_name: string;
   source_url: string | null;
@@ -517,6 +537,7 @@ export type DeveloperReputation = {
   risk_signals: string[];
   due_diligence_questions: string[];
   source_citations: DeveloperSourceCitation[];
+  aliases: DeveloperAlias[];
   projects: DeveloperProject[];
   quality_signals: DeveloperQualitySignal[];
 };

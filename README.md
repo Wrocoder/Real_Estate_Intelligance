@@ -44,7 +44,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен рейтинг застройщиков: API, frontend page, developer блоки в listing/check/compare reports и due-diligence citations.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
-- Добавлен legal-first developer feed import: JSON-фид профилей, проектов и quality signals с dry-run и Postgres upsert.
+- Добавлен legal-first developer feed import: JSON-фид профилей, aliases, проектов и quality signals с dry-run и Postgres upsert.
 - Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
@@ -341,8 +341,11 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/admin/price-history/rebuild `
 ## Импорт данных застройщиков
 
 Developer reputation data импортируется из legal-first JSON-фидов: профили
-компаний, проекты и source-backed quality/legal/transparency signals. Пример:
-`data/samples/developer_feed_wroclaw.json`.
+компаний, aliases, проекты и source-backed quality/legal/transparency signals.
+Aliases поддерживают типы `brand`, `legal_entity`, `spv`, `project_company`,
+`parent_company`, `source_name`, `other`; они используются для сопоставления
+объектов и private `/check` отчетов с нормализованным developer profile.
+Пример: `data/samples/developer_feed_wroclaw.json`.
 
 Проверить фид без записи:
 

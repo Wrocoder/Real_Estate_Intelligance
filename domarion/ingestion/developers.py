@@ -7,12 +7,15 @@ from typing import Any, cast
 from sqlalchemy.orm import Session
 
 from domarion.db.models import (
+    DeveloperAliasRow,
     DeveloperProfileRow,
     DeveloperProjectRow,
     DeveloperQualitySignalRow,
 )
 from domarion.ingestion.partner_csv import slugify
 from domarion.schemas import (
+    DeveloperAlias,
+    DeveloperAliasType,
     DeveloperProfile,
     DeveloperProject,
     DeveloperProjectStatus,
@@ -32,6 +35,15 @@ SIGNAL_TYPES: set[DeveloperSignalType] = {
     "local_market",
 }
 SIGNAL_SEVERITIES: set[DeveloperSignalSeverity] = {"positive", "info", "warning", "risk"}
+ALIAS_TYPES: set[DeveloperAliasType] = {
+    "brand",
+    "legal_entity",
+    "spv",
+    "project_company",
+    "parent_company",
+    "source_name",
+    "other",
+}
 
 
 class DeveloperFeedError(ValueError):
@@ -41,6 +53,7 @@ class DeveloperFeedError(ValueError):
 @dataclass(frozen=True)
 class DeveloperFeedRecords:
     profiles: list[DeveloperProfile]
+    aliases: list[DeveloperAlias]
     projects: list[DeveloperProject]
     quality_signals: list[DeveloperQualitySignal]
 
@@ -50,6 +63,8 @@ class DeveloperFeedImportResult:
     rows_seen: int = 0
     profiles_created: int = 0
     profiles_updated: int = 0
+    aliases_created: int = 0
+    aliases_updated: int = 0
     projects_created: int = 0
     projects_updated: int = 0
     signals_created: int = 0
@@ -62,6 +77,8 @@ class DeveloperFeedImportResult:
             "rows_seen": self.rows_seen,
             "profiles_created": self.profiles_created,
             "profiles_updated": self.profiles_updated,
+            "aliases_created": self.aliases_created,
+            "aliases_updated": self.aliases_updated,
             "projects_created": self.projects_created,
             "projects_updated": self.projects_updated,
             "signals_created": self.signals_created,
@@ -83,11 +100,29 @@ def read_developer_feed(
         raise DeveloperFeedError("Developer feed must be a JSON object.")
 
     feed_source_name = _optional_str(payload.get("source_name")) or default_source_name
+    profile_rows = _required_list(payload, "profiles")
     profiles = [
         _profile_from_row(row, default_source_name=feed_source_name)
-        for row in _required_list(payload, "profiles")
+        for row in profile_rows
     ]
     profile_ids = {profile.id for profile in profiles}
+    aliases = [
+        _alias_from_row(
+            row,
+            known_developer_ids=profile_ids,
+            default_source_name=feed_source_name,
+        )
+        for row in _optional_list(payload, "aliases")
+    ]
+    aliases.extend(
+        alias
+        for row in profile_rows
+        for alias in _aliases_from_profile_row(
+            row,
+            known_developer_ids=profile_ids,
+            default_source_name=feed_source_name,
+        )
+    )
     projects = [
         _project_from_row(row, known_developer_ids=profile_ids)
         for row in _optional_list(payload, "projects")
@@ -102,6 +137,7 @@ def read_developer_feed(
     ]
     return DeveloperFeedRecords(
         profiles=profiles,
+        aliases=aliases,
         projects=projects,
         quality_signals=quality_signals,
     )
@@ -129,6 +165,7 @@ def import_developer_records_in_session(
     records: DeveloperFeedRecords,
 ) -> DeveloperFeedImportResult:
     profiles_created = profiles_updated = 0
+    aliases_created = aliases_updated = 0
     projects_created = projects_updated = 0
     signals_created = signals_updated = 0
 
@@ -136,6 +173,10 @@ def import_developer_records_in_session(
         created = _upsert_profile(session, profile)
         profiles_created += int(created)
         profiles_updated += int(not created)
+    for alias in records.aliases:
+        created = _upsert_alias(session, alias)
+        aliases_created += int(created)
+        aliases_updated += int(not created)
     for project in records.projects:
         created = _upsert_project(session, project)
         projects_created += int(created)
@@ -150,6 +191,8 @@ def import_developer_records_in_session(
         rows_seen=_rows_seen(records),
         profiles_created=profiles_created,
         profiles_updated=profiles_updated,
+        aliases_created=aliases_created,
+        aliases_updated=aliases_updated,
         projects_created=projects_created,
         projects_updated=projects_updated,
         signals_created=signals_created,
@@ -186,6 +229,63 @@ def _profile_from_row(
         founded_year=_optional_int(row.get("founded_year")),
         source_names=source_names,
         updated_at=_optional_date(row.get("updated_at")) or date.today(),
+    )
+
+
+def _aliases_from_profile_row(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    default_source_name: str | None,
+) -> list[DeveloperAlias]:
+    if not isinstance(row, dict):
+        return []
+    name = _required_str(row, "name")
+    developer_id = _optional_str(row.get("id")) or slugify(name)
+    aliases = []
+    for alias_row in _optional_list(row, "aliases"):
+        if not isinstance(alias_row, dict):
+            raise DeveloperFeedError("Developer alias row must be an object.")
+        enriched_row = {"developer_id": developer_id, **alias_row}
+        aliases.append(
+            _alias_from_row(
+                enriched_row,
+                known_developer_ids=known_developer_ids,
+                default_source_name=default_source_name,
+            )
+        )
+    return aliases
+
+
+def _alias_from_row(
+    row: Any,
+    *,
+    known_developer_ids: set[str],
+    default_source_name: str | None,
+) -> DeveloperAlias:
+    if not isinstance(row, dict):
+        raise DeveloperFeedError("Developer alias row must be an object.")
+    developer_id = _required_str(row, "developer_id")
+    if developer_id not in known_developer_ids:
+        raise DeveloperFeedError(f"Unknown developer_id for alias: {developer_id}.")
+    alias = _required_str(row, "alias")
+    alias_type = _optional_str(row.get("alias_type")) or "other"
+    if alias_type not in ALIAS_TYPES:
+        raise DeveloperFeedError(f"Invalid developer alias_type: {alias_type}.")
+    typed_alias_type = cast(DeveloperAliasType, alias_type)
+    source_name = _optional_str(row.get("source_name")) or default_source_name
+    if not source_name:
+        raise DeveloperFeedError(f"Developer alias {alias} requires source_name.")
+    alias_id = _optional_str(row.get("id")) or slugify(f"{developer_id}-{alias_type}-{alias}")
+    return DeveloperAlias(
+        id=alias_id,
+        developer_id=developer_id,
+        alias=alias,
+        alias_type=typed_alias_type,
+        source_name=source_name,
+        source_url=_optional_str(row.get("source_url")),
+        confidence_score=_optional_int(row.get("confidence_score")) or 50,
+        active=_optional_bool(row.get("active"), default=True),
     )
 
 
@@ -292,6 +392,22 @@ def _upsert_project(session: Session, project: DeveloperProject) -> bool:
     return created
 
 
+def _upsert_alias(session: Session, alias: DeveloperAlias) -> bool:
+    row = session.get(DeveloperAliasRow, alias.id)
+    created = row is None
+    if row is None:
+        row = DeveloperAliasRow(id=alias.id)
+        session.add(row)
+    row.developer_id = alias.developer_id
+    row.alias = alias.alias
+    row.alias_type = alias.alias_type
+    row.source_name = alias.source_name
+    row.source_url = alias.source_url
+    row.confidence_score = alias.confidence_score
+    row.active = alias.active
+    return created
+
+
 def _upsert_signal(session: Session, signal: DeveloperQualitySignal) -> bool:
     row = session.get(DeveloperQualitySignalRow, signal.id)
     created = row is None
@@ -311,7 +427,12 @@ def _upsert_signal(session: Session, signal: DeveloperQualitySignal) -> bool:
 
 
 def _rows_seen(records: DeveloperFeedRecords) -> int:
-    return len(records.profiles) + len(records.projects) + len(records.quality_signals)
+    return (
+        len(records.profiles)
+        + len(records.aliases)
+        + len(records.projects)
+        + len(records.quality_signals)
+    )
 
 
 def _required_list(payload: dict, key: str) -> list:
@@ -349,6 +470,19 @@ def _optional_int(value: Any) -> int | None:
     if normalized is None:
         return None
     return int(normalized)
+
+
+def _optional_bool(value: Any, *, default: bool) -> bool:
+    normalized = _optional_str(value)
+    if normalized is None:
+        return default
+    match normalized.casefold():
+        case "1" | "true" | "yes" | "tak" | "y":
+            return True
+        case "0" | "false" | "no" | "nie" | "n":
+            return False
+        case _:
+            raise DeveloperFeedError(f"Expected boolean value, got {value}.")
 
 
 def _optional_date(value: Any) -> date | None:

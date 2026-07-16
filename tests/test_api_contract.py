@@ -213,6 +213,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "CompareMortgageAssumptions",
         "CompareResponse",
         "CompareSummary",
+        "DeveloperAlias",
         "DeveloperProfile",
         "DeveloperProject",
         "DeveloperQualitySignal",

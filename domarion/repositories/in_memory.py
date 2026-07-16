@@ -12,6 +12,7 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperAlias,
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
@@ -323,6 +324,44 @@ class InMemoryRealEstateRepository:
                 units_count=84,
                 completed_year=2007,
                 source_url="https://example.com/developers/green-north/soltysowice",
+            ),
+        ]
+        self._developer_aliases = [
+            DeveloperAlias(
+                id="demo-brand-demo-developer",
+                developer_id="demo-development",
+                alias="Demo Developer",
+                alias_type="brand",
+                source_name="Demo Developer Feed",
+                source_url="https://example-developer.test",
+                confidence_score=86,
+            ),
+            DeveloperAlias(
+                id="demo-spv-jagodno",
+                developer_id="demo-development",
+                alias="Demo Development Jagodno sp. z o.o.",
+                alias_type="spv",
+                source_name="KRS/REGON sample",
+                source_url="https://example-developer.test/krs/demo-jagodno",
+                confidence_score=74,
+            ),
+            DeveloperAlias(
+                id="fep-project-company-nowy-dwor",
+                developer_id="fabryczna-estate-partners",
+                alias="FEP Nowy Dwór sp. z o.o.",
+                alias_type="project_company",
+                source_name="Manual due diligence sample",
+                source_url="https://example.com/developers/fep/nowy-dwor",
+                confidence_score=70,
+            ),
+            DeveloperAlias(
+                id="green-north-parent",
+                developer_id="green-north-homes",
+                alias="Green North Group",
+                alias_type="parent_company",
+                source_name="Technical acceptance sample",
+                source_url="https://example.com/developers/green-north",
+                confidence_score=62,
             ),
         ]
         self._developer_quality_signals = [
@@ -1123,7 +1162,8 @@ class InMemoryRealEstateRepository:
 
         projects = self._developer_projects_for(developer_id)
         signals = self._developer_signals_for(developer_id)
-        return build_developer_reputation(profile, projects, signals)
+        aliases = self._developer_aliases_for(developer_id)
+        return build_developer_reputation(profile, projects, signals, aliases)
 
     def _developer_projects_for(self, developer_id: str) -> list[DeveloperProject]:
         return sorted(
@@ -1147,6 +1187,16 @@ class InMemoryRealEstateRepository:
                 if signal.developer_id == developer_id
             ],
             key=lambda signal: (signal.severity != "risk", signal.severity, signal.title),
+        )
+
+    def _developer_aliases_for(self, developer_id: str) -> list[DeveloperAlias]:
+        return sorted(
+            [
+                alias
+                for alias in self._developer_aliases
+                if alias.developer_id == developer_id and alias.active
+            ],
+            key=lambda alias: (-alias.confidence_score, alias.alias_type, alias.alias),
         )
 
     def _load_area_statistics_sample(self, file_name: str) -> None:

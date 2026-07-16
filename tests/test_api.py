@@ -436,6 +436,7 @@ def test_developer_ranking_returns_source_backed_scores() -> None:
     assert payload["items"][0]["reputation_score"] >= payload["items"][-1]["reputation_score"]
     assert payload["items"][0]["source_citations"]
     assert payload["items"][0]["due_diligence_questions"]
+    assert "aliases" in payload["items"][0]
 
 
 def test_listing_developer_lookup_returns_reputation_profile() -> None:
@@ -446,6 +447,7 @@ def test_listing_developer_lookup_returns_reputation_profile() -> None:
     assert payload["developer"]["id"] == "demo-development"
     assert payload["reputation_score"] > 0
     assert payload["projects"]
+    assert any(alias["alias_type"] in {"brand", "spv"} for alias in payload["aliases"])
     assert payload["quality_signals"]
 
 

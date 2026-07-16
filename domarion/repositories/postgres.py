@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from domarion.db.models import (
     Amenity,
     AreaStatistic,
+    DeveloperAliasRow,
     DeveloperProfileRow,
     DeveloperProjectRow,
     DeveloperQualitySignalRow,
@@ -32,6 +33,7 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperAlias,
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
@@ -173,6 +175,7 @@ def _developer_listing_match_score(
         reputation.developer.legal_name,
         *reputation.developer.brand_names,
         *reputation.developer.source_names,
+        *(alias.alias for alias in reputation.aliases if alias.active),
     ]
     for name in developer_names:
         if name and _normalized_developer_match_text(name) in listing_text:
@@ -623,7 +626,8 @@ class PostgresRealEstateRepository:
         profile = self._developer_profile_to_schema(row)
         projects = self._developer_projects_for(row.id)
         signals = self._developer_signals_for(row.id)
-        return build_developer_reputation(profile, projects, signals)
+        aliases = self._developer_aliases_for(row.id)
+        return build_developer_reputation(profile, projects, signals, aliases)
 
     def _developer_projects_for(self, developer_id: str) -> list[DeveloperProject]:
         rows = self.session.scalars(
@@ -652,6 +656,15 @@ class PostgresRealEstateRepository:
             signals,
             key=lambda signal: (signal.severity != "risk", signal.severity, signal.title),
         )
+
+    def _developer_aliases_for(self, developer_id: str) -> list[DeveloperAlias]:
+        rows = self.session.scalars(
+            select(DeveloperAliasRow)
+            .where(DeveloperAliasRow.developer_id == developer_id)
+            .where(DeveloperAliasRow.active.is_(True))
+            .order_by(DeveloperAliasRow.confidence_score.desc(), DeveloperAliasRow.alias)
+        ).all()
+        return [self._developer_alias_to_schema(row) for row in rows]
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
         candidates = [
@@ -932,6 +945,19 @@ class PostgresRealEstateRepository:
             units_count=row.units_count,
             completed_year=row.completed_year,
             source_url=row.source_url,
+        )
+
+    @staticmethod
+    def _developer_alias_to_schema(row: DeveloperAliasRow) -> DeveloperAlias:
+        return DeveloperAlias(
+            id=row.id,
+            developer_id=row.developer_id,
+            alias=row.alias,
+            alias_type=row.alias_type,
+            source_name=row.source_name,
+            source_url=row.source_url,
+            confidence_score=row.confidence_score,
+            active=row.active,
         )
 
     @staticmethod

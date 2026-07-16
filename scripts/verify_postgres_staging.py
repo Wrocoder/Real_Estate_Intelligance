@@ -203,6 +203,8 @@ def _run_developer_ingestion_check(repository: PostgresRealEstateRepository) -> 
         raise RuntimeError("Expected developer ranking from imported Postgres tables.")
     if developer is None or developer.reputation_score <= 0:
         raise RuntimeError("Expected demo-development reputation from imported feed.")
+    if not any(alias.alias_type == "spv" for alias in developer.aliases):
+        raise RuntimeError("Expected imported SPV developer alias.")
     if listing_developer is None or listing_developer.developer.id != "demo-development":
         raise RuntimeError("Expected wr-002 to match demo-development developer profile.")
     if listing is None or listing.developer_id != "demo-development":
@@ -210,6 +212,7 @@ def _run_developer_ingestion_check(repository: PostgresRealEstateRepository) -> 
     return {
         **result.as_dict(),
         "ranking_count": len(ranking),
+        "demo_alias_count": len(developer.aliases),
         "listing_developer_id": listing_developer.developer.id,
         "listing_developer_metadata_id": listing.developer_id,
     }

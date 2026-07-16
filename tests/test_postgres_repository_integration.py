@@ -81,6 +81,7 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["full_text_search"]["query_ids"] == ["wr-001"]
     assert payload["checks"]["full_text_search"]["index_count"] == 3
     assert payload["checks"]["developer_ingestion"]["ranking_count"] >= 2
+    assert payload["checks"]["developer_ingestion"]["demo_alias_count"] >= 2
     assert payload["checks"]["developer_ingestion"]["listing_developer_id"] == "demo-development"
     assert (
         payload["checks"]["developer_ingestion"]["listing_developer_metadata_id"]

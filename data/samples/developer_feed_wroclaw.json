@@ -30,6 +30,35 @@
       "updated_at": "2026-07-10"
     }
   ],
+  "aliases": [
+    {
+      "id": "demo-brand-demo-developer",
+      "developer_id": "demo-development",
+      "alias": "Demo Developer",
+      "alias_type": "brand",
+      "source_name": "Demo Developer Legal Feed",
+      "source_url": "https://example-developer.test",
+      "confidence_score": 86
+    },
+    {
+      "id": "demo-spv-jagodno",
+      "developer_id": "demo-development",
+      "alias": "Demo Development Jagodno sp. z o.o.",
+      "alias_type": "spv",
+      "source_name": "KRS/REGON sample",
+      "source_url": "https://example-developer.test/krs/demo-jagodno",
+      "confidence_score": 74
+    },
+    {
+      "id": "fep-project-company-nowy-dwor",
+      "developer_id": "fabryczna-estate-partners",
+      "alias": "FEP Nowy Dwór sp. z o.o.",
+      "alias_type": "project_company",
+      "source_name": "Partner inspection sample",
+      "source_url": "https://example.com/developers/fep/nowy-dwor",
+      "confidence_score": 70
+    }
+  ],
   "projects": [
     {
       "id": "demo-jagodno-gardens",

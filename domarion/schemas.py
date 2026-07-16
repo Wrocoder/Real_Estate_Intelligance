@@ -168,6 +168,15 @@ DeveloperSignalType = Literal[
 ]
 DeveloperSignalSeverity = Literal["positive", "info", "warning", "risk"]
 DeveloperReputationLabel = Literal["strong", "good", "mixed", "limited_data", "risk_review"]
+DeveloperAliasType = Literal[
+    "brand",
+    "legal_entity",
+    "spv",
+    "project_company",
+    "parent_company",
+    "source_name",
+    "other",
+]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 ListingSort = Literal[
@@ -339,6 +348,17 @@ class DeveloperQualitySignal(BaseModel):
     confidence_score: int = Field(ge=0, le=100)
 
 
+class DeveloperAlias(BaseModel):
+    id: str
+    developer_id: str
+    alias: str
+    alias_type: DeveloperAliasType
+    source_name: str
+    source_url: str | None = None
+    confidence_score: int = Field(ge=0, le=100)
+    active: bool = True
+
+
 class DeveloperSourceCitation(BaseModel):
     source_name: str
     source_url: str | None = None
@@ -364,6 +384,7 @@ class DeveloperReputation(BaseModel):
     risk_signals: list[str] = Field(default_factory=list)
     due_diligence_questions: list[str] = Field(default_factory=list)
     source_citations: list[DeveloperSourceCitation] = Field(default_factory=list)
+    aliases: list[DeveloperAlias] = Field(default_factory=list)
     projects: list[DeveloperProject] = Field(default_factory=list)
     quality_signals: list[DeveloperQualitySignal] = Field(default_factory=list)
 
