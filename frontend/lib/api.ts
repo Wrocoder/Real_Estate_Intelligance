@@ -3,12 +3,15 @@ export type Listing = {
   title: string;
   source_name: string;
   source_url: string;
+  voivodeship: string | null;
   city: string;
   district: string;
   area_id: string;
   municipality: string;
   address: string;
   market_type: "primary" | "secondary";
+  building_type: string | null;
+  renovation_state: string | null;
   price: number;
   currency: string;
   area_m2: number;
@@ -1327,6 +1330,7 @@ export type AccountSummary = {
 };
 
 export type ListingSearchQuery = {
+  voivodeship?: string;
   city?: string;
   district?: string;
   municipality?: string;
@@ -1339,6 +1343,8 @@ export type ListingSearchQuery = {
   max_price_per_m2?: number;
   min_area_m2?: number;
   max_area_m2?: number;
+  building_type?: string;
+  renovation_state?: string;
   min_floor?: number;
   max_floor?: number;
   max_building_floors?: number;
@@ -1381,6 +1387,7 @@ export type ListingSearchResponse = {
 };
 
 export type HiddenGemQuery = {
+  voivodeship?: string;
   city?: string;
   district?: string;
   municipality?: string;
@@ -1389,6 +1396,8 @@ export type HiddenGemQuery = {
   market_type?: "primary" | "secondary";
   max_price?: number;
   min_area_m2?: number;
+  building_type?: string;
+  renovation_state?: string;
   min_floor?: number;
   max_floor?: number;
   max_building_floors?: number;
@@ -1840,9 +1849,12 @@ export type Favorite = {
 };
 
 export type AlertFilters = {
+  voivodeship?: string | null;
   city?: string | null;
   district?: string | null;
   municipality?: string | null;
+  building_type?: string | null;
+  renovation_state?: string | null;
   query?: string | null;
   rooms?: number | null;
   max_price?: number | null;
@@ -2026,12 +2038,15 @@ export type MapFeatureCollection = {
 };
 
 export type MapQuery = {
+  voivodeship?: string;
   city?: string;
   district?: string;
   municipality?: string;
   rooms?: number;
   max_price?: number;
   min_area_m2?: number;
+  building_type?: string;
+  renovation_state?: string;
   min_floor?: number;
   max_floor?: number;
   max_building_floors?: number;

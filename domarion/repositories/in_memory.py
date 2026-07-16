@@ -89,12 +89,15 @@ class InMemoryRealEstateRepository:
                 title="3 pokoje przy planowanej trasie tramwajowej",
                 source_name="Partner Agency Demo",
                 source_url="https://example.com/listings/wr-001",
+                voivodeship="dolnoslaskie",
                 city="Wrocław",
                 district="Fabryczna",
                 area_id="wroclaw-fabryczna",
                 municipality="Wrocław",
                 address="Nowy Dwór, Wrocław",
                 market_type="secondary",
+                building_type="apartment_block",
+                renovation_state="ready_to_move_in",
                 price=690000,
                 currency="PLN",
                 area_m2=59.2,
@@ -126,12 +129,15 @@ class InMemoryRealEstateRepository:
                 title="Nowe 2 pokoje, wysoki standard, Krzyki",
                 source_name="Developer Demo",
                 source_url="https://example.com/listings/wr-002",
+                voivodeship="dolnoslaskie",
                 city="Wrocław",
                 district="Krzyki",
                 area_id="wroclaw-krzyki",
                 municipality="Wrocław",
                 address="Jagodno, Wrocław",
                 market_type="primary",
+                building_type="apartment_block",
+                renovation_state="developer_standard",
                 price=742000,
                 currency="PLN",
                 area_m2=49.1,
@@ -163,12 +169,15 @@ class InMemoryRealEstateRepository:
                 title="Rodzinne 4 pokoje blisko zieleni",
                 source_name="Partner Agency Demo",
                 source_url="https://example.com/listings/wr-003",
+                voivodeship="dolnoslaskie",
                 city="Wrocław",
                 district="Psie Pole",
                 area_id="wroclaw-psie-pole",
                 municipality="Wrocław",
                 address="Sołtysowice, Wrocław",
                 market_type="secondary",
+                building_type="low_rise_block",
+                renovation_state="needs_refresh",
                 price=799000,
                 currency="PLN",
                 area_m2=74.5,
@@ -657,6 +666,7 @@ class InMemoryRealEstateRepository:
 
     def list_listings(
         self,
+        voivodeship: str | None = None,
         city: str | None = None,
         district: str | None = None,
         municipality: str | None = None,
@@ -671,6 +681,13 @@ class InMemoryRealEstateRepository:
         _validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
         listings = list(self._listings.values())
 
+        if voivodeship:
+            voivodeship_key = voivodeship.casefold()
+            listings = [
+                item
+                for item in listings
+                if item.voivodeship is not None and item.voivodeship.casefold() == voivodeship_key
+            ]
         if city:
             listings = [item for item in listings if item.city.lower() == city.lower()]
         if district:

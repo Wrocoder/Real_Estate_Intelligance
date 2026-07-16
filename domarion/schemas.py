@@ -210,12 +210,15 @@ class Listing(BaseModel):
     title: str
     source_name: str
     source_url: str
+    voivodeship: str | None = None
     city: str
     district: str
     area_id: str
     municipality: str
     address: str
     market_type: MarketType
+    building_type: str | None = None
+    renovation_state: str | None = None
     price: int
     currency: str = "PLN"
     area_m2: float
@@ -2378,9 +2381,12 @@ class Favorite(BaseModel):
 
 
 class AlertFilters(BaseModel):
+    voivodeship: str | None = None
     city: str | None = None
     district: str | None = None
     municipality: str | None = None
+    building_type: str | None = None
+    renovation_state: str | None = None
     query: str | None = Field(default=None, min_length=1, max_length=160)
     rooms: int | None = Field(default=None, ge=1, le=10)
     max_price: int | None = Field(default=None, gt=0)

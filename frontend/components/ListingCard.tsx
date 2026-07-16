@@ -24,6 +24,9 @@ export function ListingCard({
 }: Props) {
   const { listing, scores } = analysis;
   const verdictTone = decisionTone(scores);
+  const attributeLabels = [listing.building_type, listing.renovation_state]
+    .map(formatAttribute)
+    .filter(Boolean);
 
   return (
     <article className="listing-card">
@@ -41,6 +44,13 @@ export function ListingCard({
           <span>{listing.rooms} pokoje</span>
           <span>{listing.days_on_market} дней</span>
         </div>
+        {attributeLabels.length ? (
+          <div className="meta-row">
+            {attributeLabels.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        ) : null}
         <div className="meta-row">
           <span className={`status-pill ${verdictTone}`}>
             {scoreLabel(scores.decision_label)}
@@ -85,4 +95,9 @@ export function ListingCard({
       </div>
     </article>
   );
+}
+
+function formatAttribute(value: string | null | undefined) {
+  if (!value) return "";
+  return value.replaceAll("_", " ");
 }

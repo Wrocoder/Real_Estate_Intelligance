@@ -24,6 +24,7 @@ def find_alert_matches(
     filters: AlertFilters,
 ) -> list[ListingAnalysis]:
     listings = repository.list_listings(
+        voivodeship=filters.voivodeship,
         city=filters.city,
         district=filters.district,
         municipality=filters.municipality,
@@ -37,6 +38,8 @@ def find_alert_matches(
         for listing in listings
         if matches_building_filters(
             listing,
+            building_type=filters.building_type,
+            renovation_state=filters.renovation_state,
             min_floor=filters.min_floor,
             max_floor=filters.max_floor,
             max_building_floors=filters.max_building_floors,

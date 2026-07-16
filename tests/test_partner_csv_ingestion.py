@@ -30,6 +30,9 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
                 "district": "Fabryczna",
                 "address": "Nowy Dwór",
                 "market_type": "secondary",
+                "voivodeship": "dolnoslaskie",
+                "building_type": "apartment_block",
+                "renovation_state": "ready_to_move_in",
                 "price": "690000",
                 "area_m2": "59,2",
                 "rooms": "3",
@@ -49,6 +52,9 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
     assert records[0].source_name == "Test Agency"
     assert records[0].listing.id == "p-001"
     assert records[0].listing.area_id == "wroclaw-fabryczna"
+    assert records[0].listing.voivodeship == "dolnoslaskie"
+    assert records[0].listing.building_type == "apartment_block"
+    assert records[0].listing.renovation_state == "ready_to_move_in"
     assert records[0].listing.price_per_m2 == 11655
     assert records[0].listing.days_on_market == 8
     assert records[0].listing.data_quality_score < 95
@@ -326,6 +332,9 @@ def _write_csv(path, rows: list[dict[str, str]]) -> None:
         "district",
         "address",
         "market_type",
+        "voivodeship",
+        "building_type",
+        "renovation_state",
         "price",
         "area_m2",
         "rooms",

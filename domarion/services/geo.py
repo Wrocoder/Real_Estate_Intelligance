@@ -49,12 +49,15 @@ def parse_bbox(raw_bbox: str | None) -> BBox | None:
 def build_map_feature_collection(
     repository: RealEstateRepository,
     *,
+    voivodeship: str | None = None,
     city: str | None = None,
     district: str | None = None,
     municipality: str | None = None,
     rooms: int | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
+    building_type: str | None = None,
+    renovation_state: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -71,6 +74,7 @@ def build_map_feature_collection(
         raise MapQueryError("radius_km requires lat and lon")
 
     listings = repository.list_listings(
+        voivodeship=voivodeship,
         city=city,
         district=district,
         municipality=municipality,
@@ -110,6 +114,8 @@ def build_map_feature_collection(
             continue
         if not matches_building_filters(
             listing,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
@@ -169,12 +175,15 @@ def build_map_feature_collection(
             "infrastructure_counts": infrastructure_counts,
             "skipped_listings": skipped_listings,
             "filters": {
+                "voivodeship": voivodeship,
                 "city": city,
                 "district": district,
                 "municipality": municipality,
                 "rooms": rooms,
                 "max_price": max_price,
                 "min_area_m2": min_area_m2,
+                "building_type": building_type,
+                "renovation_state": renovation_state,
                 "min_floor": min_floor,
                 "max_floor": max_floor,
                 "max_building_floors": max_building_floors,
@@ -260,11 +269,14 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
         "title": listing.title,
         "source_name": listing.source_name,
         "source_url": listing.source_url,
+        "voivodeship": listing.voivodeship,
         "city": listing.city,
         "district": listing.district,
         "municipality": listing.municipality,
         "address": listing.address,
         "market_type": listing.market_type,
+        "building_type": listing.building_type,
+        "renovation_state": listing.renovation_state,
         "price": listing.price,
         "price_label": _compact_price(listing.price),
         "area_m2": listing.area_m2,

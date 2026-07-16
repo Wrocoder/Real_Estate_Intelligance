@@ -148,6 +148,33 @@ def test_alert_preview_supports_municipality_filter() -> None:
     assert {item["listing"]["municipality"] for item in preview["matches"]} == {"Kobierzyce"}
 
 
+def test_alert_preview_supports_building_attribute_filters() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/alerts?owner_id=buyer-1",
+        json={
+            "name": "Ready apartment block",
+            "filters": {
+                "city": "Wrocław",
+                "building_type": "apartment_block",
+                "renovation_state": "ready_to_move_in",
+            },
+        },
+    )
+    payload = created.json()
+
+    assert created.status_code == 201
+    assert payload["filters"]["building_type"] == "apartment_block"
+    assert payload["filters"]["renovation_state"] == "ready_to_move_in"
+
+    preview = client.get(f"/api/v1/alerts/{payload['id']}/preview?owner_id=buyer-1").json()
+
+    assert preview["total_matches"] == 1
+    assert preview["matches"][0]["listing"]["id"] == "wr-001"
+    assert preview["applied_filters"]["building_type"] == "apartment_block"
+
+
 def test_alert_owner_scope() -> None:
     memory_user_store.clear()
 

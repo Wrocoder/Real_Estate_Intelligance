@@ -55,6 +55,7 @@ class PostgresRealEstateRepository:
 
     def list_listings(
         self,
+        voivodeship: str | None = None,
         city: str | None = None,
         district: str | None = None,
         municipality: str | None = None,
@@ -83,6 +84,13 @@ class PostgresRealEstateRepository:
             allowed_ids = set(spatial_listing_ids)
             listings = [item for item in listings if item.id in allowed_ids]
 
+        if voivodeship:
+            voivodeship_key = voivodeship.casefold()
+            listings = [
+                item
+                for item in listings
+                if item.voivodeship is not None and item.voivodeship.casefold() == voivodeship_key
+            ]
         if city:
             listings = [item for item in listings if item.city.lower() == city.lower()]
         if district:

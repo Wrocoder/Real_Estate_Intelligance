@@ -21,6 +21,7 @@ class ListingSearchError(ValueError):
 def search_listing_analyses(
     repository: RealEstateRepository,
     *,
+    voivodeship: str | None = None,
     city: str | None = None,
     district: str | None = None,
     municipality: str | None = None,
@@ -33,6 +34,8 @@ def search_listing_analyses(
     max_price_per_m2: int | None = None,
     min_area_m2: float | None = None,
     max_area_m2: float | None = None,
+    building_type: str | None = None,
+    renovation_state: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -67,6 +70,7 @@ def search_listing_analyses(
         raise ListingSearchError("radius_km requires lat and lon")
 
     listings = repository.list_listings(
+        voivodeship=voivodeship,
         city=city,
         district=district,
         municipality=municipality,
@@ -89,6 +93,8 @@ def search_listing_analyses(
             min_price_per_m2=min_price_per_m2,
             max_price_per_m2=max_price_per_m2,
             max_area_m2=max_area_m2,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
@@ -154,6 +160,7 @@ def search_listing_analyses(
         total_pages=total_pages,
         sort=sort,
         filters={
+            "voivodeship": voivodeship,
             "city": city,
             "district": district,
             "municipality": municipality,
@@ -166,6 +173,8 @@ def search_listing_analyses(
             "max_price_per_m2": max_price_per_m2,
             "min_area_m2": min_area_m2,
             "max_area_m2": max_area_m2,
+            "building_type": building_type,
+            "renovation_state": renovation_state,
             "min_floor": min_floor,
             "max_floor": max_floor,
             "max_building_floors": max_building_floors,
@@ -205,6 +214,8 @@ def _matches_listing_filters(
     min_price_per_m2: int | None,
     max_price_per_m2: int | None,
     max_area_m2: float | None,
+    building_type: str | None,
+    renovation_state: str | None,
     min_floor: int | None,
     max_floor: int | None,
     max_building_floors: int | None,
@@ -235,6 +246,8 @@ def _matches_listing_filters(
         return False
     if not matches_building_filters(
         listing,
+        building_type=building_type,
+        renovation_state=renovation_state,
         min_floor=min_floor,
         max_floor=max_floor,
         max_building_floors=max_building_floors,

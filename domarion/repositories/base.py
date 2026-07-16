@@ -27,6 +27,7 @@ BBox = tuple[float, float, float, float]
 class RealEstateRepository(Protocol):
     def list_listings(
         self,
+        voivodeship: str | None = None,
         city: str | None = None,
         district: str | None = None,
         municipality: str | None = None,

@@ -306,6 +306,7 @@ AGENCY_ADMIN_ROLES = {"owner", "admin"}
 @router.get("/listings", response_model=ListingSearchResponse)
 def list_listings(
     repository: RepositoryDep,
+    voivodeship: Annotated[str | None, Query(description="Voivodeship slug or name")] = None,
     city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
     district: Annotated[str | None, Query(description="District or estate name")] = None,
     municipality: Annotated[str | None, Query(description="Gmina or municipality name")] = None,
@@ -321,6 +322,11 @@ def list_listings(
     max_price_per_m2: Annotated[int | None, Query(gt=0)] = None,
     min_area_m2: Annotated[float | None, Query(gt=0)] = None,
     max_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    building_type: Annotated[str | None, Query(description="Building type code")] = None,
+    renovation_state: Annotated[
+        str | None,
+        Query(description="Renovation/finish state code"),
+    ] = None,
     min_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_building_floors: Annotated[int | None, Query(ge=1, le=120)] = None,
@@ -354,6 +360,7 @@ def list_listings(
     try:
         return search_listing_analyses(
             repository,
+            voivodeship=voivodeship,
             city=city,
             district=district,
             municipality=municipality,
@@ -366,6 +373,8 @@ def list_listings(
             max_price_per_m2=max_price_per_m2,
             min_area_m2=min_area_m2,
             max_area_m2=max_area_m2,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
@@ -403,6 +412,7 @@ def list_listings(
 @router.get("/listings/hidden-gems", response_model=HiddenGemsResponse)
 def list_hidden_gems(
     repository: RepositoryDep,
+    voivodeship: Annotated[str | None, Query(description="Voivodeship slug or name")] = None,
     city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
     district: Annotated[str | None, Query(description="District or estate name")] = None,
     municipality: Annotated[str | None, Query(description="Gmina or municipality name")] = None,
@@ -414,6 +424,11 @@ def list_hidden_gems(
     market_type: Annotated[MarketType | None, Query()] = None,
     max_price: Annotated[int | None, Query(gt=0)] = None,
     min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    building_type: Annotated[str | None, Query(description="Building type code")] = None,
+    renovation_state: Annotated[
+        str | None,
+        Query(description="Renovation/finish state code"),
+    ] = None,
     min_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_building_floors: Annotated[int | None, Query(ge=1, le=120)] = None,
@@ -441,6 +456,7 @@ def list_hidden_gems(
 ) -> HiddenGemsResponse:
     return find_hidden_gems(
         repository,
+        voivodeship=voivodeship,
         city=city,
         district=district,
         municipality=municipality,
@@ -449,6 +465,8 @@ def list_hidden_gems(
         market_type=market_type,
         max_price=max_price,
         min_area_m2=min_area_m2,
+        building_type=building_type,
+        renovation_state=renovation_state,
         min_floor=min_floor,
         max_floor=max_floor,
         max_building_floors=max_building_floors,
@@ -2539,12 +2557,18 @@ async def receive_payment_webhook(
 @router.get("/map/features", response_model=MapFeatureCollection)
 def get_map_features(
     repository: RepositoryDep,
+    voivodeship: Annotated[str | None, Query(description="Voivodeship slug or name")] = None,
     city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
     district: Annotated[str | None, Query(description="District or estate name")] = None,
     municipality: Annotated[str | None, Query(description="Gmina or municipality name")] = None,
     rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
     max_price: Annotated[int | None, Query(gt=0)] = None,
     min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    building_type: Annotated[str | None, Query(description="Building type code")] = None,
+    renovation_state: Annotated[
+        str | None,
+        Query(description="Renovation/finish state code"),
+    ] = None,
     min_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_floor: Annotated[int | None, Query(ge=0, le=80)] = None,
     max_building_floors: Annotated[int | None, Query(ge=1, le=120)] = None,
@@ -2564,12 +2588,15 @@ def get_map_features(
         parsed_bbox = parse_bbox(bbox)
         return build_map_feature_collection(
             repository,
+            voivodeship=voivodeship,
             city=city,
             district=district,
             municipality=municipality,
             rooms=rooms,
             max_price=max_price,
             min_area_m2=min_area_m2,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,

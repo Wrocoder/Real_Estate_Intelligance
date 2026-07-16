@@ -669,10 +669,13 @@ def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryP
 def _update_property_from_listing(property_: Property, listing: Listing) -> None:
     property_.canonical_address = listing.address
     property_.area_id = listing.area_id
+    property_.voivodeship = listing.voivodeship
     property_.city = listing.city
     property_.district = listing.district
     property_.municipality = listing.municipality
     property_.market_type = listing.market_type
+    property_.building_type = listing.building_type
+    property_.renovation_state = listing.renovation_state
     property_.lat = Decimal(str(listing.lat))
     property_.lon = Decimal(str(listing.lon))
     property_.area_m2 = Decimal(str(listing.area_m2))
@@ -695,9 +698,12 @@ def _listing_dedup_payload(listing: Listing) -> dict[str, object]:
     return {
         "listing_id": listing.id,
         "address": listing.address,
+        "voivodeship": listing.voivodeship,
         "city": listing.city,
         "district": listing.district,
         "market_type": listing.market_type,
+        "building_type": listing.building_type,
+        "renovation_state": listing.renovation_state,
         "rooms": listing.rooms,
         "area_m2": listing.area_m2,
         "lat": listing.lat,
@@ -711,9 +717,12 @@ def _property_dedup_payload(property_: Property) -> dict[str, object]:
     return {
         "property_id": getattr(property_, "id", None),
         "address": property_.canonical_address,
+        "voivodeship": getattr(property_, "voivodeship", None),
         "city": property_.city,
         "district": property_.district,
         "market_type": property_.market_type,
+        "building_type": getattr(property_, "building_type", None),
+        "renovation_state": getattr(property_, "renovation_state", None),
         "rooms": property_.rooms,
         "area_m2": _optional_float_value(property_.area_m2),
         "lat": _optional_float_value(property_.lat),

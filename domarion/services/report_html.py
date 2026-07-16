@@ -190,6 +190,8 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       {_metric("Цена за m2", f"{_money(listing.price_per_m2)}/m2")}
       {_metric("Площадь", f"{listing.area_m2:.1f} m2")}
       {_metric("Комнаты", str(listing.rooms))}
+      {_metric("Тип здания", _attribute_label(listing.building_type))}
+      {_metric("Состояние", _attribute_label(listing.renovation_state))}
       {_metric("Дней на рынке", str(listing.days_on_market))}
       {_metric("Снижений цены", str(listing.price_reductions))}
       {_metric("Fair price mid", _money(scores.fair_price_mid))}
@@ -432,12 +434,20 @@ def _score_card(label: str, value: int, helper: str) -> str:
 
 
 def _metric(label: str, value: str) -> str:
+    if not value:
+        return ""
     return (
         '<div class="metric">'
         f'<div class="label">{escape(label)}</div>'
         f'<div class="value">{escape(value)}</div>'
         "</div>"
     )
+
+
+def _attribute_label(value: str | None) -> str:
+    if not value:
+        return ""
+    return value.replace("_", " ")
 
 
 def _render_branding(branding) -> str:

@@ -116,6 +116,30 @@ def test_map_features_supports_municipality_filter() -> None:
     }
 
 
+def test_map_features_supports_building_attribute_filters() -> None:
+    response = client.get(
+        "/api/v1/map/features",
+        params={
+            "city": "Wrocław",
+            "building_type": "low_rise_block",
+            "renovation_state": "needs_refresh",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["filters"]["building_type"] == "low_rise_block"
+    assert payload["metadata"]["filters"]["renovation_state"] == "needs_refresh"
+    listing_features = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "listing"
+    ]
+    assert {feature["properties"]["listing_id"] for feature in listing_features} == {"wr-003"}
+    assert listing_features[0]["properties"]["building_type"] == "low_rise_block"
+    assert listing_features[0]["properties"]["renovation_state"] == "needs_refresh"
+
+
 def test_map_features_supports_radius_and_score_filters() -> None:
     response = client.get(
         "/api/v1/map/features",

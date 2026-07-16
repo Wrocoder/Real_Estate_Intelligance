@@ -154,7 +154,8 @@ export default function ListingDetailPage() {
           </Link>
           <h1 style={{ marginTop: 14 }}>{listing.title}</h1>
           <p>
-            {listing.address}, {listing.district} · {listing.market_type}
+            {listing.address}, {listing.district}, {listing.municipality} ·{" "}
+            {listing.market_type}
           </p>
         </div>
         <div className="toolbar">
@@ -199,6 +200,18 @@ export default function ListingDetailPage() {
           <span>Price label</span>
           <strong>{scoreLabel(scores.price_label)}</strong>
         </div>
+        {listing.building_type ? (
+          <div className="metric">
+            <span>Тип здания</span>
+            <strong>{formatAttribute(listing.building_type)}</strong>
+          </div>
+        ) : null}
+        {listing.renovation_state ? (
+          <div className="metric">
+            <span>Состояние</span>
+            <strong>{formatAttribute(listing.renovation_state)}</strong>
+          </div>
+        ) : null}
       </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
@@ -465,6 +478,10 @@ function questionsForAudience(
     question.supported_audiences.includes(audience),
   );
   return supported.length > 0 ? supported : questions;
+}
+
+function formatAttribute(value: string) {
+  return value.replaceAll("_", " ");
 }
 
 function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {

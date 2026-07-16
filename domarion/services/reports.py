@@ -291,6 +291,11 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
         position = "совпадает с fair mid"
 
     target_price = _buyer_target_price(analysis)
+    attribute_bits = [
+        _attribute_label(listing.building_type),
+        _attribute_label(listing.renovation_state),
+    ]
+    attribute_text = ", ".join(item for item in attribute_bits if item)
     items = [
         f"Адрес/район: {listing.address}, {listing.district}, {listing.city}.",
         f"Параметры: {listing.rooms} pok., {listing.area_m2:.1f} m2, этаж {_floor_label(listing)}.",
@@ -299,6 +304,8 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
         f"Позиция цены: {position}.",
         f"Практический target для оффера: {_money(target_price)}.",
     ]
+    if attribute_text:
+        items.insert(2, f"Здание/состояние: {attribute_text}.")
     if scores.price_delta_to_fair_mid_pct > 7:
         items.append(
             "Не спешить с полной ценой: сначала проверить документы "
@@ -369,6 +376,12 @@ def _floor_label(analysis_listing) -> str:
     if floors is None:
         return str(floor)
     return f"{floor}/{floors}"
+
+
+def _attribute_label(value: str | None) -> str:
+    if not value:
+        return ""
+    return value.replace("_", " ")
 
 
 def _money(value: int) -> str:

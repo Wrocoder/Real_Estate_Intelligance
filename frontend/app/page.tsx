@@ -23,8 +23,11 @@ import { money, numberValue, percent } from "@/lib/format";
 type Filters = {
   mode: "standard" | "hidden_gems";
   query: string;
+  voivodeship: string;
   municipality: string;
   district: string;
+  buildingType: string;
+  renovationState: string;
   rooms: string;
   maxPrice: string;
   minFloor: string;
@@ -56,12 +59,28 @@ type Filters = {
 };
 
 const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
+const VOIVODESHIP_OPTIONS = [{ value: "dolnoslaskie", label: "Dolnośląskie" }];
+const BUILDING_TYPE_OPTIONS = [
+  { value: "apartment_block", label: "Блок / многоквартирный" },
+  { value: "low_rise_block", label: "Низкая застройка" },
+  { value: "tenement", label: "Kamienica" },
+  { value: "detached_house", label: "Дом" },
+];
+const RENOVATION_STATE_OPTIONS = [
+  { value: "developer_standard", label: "Developer standard" },
+  { value: "ready_to_move_in", label: "Готово к въезду" },
+  { value: "needs_refresh", label: "Требует освежения" },
+  { value: "needs_renovation", label: "Требует ремонта" },
+];
 
 const defaultFilters: Filters = {
   mode: "standard",
   query: "",
+  voivodeship: "",
   municipality: "",
   district: "",
+  buildingType: "",
+  renovationState: "",
   rooms: "",
   maxPrice: "",
   minFloor: "",
@@ -172,11 +191,14 @@ export default function ExplorerPage() {
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
     return {
+      voivodeship: filters.voivodeship || undefined,
       city: filters.municipality ? undefined : "Wrocław",
       district: filters.district || undefined,
       municipality: filters.municipality || undefined,
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+      building_type: filters.buildingType || undefined,
+      renovation_state: filters.renovationState || undefined,
       min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
       max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
       max_building_floors: filters.maxBuildingFloors
@@ -300,12 +322,15 @@ export default function ExplorerPage() {
     await api.createAlert({
       name: "Saved search from explorer",
       filters: {
+        voivodeship: filters.voivodeship || null,
         city: filters.municipality ? null : "Wrocław",
         municipality: filters.municipality || null,
         query: filters.query || null,
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
+        building_type: filters.buildingType || null,
+        renovation_state: filters.renovationState || null,
         min_floor: filters.minFloor ? Number(filters.minFloor) : null,
         max_floor: filters.maxFloor ? Number(filters.maxFloor) : null,
         max_building_floors: filters.maxBuildingFloors
@@ -431,6 +456,21 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
+            <span>Województwo</span>
+            <select
+              className="select"
+              value={filters.voivodeship}
+              onChange={(event) => updateFilters({ voivodeship: event.target.value })}
+            >
+              <option value="">Все</option>
+              {VOIVODESHIP_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
             <span>Район</span>
             <select
               className="select"
@@ -467,6 +507,36 @@ export default function ExplorerPage() {
               placeholder="700000"
               onChange={(event) => updateFilters({ maxPrice: event.target.value })}
             />
+          </label>
+          <label className="field">
+            <span>Тип здания</span>
+            <select
+              className="select"
+              value={filters.buildingType}
+              onChange={(event) => updateFilters({ buildingType: event.target.value })}
+            >
+              <option value="">Любой</option>
+              {BUILDING_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Состояние</span>
+            <select
+              className="select"
+              value={filters.renovationState}
+              onChange={(event) => updateFilters({ renovationState: event.target.value })}
+            >
+              <option value="">Любое</option>
+              {RENOVATION_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>Этаж от</span>
@@ -872,12 +942,15 @@ export default function ExplorerPage() {
 function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
   const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
   return {
+    voivodeship: filters.voivodeship || undefined,
     city: filters.municipality ? undefined : "Wrocław",
     query: filters.query || undefined,
     district: filters.district || undefined,
     municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    building_type: filters.buildingType || undefined,
+    renovation_state: filters.renovationState || undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
     max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
     max_building_floors: filters.maxBuildingFloors
@@ -935,12 +1008,15 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
 
 function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
   return {
+    voivodeship: filters.voivodeship || undefined,
     city: filters.municipality ? undefined : "Wrocław",
     query: filters.query || undefined,
     district: filters.district || undefined,
     municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    building_type: filters.buildingType || undefined,
+    renovation_state: filters.renovationState || undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
     max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
     max_building_floors: filters.maxBuildingFloors

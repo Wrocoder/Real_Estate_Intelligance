@@ -19,6 +19,7 @@ DEFAULT_MIN_DATA_QUALITY_SCORE = 60
 def find_hidden_gems(
     repository: RealEstateRepository,
     *,
+    voivodeship: str | None = None,
     city: str | None = None,
     district: str | None = None,
     municipality: str | None = None,
@@ -27,6 +28,8 @@ def find_hidden_gems(
     market_type: MarketType | None = None,
     max_price: int | None = None,
     min_area_m2: float | None = None,
+    building_type: str | None = None,
+    renovation_state: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -53,6 +56,7 @@ def find_hidden_gems(
     page_size: int = 20,
 ) -> HiddenGemsResponse:
     listings = repository.list_listings(
+        voivodeship=voivodeship,
         city=city,
         district=district,
         municipality=municipality,
@@ -70,6 +74,8 @@ def find_hidden_gems(
             continue
         if not matches_building_filters(
             listing,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
@@ -162,11 +168,14 @@ def find_hidden_gems(
             city=city,
             district=district,
             municipality=municipality,
+            voivodeship=voivodeship,
             query=query,
             rooms=rooms,
             market_type=market_type,
             max_price=max_price,
             min_area_m2=min_area_m2,
+            building_type=building_type,
+            renovation_state=renovation_state,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,

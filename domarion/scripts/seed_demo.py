@@ -340,10 +340,13 @@ def _get_or_create_property_source(
     property_ = Property(
         canonical_address=listing.address,
         area_id=listing.area_id,
+        voivodeship=listing.voivodeship,
         city=listing.city,
         district=listing.district,
         municipality=listing.municipality,
         market_type=listing.market_type,
+        building_type=listing.building_type,
+        renovation_state=listing.renovation_state,
         lat=Decimal(str(listing.lat)),
         lon=Decimal(str(listing.lon)),
         area_m2=Decimal(str(listing.area_m2)),

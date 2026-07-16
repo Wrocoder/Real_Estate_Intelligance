@@ -16,6 +16,19 @@ import {
 } from "@/lib/api";
 import { money } from "@/lib/format";
 
+const BUILDING_TYPE_OPTIONS = [
+  { value: "apartment_block", label: "Блок / многоквартирный" },
+  { value: "low_rise_block", label: "Низкая застройка" },
+  { value: "tenement", label: "Kamienica" },
+  { value: "detached_house", label: "Дом" },
+];
+const RENOVATION_STATE_OPTIONS = [
+  { value: "developer_standard", label: "Developer standard" },
+  { value: "ready_to_move_in", label: "Готово к въезду" },
+  { value: "needs_refresh", label: "Требует освежения" },
+  { value: "needs_renovation", label: "Требует ремонта" },
+];
+
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [jobs, setJobs] = useState<AlertDeliveryJob[]>([]);
@@ -33,8 +46,11 @@ export default function AlertsPage() {
   const [form, setForm] = useState({
     name: "Fabryczna до 700k",
     query: "",
+    voivodeship: "",
     municipality: "",
     district: "Fabryczna",
+    buildingType: "",
+    renovationState: "",
     maxPrice: "700000",
     minFloor: "",
     maxFloor: "",
@@ -77,10 +93,13 @@ export default function AlertsPage() {
     const alert = await api.createAlert({
       name: form.name,
       filters: {
+        voivodeship: form.voivodeship || null,
         city: form.municipality ? null : "Wrocław",
         municipality: form.municipality || null,
         query: form.query || null,
         district: form.district || null,
+        building_type: form.buildingType || null,
+        renovation_state: form.renovationState || null,
         max_price: form.maxPrice ? Number(form.maxPrice) : null,
         min_floor: form.minFloor ? Number(form.minFloor) : null,
         max_floor: form.maxFloor ? Number(form.maxFloor) : null,
@@ -224,6 +243,15 @@ export default function AlertsPage() {
             />
           </label>
           <label className="field">
+            <span>Województwo</span>
+            <input
+              className="input"
+              placeholder="dolnoslaskie"
+              value={form.voivodeship}
+              onChange={(event) => setForm({ ...form, voivodeship: event.target.value })}
+            />
+          </label>
+          <label className="field">
             <span>Район</span>
             <input
               className="input"
@@ -248,6 +276,36 @@ export default function AlertsPage() {
               value={form.maxPrice}
               onChange={(event) => setForm({ ...form, maxPrice: event.target.value })}
             />
+          </label>
+          <label className="field">
+            <span>Тип здания</span>
+            <select
+              className="input"
+              value={form.buildingType}
+              onChange={(event) => setForm({ ...form, buildingType: event.target.value })}
+            >
+              <option value="">Любой</option>
+              {BUILDING_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Состояние</span>
+            <select
+              className="input"
+              value={form.renovationState}
+              onChange={(event) => setForm({ ...form, renovationState: event.target.value })}
+            >
+              <option value="">Любое</option>
+              {RENOVATION_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="field">
             <span>Этаж от</span>
