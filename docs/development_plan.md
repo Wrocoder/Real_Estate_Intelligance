@@ -301,7 +301,7 @@
 - [x] Добавить PostGIS distance calculations.
 - [x] Добавить filters by radius.
 - [x] Добавить risk/growth map overlays.
-- [ ] Добавить price-per-m2 heatmap.
+- [x] Добавить price-per-m2 heatmap.
 - [ ] Добавить переключаемые слои районов, гмин и воеводства.
 - [x] Добавить UI-переключатели видимости для map layers: listings, planned investments, infrastructure.
 - [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
@@ -583,6 +583,7 @@
 - [x] Добавить advanced investor alert filters: below fair price, negotiation, liquidity, rental potential, price reductions and fresh listings.
 - [x] Добавить frontend layer toggles для карты: listings, planned investments и infrastructure.
 - [x] Добавить listing clusters на карте и показывать price markers только на close zoom.
+- [x] Добавить price-per-m2 heatmap layer на карту.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

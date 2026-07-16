@@ -629,6 +629,10 @@ button {
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
 }
 
+.legend-dot.heatmap {
+  background: linear-gradient(135deg, #2c7fb8, #41ab5d 48%, #fec44f 72%, #d7301f);
+}
+
 .map-state {
   left: 50%;
   top: 50%;

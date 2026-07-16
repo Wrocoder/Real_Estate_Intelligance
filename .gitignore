@@ -38,6 +38,7 @@ coverage/
 *.db
 tmp/
 logs/
+.run/
 .domarion/
 data/raw/
 data/exports/

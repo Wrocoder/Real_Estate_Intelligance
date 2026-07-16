@@ -19,6 +19,7 @@ type SourceWithData = {
 };
 type VisibleMapLayers = {
   listings: boolean;
+  priceHeatmap: boolean;
   planned: boolean;
   infrastructure: boolean;
 };
@@ -31,11 +32,13 @@ type Props = {
 
 const WROCLAW_CENTER: [number, number] = [17.0385, 51.1079];
 const LISTINGS_SOURCE_ID = "domarion-listings";
+const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
 const LISTING_MARKER_MIN_ZOOM = 12;
 const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   listings: true,
+  priceHeatmap: false,
   planned: true,
   infrastructure: true,
 };
@@ -178,6 +181,19 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <label>
           <input
             type="checkbox"
+            checked={visibleLayers.priceHeatmap}
+            onChange={(event) =>
+              setVisibleLayers((current) => ({
+                ...current,
+                priceHeatmap: event.target.checked,
+              }))
+            }
+          />
+          <span>Цена/m2</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
             checked={visibleLayers.planned}
             onChange={(event) =>
               setVisibleLayers((current) => ({
@@ -218,6 +234,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>
           <i className="legend-dot cluster" /> cluster
         </span>
+        <span>
+          <i className="legend-dot heatmap" /> цена/m2
+        </span>
       </div>
       {(isLoading || error) && (
         <div className={error ? "map-state error" : "map-state"}>
@@ -239,10 +258,87 @@ function ensureMapLayers(map: MaplibreMap) {
     });
   }
 
+  if (!map.getSource(LISTING_HEATMAP_SOURCE_ID)) {
+    map.addSource(LISTING_HEATMAP_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
   if (!map.getSource(INVESTMENTS_SOURCE_ID)) {
     map.addSource(INVESTMENTS_SOURCE_ID, {
       type: "geojson",
       data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("listing-price-heatmap")) {
+    map.addLayer({
+      id: "listing-price-heatmap",
+      type: "heatmap",
+      source: LISTING_HEATMAP_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "heatmap-weight": [
+          "interpolate",
+          ["linear"],
+          ["to-number", ["get", "price_per_m2"], 0],
+          0,
+          0,
+          8000,
+          0.15,
+          12000,
+          0.45,
+          16000,
+          0.9,
+          20000,
+          1,
+        ],
+        "heatmap-intensity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          9,
+          0.6,
+          13,
+          1.5,
+        ],
+        "heatmap-color": [
+          "interpolate",
+          ["linear"],
+          ["heatmap-density"],
+          0,
+          "rgba(15, 23, 42, 0)",
+          0.25,
+          "#2c7fb8",
+          0.5,
+          "#41ab5d",
+          0.75,
+          "#fec44f",
+          1,
+          "#d7301f",
+        ],
+        "heatmap-radius": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          9,
+          20,
+          13,
+          44,
+        ],
+        "heatmap-opacity": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10,
+          0.72,
+          14,
+          0.25,
+        ],
+      },
     });
   }
 
@@ -361,16 +457,27 @@ function syncMapData(
 
   ensureMapLayers(map);
 
-  const visibleCollection = visibleMapCollection(collection, visibleLayers);
-  const listings = splitCollection(visibleCollection, "listing");
-  const investments = splitCollection(visibleCollection, "planned_investment");
+  const boundsCollection = visibleMapCollection(collection, visibleLayers);
+  const markerCollection = markerMapCollection(collection, visibleLayers);
+  const listings = visibleLayers.listings
+    ? splitCollection(collection, "listing")
+    : EMPTY_COLLECTION;
+  const heatmapListings = visibleLayers.priceHeatmap
+    ? splitCollection(collection, "listing")
+    : EMPTY_COLLECTION;
+  const investments = visibleLayers.planned
+    ? splitCollection(collection, "planned_investment")
+    : EMPTY_COLLECTION;
   const listingSource = map.getSource(LISTINGS_SOURCE_ID) as SourceWithData | undefined;
+  const heatmapSource = map.getSource(LISTING_HEATMAP_SOURCE_ID) as SourceWithData | undefined;
   const investmentSource = map.getSource(INVESTMENTS_SOURCE_ID) as SourceWithData | undefined;
 
   listingSource?.setData(listings);
+  heatmapSource?.setData(heatmapListings);
   investmentSource?.setData(investments);
-  syncMarkers(map, maplibre, markers, visibleCollection);
-  fitToCollection(map, maplibre, visibleCollection);
+  setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
+  syncMarkers(map, maplibre, markers, markerCollection);
+  fitToCollection(map, maplibre, boundsCollection);
 }
 
 function syncVisibleMarkers(
@@ -380,7 +487,7 @@ function syncVisibleMarkers(
   collection: MapFeatureCollection | null,
   visibleLayers: VisibleMapLayers,
 ) {
-  syncMarkers(map, maplibre, markers, visibleMapCollection(collection, visibleLayers));
+  syncMarkers(map, maplibre, markers, markerMapCollection(collection, visibleLayers));
 }
 
 function visibleMapCollection(
@@ -399,9 +506,35 @@ function visibleMapCollection(
 }
 
 function isFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
+  if (featureType === "listing") return visibleLayers.listings || visibleLayers.priceHeatmap;
+  if (featureType === "planned_investment") return visibleLayers.planned;
+  return visibleLayers.infrastructure;
+}
+
+function markerMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): MapFeatureCollection | null {
+  if (!collection) return null;
+  const features = collection.features.filter((feature) =>
+    isMarkerFeatureVisible(feature.properties.feature_type, visibleLayers),
+  );
+  return {
+    ...collection,
+    features,
+    bbox: calculateFeatureBbox(features),
+  };
+}
+
+function isMarkerFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
   return visibleLayers.infrastructure;
+}
+
+function setMapLayerVisibility(map: MaplibreMap, layerId: string, visible: boolean) {
+  if (!map.getLayer(layerId)) return;
+  map.setLayoutProperty(layerId, "visibility", visible ? "visible" : "none");
 }
 
 function splitCollection(
