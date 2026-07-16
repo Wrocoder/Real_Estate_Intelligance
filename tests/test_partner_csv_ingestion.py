@@ -41,6 +41,10 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
                 "has_elevator": "true",
                 "parking_type": "underground",
                 "heating_type": "municipal",
+                "developer_id": "demo-development",
+                "developer_name": "Demo Development",
+                "investment_name": "Jagodno Gardens",
+                "primary_market_project_id": "demo-jagodno-gardens",
                 "price": "690000",
                 "area_m2": "59,2",
                 "rooms": "3",
@@ -67,6 +71,10 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
     assert records[0].listing.has_elevator is True
     assert records[0].listing.parking_type == "underground"
     assert records[0].listing.heating_type == "municipal"
+    assert records[0].listing.developer_id == "demo-development"
+    assert records[0].listing.developer_name == "Demo Development"
+    assert records[0].listing.investment_name == "Jagodno Gardens"
+    assert records[0].listing.primary_market_project_id == "demo-jagodno-gardens"
     assert records[0].listing.price_per_m2 == 11655
     assert records[0].listing.days_on_market == 8
     assert records[0].listing.data_quality_score < 95
@@ -473,6 +481,10 @@ def _write_csv(path, rows: list[dict[str, str]]) -> None:
         "last_seen_at",
         "observed_at",
         "nearest_stop_m",
+        "developer_id",
+        "developer_name",
+        "investment_name",
+        "primary_market_project_id",
     ]
     with path.open("w", encoding="utf-8", newline="") as file:
         writer = csv.DictWriter(file, fieldnames=fieldnames)

@@ -18,6 +18,10 @@ export type Listing = {
   has_elevator: boolean | null;
   parking_type: string | null;
   heating_type: string | null;
+  developer_id: string | null;
+  developer_name: string | null;
+  investment_name: string | null;
+  primary_market_project_id: string | null;
   price: number;
   currency: string;
   area_m2: number;
@@ -865,8 +869,10 @@ export type ListingAnalysis = {
 export type UserSubmittedListingRequest = {
   title?: string | null;
   source_url?: string | null;
+  developer_id?: string | null;
   developer_name?: string | null;
   investment_name?: string | null;
+  primary_market_project_id?: string | null;
   address: string;
   city?: string;
   district: string;
@@ -957,6 +963,10 @@ export type UserSubmittedListingDraft = {
   city: string;
   district: string;
   market_type: "primary" | "secondary";
+  developer_id: string | null;
+  developer_name: string | null;
+  investment_name: string | null;
+  primary_market_project_id: string | null;
   price: number;
   area_m2: number;
   rooms: number;

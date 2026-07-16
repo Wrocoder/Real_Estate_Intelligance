@@ -152,6 +152,10 @@ class InMemoryRealEstateRepository:
                 has_elevator=True,
                 parking_type="garage",
                 heating_type="heat_pump",
+                developer_id="demo-development",
+                developer_name="Demo Development",
+                investment_name="Jagodno Gardens",
+                primary_market_project_id="demo-jagodno-gardens",
                 price=742000,
                 currency="PLN",
                 area_m2=49.1,
@@ -198,6 +202,10 @@ class InMemoryRealEstateRepository:
                 has_elevator=False,
                 parking_type="surface",
                 heating_type="gas",
+                developer_id="green-north-homes",
+                developer_name="Green North Homes",
+                investment_name="Sołtysowice Green",
+                primary_market_project_id="green-north-soltysowice",
                 price=799000,
                 currency="PLN",
                 area_m2=74.5,
@@ -785,6 +793,20 @@ class InMemoryRealEstateRepository:
         self,
         listing_id: str,
     ) -> DeveloperReputation | None:
+        listing = self._listings.get(listing_id)
+        if listing is not None and listing.developer_id:
+            return self._build_developer_reputation(listing.developer_id)
+        if listing is not None and listing.primary_market_project_id:
+            project = next(
+                (
+                    item
+                    for item in self._developer_projects
+                    if item.id == listing.primary_market_project_id
+                ),
+                None,
+            )
+            if project is not None:
+                return self._build_developer_reputation(project.developer_id)
         developer_id = self._listing_developer_map.get(listing_id)
         if developer_id is None:
             return None

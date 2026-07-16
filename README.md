@@ -45,6 +45,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен legal-first developer feed import: JSON-фид профилей, проектов и quality signals с dry-run и Postgres upsert.
+- Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
@@ -256,6 +257,10 @@ python scripts\smoke_deployment.py
 а не на копирование чужих порталов. Примеры файлов:
 `data/samples/partner_listings_wroclaw.csv` и
 `data/samples/partner_listings_suburban.csv`.
+Optional колонки для primary-market/developer-aware объектов:
+`developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
+Если они переданы, listing search и developer lookup используют их как
+структурные сигналы до текстового matching.
 
 Проверить CSV без записи в БД:
 

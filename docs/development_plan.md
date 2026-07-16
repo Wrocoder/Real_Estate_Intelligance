@@ -82,7 +82,7 @@
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
 - [x] Добавить таблицы `agencies` и `agency_memberships` для agency workspaces.
 - [x] Добавить таблицы `developer_profiles`, `developer_projects`, `developer_quality_signals`, `developer_reputation_snapshots`.
-- [ ] Связать listings/user-submitted drafts с `developer_id`, `investment_name` и primary-market project metadata.
+- [x] Связать listings/user-submitted drafts с `developer_id`, `investment_name` и primary-market project metadata.
 - [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
 
@@ -515,6 +515,7 @@
 - [x] Commit 75: listing event pipeline for removed, republished and description changes.
 - [x] Commit 76: deduplication v2 evidence and review blockers.
 - [x] Commit 77: developer reputation Postgres tables and legal-first feed importer.
+- [x] Commit 78: normalized developer metadata for listings and private drafts.
 
 ## Current Sprint
 
@@ -613,6 +614,7 @@
 - [x] Добавить realtor client shortlist preview на compare page: ranked copy, mortgage/rental context и client-ready message.
 - [x] Добавить lightweight SVG charts: listing price history line chart и market distribution bar charts.
 - [x] Добавить developer reputation Postgres tables и legal-first JSON feed importer.
+- [x] Добавить normalized developer/project metadata для listings, partner CSV и private drafts.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

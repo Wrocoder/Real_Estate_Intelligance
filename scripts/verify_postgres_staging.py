@@ -196,6 +196,7 @@ def _run_developer_ingestion_check(repository: PostgresRealEstateRepository) -> 
     ranking = repository.list_developer_reputations(city="Wrocław")
     developer = repository.get_developer_reputation("demo-development")
     listing_developer = repository.get_developer_reputation_for_listing("wr-002")
+    listing = repository.get_listing("wr-002")
     if result.profiles_created + result.profiles_updated < 2:
         raise RuntimeError("Expected developer feed import to upsert profiles.")
     if len(ranking) < 2:
@@ -204,10 +205,13 @@ def _run_developer_ingestion_check(repository: PostgresRealEstateRepository) -> 
         raise RuntimeError("Expected demo-development reputation from imported feed.")
     if listing_developer is None or listing_developer.developer.id != "demo-development":
         raise RuntimeError("Expected wr-002 to match demo-development developer profile.")
+    if listing is None or listing.developer_id != "demo-development":
+        raise RuntimeError("Expected wr-002 to persist normalized developer metadata.")
     return {
         **result.as_dict(),
         "ranking_count": len(ranking),
         "listing_developer_id": listing_developer.developer.id,
+        "listing_developer_metadata_id": listing.developer_id,
     }
 
 

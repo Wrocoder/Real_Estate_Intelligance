@@ -5,7 +5,7 @@
 ## Что уже есть в проекте
 
 - В `docs/partner_onboarding.md` уже предусмотрен `source_type=developer_feed`.
-- В listing-модели пока нет нормализованного `developer_id`, `developer_name`, `investment_name` и связи с проектом застройщика.
+- В listing-модели и private draft history есть нормализованные `developer_id`, `developer_name`, `investment_name` и `primary_market_project_id`.
 - Добавлен первый in-memory слой: developer profiles, projects, quality signals и listing-to-developer mapping.
 - Добавлены PostgreSQL таблицы для developer profiles, projects, quality signals и reputation snapshots.
 - Добавлен legal-first JSON feed importer для source-backed developer data без копирования персональных данных.

@@ -78,6 +78,10 @@ coalesce(snap.normalized_payload ->> 'address', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'market_type', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'building_type', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'renovation_state', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'developer_id', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'developer_name', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'investment_name', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'primary_market_project_id', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'parking_type', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'heating_type', '') || ' ' ||
 coalesce(snap.normalized_payload ->> 'rooms', '') || ' ' ||
@@ -96,6 +100,10 @@ coalesce(p.municipality, '') || ' ' ||
 coalesce(p.market_type, '') || ' ' ||
 coalesce(p.building_type, '') || ' ' ||
 coalesce(p.renovation_state, '') || ' ' ||
+coalesce(p.developer_id, '') || ' ' ||
+coalesce(p.developer_name, '') || ' ' ||
+coalesce(p.investment_name, '') || ' ' ||
+coalesce(p.primary_market_project_id, '') || ' ' ||
 coalesce(p.parking_type, '') || ' ' ||
 coalesce(p.heating_type, '') || ' ' ||
 coalesce(p.rooms::text, '') || ' ' ||
@@ -155,6 +163,8 @@ def _developer_listing_match_score(
                 listing.address,
                 listing.city,
                 listing.district,
+                listing.developer_name or "",
+                listing.investment_name or "",
             ]
         )
     )
@@ -171,6 +181,8 @@ def _developer_listing_match_score(
         score += 8
     for project in reputation.projects:
         project_score = 0
+        if listing.primary_market_project_id and project.id == listing.primary_market_project_id:
+            project_score = 88
         if project.city.casefold() == listing.city.casefold():
             project_score += 20
         if project.district and project.district.casefold() == listing.district.casefold():
@@ -312,6 +324,17 @@ class PostgresRealEstateRepository:
         listing = self.get_listing(listing_id)
         if listing is None:
             return None
+
+        if listing.developer_id:
+            reputation = self.get_developer_reputation(listing.developer_id)
+            if reputation is not None:
+                return reputation
+        if listing.primary_market_project_id:
+            project = self.session.get(DeveloperProjectRow, listing.primary_market_project_id)
+            if project is not None:
+                reputation = self.get_developer_reputation(project.developer_id)
+                if reputation is not None:
+                    return reputation
 
         candidates = self.list_developer_reputations(city=listing.city)
         scored = [

@@ -1056,6 +1056,10 @@ def _update_property_from_listing(property_: Property, listing: Listing) -> None
     property_.has_elevator = listing.has_elevator
     property_.parking_type = listing.parking_type
     property_.heating_type = listing.heating_type
+    property_.developer_id = listing.developer_id
+    property_.developer_name = listing.developer_name
+    property_.investment_name = listing.investment_name
+    property_.primary_market_project_id = listing.primary_market_project_id
     property_.lat = Decimal(str(listing.lat))
     property_.lon = Decimal(str(listing.lon))
     property_.area_m2 = Decimal(str(listing.area_m2))
@@ -1091,6 +1095,10 @@ def _listing_dedup_payload(record: PartnerListingRecord) -> dict[str, object]:
         "has_elevator": listing.has_elevator,
         "parking_type": listing.parking_type,
         "heating_type": listing.heating_type,
+        "developer_id": listing.developer_id,
+        "developer_name": listing.developer_name,
+        "investment_name": listing.investment_name,
+        "primary_market_project_id": listing.primary_market_project_id,
         "rooms": listing.rooms,
         "floor": listing.floor,
         "building_floors": listing.building_floors,

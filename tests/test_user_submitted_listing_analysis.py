@@ -853,7 +853,12 @@ def test_user_submitted_listing_analysis_matches_developer_from_project_context(
 
     assert response.status_code == 200
     reputation = payload["analysis"]["developer_reputation"]
+    listing = payload["analysis"]["listing"]
     assert reputation["developer"]["id"] == "demo-development"
+    assert listing["developer_id"] == "demo-development"
+    assert listing["developer_name"] == "Demo Development"
+    assert listing["investment_name"] == "Jagodno Gardens"
+    assert listing["primary_market_project_id"] == "demo-jagodno-gardens"
     assert reputation["projects"][0]["developer_id"] == "demo-development"
     assert any("Developer reputation was matched" in item for item in payload["warnings"])
 
@@ -866,6 +871,10 @@ def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
         headers=owner_a,
         json={
             "source_url": "https://www.otodom.pl/pl/oferta/demo-owner-a",
+            "developer_id": "fabryczna-estate-partners",
+            "developer_name": "Fabryczna Estate Partners",
+            "investment_name": "Nowy Dwór Residence",
+            "primary_market_project_id": "fep-nowy-dwor",
             "address": "Nowy Dwór, Wrocław",
             "city": "Wrocław",
             "district": "Fabryczna",
@@ -895,10 +904,14 @@ def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
     assert owner_a_list.status_code == 200
     assert owner_a_list.json()[0]["id"] == draft_id
     assert owner_a_list.json()[0]["source_url_private"].endswith("demo-owner-a")
+    assert owner_a_list.json()[0]["developer_id"] == "fabryczna-estate-partners"
+    assert owner_a_list.json()[0]["investment_name"] == "Nowy Dwór Residence"
+    assert owner_a_list.json()[0]["primary_market_project_id"] == "fep-nowy-dwor"
     assert owner_b_list.status_code == 200
     assert owner_b_list.json() == []
     assert owner_b_get.status_code == 404
     assert owner_a_get.status_code == 200
+    assert owner_a_get.json()["developer_name"] == "Fabryczna Estate Partners"
     assert owner_a_get.json()["request_payload"]["retention_days"] == 7
     assert owner_a_delete.status_code == 204
     assert owner_a_get_deleted.status_code == 404

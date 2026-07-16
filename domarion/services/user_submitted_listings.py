@@ -17,6 +17,7 @@ from domarion.ingestion.geocoding import GeocodingResult, geocode_partner_addres
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import (
     AreaStatistics,
+    DeveloperProject,
     DeveloperReputation,
     Listing,
     SourceReferencePreview,
@@ -27,6 +28,7 @@ from domarion.schemas import (
     UserSubmittedListingAnalysis,
     UserSubmittedListingRequest,
 )
+from domarion.services.risk_profile import build_listing_risk_profile
 from domarion.services.scoring import build_listing_analysis, clamp
 
 PRIVATE_SOURCE_URL_PLACEHOLDER = "private:user-submitted-reference"
@@ -271,6 +273,14 @@ def analyze_user_submitted_listing(
         area_statistics=area_statistics,
     )
     if developer_reputation is not None:
+        listing = listing.model_copy(
+            update=_developer_listing_metadata(
+                developer_reputation,
+                payload,
+                listing=listing,
+                area_statistics=area_statistics,
+            )
+        )
         warnings.append(
             "Developer reputation was matched from developer/project/address context; "
             "verify the legal entity and project SPV before relying on it."
@@ -289,7 +299,15 @@ def analyze_user_submitted_listing(
 
     analysis = analysis.model_copy(
         update={
+            "listing": listing,
             "developer_reputation": developer_reputation,
+            "risk_profile": build_listing_risk_profile(
+                listing=listing,
+                area_statistics=analysis.area_statistics,
+                scores=analysis.scores,
+                developer_reputation=developer_reputation,
+                future_area_impact=analysis.future_area_impact,
+            ),
             "data_quality_notes": [
                 *analysis.data_quality_notes,
                 (
@@ -427,8 +445,10 @@ def import_listing_from_source_url(
 def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListingRequest:
     title = _clean_optional(payload.title)
     source_url = _clean_optional(payload.source_url)
+    developer_id = _clean_optional(payload.developer_id)
     developer_name = _clean_optional(payload.developer_name)
     investment_name = _clean_optional(payload.investment_name)
+    primary_market_project_id = _clean_optional(payload.primary_market_project_id)
     address = payload.address.strip()
     city = payload.city.strip()
     district = payload.district.strip()
@@ -444,8 +464,10 @@ def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListing
         update={
             "title": title,
             "source_url": source_url,
+            "developer_id": developer_id,
             "developer_name": developer_name,
             "investment_name": investment_name,
+            "primary_market_project_id": primary_market_project_id,
             "address": address,
             "city": city,
             "district": district,
@@ -533,6 +555,11 @@ def _match_user_submitted_developer(
     listing: Listing,
     area_statistics: AreaStatistics,
 ) -> DeveloperReputation | None:
+    if payload.developer_id:
+        exact = repository.get_developer_reputation(payload.developer_id)
+        if exact is not None:
+            return exact
+
     candidates = repository.list_developer_reputations(city=area_statistics.city)
     if not candidates:
         return None
@@ -551,6 +578,67 @@ def _match_user_submitted_developer(
     ]
     score, reputation = max(scored, key=lambda item: item[0])
     return reputation if score >= 65 else None
+
+
+def _developer_listing_metadata(
+    reputation: DeveloperReputation,
+    payload: UserSubmittedListingRequest,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+) -> dict[str, str | None]:
+    project = _matched_developer_project(
+        reputation,
+        payload,
+        listing=listing,
+        area_statistics=area_statistics,
+    )
+    return {
+        "developer_id": reputation.developer.id,
+        "developer_name": reputation.developer.name,
+        "investment_name": payload.investment_name or (project.name if project else None),
+        "primary_market_project_id": project.id if project else payload.primary_market_project_id,
+    }
+
+
+def _matched_developer_project(
+    reputation: DeveloperReputation,
+    payload: UserSubmittedListingRequest,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+) -> DeveloperProject | None:
+    if payload.primary_market_project_id:
+        for project in reputation.projects:
+            if project.id == payload.primary_market_project_id:
+                return project
+
+    project_text = _normalized_match_text(
+        payload.investment_name,
+        payload.title,
+        payload.address,
+        payload.district,
+        payload.city,
+    )
+    scored = [
+        (
+            _project_match_score(
+                project_name=project.name,
+                project_city=project.city,
+                project_district=project.district,
+                project_status=project.status,
+                completed_year=project.completed_year,
+                payload=payload,
+                listing=listing,
+                area_statistics=area_statistics,
+                project_text=project_text,
+            ),
+            project,
+        )
+        for project in reputation.projects
+    ]
+    score, project = max(scored, key=lambda item: item[0], default=(0, None))
+    return project if score >= 50 else None
 
 
 def _developer_match_score(
@@ -753,6 +841,10 @@ def _build_listing(
         municipality=payload.city,
         address=payload.address,
         market_type=payload.market_type,
+        developer_id=payload.developer_id,
+        developer_name=payload.developer_name,
+        investment_name=payload.investment_name,
+        primary_market_project_id=payload.primary_market_project_id,
         price=payload.price,
         area_m2=payload.area_m2,
         price_per_m2=price_per_m2,

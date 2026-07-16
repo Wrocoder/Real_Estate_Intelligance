@@ -226,6 +226,10 @@ class Listing(BaseModel):
     has_elevator: bool | None = None
     parking_type: str | None = None
     heating_type: str | None = None
+    developer_id: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
+    primary_market_project_id: str | None = None
     price: int
     currency: str = "PLN"
     area_m2: float
@@ -1286,8 +1290,10 @@ class SourceUrlImportResult(BaseModel):
 class UserSubmittedListingRequest(BaseModel):
     title: str | None = None
     source_url: str | None = None
+    developer_id: str | None = None
     developer_name: str | None = None
     investment_name: str | None = None
+    primary_market_project_id: str | None = None
     address: str
     city: str = "Wrocław"
     district: str
@@ -1335,6 +1341,10 @@ class UserSubmittedListingDraft(BaseModel):
     city: str
     district: str
     market_type: MarketType
+    developer_id: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
+    primary_market_project_id: str | None = None
     price: int
     area_m2: float
     rooms: int
