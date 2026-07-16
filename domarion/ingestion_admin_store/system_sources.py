@@ -21,6 +21,12 @@ def system_source_payloads() -> list[SourceRegistryEntryCreate]:
                 "Private user-submitted URL references only. No bulk crawling, scheduled "
                 "monitoring, anti-bot bypass, photos, contacts or public source URL display."
             ),
+            raw_payload_retention_days=30,
+            private_url_retention_days=30,
+            retention_notes=(
+                "User-submitted source references are temporary private evidence. Retain only "
+                "while needed for the user's draft/report workflow."
+            ),
             is_active=True,
         )
     ]

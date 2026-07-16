@@ -40,11 +40,11 @@
 ## 1.1 Legal, Compliance и Data Governance
 
 - [ ] Зафиксировать policy по Terms of Service, robots.txt и rate limiting для каждого источника.
-- [ ] Описать правила хранения оригинальных ссылок, raw payload и минимально необходимых данных.
-- [ ] Описать policy для user-submitted source URL: хранить приватно, не показывать пользователям, не использовать для bulk crawling без legal approval.
+- [x] Описать правила хранения оригинальных ссылок, raw payload и минимально необходимых данных.
+- [x] Описать policy для user-submitted source URL: хранить приватно, не показывать пользователям, не использовать для bulk crawling без legal approval.
 - [ ] Описать запрет на копирование фото и контактных данных без правового основания.
-- [ ] Добавить процесс удаления данных по запросу.
-- [ ] Добавить GDPR/RODO data retention policy.
+- [x] Добавить процесс удаления данных по запросу.
+- [x] Добавить GDPR/RODO data retention policy.
 - [ ] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
 - [x] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
 - [ ] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
@@ -165,7 +165,7 @@
 - [x] Расширить legal-first developer ingestion: KRS/REGON lookup evidence, UOKiK events, directories, partner inspection datasets.
 - [x] Добавить нормализацию developer aliases: brand name, legal entity, SPV/project company, parent company.
 - [x] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
-- [ ] Добавить source-specific retention и delete-request handling.
+- [x] Добавить source-specific retention и delete-request handling.
 
 ## 6. Scoring и Analytics
 

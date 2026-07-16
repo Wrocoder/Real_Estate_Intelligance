@@ -1,9 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domarion.db.models import DataDeletionRequest as DataDeletionRequestRow
 from domarion.db.models import DataQualityLog as DataQualityLogRow
 from domarion.db.models import IngestionJob as IngestionJobRow
 from domarion.db.models import ListingSource, RawListing
@@ -13,6 +14,11 @@ from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
+    DataDeletionRequest,
+    DataDeletionRequestCreate,
+    DataDeletionRequestProcess,
+    DataDeletionRequestStatus,
+    DataDeletionTargetType,
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
@@ -31,6 +37,7 @@ from domarion.schemas import (
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
+    SourceRetentionPruneResult,
 )
 
 
@@ -343,6 +350,9 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             robots_txt_url=payload.robots_txt_url,
             terms_url=payload.terms_url,
             notes=payload.notes,
+            raw_payload_retention_days=payload.raw_payload_retention_days,
+            private_url_retention_days=payload.private_url_retention_days,
+            retention_notes=payload.retention_notes,
             is_active=payload.is_active,
             created_at=now,
             updated_at=now,
@@ -371,6 +381,144 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         self.session.commit()
         self.session.refresh(row)
         return self._source_to_schema(row)
+
+    def prune_retained_raw_payloads(
+        self,
+        dry_run: bool = True,
+        source_name: str | None = None,
+        limit: int = 500,
+    ) -> SourceRetentionPruneResult:
+        now = datetime.utcnow()
+        source_statement = select(ListingSource).where(
+            ListingSource.raw_payload_retention_days.is_not(None)
+        )
+        if source_name:
+            source_statement = source_statement.where(ListingSource.name == source_name)
+        sources = self.session.scalars(source_statement).all()
+        source_ids = [source.id for source in sources]
+        cutoff_by_source = {
+            source.name: now - timedelta(days=source.raw_payload_retention_days or 0)
+            for source in sources
+        }
+        if not source_ids:
+            return SourceRetentionPruneResult(
+                dry_run=dry_run,
+                source_name=source_name,
+                sources_checked=0,
+                raw_listings_seen=0,
+                raw_payloads_pruned=0,
+                item_ids=[],
+                cutoff_by_source={},
+            )
+
+        statement = (
+            select(RawListing, ListingSource)
+            .join(ListingSource)
+            .where(RawListing.source_id.in_(source_ids))
+            .order_by(RawListing.fetched_at.asc())
+            .limit(limit)
+        )
+        rows = self.session.execute(statement).all()
+        raw_listings_seen = 0
+        pruned_ids: list[str] = []
+        for raw, source in rows:
+            raw_listings_seen += 1
+            cutoff = cutoff_by_source[source.name]
+            if raw.fetched_at > cutoff or _raw_payload_pruned(raw.raw_payload):
+                continue
+            pruned_ids.append(str(raw.id))
+            if dry_run:
+                continue
+            raw.raw_payload = _retention_pruned_payload(
+                original_hash=raw.payload_hash,
+                source_name=source.name,
+                raw_payload_retention_days=source.raw_payload_retention_days,
+                pruned_at=now,
+            )
+            raw.payload_hash = _retention_payload_hash(raw.payload_hash)
+        if not dry_run:
+            self.session.commit()
+
+        return SourceRetentionPruneResult(
+            dry_run=dry_run,
+            source_name=source_name,
+            sources_checked=len(sources),
+            raw_listings_seen=raw_listings_seen,
+            raw_payloads_pruned=len(pruned_ids),
+            item_ids=pruned_ids,
+            cutoff_by_source=cutoff_by_source,
+        )
+
+    def create_data_deletion_request(
+        self,
+        payload: DataDeletionRequestCreate,
+        requested_by: str,
+    ) -> DataDeletionRequest:
+        now = datetime.utcnow()
+        row = DataDeletionRequestRow(
+            id=str(uuid4()),
+            target_type=payload.target_type,
+            target_id=payload.target_id,
+            target_owner_id=payload.target_owner_id,
+            source_name=payload.source_name,
+            source_url_hash=payload.source_url_hash,
+            status="open",
+            requested_by=requested_by,
+            processed_by=None,
+            reason=payload.reason,
+            request_payload=payload.request_payload,
+            result_payload={},
+            action_summary=None,
+            created_at=now,
+            updated_at=now,
+            processed_at=None,
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._data_deletion_request_to_schema(row)
+
+    def list_data_deletion_requests(
+        self,
+        status: DataDeletionRequestStatus | None = None,
+        target_type: DataDeletionTargetType | None = None,
+        limit: int = 100,
+    ) -> list[DataDeletionRequest]:
+        statement = select(DataDeletionRequestRow)
+        if status:
+            statement = statement.where(DataDeletionRequestRow.status == status)
+        if target_type:
+            statement = statement.where(DataDeletionRequestRow.target_type == target_type)
+        rows = self.session.scalars(
+            statement.order_by(DataDeletionRequestRow.created_at.desc()).limit(limit)
+        ).all()
+        return [self._data_deletion_request_to_schema(row) for row in rows]
+
+    def get_data_deletion_request(self, request_id: str) -> DataDeletionRequest | None:
+        row = self.session.get(DataDeletionRequestRow, request_id)
+        if row is None:
+            return None
+        return self._data_deletion_request_to_schema(row)
+
+    def process_data_deletion_request(
+        self,
+        request_id: str,
+        payload: DataDeletionRequestProcess,
+        processed_by: str,
+    ) -> DataDeletionRequest | None:
+        row = self.session.get(DataDeletionRequestRow, request_id)
+        if row is None:
+            return None
+        now = datetime.utcnow()
+        row.status = payload.status
+        row.processed_by = processed_by
+        row.action_summary = payload.action_summary
+        row.result_payload = payload.result_payload
+        row.processed_at = now
+        row.updated_at = now
+        self.session.commit()
+        self.session.refresh(row)
+        return self._data_deletion_request_to_schema(row)
 
     @staticmethod
     def _job_to_schema(row: IngestionJobRow) -> IngestionJob:
@@ -484,9 +632,33 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             robots_txt_url=row.robots_txt_url,
             terms_url=row.terms_url,
             notes=row.notes,
+            raw_payload_retention_days=row.raw_payload_retention_days,
+            private_url_retention_days=row.private_url_retention_days,
+            retention_notes=row.retention_notes,
             is_active=row.is_active,
             created_at=row.created_at,
             updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _data_deletion_request_to_schema(row: DataDeletionRequestRow) -> DataDeletionRequest:
+        return DataDeletionRequest(
+            id=row.id,
+            target_type=row.target_type,
+            target_id=row.target_id,
+            target_owner_id=row.target_owner_id,
+            source_name=row.source_name,
+            source_url_hash=row.source_url_hash,
+            status=row.status,
+            requested_by=row.requested_by,
+            processed_by=row.processed_by,
+            reason=row.reason,
+            request_payload=row.request_payload,
+            result_payload=row.result_payload,
+            action_summary=row.action_summary,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+            processed_at=row.processed_at,
         )
 
     def _ensure_system_sources(self) -> None:
@@ -511,6 +683,9 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
                     robots_txt_url=payload.robots_txt_url,
                     terms_url=payload.terms_url,
                     notes=payload.notes,
+                    raw_payload_retention_days=payload.raw_payload_retention_days,
+                    private_url_retention_days=payload.private_url_retention_days,
+                    retention_notes=payload.retention_notes,
                     is_active=payload.is_active,
                     created_at=now,
                     updated_at=now,
@@ -530,3 +705,27 @@ def _source_id_to_int(source_id: str | None) -> int | None:
 def _metadata_str(metadata: dict[str, object], key: str) -> str | None:
     value = metadata.get(key)
     return value if isinstance(value, str) and value else None
+
+
+def _raw_payload_pruned(payload: dict[str, object]) -> bool:
+    return payload.get("retention_pruned") is True
+
+
+def _retention_pruned_payload(
+    *,
+    original_hash: str,
+    source_name: str,
+    raw_payload_retention_days: int | None,
+    pruned_at: datetime,
+) -> dict[str, object]:
+    return {
+        "retention_pruned": True,
+        "pruned_at": pruned_at.isoformat(),
+        "source_name": source_name,
+        "raw_payload_retention_days": raw_payload_retention_days,
+        "original_payload_hash": original_hash,
+    }
+
+
+def _retention_payload_hash(original_hash: str) -> str:
+    return f"retention-pruned:{original_hash}"[:128]

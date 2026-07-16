@@ -181,6 +181,21 @@ def test_openapi_exposes_source_registry_contract() -> None:
     assert errors_schema["type"] == "array"
     assert errors_schema["items"]["$ref"] == "#/components/schemas/SourceError"
 
+    retention_prune_schema = paths[
+        "/api/v1/admin/ingestion/sources/prune-retained-raw-payloads"
+    ]["post"]["responses"]["200"]["content"]["application/json"]["schema"]
+    deletion_request_schema = paths["/api/v1/admin/data-deletion-requests"]["post"][
+        "responses"
+    ]["201"]["content"]["application/json"]["schema"]
+    deletion_request_process_schema = paths[
+        "/api/v1/admin/data-deletion-requests/{request_id}/process"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert retention_prune_schema["$ref"] == "#/components/schemas/SourceRetentionPruneResult"
+    assert deletion_request_schema["$ref"] == "#/components/schemas/DataDeletionRequest"
+    assert deletion_request_process_schema["$ref"] == (
+        "#/components/schemas/DataDeletionRequestProcess"
+    )
+
 
 def test_openapi_exposes_recent_request_and_response_models() -> None:
     openapi = client.get("/openapi.json").json()
@@ -213,6 +228,9 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "CompareMortgageAssumptions",
         "CompareResponse",
         "CompareSummary",
+        "DataDeletionRequest",
+        "DataDeletionRequestCreate",
+        "DataDeletionRequestProcess",
         "DeveloperAlias",
         "DeveloperProfile",
         "DeveloperProject",
@@ -284,6 +302,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "SourceRegistryEntry",
         "SourceRegistryEntryCreate",
         "SourceRegistryEntryUpdate",
+        "SourceRetentionPruneResult",
         "UserSubmittedListingAnalysis",
         "UserSubmittedListingDraft",
         "UserSubmittedListingDraftPruneResult",

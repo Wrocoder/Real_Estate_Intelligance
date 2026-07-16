@@ -1,10 +1,15 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import uuid4
 
 from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
+    DataDeletionRequest,
+    DataDeletionRequestCreate,
+    DataDeletionRequestProcess,
+    DataDeletionRequestStatus,
+    DataDeletionTargetType,
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
@@ -23,6 +28,7 @@ from domarion.schemas import (
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
+    SourceRetentionPruneResult,
 )
 
 
@@ -38,6 +44,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._sources: dict[str, SourceRegistryEntry] = {}
         self._source_check_jobs: dict[str, SourceCheckJob] = {}
         self._source_errors: dict[str, SourceError] = {}
+        self._data_deletion_requests: dict[str, DataDeletionRequest] = {}
         self._seed_demo()
 
     def clear(self) -> None:
@@ -47,6 +54,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._sources.clear()
         self._source_check_jobs.clear()
         self._source_errors.clear()
+        self._data_deletion_requests.clear()
 
     def reset_demo(self) -> None:
         self.clear()
@@ -311,6 +319,9 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             robots_txt_url=payload.robots_txt_url,
             terms_url=payload.terms_url,
             notes=payload.notes,
+            raw_payload_retention_days=payload.raw_payload_retention_days,
+            private_url_retention_days=payload.private_url_retention_days,
+            retention_notes=payload.retention_notes,
             is_active=payload.is_active,
             created_at=now,
             updated_at=now,
@@ -331,6 +342,129 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._sources[source.id] = source
         return source
 
+    def prune_retained_raw_payloads(
+        self,
+        dry_run: bool = True,
+        source_name: str | None = None,
+        limit: int = 500,
+    ) -> SourceRetentionPruneResult:
+        now = _now()
+        selected_sources = [
+            source
+            for source in self._sources.values()
+            if source.raw_payload_retention_days is not None
+            and (source_name is None or source.name == source_name)
+        ]
+        source_by_name = {source.name: source for source in selected_sources}
+        cutoff_by_source = {
+            source.name: now - timedelta(days=source.raw_payload_retention_days or 0)
+            for source in selected_sources
+        }
+        raw_listings_seen = 0
+        pruned_ids: list[str] = []
+        for raw_listing_id, raw in sorted(
+            self._raw_listings.items(),
+            key=lambda item: item[1].fetched_at,
+        ):
+            if len(pruned_ids) >= limit:
+                break
+            source = source_by_name.get(raw.source_name)
+            if source is None:
+                continue
+            raw_listings_seen += 1
+            cutoff = cutoff_by_source[source.name]
+            if raw.fetched_at > cutoff or _raw_payload_pruned(raw.raw_payload):
+                continue
+            pruned_ids.append(str(raw_listing_id))
+            if dry_run:
+                continue
+            self._raw_listings[raw_listing_id] = raw.model_copy(
+                update={
+                    "raw_payload": _retention_pruned_payload(
+                        original_hash=raw.payload_hash,
+                        source_name=source.name,
+                        raw_payload_retention_days=source.raw_payload_retention_days,
+                        pruned_at=now,
+                    ),
+                    "payload_hash": _retention_payload_hash(raw.payload_hash),
+                }
+            )
+        return SourceRetentionPruneResult(
+            dry_run=dry_run,
+            source_name=source_name,
+            sources_checked=len(selected_sources),
+            raw_listings_seen=raw_listings_seen,
+            raw_payloads_pruned=len(pruned_ids),
+            item_ids=pruned_ids,
+            cutoff_by_source=cutoff_by_source,
+        )
+
+    def create_data_deletion_request(
+        self,
+        payload: DataDeletionRequestCreate,
+        requested_by: str,
+    ) -> DataDeletionRequest:
+        now = _now()
+        request = DataDeletionRequest(
+            id=str(uuid4()),
+            target_type=payload.target_type,
+            target_id=payload.target_id,
+            target_owner_id=payload.target_owner_id,
+            source_name=payload.source_name,
+            source_url_hash=payload.source_url_hash,
+            status="open",
+            requested_by=requested_by,
+            processed_by=None,
+            reason=payload.reason,
+            request_payload=payload.request_payload,
+            result_payload={},
+            action_summary=None,
+            created_at=now,
+            updated_at=now,
+            processed_at=None,
+        )
+        self._data_deletion_requests[request.id] = request
+        return request
+
+    def list_data_deletion_requests(
+        self,
+        status: DataDeletionRequestStatus | None = None,
+        target_type: DataDeletionTargetType | None = None,
+        limit: int = 100,
+    ) -> list[DataDeletionRequest]:
+        requests = list(self._data_deletion_requests.values())
+        if status:
+            requests = [item for item in requests if item.status == status]
+        if target_type:
+            requests = [item for item in requests if item.target_type == target_type]
+        return sorted(requests, key=lambda item: item.created_at, reverse=True)[:limit]
+
+    def get_data_deletion_request(self, request_id: str) -> DataDeletionRequest | None:
+        return self._data_deletion_requests.get(request_id)
+
+    def process_data_deletion_request(
+        self,
+        request_id: str,
+        payload: DataDeletionRequestProcess,
+        processed_by: str,
+    ) -> DataDeletionRequest | None:
+        request = self._data_deletion_requests.get(request_id)
+        if request is None:
+            return None
+        now = _now()
+        updated = request.model_copy(
+            update={
+                "status": payload.status,
+                "processed_by": processed_by,
+                "action_summary": payload.action_summary,
+                "result_payload": payload.result_payload,
+                "processed_at": now,
+                "updated_at": now,
+            }
+        )
+        self._data_deletion_requests[updated.id] = updated
+        return updated
+
     def _seed_demo(self) -> None:
         now = _now()
         self._sources["demo-partner-source"] = SourceRegistryEntry(
@@ -346,6 +480,9 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             robots_txt_url="https://example.com/robots.txt",
             terms_url="https://example.com/terms",
             notes="Demo source that represents a partner-owned CSV feed.",
+            raw_payload_retention_days=90,
+            private_url_retention_days=None,
+            retention_notes="Keep partner raw payloads for short-term QA, then prune.",
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -363,6 +500,9 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             robots_txt_url="https://www.wroclaw.pl/robots.txt",
             terms_url=None,
             notes="Used for public planned investment layers, not active flat listings.",
+            raw_payload_retention_days=365,
+            private_url_retention_days=None,
+            retention_notes="Open-data payloads can be retained longer for reproducibility.",
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -381,6 +521,9 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
                 robots_txt_url=payload.robots_txt_url,
                 terms_url=payload.terms_url,
                 notes=payload.notes,
+                raw_payload_retention_days=payload.raw_payload_retention_days,
+                private_url_retention_days=payload.private_url_retention_days,
+                retention_notes=payload.retention_notes,
                 is_active=payload.is_active,
                 created_at=now,
                 updated_at=now,
@@ -474,3 +617,27 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
 def _metadata_str(metadata: dict[str, object], key: str) -> str | None:
     value = metadata.get(key)
     return value if isinstance(value, str) and value else None
+
+
+def _raw_payload_pruned(payload: dict[str, object]) -> bool:
+    return payload.get("retention_pruned") is True
+
+
+def _retention_pruned_payload(
+    *,
+    original_hash: str,
+    source_name: str,
+    raw_payload_retention_days: int | None,
+    pruned_at: datetime,
+) -> dict[str, object]:
+    return {
+        "retention_pruned": True,
+        "pruned_at": pruned_at.isoformat(),
+        "source_name": source_name,
+        "raw_payload_retention_days": raw_payload_retention_days,
+        "original_payload_hash": original_hash,
+    }
+
+
+def _retention_payload_hash(original_hash: str) -> str:
+    return f"retention-pruned:{original_hash}"[:128]

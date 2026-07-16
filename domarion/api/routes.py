@@ -103,6 +103,11 @@ from domarion.schemas import (
     CheckoutSession,
     CompareRequest,
     CompareResponse,
+    DataDeletionRequest,
+    DataDeletionRequestCreate,
+    DataDeletionRequestProcess,
+    DataDeletionRequestStatus,
+    DataDeletionTargetType,
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
@@ -200,6 +205,7 @@ from domarion.schemas import (
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
+    SourceRetentionPruneResult,
     SourceUrlImportRequest,
     SourceUrlImportResult,
     SubscriptionUpdate,
@@ -1353,6 +1359,98 @@ def update_admin_ingestion_source(
     if source is None:
         raise HTTPException(status_code=404, detail="Ingestion source not found")
     return source
+
+
+@router.post(
+    "/admin/ingestion/sources/prune-retained-raw-payloads",
+    response_model=SourceRetentionPruneResult,
+)
+def prune_admin_retained_raw_payloads(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    dry_run: Annotated[bool, Query()] = True,
+    source_name: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=5000)] = 500,
+) -> SourceRetentionPruneResult:
+    _ensure_admin(account)
+    return admin_store.prune_retained_raw_payloads(
+        dry_run=dry_run,
+        source_name=source_name,
+        limit=limit,
+    )
+
+
+@router.get("/admin/data-deletion-requests", response_model=list[DataDeletionRequest])
+def list_admin_data_deletion_requests(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    request_status: Annotated[
+        DataDeletionRequestStatus | None,
+        Query(alias="status"),
+    ] = None,
+    target_type: Annotated[DataDeletionTargetType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[DataDeletionRequest]:
+    _ensure_admin(account)
+    return admin_store.list_data_deletion_requests(
+        status=request_status,
+        target_type=target_type,
+        limit=limit,
+    )
+
+
+@router.post(
+    "/admin/data-deletion-requests",
+    response_model=DataDeletionRequest,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_admin_data_deletion_request(
+    payload: DataDeletionRequestCreate,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DataDeletionRequest:
+    _ensure_admin(account)
+    return admin_store.create_data_deletion_request(
+        payload,
+        requested_by=payload.requested_by or account.user.id,
+    )
+
+
+@router.post(
+    "/admin/data-deletion-requests/{request_id}/process",
+    response_model=DataDeletionRequest,
+)
+def process_admin_data_deletion_request(
+    request_id: str,
+    payload: DataDeletionRequestProcess,
+    admin_store: IngestionAdminStoreDep,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> DataDeletionRequest:
+    _ensure_admin(account)
+    deletion_request = admin_store.get_data_deletion_request(request_id)
+    if deletion_request is None:
+        raise HTTPException(status_code=404, detail="Data deletion request not found")
+    if deletion_request.status != "open":
+        raise HTTPException(status_code=409, detail="Data deletion request already processed")
+
+    result_payload = dict(payload.result_payload)
+    if payload.status == "processed" and payload.execute_target_deletion:
+        result_payload.update(
+            _execute_data_deletion_target(
+                deletion_request,
+                draft_store=draft_store,
+            )
+        )
+
+    processed = admin_store.process_data_deletion_request(
+        request_id,
+        payload.model_copy(update={"result_payload": result_payload}),
+        processed_by=account.user.id,
+    )
+    if processed is None:
+        raise HTTPException(status_code=404, detail="Data deletion request not found")
+    return processed
 
 
 @router.get("/admin/scoring/backtest", response_model=ScoringBacktestResult)
@@ -3640,6 +3738,33 @@ def _ensure_source_name_available(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Ingestion source name already exists",
             )
+
+
+def _execute_data_deletion_target(
+    deletion_request: DataDeletionRequest,
+    *,
+    draft_store: UserSubmittedListingStore,
+) -> dict[str, object]:
+    if deletion_request.target_type != "user_submitted_draft":
+        return {
+            "target_deleted": False,
+            "target_delete_mode": "manual_or_not_supported",
+            "target_type": deletion_request.target_type,
+        }
+    if deletion_request.target_owner_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="target_owner_id is required to delete a user submitted draft",
+        )
+    deleted = draft_store.delete_draft(
+        deletion_request.target_owner_id,
+        deletion_request.target_id,
+    )
+    return {
+        "target_deleted": deleted,
+        "target_delete_mode": "user_submitted_draft_store",
+        "target_type": deletion_request.target_type,
+    }
 
 
 def _build_account_summary(

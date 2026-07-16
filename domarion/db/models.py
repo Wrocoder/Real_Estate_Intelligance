@@ -33,6 +33,9 @@ class ListingSource(Base):
     robots_txt_url: Mapped[str | None] = mapped_column(String(500))
     terms_url: Mapped[str | None] = mapped_column(String(500))
     notes: Mapped[str | None] = mapped_column(Text)
+    raw_payload_retention_days: Mapped[int | None] = mapped_column(Integer)
+    private_url_retention_days: Mapped[int | None] = mapped_column(Integer)
+    retention_notes: Mapped[str | None] = mapped_column(Text)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -143,6 +146,27 @@ class SourceError(Base):
     last_retry_job: Mapped[SourceCheckJob | None] = relationship(
         foreign_keys=[last_retry_job_id],
     )
+
+
+class DataDeletionRequest(Base):
+    __tablename__ = "data_deletion_requests"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    target_type: Mapped[str] = mapped_column(String(60), index=True)
+    target_id: Mapped[str] = mapped_column(String(200), index=True)
+    target_owner_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    source_name: Mapped[str | None] = mapped_column(String(120), index=True)
+    source_url_hash: Mapped[str | None] = mapped_column(String(128), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="open", index=True)
+    requested_by: Mapped[str] = mapped_column(String(120), index=True)
+    processed_by: Mapped[str | None] = mapped_column(String(120), index=True)
+    reason: Mapped[str | None] = mapped_column(Text)
+    request_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    result_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    action_summary: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
 
 
 class RawListing(Base):

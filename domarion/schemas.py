@@ -78,6 +78,15 @@ SourceCheckType = Literal[
 ]
 SourceCheckJobStatus = Literal["queued", "running", "succeeded", "failed", "blocked"]
 SourceErrorStatus = Literal["open", "retry_scheduled", "resolved", "ignored"]
+DataDeletionRequestStatus = Literal["open", "processed", "rejected"]
+DataDeletionRequestResolutionStatus = Literal["processed", "rejected"]
+DataDeletionTargetType = Literal[
+    "raw_listing",
+    "user_submitted_draft",
+    "generated_report",
+    "source_reference",
+    "other",
+]
 AlertDeliveryStatus = Literal["dry_run", "sent", "skipped", "failed"]
 OpenDataRoadmapStatus = Literal[
     "candidate",
@@ -850,6 +859,9 @@ class SourceRegistryEntry(BaseModel):
     robots_txt_url: str | None = None
     terms_url: str | None = None
     notes: str | None = None
+    raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    retention_notes: str | None = None
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
@@ -867,6 +879,9 @@ class SourceRegistryEntryCreate(BaseModel):
     robots_txt_url: str | None = None
     terms_url: str | None = None
     notes: str | None = None
+    raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    retention_notes: str | None = None
     is_active: bool = True
 
 
@@ -882,7 +897,57 @@ class SourceRegistryEntryUpdate(BaseModel):
     robots_txt_url: str | None = None
     terms_url: str | None = None
     notes: str | None = None
+    raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
+    retention_notes: str | None = None
     is_active: bool | None = None
+
+
+class SourceRetentionPruneResult(BaseModel):
+    dry_run: bool
+    source_name: str | None = None
+    sources_checked: int = Field(ge=0)
+    raw_listings_seen: int = Field(ge=0)
+    raw_payloads_pruned: int = Field(ge=0)
+    item_ids: list[str] = Field(default_factory=list)
+    cutoff_by_source: dict[str, datetime] = Field(default_factory=dict)
+
+
+class DataDeletionRequestCreate(BaseModel):
+    target_type: DataDeletionTargetType
+    target_id: str = Field(min_length=1, max_length=200)
+    target_owner_id: str | None = Field(default=None, max_length=120)
+    source_name: str | None = Field(default=None, max_length=120)
+    source_url_hash: str | None = Field(default=None, max_length=128)
+    requested_by: str | None = Field(default=None, max_length=120)
+    reason: str | None = Field(default=None, max_length=1000)
+    request_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class DataDeletionRequestProcess(BaseModel):
+    status: DataDeletionRequestResolutionStatus = "processed"
+    action_summary: str = Field(min_length=1, max_length=2000)
+    result_payload: dict[str, Any] = Field(default_factory=dict)
+    execute_target_deletion: bool = True
+
+
+class DataDeletionRequest(BaseModel):
+    id: str
+    target_type: DataDeletionTargetType
+    target_id: str
+    target_owner_id: str | None = None
+    source_name: str | None = None
+    source_url_hash: str | None = None
+    status: DataDeletionRequestStatus
+    requested_by: str
+    processed_by: str | None = None
+    reason: str | None = None
+    request_payload: dict[str, Any] = Field(default_factory=dict)
+    result_payload: dict[str, Any] = Field(default_factory=dict)
+    action_summary: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    processed_at: datetime | None = None
 
 
 class OpenDataRoadmapItem(BaseModel):

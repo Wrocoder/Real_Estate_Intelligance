@@ -2,6 +2,11 @@ from typing import Protocol
 
 from domarion.ingestion.db_writer import ImportResult
 from domarion.schemas import (
+    DataDeletionRequest,
+    DataDeletionRequestCreate,
+    DataDeletionRequestProcess,
+    DataDeletionRequestStatus,
+    DataDeletionTargetType,
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
@@ -20,6 +25,7 @@ from domarion.schemas import (
     SourceRegistryEntry,
     SourceRegistryEntryCreate,
     SourceRegistryEntryUpdate,
+    SourceRetentionPruneResult,
 )
 
 
@@ -114,4 +120,38 @@ class IngestionAdminStore(Protocol):
         source_id: str,
         payload: SourceRegistryEntryUpdate,
     ) -> SourceRegistryEntry | None:
+        raise NotImplementedError
+
+    def prune_retained_raw_payloads(
+        self,
+        dry_run: bool = True,
+        source_name: str | None = None,
+        limit: int = 500,
+    ) -> SourceRetentionPruneResult:
+        raise NotImplementedError
+
+    def create_data_deletion_request(
+        self,
+        payload: DataDeletionRequestCreate,
+        requested_by: str,
+    ) -> DataDeletionRequest:
+        raise NotImplementedError
+
+    def list_data_deletion_requests(
+        self,
+        status: DataDeletionRequestStatus | None = None,
+        target_type: DataDeletionTargetType | None = None,
+        limit: int = 100,
+    ) -> list[DataDeletionRequest]:
+        raise NotImplementedError
+
+    def get_data_deletion_request(self, request_id: str) -> DataDeletionRequest | None:
+        raise NotImplementedError
+
+    def process_data_deletion_request(
+        self,
+        request_id: str,
+        payload: DataDeletionRequestProcess,
+        processed_by: str,
+    ) -> DataDeletionRequest | None:
         raise NotImplementedError

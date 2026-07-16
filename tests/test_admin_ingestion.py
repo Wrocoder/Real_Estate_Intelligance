@@ -1,10 +1,12 @@
 import csv
+from datetime import timedelta
 from io import StringIO
 
 from fastapi.testclient import TestClient
 
 from domarion.auth_store.factory import memory_auth_store
 from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
+from domarion.ingestion_admin_store.memory import _now
 from domarion.ingestion_admin_store.system_sources import (
     USER_SUBMITTED_REFERENCE_SOURCE_NAME,
     USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
@@ -47,6 +49,16 @@ def test_admin_endpoints_require_admin_role() -> None:
     sources_response = client.get("/api/v1/admin/ingestion/sources")
     assert sources_response.status_code == 403
     assert sources_response.json()["detail"] == "Admin role required"
+
+    prune_retention_response = client.post(
+        "/api/v1/admin/ingestion/sources/prune-retained-raw-payloads"
+    )
+    assert prune_retention_response.status_code == 403
+    assert prune_retention_response.json()["detail"] == "Admin role required"
+
+    deletion_requests_response = client.get("/api/v1/admin/data-deletion-requests")
+    assert deletion_requests_response.status_code == 403
+    assert deletion_requests_response.json()["detail"] == "Admin role required"
 
     open_data_response = client.get("/api/v1/admin/ingestion/open-data-roadmap")
     assert open_data_response.status_code == 403
@@ -157,6 +169,8 @@ def test_admin_can_manage_source_registry() -> None:
     demo_source = next(source for source in sources if source["name"] == "Demo Partner")
     assert demo_source["legal_status"] == "approved"
     assert demo_source["ingestion_method"] == "admin_csv_upload"
+    assert demo_source["raw_payload_retention_days"] == 90
+    assert demo_source["private_url_retention_days"] is None
     assert "price_history" in demo_source["allowed_use"]
     user_reference_source = next(
         source for source in sources if source["name"] == USER_SUBMITTED_REFERENCE_SOURCE_NAME
@@ -164,6 +178,8 @@ def test_admin_can_manage_source_registry() -> None:
     assert user_reference_source["source_type"] == USER_SUBMITTED_REFERENCE_SOURCE_TYPE
     assert user_reference_source["legal_status"] == "approved"
     assert user_reference_source["refresh_cadence"] == "one_off_user_action"
+    assert user_reference_source["raw_payload_retention_days"] == 30
+    assert user_reference_source["private_url_retention_days"] == 30
     assert "private_analysis" in user_reference_source["allowed_use"]
     assert "No bulk crawling" in user_reference_source["notes"]
 
@@ -182,6 +198,9 @@ def test_admin_can_manage_source_registry() -> None:
             "robots_txt_url": "https://agency.example/robots.txt",
             "terms_url": "https://agency.example/terms",
             "notes": "Waiting for signed DPA.",
+            "raw_payload_retention_days": 45,
+            "private_url_retention_days": 14,
+            "retention_notes": "Prune raw payloads after QA window.",
             "is_active": True,
         },
     )
@@ -191,6 +210,8 @@ def test_admin_can_manage_source_registry() -> None:
     assert created["name"] == "Agency Beta Feed"
     assert created["legal_status"] == "review_required"
     assert created["allowed_use"] == ["analytics", "reports"]
+    assert created["raw_payload_retention_days"] == 45
+    assert created["private_url_retention_days"] == 14
 
     duplicate_response = client.post(
         "/api/v1/admin/ingestion/sources",
@@ -206,6 +227,8 @@ def test_admin_can_manage_source_registry() -> None:
             "legal_status": "approved",
             "allowed_use": ["analytics", "reports", "price_history"],
             "notes": "DPA signed.",
+            "raw_payload_retention_days": 30,
+            "retention_notes": "Shorter QA retention after legal approval.",
         },
     )
     updated = update_response.json()
@@ -214,6 +237,103 @@ def test_admin_can_manage_source_registry() -> None:
     assert updated["legal_status"] == "approved"
     assert updated["allowed_use"] == ["analytics", "reports", "price_history"]
     assert updated["notes"] == "DPA signed."
+    assert updated["raw_payload_retention_days"] == 30
+    assert updated["retention_notes"] == "Shorter QA retention after legal approval."
+
+
+def test_admin_can_prune_retained_raw_payloads() -> None:
+    now = _now()
+    raw = memory_ingestion_admin_store._raw_listings["demo-raw-1"]
+    memory_ingestion_admin_store._raw_listings["demo-raw-1"] = raw.model_copy(
+        update={"fetched_at": now - timedelta(days=120)}
+    )
+
+    dry_run_response = client.post(
+        "/api/v1/admin/ingestion/sources/prune-retained-raw-payloads",
+        headers=ADMIN_HEADERS,
+        params={"dry_run": "true", "source_name": "Demo Partner"},
+    )
+    apply_response = client.post(
+        "/api/v1/admin/ingestion/sources/prune-retained-raw-payloads",
+        headers=ADMIN_HEADERS,
+        params={"dry_run": "false", "source_name": "Demo Partner"},
+    )
+    raw_listing = client.get(
+        "/api/v1/admin/raw-listings/demo-raw-1",
+        headers=ADMIN_HEADERS,
+    ).json()
+
+    assert dry_run_response.status_code == 200
+    assert dry_run_response.json()["raw_payloads_pruned"] == 1
+    assert dry_run_response.json()["item_ids"] == ["demo-raw-1"]
+    assert apply_response.status_code == 200
+    assert apply_response.json()["dry_run"] is False
+    assert apply_response.json()["raw_payloads_pruned"] == 1
+    assert raw_listing["raw_payload"]["retention_pruned"] is True
+    assert raw_listing["raw_payload"]["source_name"] == "Demo Partner"
+
+
+def test_admin_can_create_and_process_data_deletion_request_for_private_draft() -> None:
+    owner_headers = {"X-Domarion-User-Id": "deletion-owner"}
+    created_draft = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=owner_headers,
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/deletion-demo",
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+            "retention_days": 7,
+        },
+    ).json()
+    draft_id = created_draft["draft_id"]
+
+    create_response = client.post(
+        "/api/v1/admin/data-deletion-requests",
+        headers=ADMIN_HEADERS,
+        json={
+            "target_type": "user_submitted_draft",
+            "target_id": draft_id,
+            "target_owner_id": "deletion-owner",
+            "source_name": USER_SUBMITTED_REFERENCE_SOURCE_NAME,
+            "reason": "User requested private reference deletion.",
+            "request_payload": {"channel": "support"},
+        },
+    )
+    deletion_request = create_response.json()
+    list_response = client.get(
+        "/api/v1/admin/data-deletion-requests",
+        headers=ADMIN_HEADERS,
+        params={"status": "open", "target_type": "user_submitted_draft"},
+    )
+    process_response = client.post(
+        f"/api/v1/admin/data-deletion-requests/{deletion_request['id']}/process",
+        headers=ADMIN_HEADERS,
+        json={
+            "status": "processed",
+            "action_summary": "Deleted private user-submitted draft from store.",
+        },
+    )
+    owner_get_deleted = client.get(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}",
+        headers=owner_headers,
+    )
+
+    assert create_response.status_code == 201
+    assert deletion_request["status"] == "open"
+    assert deletion_request["requested_by"] == "admin-test"
+    assert list_response.status_code == 200
+    assert list_response.json()[0]["id"] == deletion_request["id"]
+    assert process_response.status_code == 200
+    assert process_response.json()["status"] == "processed"
+    assert process_response.json()["processed_by"] == "admin-test"
+    assert process_response.json()["result_payload"]["target_deleted"] is True
+    assert owner_get_deleted.status_code == 404
 
 
 def test_admin_can_list_and_filter_open_data_roadmap() -> None:
