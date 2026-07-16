@@ -310,7 +310,7 @@
 - [ ] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
 - [ ] Добавить MPZP/Studium layer.
 - [ ] Добавить future roads, tram lines and bus routes layers.
-- [ ] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
+- [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 
 ## 12. Admin Panel
 
@@ -586,6 +586,7 @@
 - [x] Добавить listing clusters на карте и показывать price markers только на close zoom.
 - [x] Добавить price-per-m2 heatmap layer на карту.
 - [x] Добавить granular infrastructure layer toggles на карту.
+- [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

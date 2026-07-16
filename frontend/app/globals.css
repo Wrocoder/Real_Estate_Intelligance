@@ -533,6 +533,7 @@ button {
 }
 
 .map-summary,
+.map-radius-panel,
 .map-layer-controls,
 .map-legend,
 .map-state {
@@ -560,6 +561,35 @@ button {
   border-radius: 999px;
   background: #edf3f2;
   padding: 5px 8px;
+}
+
+.map-radius-panel {
+  left: 12px;
+  top: 58px;
+  display: grid;
+  gap: 6px;
+  width: min(260px, calc(100% - 24px));
+  padding: 9px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.map-radius-panel strong {
+  font-size: 12px;
+}
+
+.map-radius-row {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 2px 8px;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px solid rgba(216, 222, 231, 0.7);
+}
+
+.map-radius-row small {
+  grid-column: 2;
+  color: var(--muted);
 }
 
 .map-layer-controls {

@@ -17,6 +17,16 @@ type GeoJsonData = {
 type SourceWithData = {
   setData: (data: GeoJsonData) => void;
 };
+type RadiusBucket = {
+  radiusKm: number;
+  label: string;
+  listingCount: number;
+  plannedCount: number;
+  infrastructureCount: number;
+  medianPricePerM2: number | null;
+  averageInvestmentScore: number | null;
+  averageRiskScore: number | null;
+};
 type VisibleMapLayers = {
   listings: boolean;
   priceHeatmap: boolean;
@@ -41,6 +51,15 @@ const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
 const LISTING_MARKER_MIN_ZOOM = 12;
+const EARTH_RADIUS_KM = 6371;
+const RADIUS_BUCKETS = [
+  { radiusKm: 0.5, label: "500 м" },
+  { radiusKm: 1, label: "1 км" },
+  { radiusKm: 2, label: "2 км" },
+  { radiusKm: 5, label: "5 км" },
+  { radiusKm: 10, label: "10 км" },
+];
+const INTEGER_FORMATTER = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 0 });
 const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   listings: true,
   priceHeatmap: false,
@@ -105,6 +124,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const [visibleLayersState, setVisibleLayersState] = useState<VisibleMapLayers>(
     DEFAULT_VISIBLE_LAYERS,
   );
+  const [radiusCenter, setRadiusCenter] = useState<[number, number]>(WROCLAW_CENTER);
   const visibleLayers = normalizeVisibleLayers(visibleLayersState);
 
   useEffect(() => {
@@ -166,6 +186,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           collectionRef.current,
           visibleLayersRef.current,
         );
+        setRadiusCenter(getMapCenter(map));
       });
       map.on("zoomend", () => {
         syncVisibleMarkers(
@@ -175,6 +196,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           collectionRef.current,
           visibleLayersRef.current,
         );
+      });
+      map.on("moveend", () => {
+        setRadiusCenter(getMapCenter(map));
       });
     }
 
@@ -192,6 +216,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const listingCount = collection?.metadata.listing_count ?? 0;
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
+  const radiusBuckets = buildRadiusBuckets(collection, visibleLayers, radiusCenter);
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
     setVisibleLayersState((current) => ({
       ...normalizeVisibleLayers(current),
@@ -206,6 +231,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
         <span>{infrastructureCount} infrastructure</span>
+      </div>
+      <div className="map-radius-panel" aria-label="Анализ радиуса от центра карты">
+        <strong>Радиус от центра карты</strong>
+        {radiusBuckets.map((bucket) => (
+          <div className="map-radius-row" key={bucket.radiusKm}>
+            <span>{bucket.label}</span>
+            <span>
+              {bucket.listingCount} об. · {bucket.plannedCount} пл. ·{" "}
+              {bucket.infrastructureCount} инф.
+            </span>
+            <small>
+              {bucket.medianPricePerM2
+                ? `${INTEGER_FORMATTER.format(bucket.medianPricePerM2)} PLN/m2`
+                : "цена n/a"}{" "}
+              · I {formatScore(bucket.averageInvestmentScore)} / R{" "}
+              {formatScore(bucket.averageRiskScore)}
+            </small>
+          </div>
+        ))}
       </div>
       <div className="map-layer-controls" aria-label="Слои карты">
         <label>
@@ -522,6 +566,98 @@ function syncVisibleMarkers(
   visibleLayers: VisibleMapLayers,
 ) {
   syncMarkers(map, maplibre, markers, markerMapCollection(collection, visibleLayers));
+}
+
+function getMapCenter(map: MaplibreMap): [number, number] {
+  const center = map.getCenter();
+  return [center.lng, center.lat];
+}
+
+function buildRadiusBuckets(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+  center: [number, number],
+): RadiusBucket[] {
+  const features = visibleMapCollection(collection, visibleLayers)?.features ?? [];
+
+  return RADIUS_BUCKETS.map((bucket) => {
+    const nearbyFeatures = features.filter((feature) => {
+      const [lon, lat] = feature.geometry.coordinates;
+      return distanceKm(center, [lon, lat]) <= bucket.radiusKm;
+    });
+    const listingFeatures = nearbyFeatures.filter(
+      (feature) => feature.properties.feature_type === "listing",
+    );
+    const priceValues = listingFeatures
+      .map((feature) => numericProperty(feature, "price_per_m2"))
+      .filter((value): value is number => value !== null);
+    const investmentScores = listingFeatures
+      .map((feature) => numericProperty(feature, "investment_score"))
+      .filter((value): value is number => value !== null);
+    const riskScores = listingFeatures
+      .map((feature) => numericProperty(feature, "risk_score"))
+      .filter((value): value is number => value !== null);
+
+    return {
+      ...bucket,
+      listingCount: listingFeatures.length,
+      plannedCount: nearbyFeatures.filter(
+        (feature) => feature.properties.feature_type === "planned_investment",
+      ).length,
+      infrastructureCount: nearbyFeatures.filter(
+        (feature) =>
+          feature.properties.feature_type !== "listing" &&
+          feature.properties.feature_type !== "planned_investment",
+      ).length,
+      medianPricePerM2: median(priceValues),
+      averageInvestmentScore: averageRounded(investmentScores),
+      averageRiskScore: averageRounded(riskScores),
+    };
+  });
+}
+
+function distanceKm(from: [number, number], to: [number, number]) {
+  const [fromLon, fromLat] = from;
+  const [toLon, toLat] = to;
+  const deltaLat = degreesToRadians(toLat - fromLat);
+  const deltaLon = degreesToRadians(toLon - fromLon);
+  const lat1 = degreesToRadians(fromLat);
+  const lat2 = degreesToRadians(toLat);
+  const haversine =
+    Math.sin(deltaLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+function degreesToRadians(value: number) {
+  return (value * Math.PI) / 180;
+}
+
+function numericProperty(feature: MapFeature, key: string) {
+  const value = feature.properties[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const numericValue = Number(value);
+    if (Number.isFinite(numericValue)) return numericValue;
+  }
+  return null;
+}
+
+function median(values: number[]) {
+  if (values.length === 0) return null;
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sortedValues.length / 2);
+  if (sortedValues.length % 2 === 1) return Math.round(sortedValues[middle]);
+  return Math.round((sortedValues[middle - 1] + sortedValues[middle]) / 2);
+}
+
+function averageRounded(values: number[]) {
+  if (values.length === 0) return null;
+  return Math.round(values.reduce((sum, value) => sum + value, 0) / values.length);
+}
+
+function formatScore(value: number | null) {
+  return value === null ? "-" : INTEGER_FORMATTER.format(value);
 }
 
 function visibleMapCollection(
