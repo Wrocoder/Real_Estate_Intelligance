@@ -33,6 +33,7 @@ const WROCLAW_CENTER: [number, number] = [17.0385, 51.1079];
 const LISTINGS_SOURCE_ID = "domarion-listings";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
+const LISTING_MARKER_MIN_ZOOM = 12;
 const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   listings: true,
   planned: true,
@@ -126,6 +127,15 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           visibleLayersRef.current,
         );
       });
+      map.on("zoomend", () => {
+        syncVisibleMarkers(
+          map,
+          maplibre,
+          markersRef.current,
+          collectionRef.current,
+          visibleLayersRef.current,
+        );
+      });
     }
 
     void initializeMap();
@@ -205,6 +215,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>
           <i className="legend-dot infrastructure" /> инфраструктура
         </span>
+        <span>
+          <i className="legend-dot cluster" /> cluster
+        </span>
       </div>
       {(isLoading || error) && (
         <div className={error ? "map-state error" : "map-state"}>
@@ -220,6 +233,9 @@ function ensureMapLayers(map: MaplibreMap) {
     map.addSource(LISTINGS_SOURCE_ID, {
       type: "geojson",
       data: EMPTY_COLLECTION,
+      cluster: true,
+      clusterMaxZoom: LISTING_MARKER_MIN_ZOOM,
+      clusterRadius: 48,
     });
   }
 
@@ -231,10 +247,35 @@ function ensureMapLayers(map: MaplibreMap) {
   }
 
   if (!map.getLayer("listing-growth-halo")) {
+    if (!map.getLayer("listing-clusters")) {
+      map.addLayer({
+        id: "listing-clusters",
+        type: "circle",
+        source: LISTINGS_SOURCE_ID,
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": "#0f766e",
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            18,
+            10,
+            24,
+            25,
+            32,
+          ],
+          "circle-opacity": 0.84,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+        },
+      });
+    }
+
     map.addLayer({
       id: "listing-growth-halo",
       type: "circle",
       source: LISTINGS_SOURCE_ID,
+      filter: ["!", ["has", "point_count"]],
       paint: {
         "circle-color": "#0f766e",
         "circle-radius": [
@@ -264,7 +305,7 @@ function ensureMapLayers(map: MaplibreMap) {
       id: "listing-risk-halo",
       type: "circle",
       source: LISTINGS_SOURCE_ID,
-      filter: [">=", ["get", "risk_score"], 35],
+      filter: ["all", ["!", ["has", "point_count"]], [">=", ["get", "risk_score"], 35]],
       paint: {
         "circle-color": "#b42318",
         "circle-radius": [
@@ -332,6 +373,16 @@ function syncMapData(
   fitToCollection(map, maplibre, visibleCollection);
 }
 
+function syncVisibleMarkers(
+  map: MaplibreMap,
+  maplibre: MaplibreModule,
+  markers: MaplibreMarker[],
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+) {
+  syncMarkers(map, maplibre, markers, visibleMapCollection(collection, visibleLayers));
+}
+
 function visibleMapCollection(
   collection: MapFeatureCollection | null,
   visibleLayers: VisibleMapLayers,
@@ -375,6 +426,10 @@ function syncMarkers(
   if (!collection) return;
 
   collection.features.forEach((feature) => {
+    if (feature.properties.feature_type === "listing" && map.getZoom() < LISTING_MARKER_MIN_ZOOM) {
+      return;
+    }
+
     const [lon, lat] = feature.geometry.coordinates;
     const element = markerElement(feature, map, maplibre);
 

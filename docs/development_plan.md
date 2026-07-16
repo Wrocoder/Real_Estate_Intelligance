@@ -294,7 +294,7 @@
 
 - [x] Подключить MapLibre.
 - [x] Отобразить listings на карте.
-- [ ] Добавить clusters.
+- [x] Добавить clusters для listing layer на карте.
 - [x] Добавить infrastructure layers.
 - [x] Добавить planned investments layer.
 - [x] Добавить sample open-data слой Wrocław planned transport investments.
@@ -582,6 +582,7 @@
 - [x] Добавить infrastructure point layers на карту: stops/routes labels, schools, kindergartens, amenities and industrial zones.
 - [x] Добавить advanced investor alert filters: below fair price, negotiation, liquidity, rental potential, price reductions and fresh listings.
 - [x] Добавить frontend layer toggles для карты: listings, planned investments и infrastructure.
+- [x] Добавить listing clusters на карте и показывать price markers только на close zoom.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
