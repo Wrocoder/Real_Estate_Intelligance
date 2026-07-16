@@ -137,6 +137,16 @@ python scripts\smoke_deployment.py
 | `DEMO_USER_ID` | fallback user для MVP auth | `demo-user` |
 | `DEMO_USER_EMAIL` | fallback email для MVP auth | `demo@domarion.local` |
 
+## Structured logging
+
+Backend пишет request logs в JSON через logger `domarion.request`. Каждая запись содержит
+`event`, `service`, `environment`, `request_id`, `method`, `path`, `query`, `status_code`,
+`duration_ms`, `client_host` и `user_agent`.
+
+Входящий `X-Request-ID` сохраняется, возвращается в response header и попадает в log payload.
+Если header не передан, API генерирует новый request id. Уровень `domarion.*` логов управляется
+переменной `LOG_LEVEL`.
+
 Минимум для frontend build:
 
 | Переменная | Назначение |

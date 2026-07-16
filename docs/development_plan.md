@@ -381,7 +381,7 @@
 - [x] Добавить optional repository integration tests с Postgres.
 - [x] Добавить contract tests для API.
 - [ ] Добавить coverage report.
-- [ ] Добавить structured logging.
+- [x] Добавить structured logging.
 - [ ] Добавить error tracking.
 - [ ] Добавить performance smoke tests.
 - [ ] Добавить data quality acceptance tests для geocoding, dedup и source freshness.
@@ -523,6 +523,7 @@
 - [x] Commit 78: normalized developer metadata for listings and private drafts.
 - [x] Commit 79: developer aliases for brand, legal entity, SPV and parent-company matching.
 - [x] Commit 80: developer registry, UOKiK, directory and partner-inspection evidence ingestion.
+- [x] Commit 81: structured API request logging.
 
 ## Current Sprint
 
