@@ -383,11 +383,11 @@
 - [x] Добавить coverage report.
 - [x] Добавить structured logging.
 - [x] Добавить error tracking.
-- [ ] Добавить performance smoke tests.
+- [x] Добавить performance smoke tests.
 - [ ] Добавить data quality acceptance tests для geocoding, dedup и source freshness.
 - [ ] Добавить contract tests для paid artifacts и report metadata.
 - [ ] Добавить frontend smoke tests для search, map, reports, admin и payments.
-- [ ] Добавить load/performance smoke для listings search и map features.
+- [x] Добавить load/performance smoke для listings search и map features.
 
 ## 16. Deployment
 
@@ -526,6 +526,7 @@
 - [x] Commit 81: structured API request logging.
 - [x] Commit 82: backend coverage report in CI.
 - [x] Commit 83: privacy-safe optional Sentry error tracking.
+- [x] Commit 84: performance smoke tests for search and map APIs.
 
 ## Current Sprint
 

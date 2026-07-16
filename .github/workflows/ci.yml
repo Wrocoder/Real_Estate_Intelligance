@@ -44,6 +44,9 @@ jobs:
           name: backend-coverage-xml
           path: coverage.xml
 
+      - name: Performance smoke
+        run: python scripts/performance_smoke.py --repeat 3
+
       - name: Validate Alembic migrations
         env:
           DATABASE_URL: postgresql+psycopg://domarion:domarion@localhost:5432/domarion

@@ -80,6 +80,12 @@ Coverage report для backend:
 .\.venv\Scripts\python.exe -m pytest --cov=domarion --cov-report=term-missing --cov-report=xml
 ```
 
+Performance smoke для ключевых API:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\performance_smoke.py --repeat 3
+```
+
 Если установлен `make`, основные dev-команды доступны через единый интерфейс:
 
 ```powershell
@@ -255,6 +261,7 @@ Staging-like запуск:
 ```powershell
 docker compose -f compose.staging.yaml up --build
 python scripts\smoke_deployment.py
+python scripts\performance_smoke.py --base-url http://127.0.0.1:8000 --repeat 3
 ```
 
 ## Импорт партнерского CSV

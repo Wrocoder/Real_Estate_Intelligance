@@ -9,7 +9,8 @@ GitHub Actions workflow: `.github/workflows/ci.yml`.
 
 Jobs:
 
-- `Backend`: Python 3.12, `ruff`, `pytest` с coverage report, offline-проверка Alembic migrations.
+- `Backend`: Python 3.12, `ruff`, `pytest` с coverage report, performance smoke,
+  offline-проверка Alembic migrations.
 - `Frontend`: Node 22, `npm ci`, `lint`, `typecheck`, `npm audit --audit-level=moderate`, `next build`.
 - `Docker Build`: сборка backend image и frontend image без публикации registry.
 
@@ -18,6 +19,7 @@ Jobs:
 ```powershell
 .\.venv\Scripts\python.exe -m ruff check .
 .\.venv\Scripts\python.exe -m pytest --cov=domarion --cov-report=term-missing --cov-report=xml
+.\.venv\Scripts\python.exe scripts\performance_smoke.py --repeat 3
 .\.venv\Scripts\python.exe -m alembic upgrade head --sql
 
 cd frontend
@@ -73,6 +75,7 @@ Smoke check:
 
 ```powershell
 python scripts\smoke_deployment.py
+python scripts\performance_smoke.py --base-url http://127.0.0.1:8000 --repeat 3
 ```
 
 PostgreSQL/PostGIS verification без frontend build:
