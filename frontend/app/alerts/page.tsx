@@ -28,6 +28,18 @@ const RENOVATION_STATE_OPTIONS = [
   { value: "needs_refresh", label: "Требует освежения" },
   { value: "needs_renovation", label: "Требует ремонта" },
 ];
+const PARKING_TYPE_OPTIONS = [
+  { value: "underground", label: "Подземный" },
+  { value: "garage", label: "Гараж" },
+  { value: "surface", label: "Наземный" },
+  { value: "street", label: "Уличный" },
+];
+const HEATING_TYPE_OPTIONS = [
+  { value: "municipal", label: "Городское" },
+  { value: "gas", label: "Газовое" },
+  { value: "electric", label: "Электрическое" },
+  { value: "heat_pump", label: "Heat pump" },
+];
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -51,6 +63,12 @@ export default function AlertsPage() {
     district: "Fabryczna",
     buildingType: "",
     renovationState: "",
+    hasBalcony: false,
+    hasTerrace: false,
+    hasGarden: false,
+    hasElevator: false,
+    parkingType: "",
+    heatingType: "",
     maxPrice: "700000",
     minFloor: "",
     maxFloor: "",
@@ -100,6 +118,12 @@ export default function AlertsPage() {
         district: form.district || null,
         building_type: form.buildingType || null,
         renovation_state: form.renovationState || null,
+        has_balcony: form.hasBalcony || null,
+        has_terrace: form.hasTerrace || null,
+        has_garden: form.hasGarden || null,
+        has_elevator: form.hasElevator || null,
+        parking_type: form.parkingType || null,
+        heating_type: form.heatingType || null,
         max_price: form.maxPrice ? Number(form.maxPrice) : null,
         min_floor: form.minFloor ? Number(form.minFloor) : null,
         max_floor: form.maxFloor ? Number(form.maxFloor) : null,
@@ -301,6 +325,68 @@ export default function AlertsPage() {
             >
               <option value="">Любое</option>
               {RENOVATION_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={form.hasBalcony}
+              onChange={(event) => setForm({ ...form, hasBalcony: event.target.checked })}
+            />
+            <span>Балкон</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={form.hasTerrace}
+              onChange={(event) => setForm({ ...form, hasTerrace: event.target.checked })}
+            />
+            <span>Терраса</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={form.hasGarden}
+              onChange={(event) => setForm({ ...form, hasGarden: event.target.checked })}
+            />
+            <span>Сад</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={form.hasElevator}
+              onChange={(event) => setForm({ ...form, hasElevator: event.target.checked })}
+            />
+            <span>Лифт</span>
+          </label>
+          <label className="field">
+            <span>Parking</span>
+            <select
+              className="input"
+              value={form.parkingType}
+              onChange={(event) => setForm({ ...form, parkingType: event.target.value })}
+            >
+              <option value="">Любой</option>
+              {PARKING_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Отопление</span>
+            <select
+              className="input"
+              value={form.heatingType}
+              onChange={(event) => setForm({ ...form, heatingType: event.target.value })}
+            >
+              <option value="">Любое</option>
+              {HEATING_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>

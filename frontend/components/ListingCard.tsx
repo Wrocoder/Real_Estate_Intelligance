@@ -24,7 +24,16 @@ export function ListingCard({
 }: Props) {
   const { listing, scores } = analysis;
   const verdictTone = decisionTone(scores);
-  const attributeLabels = [listing.building_type, listing.renovation_state]
+  const attributeLabels = [
+    listing.building_type,
+    listing.renovation_state,
+    listing.has_balcony ? "balcony" : "",
+    listing.has_terrace ? "terrace" : "",
+    listing.has_garden ? "garden" : "",
+    listing.has_elevator ? "elevator" : "",
+    listing.parking_type ? `parking: ${listing.parking_type}` : "",
+    listing.heating_type ? `heating: ${listing.heating_type}` : "",
+  ]
     .map(formatAttribute)
     .filter(Boolean);
 

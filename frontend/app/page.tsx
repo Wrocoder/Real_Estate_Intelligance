@@ -28,6 +28,12 @@ type Filters = {
   district: string;
   buildingType: string;
   renovationState: string;
+  hasBalcony: boolean;
+  hasTerrace: boolean;
+  hasGarden: boolean;
+  hasElevator: boolean;
+  parkingType: string;
+  heatingType: string;
   rooms: string;
   maxPrice: string;
   minFloor: string;
@@ -72,6 +78,18 @@ const RENOVATION_STATE_OPTIONS = [
   { value: "needs_refresh", label: "Требует освежения" },
   { value: "needs_renovation", label: "Требует ремонта" },
 ];
+const PARKING_TYPE_OPTIONS = [
+  { value: "underground", label: "Подземный" },
+  { value: "garage", label: "Гараж" },
+  { value: "surface", label: "Наземный" },
+  { value: "street", label: "Уличный" },
+];
+const HEATING_TYPE_OPTIONS = [
+  { value: "municipal", label: "Городское" },
+  { value: "gas", label: "Газовое" },
+  { value: "electric", label: "Электрическое" },
+  { value: "heat_pump", label: "Heat pump" },
+];
 
 const defaultFilters: Filters = {
   mode: "standard",
@@ -81,6 +99,12 @@ const defaultFilters: Filters = {
   district: "",
   buildingType: "",
   renovationState: "",
+  hasBalcony: false,
+  hasTerrace: false,
+  hasGarden: false,
+  hasElevator: false,
+  parkingType: "",
+  heatingType: "",
   rooms: "",
   maxPrice: "",
   minFloor: "",
@@ -199,6 +223,12 @@ export default function ExplorerPage() {
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
       building_type: filters.buildingType || undefined,
       renovation_state: filters.renovationState || undefined,
+      has_balcony: filters.hasBalcony || undefined,
+      has_terrace: filters.hasTerrace || undefined,
+      has_garden: filters.hasGarden || undefined,
+      has_elevator: filters.hasElevator || undefined,
+      parking_type: filters.parkingType || undefined,
+      heating_type: filters.heatingType || undefined,
       min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
       max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
       max_building_floors: filters.maxBuildingFloors
@@ -331,6 +361,12 @@ export default function ExplorerPage() {
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
         building_type: filters.buildingType || null,
         renovation_state: filters.renovationState || null,
+        has_balcony: filters.hasBalcony || null,
+        has_terrace: filters.hasTerrace || null,
+        has_garden: filters.hasGarden || null,
+        has_elevator: filters.hasElevator || null,
+        parking_type: filters.parkingType || null,
+        heating_type: filters.heatingType || null,
         min_floor: filters.minFloor ? Number(filters.minFloor) : null,
         max_floor: filters.maxFloor ? Number(filters.maxFloor) : null,
         max_building_floors: filters.maxBuildingFloors
@@ -532,6 +568,68 @@ export default function ExplorerPage() {
             >
               <option value="">Любое</option>
               {RENOVATION_STATE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.hasBalcony}
+              onChange={(event) => updateFilters({ hasBalcony: event.target.checked })}
+            />
+            <span>Балкон</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.hasTerrace}
+              onChange={(event) => updateFilters({ hasTerrace: event.target.checked })}
+            />
+            <span>Терраса</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.hasGarden}
+              onChange={(event) => updateFilters({ hasGarden: event.target.checked })}
+            />
+            <span>Сад</span>
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={filters.hasElevator}
+              onChange={(event) => updateFilters({ hasElevator: event.target.checked })}
+            />
+            <span>Лифт</span>
+          </label>
+          <label className="field">
+            <span>Parking</span>
+            <select
+              className="select"
+              value={filters.parkingType}
+              onChange={(event) => updateFilters({ parkingType: event.target.value })}
+            >
+              <option value="">Любой</option>
+              {PARKING_TYPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>Отопление</span>
+            <select
+              className="select"
+              value={filters.heatingType}
+              onChange={(event) => updateFilters({ heatingType: event.target.value })}
+            >
+              <option value="">Любое</option>
+              {HEATING_TYPE_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -951,6 +1049,12 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
     building_type: filters.buildingType || undefined,
     renovation_state: filters.renovationState || undefined,
+    has_balcony: filters.hasBalcony || undefined,
+    has_terrace: filters.hasTerrace || undefined,
+    has_garden: filters.hasGarden || undefined,
+    has_elevator: filters.hasElevator || undefined,
+    parking_type: filters.parkingType || undefined,
+    heating_type: filters.heatingType || undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
     max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
     max_building_floors: filters.maxBuildingFloors
@@ -1017,6 +1121,12 @@ function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
     building_type: filters.buildingType || undefined,
     renovation_state: filters.renovationState || undefined,
+    has_balcony: filters.hasBalcony || undefined,
+    has_terrace: filters.hasTerrace || undefined,
+    has_garden: filters.hasGarden || undefined,
+    has_elevator: filters.hasElevator || undefined,
+    parking_type: filters.parkingType || undefined,
+    heating_type: filters.heatingType || undefined,
     min_floor: filters.minFloor ? Number(filters.minFloor) : undefined,
     max_floor: filters.maxFloor ? Number(filters.maxFloor) : undefined,
     max_building_floors: filters.maxBuildingFloors

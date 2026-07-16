@@ -676,6 +676,12 @@ def _update_property_from_listing(property_: Property, listing: Listing) -> None
     property_.market_type = listing.market_type
     property_.building_type = listing.building_type
     property_.renovation_state = listing.renovation_state
+    property_.has_balcony = listing.has_balcony
+    property_.has_terrace = listing.has_terrace
+    property_.has_garden = listing.has_garden
+    property_.has_elevator = listing.has_elevator
+    property_.parking_type = listing.parking_type
+    property_.heating_type = listing.heating_type
     property_.lat = Decimal(str(listing.lat))
     property_.lon = Decimal(str(listing.lon))
     property_.area_m2 = Decimal(str(listing.area_m2))
@@ -704,6 +710,12 @@ def _listing_dedup_payload(listing: Listing) -> dict[str, object]:
         "market_type": listing.market_type,
         "building_type": listing.building_type,
         "renovation_state": listing.renovation_state,
+        "has_balcony": listing.has_balcony,
+        "has_terrace": listing.has_terrace,
+        "has_garden": listing.has_garden,
+        "has_elevator": listing.has_elevator,
+        "parking_type": listing.parking_type,
+        "heating_type": listing.heating_type,
         "rooms": listing.rooms,
         "area_m2": listing.area_m2,
         "lat": listing.lat,
@@ -723,6 +735,12 @@ def _property_dedup_payload(property_: Property) -> dict[str, object]:
         "market_type": property_.market_type,
         "building_type": getattr(property_, "building_type", None),
         "renovation_state": getattr(property_, "renovation_state", None),
+        "has_balcony": getattr(property_, "has_balcony", None),
+        "has_terrace": getattr(property_, "has_terrace", None),
+        "has_garden": getattr(property_, "has_garden", None),
+        "has_elevator": getattr(property_, "has_elevator", None),
+        "parking_type": getattr(property_, "parking_type", None),
+        "heating_type": getattr(property_, "heating_type", None),
         "rooms": property_.rooms,
         "area_m2": _optional_float_value(property_.area_m2),
         "lat": _optional_float_value(property_.lat),

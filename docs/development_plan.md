@@ -104,7 +104,7 @@
 - [x] Расширить фильтры: voivodeship, building type, renovation state.
 - [x] Добавить gmina/municipality filters в listings, hidden gems, map и saved-search alerts.
 - [x] Добавить floor/building floors/building year range filters в listings, hidden gems, map и saved-search alerts.
-- [ ] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
+- [x] Добавить lifestyle-фильтры: balcony, terrace, garden, elevator, parking, heating.
 - [x] Добавить proximity-фильтры: distance to center, stop, school, major road, industrial zone.
 - [x] Добавить фильтры по rental potential, liquidity и data quality для investor/realtor workflows.
 - [x] Добавить API для поиска объектов ниже рынка и hidden gems.
@@ -509,6 +509,7 @@
 - [x] Commit 70: lightweight market and price history charts.
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
+- [x] Commit 73: lifestyle search filters.
 
 ## Current Sprint
 
@@ -543,6 +544,7 @@
 - [x] Проверить миграции на живой PostGIS БД после стабилизации Docker Desktop.
 - [x] Добавить gmina/municipality filter в search API, hidden gems, map и alerts UI.
 - [x] Добавить voivodeship/building type/renovation state filters с ingestion и migration.
+- [x] Добавить lifestyle filters: balcony, terrace, garden, elevator, parking, heating.
 - [x] Добавить geometry columns и GiST spatial indexes для `properties` и `planned_investments`.
 - [x] Добавить PostGIS distance calculations для listing/map radius queries и private draft scoring.
 - [x] Добавить `listing_events` timeline из snapshots для price/parameter/status changes.

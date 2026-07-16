@@ -1,6 +1,7 @@
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import Alert, AlertFilters, AlertPreview, ListingAnalysis
 from domarion.services.building_filters import matches_building_filters
+from domarion.services.lifestyle_filters import matches_lifestyle_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -45,6 +46,19 @@ def find_alert_matches(
             max_building_floors=filters.max_building_floors,
             min_building_year=filters.min_building_year,
             max_building_year=filters.max_building_year,
+        )
+    ]
+    listings = [
+        listing
+        for listing in listings
+        if matches_lifestyle_filters(
+            listing,
+            has_balcony=filters.has_balcony,
+            has_terrace=filters.has_terrace,
+            has_garden=filters.has_garden,
+            has_elevator=filters.has_elevator,
+            parking_type=filters.parking_type,
+            heating_type=filters.heating_type,
         )
     ]
 

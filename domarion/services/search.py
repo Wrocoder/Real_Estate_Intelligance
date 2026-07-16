@@ -10,6 +10,7 @@ from domarion.schemas import (
 )
 from domarion.services.building_filters import matches_building_filters
 from domarion.services.developer_filters import matches_developer_reputation_filters
+from domarion.services.lifestyle_filters import matches_lifestyle_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -36,6 +37,12 @@ def search_listing_analyses(
     max_area_m2: float | None = None,
     building_type: str | None = None,
     renovation_state: str | None = None,
+    has_balcony: bool | None = None,
+    has_terrace: bool | None = None,
+    has_garden: bool | None = None,
+    has_elevator: bool | None = None,
+    parking_type: str | None = None,
+    heating_type: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -95,6 +102,12 @@ def search_listing_analyses(
             max_area_m2=max_area_m2,
             building_type=building_type,
             renovation_state=renovation_state,
+            has_balcony=has_balcony,
+            has_terrace=has_terrace,
+            has_garden=has_garden,
+            has_elevator=has_elevator,
+            parking_type=parking_type,
+            heating_type=heating_type,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
@@ -175,6 +188,12 @@ def search_listing_analyses(
             "max_area_m2": max_area_m2,
             "building_type": building_type,
             "renovation_state": renovation_state,
+            "has_balcony": has_balcony,
+            "has_terrace": has_terrace,
+            "has_garden": has_garden,
+            "has_elevator": has_elevator,
+            "parking_type": parking_type,
+            "heating_type": heating_type,
             "min_floor": min_floor,
             "max_floor": max_floor,
             "max_building_floors": max_building_floors,
@@ -216,6 +235,12 @@ def _matches_listing_filters(
     max_area_m2: float | None,
     building_type: str | None,
     renovation_state: str | None,
+    has_balcony: bool | None,
+    has_terrace: bool | None,
+    has_garden: bool | None,
+    has_elevator: bool | None,
+    parking_type: str | None,
+    heating_type: str | None,
     min_floor: int | None,
     max_floor: int | None,
     max_building_floors: int | None,
@@ -253,6 +278,16 @@ def _matches_listing_filters(
         max_building_floors=max_building_floors,
         min_building_year=min_building_year,
         max_building_year=max_building_year,
+    ):
+        return False
+    if not matches_lifestyle_filters(
+        listing,
+        has_balcony=has_balcony,
+        has_terrace=has_terrace,
+        has_garden=has_garden,
+        has_elevator=has_elevator,
+        parking_type=parking_type,
+        heating_type=heating_type,
     ):
         return False
     if max_days_on_market is not None and listing.days_on_market > max_days_on_market:

@@ -192,6 +192,9 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       {_metric("Комнаты", str(listing.rooms))}
       {_metric("Тип здания", _attribute_label(listing.building_type))}
       {_metric("Состояние", _attribute_label(listing.renovation_state))}
+      {_metric("Удобства", _lifestyle_label(listing))}
+      {_metric("Parking", _attribute_label(listing.parking_type))}
+      {_metric("Отопление", _attribute_label(listing.heating_type))}
       {_metric("Дней на рынке", str(listing.days_on_market))}
       {_metric("Снижений цены", str(listing.price_reductions))}
       {_metric("Fair price mid", _money(scores.fair_price_mid))}
@@ -448,6 +451,16 @@ def _attribute_label(value: str | None) -> str:
     if not value:
         return ""
     return value.replace("_", " ")
+
+
+def _lifestyle_label(listing) -> str:
+    items = [
+        "balcony" if listing.has_balcony else "",
+        "terrace" if listing.has_terrace else "",
+        "garden" if listing.has_garden else "",
+        "elevator" if listing.has_elevator else "",
+    ]
+    return ", ".join(item for item in items if item)
 
 
 def _render_branding(branding) -> str:

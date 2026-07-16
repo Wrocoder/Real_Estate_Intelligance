@@ -76,6 +76,32 @@ def test_listings_support_building_attribute_filters() -> None:
     assert listing["renovation_state"] == "ready_to_move_in"
 
 
+def test_listings_support_lifestyle_filters() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={
+            "city": "Wrocław",
+            "has_balcony": True,
+            "has_elevator": True,
+            "parking_type": "underground",
+            "heating_type": "municipal",
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["has_balcony"] is True
+    assert payload["filters"]["has_elevator"] is True
+    assert payload["filters"]["parking_type"] == "underground"
+    assert payload["filters"]["heating_type"] == "municipal"
+    assert payload["total"] == 1
+    listing = payload["items"][0]["listing"]
+    assert listing["id"] == "wr-001"
+    assert listing["has_balcony"] is True
+    assert listing["has_elevator"] is True
+
+
 def test_listings_support_pagination_sorting_and_score_filters() -> None:
     response = client.get(
         "/api/v1/listings",
@@ -191,6 +217,34 @@ def test_hidden_gems_support_building_attribute_filters() -> None:
     assert payload["filters"]["renovation_state"] == "developer_standard"
     assert payload["total"] == 1
     assert payload["items"][0]["analysis"]["listing"]["id"] == "wr-002"
+
+
+def test_hidden_gems_support_lifestyle_filters() -> None:
+    response = client.get(
+        "/api/v1/listings/hidden-gems",
+        params={
+            "city": "Wrocław",
+            "has_terrace": True,
+            "has_garden": True,
+            "parking_type": "surface",
+            "heating_type": "gas",
+            "max_price_delta_to_fair_mid_pct": 50,
+            "min_investment_score": 0,
+            "max_risk_score": 100,
+            "min_liquidity_score": 0,
+            "min_rental_potential_score": 0,
+            "min_data_quality_score": 0,
+            "page_size": 20,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["filters"]["has_terrace"] is True
+    assert payload["filters"]["has_garden"] is True
+    assert payload["filters"]["parking_type"] == "surface"
+    assert payload["total"] == 1
+    assert payload["items"][0]["analysis"]["listing"]["id"] == "wr-003"
 
 
 def test_listings_support_proximity_filters() -> None:

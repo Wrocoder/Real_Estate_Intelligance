@@ -175,6 +175,35 @@ def test_alert_preview_supports_building_attribute_filters() -> None:
     assert preview["applied_filters"]["building_type"] == "apartment_block"
 
 
+def test_alert_preview_supports_lifestyle_filters() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/alerts?owner_id=buyer-1",
+        json={
+            "name": "Balcony and underground parking",
+            "filters": {
+                "city": "Wrocław",
+                "has_balcony": True,
+                "has_elevator": True,
+                "parking_type": "underground",
+                "heating_type": "municipal",
+            },
+        },
+    )
+    payload = created.json()
+
+    assert created.status_code == 201
+    assert payload["filters"]["has_balcony"] is True
+    assert payload["filters"]["parking_type"] == "underground"
+
+    preview = client.get(f"/api/v1/alerts/{payload['id']}/preview?owner_id=buyer-1").json()
+
+    assert preview["total_matches"] == 1
+    assert preview["matches"][0]["listing"]["id"] == "wr-001"
+    assert preview["applied_filters"]["has_elevator"] is True
+
+
 def test_alert_owner_scope() -> None:
     memory_user_store.clear()
 

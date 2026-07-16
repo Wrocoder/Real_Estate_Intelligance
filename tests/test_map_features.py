@@ -140,6 +140,31 @@ def test_map_features_supports_building_attribute_filters() -> None:
     assert listing_features[0]["properties"]["renovation_state"] == "needs_refresh"
 
 
+def test_map_features_supports_lifestyle_filters() -> None:
+    response = client.get(
+        "/api/v1/map/features",
+        params={
+            "city": "Wrocław",
+            "has_elevator": True,
+            "parking_type": "garage",
+            "heating_type": "heat_pump",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["filters"]["has_elevator"] is True
+    assert payload["metadata"]["filters"]["parking_type"] == "garage"
+    listing_features = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "listing"
+    ]
+    assert {feature["properties"]["listing_id"] for feature in listing_features} == {"wr-002"}
+    assert listing_features[0]["properties"]["has_elevator"] is True
+    assert listing_features[0]["properties"]["heating_type"] == "heat_pump"
+
+
 def test_map_features_supports_radius_and_score_filters() -> None:
     response = client.get(
         "/api/v1/map/features",

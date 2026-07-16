@@ -219,6 +219,12 @@ class Listing(BaseModel):
     market_type: MarketType
     building_type: str | None = None
     renovation_state: str | None = None
+    has_balcony: bool | None = None
+    has_terrace: bool | None = None
+    has_garden: bool | None = None
+    has_elevator: bool | None = None
+    parking_type: str | None = None
+    heating_type: str | None = None
     price: int
     currency: str = "PLN"
     area_m2: float
@@ -2387,6 +2393,12 @@ class AlertFilters(BaseModel):
     municipality: str | None = None
     building_type: str | None = None
     renovation_state: str | None = None
+    has_balcony: bool | None = None
+    has_terrace: bool | None = None
+    has_garden: bool | None = None
+    has_elevator: bool | None = None
+    parking_type: str | None = None
+    heating_type: str | None = None
     query: str | None = Field(default=None, min_length=1, max_length=160)
     rooms: int | None = Field(default=None, ge=1, le=10)
     max_price: int | None = Field(default=None, gt=0)

@@ -294,6 +294,9 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
     attribute_bits = [
         _attribute_label(listing.building_type),
         _attribute_label(listing.renovation_state),
+        _lifestyle_label(listing),
+        f"parking: {_attribute_label(listing.parking_type)}" if listing.parking_type else "",
+        f"heating: {_attribute_label(listing.heating_type)}" if listing.heating_type else "",
     ]
     attribute_text = ", ".join(item for item in attribute_bits if item)
     items = [
@@ -382,6 +385,16 @@ def _attribute_label(value: str | None) -> str:
     if not value:
         return ""
     return value.replace("_", " ")
+
+
+def _lifestyle_label(listing) -> str:
+    items = [
+        "balcony" if listing.has_balcony else "",
+        "terrace" if listing.has_terrace else "",
+        "garden" if listing.has_garden else "",
+        "elevator" if listing.has_elevator else "",
+    ]
+    return ", ".join(item for item in items if item)
 
 
 def _money(value: int) -> str:

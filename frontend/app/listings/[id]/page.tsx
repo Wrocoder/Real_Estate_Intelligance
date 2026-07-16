@@ -24,6 +24,7 @@ import {
   type AIQuestionCode,
   type AIQuestionDescriptor,
   type DeveloperReputation,
+  type Listing,
   type ListingAnalysis,
   type NewsArticleListItem,
   type ReportAudience,
@@ -210,6 +211,22 @@ export default function ListingDetailPage() {
           <div className="metric">
             <span>Состояние</span>
             <strong>{formatAttribute(listing.renovation_state)}</strong>
+          </div>
+        ) : null}
+        <div className="metric">
+          <span>Удобства</span>
+          <strong>{lifestyleSummary(listing)}</strong>
+        </div>
+        {listing.parking_type ? (
+          <div className="metric">
+            <span>Parking</span>
+            <strong>{formatAttribute(listing.parking_type)}</strong>
+          </div>
+        ) : null}
+        {listing.heating_type ? (
+          <div className="metric">
+            <span>Отопление</span>
+            <strong>{formatAttribute(listing.heating_type)}</strong>
           </div>
         ) : null}
       </section>
@@ -482,6 +499,16 @@ function questionsForAudience(
 
 function formatAttribute(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function lifestyleSummary(listing: Listing) {
+  const items = [
+    listing.has_balcony ? "балкон" : "",
+    listing.has_terrace ? "терраса" : "",
+    listing.has_garden ? "сад" : "",
+    listing.has_elevator ? "лифт" : "",
+  ].filter(Boolean);
+  return items.length ? items.join(", ") : "нет подтвержденных данных";
 }
 
 function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {

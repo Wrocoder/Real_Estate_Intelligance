@@ -131,6 +131,12 @@ def normalize_partner_row(
         market_type=market_type,
         building_type=_optional_str(row, "building_type"),
         renovation_state=_optional_str(row, "renovation_state"),
+        has_balcony=_optional_bool_or_none(row, "has_balcony"),
+        has_terrace=_optional_bool_or_none(row, "has_terrace"),
+        has_garden=_optional_bool_or_none(row, "has_garden"),
+        has_elevator=_optional_bool_or_none(row, "has_elevator"),
+        parking_type=_optional_str(row, "parking_type"),
+        heating_type=_optional_str(row, "heating_type"),
         price=price,
         currency=_optional_str(row, "currency") or "PLN",
         area_m2=area_m2,
@@ -314,4 +320,11 @@ def _optional_bool(row: dict[str, str | None], key: str) -> bool:
     value = _optional_str(row, key)
     if value is None:
         return False
+    return value.lower() in {"1", "true", "yes", "y", "tak", "t"}
+
+
+def _optional_bool_or_none(row: dict[str, str | None], key: str) -> bool | None:
+    value = _optional_str(row, key)
+    if value is None:
+        return None
     return value.lower() in {"1", "true", "yes", "y", "tak", "t"}

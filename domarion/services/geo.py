@@ -5,6 +5,7 @@ from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import Listing, MapFeature, MapFeatureCollection, MapPointGeometry
 from domarion.schemas import PlannedInvestment as PlannedInvestmentSchema
 from domarion.services.building_filters import matches_building_filters
+from domarion.services.lifestyle_filters import matches_lifestyle_filters
 from domarion.services.scoring import build_listing_analysis
 
 BBox = tuple[float, float, float, float]
@@ -58,6 +59,12 @@ def build_map_feature_collection(
     min_area_m2: float | None = None,
     building_type: str | None = None,
     renovation_state: str | None = None,
+    has_balcony: bool | None = None,
+    has_terrace: bool | None = None,
+    has_garden: bool | None = None,
+    has_elevator: bool | None = None,
+    parking_type: str | None = None,
+    heating_type: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -123,6 +130,16 @@ def build_map_feature_collection(
             max_building_year=max_building_year,
         ):
             continue
+        if not matches_lifestyle_filters(
+            listing,
+            has_balcony=has_balcony,
+            has_terrace=has_terrace,
+            has_garden=has_garden,
+            has_elevator=has_elevator,
+            parking_type=parking_type,
+            heating_type=heating_type,
+        ):
+            continue
 
         try:
             analysis = build_listing_analysis(repository, listing)
@@ -184,6 +201,12 @@ def build_map_feature_collection(
                 "min_area_m2": min_area_m2,
                 "building_type": building_type,
                 "renovation_state": renovation_state,
+                "has_balcony": has_balcony,
+                "has_terrace": has_terrace,
+                "has_garden": has_garden,
+                "has_elevator": has_elevator,
+                "parking_type": parking_type,
+                "heating_type": heating_type,
                 "min_floor": min_floor,
                 "max_floor": max_floor,
                 "max_building_floors": max_building_floors,
@@ -277,6 +300,12 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
         "market_type": listing.market_type,
         "building_type": listing.building_type,
         "renovation_state": listing.renovation_state,
+        "has_balcony": listing.has_balcony,
+        "has_terrace": listing.has_terrace,
+        "has_garden": listing.has_garden,
+        "has_elevator": listing.has_elevator,
+        "parking_type": listing.parking_type,
+        "heating_type": listing.heating_type,
         "price": listing.price,
         "price_label": _compact_price(listing.price),
         "area_m2": listing.area_m2,

@@ -5,6 +5,7 @@ from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import HiddenGemItem, HiddenGemsResponse, ListingAnalysis, MarketType
 from domarion.services.building_filters import matches_building_filters
 from domarion.services.developer_filters import matches_developer_reputation_filters
+from domarion.services.lifestyle_filters import matches_lifestyle_filters
 from domarion.services.listing_text_search import listing_matches_query
 from domarion.services.scoring import build_listing_analysis
 
@@ -30,6 +31,12 @@ def find_hidden_gems(
     min_area_m2: float | None = None,
     building_type: str | None = None,
     renovation_state: str | None = None,
+    has_balcony: bool | None = None,
+    has_terrace: bool | None = None,
+    has_garden: bool | None = None,
+    has_elevator: bool | None = None,
+    parking_type: str | None = None,
+    heating_type: str | None = None,
     min_floor: int | None = None,
     max_floor: int | None = None,
     max_building_floors: int | None = None,
@@ -81,6 +88,16 @@ def find_hidden_gems(
             max_building_floors=max_building_floors,
             min_building_year=min_building_year,
             max_building_year=max_building_year,
+        ):
+            continue
+        if not matches_lifestyle_filters(
+            listing,
+            has_balcony=has_balcony,
+            has_terrace=has_terrace,
+            has_garden=has_garden,
+            has_elevator=has_elevator,
+            parking_type=parking_type,
+            heating_type=heating_type,
         ):
             continue
         if listing.data_quality_score < min_data_quality_score:
@@ -176,6 +193,12 @@ def find_hidden_gems(
             min_area_m2=min_area_m2,
             building_type=building_type,
             renovation_state=renovation_state,
+            has_balcony=has_balcony,
+            has_terrace=has_terrace,
+            has_garden=has_garden,
+            has_elevator=has_elevator,
+            parking_type=parking_type,
+            heating_type=heating_type,
             min_floor=min_floor,
             max_floor=max_floor,
             max_building_floors=max_building_floors,
