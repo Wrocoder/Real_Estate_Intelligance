@@ -81,6 +81,7 @@ def search_listing_analyses(
         city=city,
         district=district,
         municipality=municipality,
+        query=query,
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,

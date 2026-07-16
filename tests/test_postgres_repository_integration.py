@@ -72,6 +72,8 @@ def test_verify_postgres_staging_script() -> None:
     assert payload["checks"]["infrastructure_enrichment"]["wr_001_nearest_stop_m"] >= 0
     assert payload["checks"]["infrastructure_enrichment"]["wr_001_nearest_school_m"] >= 0
     assert payload["checks"]["infrastructure_enrichment"]["wr_001_parks_within_1km"] >= 0
+    assert payload["checks"]["full_text_search"]["query_ids"] == ["wr-001"]
+    assert payload["checks"]["full_text_search"]["index_count"] == 3
     assert (
         payload["checks"]["infrastructure"]["spatial"]["infrastructure_spatial_index_count"]
         == 5

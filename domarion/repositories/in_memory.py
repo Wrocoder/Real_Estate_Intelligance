@@ -34,6 +34,7 @@ from domarion.schemas import (
     TransportStopReference,
 )
 from domarion.services.listing_events import ListingEventInput, derive_listing_events
+from domarion.services.listing_text_search import listing_matches_query
 
 
 class InMemoryRealEstateRepository:
@@ -688,6 +689,7 @@ class InMemoryRealEstateRepository:
         city: str | None = None,
         district: str | None = None,
         municipality: str | None = None,
+        query: str | None = None,
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
@@ -715,6 +717,8 @@ class InMemoryRealEstateRepository:
             listings = [
                 item for item in listings if item.municipality.casefold() == municipality_key
             ]
+        if query:
+            listings = [item for item in listings if listing_matches_query(item, query)]
         if rooms:
             listings = [item for item in listings if item.rooms == rooms]
         if max_price:

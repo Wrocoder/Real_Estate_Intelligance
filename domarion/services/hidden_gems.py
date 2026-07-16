@@ -67,6 +67,7 @@ def find_hidden_gems(
         city=city,
         district=district,
         municipality=municipality,
+        query=query,
         rooms=rooms,
         max_price=max_price,
         min_area_m2=min_area_m2,

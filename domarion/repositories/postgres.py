@@ -46,7 +46,77 @@ from domarion.schemas import (
     TransportRouteReference,
     TransportStopReference,
 )
+from domarion.services.listing_text_search import normalize_search_tokens
 from domarion.services.price_history import listing_with_price_history_metrics
+
+_SEARCH_TRANSLATE_FROM = (
+    "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
+    "\u0104\u0106\u0118\u0141\u0143\u00d3\u015a\u0179\u017b"
+)
+_SEARCH_TRANSLATE_TO = "acelnoszzACELNOSZZ"
+
+_SNAPSHOT_SEARCH_TEXT_SQL = """
+coalesce(snap.title, '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'id', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'title', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'source_name', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'source_url', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'voivodeship', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'city', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'district', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'municipality', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'area_id', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'address', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'market_type', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'building_type', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'renovation_state', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'parking_type', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'heating_type', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'rooms', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'floor', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'building_floors', '') || ' ' ||
+coalesce(snap.normalized_payload ->> 'building_year', '')
+"""
+
+_PROPERTY_SEARCH_TEXT_SQL = """
+coalesce(p.canonical_address, '') || ' ' ||
+coalesce(p.area_id, '') || ' ' ||
+coalesce(p.voivodeship, '') || ' ' ||
+coalesce(p.city, '') || ' ' ||
+coalesce(p.district, '') || ' ' ||
+coalesce(p.municipality, '') || ' ' ||
+coalesce(p.market_type, '') || ' ' ||
+coalesce(p.building_type, '') || ' ' ||
+coalesce(p.renovation_state, '') || ' ' ||
+coalesce(p.parking_type, '') || ' ' ||
+coalesce(p.heating_type, '') || ' ' ||
+coalesce(p.rooms::text, '') || ' ' ||
+coalesce(p.floor::text, '') || ' ' ||
+coalesce(p.building_floors::text, '') || ' ' ||
+coalesce(p.building_year::text, '')
+"""
+
+
+def _search_vector_sql(text_sql: str) -> str:
+    return f"""
+    to_tsvector(
+        'simple',
+        translate(
+            lower({text_sql}),
+            '{_SEARCH_TRANSLATE_FROM}',
+            '{_SEARCH_TRANSLATE_TO}'
+        )
+    )
+    """
+
+
+def _search_query_sql() -> str:
+    return f"""
+    plainto_tsquery(
+        'simple',
+        translate(lower(:query), '{_SEARCH_TRANSLATE_FROM}', '{_SEARCH_TRANSLATE_TO}')
+    )
+    """
 
 
 class PostgresRealEstateRepository:
@@ -59,6 +129,7 @@ class PostgresRealEstateRepository:
         city: str | None = None,
         district: str | None = None,
         municipality: str | None = None,
+        query: str | None = None,
         rooms: int | None = None,
         max_price: int | None = None,
         min_area_m2: float | None = None,
@@ -68,21 +139,33 @@ class PostgresRealEstateRepository:
         radius_km: float | None = None,
     ) -> list[Listing]:
         self._validate_spatial_args(lat=lat, lon=lon, radius_km=radius_km)
-        spatial_listing_ids = None
+        candidate_listing_ids: set[str] | None = None
         if bbox is not None or radius_km is not None:
-            spatial_listing_ids = self._listing_ids_matching_spatial_window(
-                bbox=bbox,
-                lat=lat,
-                lon=lon,
-                radius_km=radius_km,
+            spatial_listing_ids = set(
+                self._listing_ids_matching_spatial_window(
+                    bbox=bbox,
+                    lat=lat,
+                    lon=lon,
+                    radius_km=radius_km,
+                )
             )
             if not spatial_listing_ids:
                 return []
+            candidate_listing_ids = spatial_listing_ids
 
-        listings = self._latest_listings()
-        if spatial_listing_ids is not None:
-            allowed_ids = set(spatial_listing_ids)
-            listings = [item for item in listings if item.id in allowed_ids]
+        if query:
+            text_listing_ids = set(self._listing_ids_matching_text_query(query))
+            if not text_listing_ids:
+                return []
+            candidate_listing_ids = (
+                text_listing_ids
+                if candidate_listing_ids is None
+                else candidate_listing_ids & text_listing_ids
+            )
+            if not candidate_listing_ids:
+                return []
+
+        listings = self._latest_listings(candidate_listing_ids)
 
         if voivodeship:
             voivodeship_key = voivodeship.casefold()
@@ -467,6 +550,43 @@ class PostgresRealEstateRepository:
         ).all()
         return [row.listing_id for row in rows]
 
+    def _listing_ids_matching_text_query(self, query: str) -> list[str]:
+        tokens = normalize_search_tokens(query)
+        if not tokens:
+            return []
+
+        snapshot_search_vector = _search_vector_sql(_SNAPSHOT_SEARCH_TEXT_SQL)
+        property_search_vector = _search_vector_sql(_PROPERTY_SEARCH_TEXT_SQL)
+        query_terms = _search_query_sql()
+        rows = self.session.execute(
+            text(
+                f"""
+                with query_terms as (
+                    select {query_terms} as terms
+                ),
+                matching as (
+                    select distinct on (snap.normalized_payload ->> 'id')
+                        snap.normalized_payload ->> 'id' as listing_id
+                    from listing_snapshots snap
+                    join property_sources ps on ps.id = snap.property_source_id
+                    join properties p on p.id = ps.property_id
+                    cross join query_terms terms
+                    where snap.normalized_payload ? 'id'
+                      and (
+                        {snapshot_search_vector} @@ terms.terms
+                        or {property_search_vector} @@ terms.terms
+                      )
+                    order by snap.normalized_payload ->> 'id', snap.observed_at desc
+                )
+                select listing_id
+                from matching
+                order by listing_id
+                """
+            ),
+            {"query": " ".join(tokens)},
+        ).all()
+        return [row.listing_id for row in rows]
+
     def _planned_investment_ids_matching_spatial_window(
         self,
         *,
@@ -557,10 +677,16 @@ class PostgresRealEstateRepository:
         center_geom = "ST_SetSRID(ST_MakePoint(:center_lon, :center_lat), 4326)"
         return f"ST_Distance({table_alias}.geom::geography, {center_geom}::geography)"
 
-    def _latest_listings(self) -> list[Listing]:
-        snapshots = self.session.scalars(
-            select(ListingSnapshot).order_by(ListingSnapshot.observed_at)
-        ).all()
+    def _latest_listings(self, listing_ids: set[str] | None = None) -> list[Listing]:
+        if listing_ids is not None and not listing_ids:
+            return []
+
+        statement = select(ListingSnapshot).order_by(ListingSnapshot.observed_at)
+        if listing_ids is not None:
+            statement = statement.where(
+                ListingSnapshot.normalized_payload["id"].as_string().in_(sorted(listing_ids))
+            )
+        snapshots = self.session.scalars(statement).all()
 
         snapshots_by_listing_id: dict[str, list[ListingSnapshot]] = {}
         for snapshot in snapshots:

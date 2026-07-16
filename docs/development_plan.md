@@ -99,7 +99,7 @@
 - [x] Добавить сортировку.
 - [x] Добавить фильтры по score, price/m2, days_on_market.
 - [x] Добавить API-level text/address search по title, address, district, city и source metadata.
-- [ ] Подключить OpenSearch или PostgreSQL full-text indexes для production-scale поиска.
+- [x] Подключить OpenSearch или PostgreSQL full-text indexes для production-scale поиска.
 - [x] Добавить saved searches.
 - [x] Расширить фильтры: voivodeship, building type, renovation state.
 - [x] Добавить gmina/municipality filters в listings, hidden gems, map и saved-search alerts.
@@ -510,6 +510,7 @@
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.
+- [x] Commit 74: PostgreSQL full-text indexes for listing search.
 
 ## Current Sprint
 

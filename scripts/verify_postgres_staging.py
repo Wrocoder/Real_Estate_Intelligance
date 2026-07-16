@@ -124,6 +124,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     ai_insight_check = _run_ai_insight_check(repository)
     source_error_check = _run_source_error_check(repository)
     enrichment_check = _run_infrastructure_enrichment_check(repository)
+    full_text_search_check = _run_full_text_search_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -168,6 +169,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "ai_insights": ai_insight_check,
         "source_errors": source_error_check,
         "infrastructure_enrichment": enrichment_check,
+        "full_text_search": full_text_search_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -176,6 +178,47 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
         },
+    }
+
+
+def _run_full_text_search_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    query_ids = [item.id for item in repository.list_listings(query="Nowy Dwor")]
+    if query_ids != ["wr-001"]:
+        raise RuntimeError("Expected accent-insensitive full-text query to return wr-001.")
+
+    rows = repository.session.execute(
+        text(
+            """
+            select indexname, indexdef
+            from pg_indexes
+            where schemaname = 'public'
+              and indexname in (
+                'ix_listing_snapshots_listing_id',
+                'ix_listing_snapshots_full_text_gin',
+                'ix_properties_full_text_gin'
+              )
+            """
+        )
+    ).all()
+    index_defs = {row.indexname: row.indexdef.lower() for row in rows}
+    expected_names = {
+        "ix_listing_snapshots_listing_id",
+        "ix_listing_snapshots_full_text_gin",
+        "ix_properties_full_text_gin",
+    }
+    if set(index_defs) != expected_names:
+        raise RuntimeError("Expected listing full-text search indexes.")
+    for index_name in (
+        "ix_listing_snapshots_full_text_gin",
+        "ix_properties_full_text_gin",
+    ):
+        index_def = index_defs[index_name]
+        if "using gin" not in index_def or "to_tsvector" not in index_def:
+            raise RuntimeError(f"Expected {index_name} to be a GIN full-text index.")
+
+    return {
+        "query_ids": query_ids,
+        "index_count": len(index_defs),
     }
 
 
