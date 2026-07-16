@@ -24,6 +24,12 @@ export default function AlertsPage() {
     minBuildingYear: "",
     maxBuildingYear: "",
     minInvestment: "40",
+    maxFairDelta: "",
+    minNegotiation: "",
+    minLiquidity: "",
+    minRental: "",
+    minPriceReductions: "",
+    maxDaysOnMarket: "",
     channel: "email" as "email" | "telegram",
     frequency: "daily" as "instant" | "daily" | "weekly",
     deliveryTarget: "",
@@ -65,6 +71,18 @@ export default function AlertsPage() {
         min_building_year: form.minBuildingYear ? Number(form.minBuildingYear) : null,
         max_building_year: form.maxBuildingYear ? Number(form.maxBuildingYear) : null,
         min_investment_score: form.minInvestment ? Number(form.minInvestment) : null,
+        max_price_delta_to_fair_mid_pct: form.maxFairDelta
+          ? Number(form.maxFairDelta)
+          : null,
+        min_negotiation_score: form.minNegotiation ? Number(form.minNegotiation) : null,
+        min_liquidity_score: form.minLiquidity ? Number(form.minLiquidity) : null,
+        min_rental_potential_score: form.minRental ? Number(form.minRental) : null,
+        min_price_reductions: form.minPriceReductions
+          ? Number(form.minPriceReductions)
+          : null,
+        max_days_on_market: form.maxDaysOnMarket
+          ? Number(form.maxDaysOnMarket)
+          : null,
       },
       channel: form.channel,
       frequency: form.frequency,
@@ -199,6 +217,68 @@ export default function AlertsPage() {
             />
           </label>
           <label className="field">
+            <span>Макс. fair delta %</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={form.maxFairDelta}
+              placeholder="0"
+              onChange={(event) => setForm({ ...form, maxFairDelta: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. Negotiation</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minNegotiation}
+              placeholder="70"
+              onChange={(event) => setForm({ ...form, minNegotiation: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. Liquidity</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minLiquidity}
+              placeholder="60"
+              onChange={(event) => setForm({ ...form, minLiquidity: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Мин. Rental</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minRental}
+              placeholder="70"
+              onChange={(event) => setForm({ ...form, minRental: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>Снижений цены от</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.minPriceReductions}
+              placeholder="1"
+              onChange={(event) =>
+                setForm({ ...form, minPriceReductions: event.target.value })
+              }
+            />
+          </label>
+          <label className="field">
+            <span>Дней на рынке до</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={form.maxDaysOnMarket}
+              placeholder="30"
+              onChange={(event) => setForm({ ...form, maxDaysOnMarket: event.target.value })}
+            />
+          </label>
+          <label className="field">
             <span>Канал</span>
             <select
               className="input"
@@ -314,6 +394,11 @@ export default function AlertsPage() {
                         <span>{money(match.listing.price)}</span>
                         <span>I {match.scores.investment_score}</span>
                         <span>R {match.scores.risk_score}</span>
+                        <span>Fair Δ {match.scores.price_delta_to_fair_mid_pct.toFixed(1)}%</span>
+                        <span>N {match.scores.negotiation_score}</span>
+                        <span>L {match.scores.liquidity_score}</span>
+                        <span>Rent {match.scores.rental_potential_score}</span>
+                        <span>{match.listing.price_reductions} drops</span>
                       </div>
                     </div>
                   </article>

@@ -1800,6 +1800,12 @@ export type AlertFilters = {
   max_building_year?: number | null;
   min_investment_score?: number | null;
   max_risk_score?: number | null;
+  max_price_delta_to_fair_mid_pct?: number | null;
+  min_negotiation_score?: number | null;
+  min_liquidity_score?: number | null;
+  min_rental_potential_score?: number | null;
+  min_price_reductions?: number | null;
+  max_days_on_market?: number | null;
 };
 
 export type Alert = {

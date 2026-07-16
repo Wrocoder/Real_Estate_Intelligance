@@ -54,12 +54,75 @@ def find_alert_matches(
         ]
     if filters.max_risk_score is not None:
         analyses = [item for item in analyses if item.scores.risk_score <= filters.max_risk_score]
+    if filters.max_price_delta_to_fair_mid_pct is not None:
+        analyses = [
+            item
+            for item in analyses
+            if item.scores.price_delta_to_fair_mid_pct <= filters.max_price_delta_to_fair_mid_pct
+        ]
+    if filters.min_negotiation_score is not None:
+        analyses = [
+            item
+            for item in analyses
+            if item.scores.negotiation_score >= filters.min_negotiation_score
+        ]
+    if filters.min_liquidity_score is not None:
+        analyses = [
+            item for item in analyses if item.scores.liquidity_score >= filters.min_liquidity_score
+        ]
+    if filters.min_rental_potential_score is not None:
+        analyses = [
+            item
+            for item in analyses
+            if item.scores.rental_potential_score >= filters.min_rental_potential_score
+        ]
+    if filters.min_price_reductions is not None:
+        analyses = [
+            item
+            for item in analyses
+            if item.listing.price_reductions >= filters.min_price_reductions
+        ]
+    if filters.max_days_on_market is not None:
+        analyses = [
+            item for item in analyses if item.listing.days_on_market <= filters.max_days_on_market
+        ]
 
     return sorted(
         analyses,
-        key=lambda item: (
-            -item.scores.investment_score,
-            item.scores.risk_score,
-            item.listing.price,
-        ),
+        key=lambda item: _alert_sort_key(item, filters),
+    )
+
+
+def _alert_sort_key(analysis: ListingAnalysis, filters: AlertFilters) -> tuple:
+    scores = analysis.scores
+    listing = analysis.listing
+    if _has_advanced_investor_filters(filters):
+        return (
+            scores.price_delta_to_fair_mid_pct,
+            -listing.price_reductions,
+            -scores.rental_potential_score,
+            -scores.liquidity_score,
+            -scores.negotiation_score,
+            -scores.investment_score,
+            scores.risk_score,
+            listing.price,
+        )
+    return (
+        -scores.investment_score,
+        scores.risk_score,
+        listing.price,
+    )
+
+
+def _has_advanced_investor_filters(filters: AlertFilters) -> bool:
+    return any(
+        value is not None
+        for value in (
+            filters.max_price_delta_to_fair_mid_pct,
+            filters.min_negotiation_score,
+            filters.min_liquidity_score,
+            filters.min_rental_potential_score,
+            filters.min_price_reductions,
+            filters.max_days_on_market,
+        )
     )

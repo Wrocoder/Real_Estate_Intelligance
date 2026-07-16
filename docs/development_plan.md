@@ -254,7 +254,7 @@
 - [x] Добавить daily email alerts.
 - [x] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
-- [ ] Добавить advanced investor alerts: below market, price drop, new comparable, high rental potential.
+- [x] Добавить advanced investor alerts v1: below market, price drop/fresh candidate, negotiation, liquidity and high rental potential.
 - [ ] Добавить realtor saved-search digests для клиентов.
 - [ ] Добавить alert frequency controls: instant, daily, weekly.
 - [ ] Добавить unsubscribe/manage preferences flow.
@@ -579,6 +579,7 @@
 - [x] Добавить area-aware news linking в UI: area query filter, area SEO links and listing detail related news.
 - [x] Добавить floor/year filters в search stack: listings API, hidden gems, map query, explorer UI и saved-search alerts.
 - [x] Добавить infrastructure point layers на карту: stops/routes labels, schools, kindergartens, amenities and industrial zones.
+- [x] Добавить advanced investor alert filters: below fair price, negotiation, liquidity, rental potential, price reductions and fresh listings.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

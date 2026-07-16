@@ -295,6 +295,14 @@ export default function ExplorerPage() {
           ? Number(filters.minInvestment)
           : null,
         max_risk_score: filters.maxRisk ? Number(filters.maxRisk) : null,
+        max_price_delta_to_fair_mid_pct: filters.maxFairDelta
+          ? Number(filters.maxFairDelta)
+          : null,
+        min_negotiation_score: filters.minNegotiation
+          ? Number(filters.minNegotiation)
+          : null,
+        min_liquidity_score: filters.minLiquidity ? Number(filters.minLiquidity) : null,
+        min_rental_potential_score: filters.minRental ? Number(filters.minRental) : null,
       },
     });
     setStatus("Alert создан");

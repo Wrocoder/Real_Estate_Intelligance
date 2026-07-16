@@ -2340,6 +2340,12 @@ class AlertFilters(BaseModel):
     max_building_year: int | None = Field(default=None, ge=1800, le=2100)
     min_investment_score: int | None = Field(default=None, ge=0, le=100)
     max_risk_score: int | None = Field(default=None, ge=0, le=100)
+    max_price_delta_to_fair_mid_pct: float | None = Field(default=None, ge=-50, le=50)
+    min_negotiation_score: int | None = Field(default=None, ge=0, le=100)
+    min_liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    min_rental_potential_score: int | None = Field(default=None, ge=0, le=100)
+    min_price_reductions: int | None = Field(default=None, ge=0)
+    max_days_on_market: int | None = Field(default=None, ge=0)
 
 
 class AlertCreate(BaseModel):

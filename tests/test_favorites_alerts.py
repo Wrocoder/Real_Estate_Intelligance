@@ -136,6 +136,48 @@ def test_alert_owner_scope() -> None:
     assert response.status_code == 404
 
 
+def test_advanced_investor_alert_filters() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/alerts?owner_id=investor-alert-owner",
+        json={
+            "name": "Below-market investor candidates",
+            "filters": {
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "max_price_delta_to_fair_mid_pct": -4,
+                "min_negotiation_score": 80,
+                "min_liquidity_score": 60,
+                "min_rental_potential_score": 75,
+                "min_price_reductions": 2,
+                "max_days_on_market": 90,
+            },
+        },
+    )
+    payload = created.json()
+
+    assert created.status_code == 201
+    assert payload["filters"]["max_price_delta_to_fair_mid_pct"] == -4
+    assert payload["filters"]["min_rental_potential_score"] == 75
+    assert payload["filters"]["min_price_reductions"] == 2
+
+    preview = client.get(
+        f"/api/v1/alerts/{payload['id']}/preview?owner_id=investor-alert-owner"
+    ).json()
+
+    assert preview["total_matches"] == 1
+    assert preview["applied_filters"]["max_days_on_market"] == 90
+    match = preview["matches"][0]
+    assert match["listing"]["id"] == "wr-001"
+    assert match["listing"]["price_reductions"] >= 2
+    assert match["listing"]["days_on_market"] <= 90
+    assert match["scores"]["price_delta_to_fair_mid_pct"] <= -4
+    assert match["scores"]["negotiation_score"] >= 80
+    assert match["scores"]["liquidity_score"] >= 60
+    assert match["scores"]["rental_potential_score"] >= 75
+
+
 def test_alert_delivery_dry_run_is_persisted() -> None:
     memory_user_store.clear()
     headers = {
