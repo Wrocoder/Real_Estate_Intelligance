@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Eye, RefreshCw, Send, Trash2 } from "lucide-react";
+import { Bell, Eye, FileText, RefreshCw, Send, Trash2 } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -12,6 +12,7 @@ import {
   type AlertFrequency,
   type AlertPreview,
   type AlertUpdate,
+  type RealtorSavedSearchDigest,
 } from "@/lib/api";
 import { money } from "@/lib/format";
 
@@ -19,9 +20,16 @@ export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [jobs, setJobs] = useState<AlertDeliveryJob[]>([]);
   const [preview, setPreview] = useState<AlertPreview | null>(null);
+  const [digest, setDigest] = useState<RealtorSavedSearchDigest | null>(null);
   const [status, setStatus] = useState("Загрузка alerts...");
   const [error, setError] = useState("");
   const [savingAlertId, setSavingAlertId] = useState<string | null>(null);
+  const [digestForm, setDigestForm] = useState({
+    clientName: "",
+    intro: "",
+    maxMatches: "5",
+    includeSourceLinks: false,
+  });
   const [form, setForm] = useState({
     name: "Fabryczna до 700k",
     query: "",
@@ -124,6 +132,7 @@ export default function AlertsPage() {
       setPreview((current) =>
         current?.alert.id === alertId ? { ...current, alert: updated } : current,
       );
+      setDigest((current) => (current?.alert.id === alertId ? null : current));
       setStatus(`Alert обновлен: ${updated.name}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown alert update error");
@@ -144,10 +153,32 @@ export default function AlertsPage() {
       await api.deleteAlert(alert.id);
       setAlerts((current) => current.filter((item) => item.id !== alert.id));
       setPreview((current) => (current?.alert.id === alert.id ? null : current));
+      setDigest((current) => (current?.alert.id === alert.id ? null : current));
       setStatus(`Alert удален: ${alert.name}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown alert delete error");
       setStatus("Не удалось удалить alert");
+    } finally {
+      setSavingAlertId(null);
+    }
+  }
+
+  async function buildRealtorDigest(alertId: string) {
+    setSavingAlertId(alertId);
+    setError("");
+    try {
+      const maxMatches = Number(digestForm.maxMatches) || 5;
+      const data = await api.buildRealtorAlertDigest(alertId, {
+        client_name: digestForm.clientName || null,
+        intro: digestForm.intro || null,
+        max_matches: maxMatches,
+        include_source_links: digestForm.includeSourceLinks,
+      });
+      setDigest(data);
+      setStatus(`Client digest: ${data.items.length}/${data.total_matches} matches`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown digest error");
+      setStatus("Не удалось собрать client digest");
     } finally {
       setSavingAlertId(null);
     }
@@ -515,6 +546,14 @@ export default function AlertsPage() {
                         <Send size={16} /> Check send
                       </button>
                       <button
+                        className="button"
+                        type="button"
+                        disabled={savingAlertId === alert.id}
+                        onClick={() => void buildRealtorDigest(alert.id)}
+                      >
+                        <FileText size={16} /> Client digest
+                      </button>
+                      <button
                         className="button danger"
                         type="button"
                         disabled={savingAlertId === alert.id}
@@ -562,6 +601,98 @@ export default function AlertsPage() {
           </div>
         </aside>
       </div>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>Realtor client digest</h2>
+          <span className="muted">
+            {digest ? `${digest.items.length}/${digest.total_matches} matches` : "not generated"}
+          </span>
+        </div>
+        <div className="panel-body">
+          <div className="form-grid compact">
+            <label className="field">
+              <span>Клиент</span>
+              <input
+                className="input"
+                placeholder="Anna"
+                value={digestForm.clientName}
+                onChange={(event) =>
+                  setDigestForm({ ...digestForm, clientName: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Intro</span>
+              <input
+                className="input"
+                placeholder="Короткий контекст для клиента"
+                value={digestForm.intro}
+                onChange={(event) =>
+                  setDigestForm({ ...digestForm, intro: event.target.value })
+                }
+              />
+            </label>
+            <label className="field">
+              <span>Объектов</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                value={digestForm.maxMatches}
+                onChange={(event) =>
+                  setDigestForm({ ...digestForm, maxMatches: event.target.value })
+                }
+              />
+            </label>
+            <label className="field checkbox-field">
+              <input
+                type="checkbox"
+                checked={digestForm.includeSourceLinks}
+                onChange={(event) =>
+                  setDigestForm({
+                    ...digestForm,
+                    includeSourceLinks: event.target.checked,
+                  })
+                }
+              />
+              <span>Добавить source links</span>
+            </label>
+          </div>
+          {!digest ? (
+            <EmptyBlock label="Заполните параметры и нажмите Client digest у нужного alert." />
+          ) : (
+            <div className="digest-layout">
+              <div>
+                <h3>{digest.subject}</h3>
+                <p className="muted">{digest.summary}</p>
+                <textarea className="input digest-message" readOnly value={digest.client_message} />
+              </div>
+              <div className="listing-list">
+                {digest.items.map((item) => (
+                  <article className="listing-card" key={item.listing_id}>
+                    <div>
+                      <h3>{item.title}</h3>
+                      <div className="meta-row">
+                        <span>{money(item.price)}</span>
+                        <span>{item.rooms} rooms</span>
+                        <span>{item.area_m2} m2</span>
+                        <span>{item.price_delta_to_fair_mid_pct.toFixed(1)}% fair Δ</span>
+                        <span>N {item.negotiation_score}</span>
+                        <span>L {item.liquidity_score}</span>
+                        <span>Rent {item.rental_potential_score}</span>
+                      </div>
+                      <div className="meta-row">
+                        <span>{item.client_pitch}</span>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <p className="muted">{digest.disclaimer}</p>
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">

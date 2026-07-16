@@ -2389,6 +2389,52 @@ class AlertPreview(BaseModel):
     applied_filters: dict[str, Any]
 
 
+class RealtorSavedSearchDigestRequest(BaseModel):
+    client_name: str | None = Field(default=None, max_length=160)
+    intro: str | None = Field(default=None, max_length=500)
+    max_matches: int = Field(default=5, ge=1, le=20)
+    include_source_links: bool = False
+
+
+class RealtorSavedSearchDigestItem(BaseModel):
+    listing_id: str
+    title: str
+    address: str
+    district: str
+    city: str
+    price: int
+    currency: str
+    area_m2: float
+    rooms: int
+    floor: int | None = None
+    price_per_m2: int
+    fair_price_mid: int
+    price_delta_to_fair_mid_pct: float
+    decision_label: ScoreDecisionLabel
+    negotiation_score: int
+    liquidity_score: int
+    rental_potential_score: int
+    client_pitch: str
+    talking_points: list[str] = Field(default_factory=list)
+    cautions: list[str] = Field(default_factory=list)
+    source_url: str | None = None
+
+
+class RealtorSavedSearchDigest(BaseModel):
+    alert: Alert
+    client_name: str | None = None
+    agent_name: str | None = None
+    agent_email: str | None = None
+    subject: str
+    summary: str
+    client_message: str
+    total_matches: int = Field(ge=0)
+    items: list[RealtorSavedSearchDigestItem] = Field(default_factory=list)
+    applied_filters: dict[str, Any]
+    generated_at: datetime
+    disclaimer: str
+
+
 class AlertDeliveryRequest(BaseModel):
     dry_run: bool = True
     max_matches: int = Field(default=10, ge=1, le=50)

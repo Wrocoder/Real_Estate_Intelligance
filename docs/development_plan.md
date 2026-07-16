@@ -255,7 +255,7 @@
 - [x] Добавить Telegram alerts.
 - [x] Добавить hidden gems alert v1.
 - [x] Добавить advanced investor alerts v1: below market, price drop/fresh candidate, negotiation, liquidity and high rental potential.
-- [ ] Добавить realtor saved-search digests для клиентов.
+- [x] Добавить realtor saved-search digests для клиентов.
 - [x] Добавить alert frequency controls: instant, daily, weekly.
 - [x] Добавить unsubscribe/manage preferences flow.
 
@@ -503,6 +503,7 @@
 - [x] Commit 65: developer reputation data model and source-backed report section.
 - [x] Commit 66: alert preference controls.
 - [x] Commit 67: alert unsubscribe action.
+- [x] Commit 68: realtor saved-search client digests.
 
 ## Current Sprint
 
@@ -594,6 +595,7 @@
 - [x] Добавить admin dedup review actions: filter open/all, mark resolved and reopen.
 - [x] Добавить alert preference controls на `/alerts`: instant/daily/weekly, channel, active/pause и delivery target update.
 - [x] Добавить alert unsubscribe/delete action на `/alerts` с подтверждением и очисткой preview.
+- [x] Добавить realtor saved-search client digest: API, client-ready copy и UI генерация из alert.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

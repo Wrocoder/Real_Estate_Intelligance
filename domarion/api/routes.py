@@ -168,6 +168,8 @@ from domarion.schemas import (
     PropertyDeduplicationMatchUpdate,
     PropertyDeduplicationReviewStatus,
     RawListingSummary,
+    RealtorSavedSearchDigest,
+    RealtorSavedSearchDigestRequest,
     ReportAudience,
     ReportBranding,
     ReportEmailRequest,
@@ -246,6 +248,7 @@ from domarion.services.payments import (
     verify_payment_webhook,
 )
 from domarion.services.plans import get_plan_limits, list_plan_limits
+from domarion.services.realtor_digests import build_realtor_saved_search_digest
 from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
     generate_and_store_area_report,
@@ -3184,6 +3187,26 @@ def preview_alert(
     if alert is None:
         raise HTTPException(status_code=404, detail="Alert not found")
     return build_alert_preview(repository, alert, limit=limit)
+
+
+@router.post("/alerts/{alert_id}/realtor-digest", response_model=RealtorSavedSearchDigest)
+def build_realtor_alert_digest(
+    alert_id: str,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    payload: RealtorSavedSearchDigestRequest | None = None,
+) -> RealtorSavedSearchDigest:
+    alert = user_store.get_alert(account.user.id, alert_id)
+    if alert is None:
+        raise HTTPException(status_code=404, detail="Alert not found")
+    return build_realtor_saved_search_digest(
+        repository=repository,
+        alert=alert,
+        request=payload or RealtorSavedSearchDigestRequest(),
+        agent_name=account.user.display_name,
+        agent_email=account.user.email,
+    )
 
 
 @router.post("/alerts/{alert_id}/deliver", response_model=AlertDeliveryJob)

@@ -136,6 +136,80 @@ def test_alert_owner_scope() -> None:
     assert response.status_code == 404
 
 
+def test_realtor_saved_search_digest_builds_client_copy() -> None:
+    memory_auth_store.clear()
+    memory_user_store.clear()
+    headers = {
+        "X-Domarion-User-Id": "realtor-digest-owner",
+        "X-Domarion-Email": "agent@example.com",
+        "X-Domarion-Display-Name": "Agent One",
+        "X-Domarion-Role": "realtor",
+        "X-Domarion-Plan": "realtor",
+    }
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=headers,
+        json={
+            "name": "Fabryczna client shortlist",
+            "filters": {
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "query": "Nowy Dwor",
+                "max_price": 700000,
+            },
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/alerts/{created['id']}/realtor-digest",
+        headers=headers,
+        json={
+            "client_name": "Anna",
+            "intro": "I picked the strongest options for your current budget.",
+            "max_matches": 2,
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["alert"]["id"] == created["id"]
+    assert payload["client_name"] == "Anna"
+    assert payload["agent_name"] == "Agent One"
+    assert payload["agent_email"] == "agent@example.com"
+    assert payload["subject"].startswith("Anna: Fabryczna client shortlist")
+    assert payload["total_matches"] >= 1
+    assert 1 <= len(payload["items"]) <= 2
+    assert payload["items"][0]["listing_id"] == "wr-001"
+    assert payload["items"][0]["source_url"] is None
+    assert "Hi Anna" in payload["client_message"]
+    assert "I picked the strongest options" in payload["client_message"]
+    assert "Prepared by Agent One" in payload["client_message"]
+    assert "not financial, legal or investment advice" in payload["disclaimer"]
+
+
+def test_realtor_saved_search_digest_keeps_alert_owner_scope() -> None:
+    memory_auth_store.clear()
+    memory_user_store.clear()
+    owner_headers = {"X-Domarion-User-Id": "digest-owner"}
+    other_headers = {"X-Domarion-User-Id": "digest-other"}
+
+    created = client.post(
+        "/api/v1/alerts",
+        headers=owner_headers,
+        json={"name": "Owner digest", "filters": {"city": "Wrocław"}},
+    ).json()
+
+    response = client.post(
+        f"/api/v1/alerts/{created['id']}/realtor-digest",
+        headers=other_headers,
+        json={"max_matches": 2},
+    )
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Alert not found"
+
+
 def test_advanced_investor_alert_filters() -> None:
     memory_user_store.clear()
 

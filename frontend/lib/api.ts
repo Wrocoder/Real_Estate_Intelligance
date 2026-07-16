@@ -1844,6 +1844,52 @@ export type AlertPreview = {
   applied_filters: Record<string, unknown>;
 };
 
+export type RealtorSavedSearchDigestRequest = {
+  client_name?: string | null;
+  intro?: string | null;
+  max_matches?: number;
+  include_source_links?: boolean;
+};
+
+export type RealtorSavedSearchDigestItem = {
+  listing_id: string;
+  title: string;
+  address: string;
+  district: string;
+  city: string;
+  price: number;
+  currency: string;
+  area_m2: number;
+  rooms: number;
+  floor: number | null;
+  price_per_m2: number;
+  fair_price_mid: number;
+  price_delta_to_fair_mid_pct: number;
+  decision_label: PropertyScores["decision_label"];
+  negotiation_score: number;
+  liquidity_score: number;
+  rental_potential_score: number;
+  client_pitch: string;
+  talking_points: string[];
+  cautions: string[];
+  source_url: string | null;
+};
+
+export type RealtorSavedSearchDigest = {
+  alert: Alert;
+  client_name: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
+  subject: string;
+  summary: string;
+  client_message: string;
+  total_matches: number;
+  items: RealtorSavedSearchDigestItem[];
+  applied_filters: Record<string, unknown>;
+  generated_at: string;
+  disclaimer: string;
+};
+
 export type AlertDeliveryJob = {
   id: string;
   owner_id: string;
@@ -2638,6 +2684,22 @@ export const api = {
   },
   previewAlert: (alertId: string) =>
     request<AlertPreview>(`/api/v1/alerts/${alertId}/preview?owner_id=${OWNER_ID}`),
+  buildRealtorAlertDigest: (
+    alertId: string,
+    payload: RealtorSavedSearchDigestRequest = {},
+  ) =>
+    request<RealtorSavedSearchDigest>(
+      `/api/v1/alerts/${encodeURIComponent(alertId)}/realtor-digest?owner_id=${OWNER_ID}`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          client_name: payload.client_name || null,
+          intro: payload.intro || null,
+          max_matches: payload.max_matches ?? 5,
+          include_source_links: payload.include_source_links ?? false,
+        }),
+      },
+    ),
   deliverAlert: (alertId: string, dryRun = true, maxMatches = 10) =>
     request<AlertDeliveryJob>(`/api/v1/alerts/${alertId}/deliver?owner_id=${OWNER_ID}`, {
       method: "POST",

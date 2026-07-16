@@ -1122,6 +1122,20 @@ button {
   white-space: nowrap;
 }
 
+.digest-layout {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.digest-message {
+  min-height: 260px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
 .pagination-row {
   display: flex;
   align-items: center;
