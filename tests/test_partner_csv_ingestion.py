@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 from datetime import date
 from decimal import Decimal
@@ -9,8 +10,10 @@ import pytest
 
 from domarion.cli import main
 from domarion.ingestion.db_writer import (
+    _description_hash_from_record,
     _evaluate_deduplication_candidate,
     _is_duplicate_property_match,
+    _listing_snapshot_payload,
     payload_hash,
 )
 from domarion.ingestion.partner_csv import PartnerCsvError, read_partner_csv, slugify
@@ -66,6 +69,67 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
     assert records[0].listing.price_per_m2 == 11655
     assert records[0].listing.days_on_market == 8
     assert records[0].listing.data_quality_score < 95
+
+
+def test_partner_listing_snapshot_payload_keeps_status_and_description_hash(tmp_path) -> None:
+    path = tmp_path / "partner.csv"
+    _write_csv(
+        path,
+        [
+            {
+                "source_listing_id": "p-removed",
+                "title": "Mieszkanie testowe",
+                "source_url": "https://agency.test/p-removed",
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "address": "Nowy Dwór",
+                "market_type": "secondary",
+                "price": "690000",
+                "area_m2": "59.2",
+                "rooms": "3",
+                "lat": "51.1117",
+                "lon": "16.9653",
+                "active_status": "sold",
+                "description_hash": "desc-hash-v1",
+            }
+        ],
+    )
+
+    record = read_partner_csv(path, default_source_name="Test Agency")[0]
+    payload = _listing_snapshot_payload(record)
+
+    assert payload["active_status"] == "removed"
+    assert payload["description_hash"] == "desc-hash-v1"
+    assert "description" not in payload
+
+
+def test_partner_listing_description_text_is_hashed_for_events(tmp_path) -> None:
+    path = tmp_path / "partner.csv"
+    _write_csv(
+        path,
+        [
+            {
+                "source_listing_id": "p-description",
+                "title": "Mieszkanie testowe",
+                "source_url": "https://agency.test/p-description",
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "address": "Nowy Dwór",
+                "market_type": "secondary",
+                "price": "690000",
+                "area_m2": "59.2",
+                "rooms": "3",
+                "lat": "51.1117",
+                "lon": "16.9653",
+                "description": "  Jasne mieszkanie  z balkonem.  ",
+            }
+        ],
+    )
+
+    record = read_partner_csv(path, default_source_name="Test Agency")[0]
+
+    expected_hash = hashlib.sha256(b"Jasne mieszkanie z balkonem.").hexdigest()
+    assert _description_hash_from_record(record) == expected_hash
 
 
 def test_read_partner_csv_rejects_missing_required_columns(tmp_path) -> None:
@@ -349,6 +413,9 @@ def _write_csv(path, rows: list[dict[str, str]]) -> None:
         "has_elevator",
         "parking_type",
         "heating_type",
+        "active_status",
+        "description_hash",
+        "description",
         "price",
         "area_m2",
         "rooms",

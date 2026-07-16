@@ -26,6 +26,7 @@ class ListingEventInput:
     price: int
     price_per_m2: int
     payload: Mapping[str, Any]
+    description_hash: str | None = None
     snapshot_id: int | None = None
 
 
@@ -63,6 +64,9 @@ def derive_listing_events(
         parameter_event = _parameter_event(previous, current)
         if parameter_event is not None:
             events.append(parameter_event)
+        description_event = _description_event(previous, current)
+        if description_event is not None:
+            events.append(description_event)
         status_event = _status_event(previous, current)
         if status_event is not None:
             events.append(status_event)
@@ -153,6 +157,29 @@ def _parameter_event(
     )
 
 
+def _description_event(
+    previous: ListingEventInput,
+    current: ListingEventInput,
+) -> DerivedListingEvent | None:
+    previous_hash = _description_hash(previous)
+    current_hash = _description_hash(current)
+    if not previous_hash or not current_hash or previous_hash == current_hash:
+        return None
+
+    return DerivedListingEvent(
+        listing_id=current.listing_id,
+        event_type="description_changed",
+        observed_at=current.observed_at,
+        summary="Listing description hash changed.",
+        payload={
+            "previous_description_hash": previous_hash,
+            "current_description_hash": current_hash,
+        },
+        snapshot_id=current.snapshot_id,
+        previous_snapshot_id=previous.snapshot_id,
+    )
+
+
 def _status_event(
     previous: ListingEventInput,
     current: ListingEventInput,
@@ -209,6 +236,14 @@ def _relisted_event(
 def _active_status(payload: Mapping[str, Any]) -> str:
     raw_status = payload.get("active_status") or payload.get("status") or "active"
     return str(raw_status).strip().casefold() or "active"
+
+
+def _description_hash(snapshot: ListingEventInput) -> str | None:
+    raw_hash = snapshot.description_hash or snapshot.payload.get("description_hash")
+    if raw_hash is None:
+        return None
+    normalized = str(raw_hash).strip()
+    return normalized or None
 
 
 def _bool_value(value: Any) -> bool:

@@ -534,6 +534,7 @@ def test_admin_can_dry_run_partner_csv_import() -> None:
     assert payload["dry_run"] is True
     assert payload["rows_seen"] == 1
     assert payload["raw_created"] == 0
+    assert payload["removed_marked"] == 0
     assert payload["listing_ids"] == ["api-partner-dry-run"]
     assert payload["job"]["status"] == "succeeded"
     assert payload["job"]["rows_seen"] == 1

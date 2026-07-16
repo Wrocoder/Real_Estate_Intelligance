@@ -39,6 +39,14 @@ def main() -> None:
         action="store_true",
         help="Parse and validate CSV without writing to database.",
     )
+    import_parser.add_argument(
+        "--mark-missing-removed",
+        action="store_true",
+        help=(
+            "Treat the CSV as a complete source snapshot and mark previously active "
+            "source listings missing from it as removed."
+        ),
+    )
     planned_parser = subparsers.add_parser(
         "import-planned-investments",
         help="Import planned infrastructure investments from a legal JSON/CSV open-data file.",
@@ -152,7 +160,16 @@ def main() -> None:
                 "dry_run": True,
             }
         else:
-            result = import_partner_csv(args.path, args.source_name, args.source_type).as_dict()
+            import_result = import_partner_csv(
+                args.path,
+                args.source_name,
+                args.source_type,
+                mark_missing_removed=args.mark_missing_removed,
+            )
+            result = {
+                **import_result.as_dict(),
+                "removed_marked": import_result.removed_marked,
+            }
         _print_json(json.dumps(result, ensure_ascii=False, indent=2))
     elif args.command == "import-planned-investments":
         if args.dry_run:

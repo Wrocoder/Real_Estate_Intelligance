@@ -1629,6 +1629,7 @@ async def import_admin_partner_csv(
     source_name: Annotated[str | None, Form()] = None,
     source_type: Annotated[str, Form()] = "partner_csv",
     dry_run: Annotated[bool, Form()] = True,
+    mark_missing_removed: Annotated[bool, Form()] = False,
 ) -> PartnerCsvImportResponse:
     _ensure_admin(account)
     filename = file.filename or "partner_listings.csv"
@@ -1657,6 +1658,7 @@ async def import_admin_partner_csv(
             metadata={
                 "file_name": filename,
                 "dry_run": dry_run,
+                "mark_missing_removed": mark_missing_removed,
                 "bytes": len(content),
             },
         )
@@ -1715,7 +1717,12 @@ async def import_admin_partner_csv(
 
         with SessionLocal() as session:
             try:
-                result = import_partner_records_in_session(session, records, job_id=job.id)
+                result = import_partner_records_in_session(
+                    session,
+                    records,
+                    job_id=job.id,
+                    mark_missing_removed=mark_missing_removed,
+                )
                 session.commit()
             except Exception as exc:
                 session.rollback()
@@ -1749,6 +1756,7 @@ async def import_admin_partner_csv(
         raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
     return PartnerCsvImportResponse(
         **result.as_dict(),
+        removed_marked=result.removed_marked,
         dry_run=dry_run,
         listing_ids=listing_ids,
         errors=[],

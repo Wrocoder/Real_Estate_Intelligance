@@ -120,6 +120,40 @@ def test_listing_events_capture_price_parameter_and_status_changes() -> None:
     assert parameter_event.payload["changes"]["rooms"] == {"previous": 3, "current": 2}
 
 
+def test_listing_events_capture_description_hash_changes() -> None:
+    snapshots = [
+        ListingEventInput(
+            listing_id="description-test",
+            observed_at=date(2026, 7, 1),
+            price=700000,
+            price_per_m2=11824,
+            payload={"id": "description-test"},
+            description_hash="hash-1",
+            snapshot_id=1,
+        ),
+        ListingEventInput(
+            listing_id="description-test",
+            observed_at=date(2026, 7, 5),
+            price=700000,
+            price_per_m2=11824,
+            payload={"id": "description-test"},
+            description_hash="hash-2",
+            snapshot_id=2,
+        ),
+    ]
+
+    events = derive_listing_events(snapshots)
+    description_event = next(
+        event for event in events if event.event_type == "description_changed"
+    )
+
+    assert description_event.summary == "Listing description hash changed."
+    assert description_event.payload == {
+        "previous_description_hash": "hash-1",
+        "current_description_hash": "hash-2",
+    }
+
+
 def _listing() -> Listing:
     return Listing(
         id="history-test",

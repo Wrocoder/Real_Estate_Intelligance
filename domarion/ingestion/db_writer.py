@@ -1,7 +1,7 @@
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime, time
+from datetime import date, datetime, time
 from decimal import Decimal
 from uuid import uuid4
 
@@ -29,7 +29,11 @@ from domarion.schemas import (
     PriceHistoryPoint,
     PriceHistoryRebuildResult,
 )
-from domarion.services.listing_events import ListingEventInput, derive_listing_events
+from domarion.services.listing_events import (
+    REMOVED_STATUSES,
+    ListingEventInput,
+    derive_listing_events,
+)
 from domarion.services.price_history import listing_with_price_history_metrics
 
 DEDUP_AREA_TOLERANCE_M2 = 1.0
@@ -49,6 +53,7 @@ class ImportResult:
     properties_updated: int = 0
     snapshots_created: int = 0
     snapshots_updated: int = 0
+    removed_marked: int = 0
 
     def as_dict(self) -> dict[str, int]:
         return {
@@ -75,6 +80,8 @@ def import_partner_csv(
     path: str,
     source_name: str,
     source_type: str = "partner_csv",
+    *,
+    mark_missing_removed: bool = False,
 ) -> ImportResult:
     records = read_partner_csv(
         path,
@@ -82,12 +89,23 @@ def import_partner_csv(
         default_source_type=source_type,
     )
     with SessionLocal() as session:
-        job = _create_ingestion_job(session, source_name, source_type, path)
+        job = _create_ingestion_job(
+            session,
+            source_name,
+            source_type,
+            path,
+            mark_missing_removed=mark_missing_removed,
+        )
         session.commit()
 
         try:
             _mark_ingestion_job_running(session, job.id)
-            result = import_partner_records_in_session(session, records, job_id=job.id)
+            result = import_partner_records_in_session(
+                session,
+                records,
+                job_id=job.id,
+                mark_missing_removed=mark_missing_removed,
+            )
             warnings_count = _write_data_quality_logs(session, job.id, records)
             _finish_ingestion_job(session, job.id, result, "succeeded", warnings_count)
             session.commit()
@@ -103,11 +121,21 @@ def import_partner_records_in_session(
     session: Session,
     records: list[PartnerListingRecord],
     job_id: str | None = None,
+    *,
+    mark_missing_removed: bool = False,
 ) -> ImportResult:
     result = ImportResult(rows_seen=len(records))
+    source_listing_ids_by_source: dict[int, set[str]] = {}
+    source_by_id: dict[int, ListingSource] = {}
+    observed_at_by_source: dict[int, date] = {}
 
     for record in records:
         source = _get_or_create_source(session, record)
+        source_by_id[source.id] = source
+        source_listing_ids_by_source.setdefault(source.id, set()).add(record.source_listing_id)
+        latest_observed_at = observed_at_by_source.get(source.id)
+        if latest_observed_at is None or record.observed_at > latest_observed_at:
+            observed_at_by_source[source.id] = record.observed_at
         raw_created = _upsert_raw_listing(session, source, record)
         property_source, property_created = _upsert_property_source(
             session,
@@ -126,7 +154,27 @@ def import_partner_records_in_session(
             properties_updated=result.properties_updated + int(not property_created),
             snapshots_created=result.snapshots_created + int(snapshot_created),
             snapshots_updated=result.snapshots_updated + int(snapshot_updated),
+            removed_marked=result.removed_marked,
         )
+
+    if mark_missing_removed:
+        for source_id, source_listing_ids in source_listing_ids_by_source.items():
+            marked, snapshots_created, snapshots_updated = _mark_missing_source_listings_removed(
+                session,
+                source_by_id[source_id],
+                source_listing_ids,
+                observed_at=observed_at_by_source[source_id],
+            )
+            result = ImportResult(
+                rows_seen=result.rows_seen,
+                raw_created=result.raw_created,
+                raw_updated=result.raw_updated,
+                properties_created=result.properties_created,
+                properties_updated=result.properties_updated,
+                snapshots_created=result.snapshots_created + snapshots_created,
+                snapshots_updated=result.snapshots_updated + snapshots_updated,
+                removed_marked=result.removed_marked + marked,
+            )
 
     return result
 
@@ -206,6 +254,8 @@ def _create_ingestion_job(
     source_name: str,
     source_type: str,
     path: str,
+    *,
+    mark_missing_removed: bool = False,
 ) -> IngestionJob:
     now = datetime.utcnow()
     job = IngestionJob(
@@ -223,7 +273,7 @@ def _create_ingestion_job(
         errors_count=0,
         created_by="cli",
         notes=None,
-        metadata_json={"path": path},
+        metadata_json={"path": path, "mark_missing_removed": mark_missing_removed},
         created_at=now,
         updated_at=now,
     )
@@ -376,6 +426,7 @@ def _upsert_property_source(
         _update_property_from_listing(property_source.property, listing)
         property_source.source_url = record.source_url
         property_source.last_seen_at = _date_to_datetime(listing.last_seen_at)
+        property_source.active_status = _active_status_from_record(record)
         session.flush()
         return property_source, False
 
@@ -402,7 +453,7 @@ def _upsert_property_source(
         source_url=record.source_url,
         first_seen_at=_date_to_datetime(listing.first_seen_at),
         last_seen_at=_date_to_datetime(listing.last_seen_at),
-        active_status="active",
+        active_status=_active_status_from_record(record),
     )
     session.add(property_source)
     session.flush()
@@ -574,8 +625,83 @@ def _upsert_snapshot(
     snapshot.area_m2 = Decimal(str(listing.area_m2))
     snapshot.rooms = listing.rooms
     snapshot.title = listing.title
-    snapshot.description_hash = None
-    snapshot.normalized_payload = listing.model_dump(mode="json")
+    snapshot.description_hash = _description_hash_from_record(record)
+    snapshot.normalized_payload = _listing_snapshot_payload(record)
+    session.flush()
+    return created, not created
+
+
+def _mark_missing_source_listings_removed(
+    session: Session,
+    source: ListingSource,
+    imported_source_listing_ids: set[str],
+    *,
+    observed_at: date,
+) -> tuple[int, int, int]:
+    active_property_sources = session.scalars(
+        select(PropertySource).where(
+            PropertySource.source_id == source.id,
+            PropertySource.active_status == "active",
+        )
+    ).all()
+
+    removed_marked = 0
+    snapshots_created = 0
+    snapshots_updated = 0
+    for property_source in active_property_sources:
+        if property_source.source_listing_id in imported_source_listing_ids:
+            continue
+        created, updated = _upsert_removed_snapshot(session, property_source, observed_at)
+        property_source.active_status = "removed"
+        property_source.last_seen_at = _date_to_datetime(observed_at)
+        _refresh_price_history_metrics(session, property_source)
+        removed_marked += 1
+        snapshots_created += int(created)
+        snapshots_updated += int(updated)
+
+    return removed_marked, snapshots_created, snapshots_updated
+
+
+def _upsert_removed_snapshot(
+    session: Session,
+    property_source: PropertySource,
+    observed_at: date,
+) -> tuple[bool, bool]:
+    latest_snapshot = session.scalar(
+        select(ListingSnapshot)
+        .where(ListingSnapshot.property_source_id == property_source.id)
+        .order_by(ListingSnapshot.observed_at.desc(), ListingSnapshot.id.desc())
+        .limit(1)
+    )
+    if latest_snapshot is None:
+        return False, False
+
+    observed_at_datetime = _removed_snapshot_observed_at(session, property_source, observed_at)
+    snapshot = session.scalar(
+        select(ListingSnapshot).where(
+            ListingSnapshot.property_source_id == property_source.id,
+            ListingSnapshot.observed_at == observed_at_datetime,
+        )
+    )
+    created = snapshot is None
+    if snapshot is None:
+        snapshot = ListingSnapshot(
+            property_source_id=property_source.id,
+            observed_at=observed_at_datetime,
+        )
+        session.add(snapshot)
+
+    payload = dict(latest_snapshot.normalized_payload)
+    payload["active_status"] = "removed"
+    payload["removal_reason"] = "missing_from_full_source_snapshot"
+    payload["removed_observed_at"] = observed_at.isoformat()
+    snapshot.price = latest_snapshot.price
+    snapshot.currency = latest_snapshot.currency
+    snapshot.area_m2 = latest_snapshot.area_m2
+    snapshot.rooms = latest_snapshot.rooms
+    snapshot.title = latest_snapshot.title
+    snapshot.description_hash = latest_snapshot.description_hash
+    snapshot.normalized_payload = payload
     session.flush()
     return created, not created
 
@@ -598,6 +724,7 @@ def _refresh_price_history_metrics(
 
     updated = 0
     for index, snapshot in enumerate(snapshots):
+        event_metadata = _event_metadata_from_payload(snapshot.normalized_payload)
         listing = Listing.model_validate(snapshot.normalized_payload)
         enriched_listing = listing_with_price_history_metrics(
             listing,
@@ -605,6 +732,7 @@ def _refresh_price_history_metrics(
             current_index=index,
         )
         enriched_payload = enriched_listing.model_dump(mode="json")
+        enriched_payload.update(event_metadata)
         if snapshot.normalized_payload != enriched_payload:
             snapshot.normalized_payload = enriched_payload
             updated += 1
@@ -652,6 +780,7 @@ def _snapshot_to_listing_event_input(snapshot: ListingSnapshot) -> ListingEventI
         price=point.price,
         price_per_m2=point.price_per_m2,
         payload=payload,
+        description_hash=snapshot.description_hash,
         snapshot_id=snapshot.id,
     )
 
@@ -664,6 +793,73 @@ def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryP
         price=snapshot.price,
         price_per_m2=int(round(snapshot.price / area_m2)),
     )
+
+
+def _listing_snapshot_payload(record: PartnerListingRecord) -> dict:
+    payload = record.listing.model_dump(mode="json")
+    payload["active_status"] = _active_status_from_record(record)
+    description_hash = _description_hash_from_record(record)
+    if description_hash is not None:
+        payload["description_hash"] = description_hash
+    return payload
+
+
+def _event_metadata_from_payload(payload: dict) -> dict:
+    metadata = {}
+    for key in (
+        "active_status",
+        "status",
+        "description_hash",
+        "removal_reason",
+        "removed_observed_at",
+    ):
+        if key in payload:
+            metadata[key] = payload[key]
+    return metadata
+
+
+def _active_status_from_record(record: PartnerListingRecord) -> str:
+    raw_status = record.raw_payload.get("active_status") or record.raw_payload.get("status")
+    normalized = str(raw_status or "active").strip().casefold()
+    if not normalized:
+        return "active"
+    if normalized in REMOVED_STATUSES:
+        return "removed"
+    if normalized in {"active", "available", "published", "live", "for_sale", "sale"}:
+        return "active"
+    return normalized
+
+
+def _description_hash_from_record(record: PartnerListingRecord) -> str | None:
+    for key in ("description_hash", "description_digest", "description_sha256"):
+        raw_hash = record.raw_payload.get(key)
+        if raw_hash:
+            normalized_hash = str(raw_hash).strip()
+            if normalized_hash:
+                return normalized_hash
+
+    description = record.raw_payload.get("description")
+    if description is None or not description.strip():
+        return None
+    normalized_description = " ".join(description.split())
+    return hashlib.sha256(normalized_description.encode("utf-8")).hexdigest()
+
+
+def _removed_snapshot_observed_at(
+    session: Session,
+    property_source: PropertySource,
+    observed_at: date,
+) -> datetime:
+    observed_at_datetime = _date_to_datetime(observed_at)
+    existing = session.scalar(
+        select(ListingSnapshot.id).where(
+            ListingSnapshot.property_source_id == property_source.id,
+            ListingSnapshot.observed_at == observed_at_datetime,
+        )
+    )
+    if existing is None:
+        return observed_at_datetime
+    return datetime.combine(observed_at, time.max)
 
 
 def _update_property_from_listing(property_: Property, listing: Listing) -> None:

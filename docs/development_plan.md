@@ -156,7 +156,7 @@
 - [x] Добавить source monitoring и error reporting.
 - [x] Добавить ingestion source registry с legal status и refresh policy.
 - [x] Добавить price history update pipeline: first_seen, current_price, price_per_m2 history, price drops/raises.
-- [ ] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
+- [x] Добавить listing events pipeline: removed, republished, description changed, parameters changed.
 - [x] Добавить data enrichment pipeline для infrastructure matching и distance calculations.
 - [x] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [x] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
@@ -511,6 +511,7 @@
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.
 - [x] Commit 74: PostgreSQL full-text indexes for listing search.
+- [x] Commit 75: listing event pipeline for removed, republished and description changes.
 
 ## Current Sprint
 

@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import date
 from typing import Any
 
 from alembic.config import Config
@@ -119,6 +120,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         raise RuntimeError("Expected derived listing events for wr-001.")
 
     deduplication_check = _run_deduplication_check(repository, listing)
+    listing_event_pipeline_check = _run_listing_event_pipeline_check(repository, listing)
     location_reference_check = _run_location_reference_check(repository)
     infrastructure_check = _run_infrastructure_check(repository)
     ai_insight_check = _run_ai_insight_check(repository)
@@ -164,6 +166,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "listing_event_types": listing_event_types,
         "comparable_count": len(comparables),
         "deduplication": deduplication_check,
+        "listing_event_pipeline": listing_event_pipeline_check,
         "location_references": location_reference_check,
         "infrastructure": infrastructure_check,
         "ai_insights": ai_insight_check,
@@ -220,6 +223,128 @@ def _run_full_text_search_check(repository: PostgresRealEstateRepository) -> dic
         "query_ids": query_ids,
         "index_count": len(index_defs),
     }
+
+
+def _run_listing_event_pipeline_check(
+    repository: PostgresRealEstateRepository,
+    base_listing,
+) -> dict[str, Any]:
+    source_name = "Staging verifier listing event feed"
+    listing_a_id = "staging-events-a"
+    listing_b_id = "staging-events-b"
+    listing_a_v1 = _event_pipeline_listing(
+        base_listing,
+        listing_id=listing_a_id,
+        source_name=source_name,
+        title="Staging event listing A v1",
+        observed_at=date(2026, 7, 1),
+    )
+    listing_b_v1 = _event_pipeline_listing(
+        base_listing,
+        listing_id=listing_b_id,
+        source_name=source_name,
+        title="Staging event listing B v1",
+        observed_at=date(2026, 7, 1),
+    )
+    import_partner_records_in_session(
+        repository.session,
+        [
+            _event_pipeline_record(listing_a_v1, observed_at=date(2026, 7, 1), hash_suffix="a1"),
+            _event_pipeline_record(listing_b_v1, observed_at=date(2026, 7, 1), hash_suffix="b1"),
+        ],
+    )
+
+    listing_a_v2 = _event_pipeline_listing(
+        base_listing,
+        listing_id=listing_a_id,
+        source_name=source_name,
+        title="Staging event listing A v2",
+        observed_at=date(2026, 7, 10),
+    )
+    import_partner_records_in_session(
+        repository.session,
+        [
+            _event_pipeline_record(listing_a_v2, observed_at=date(2026, 7, 10), hash_suffix="a2"),
+        ],
+        mark_missing_removed=True,
+    )
+
+    listing_b_v2 = _event_pipeline_listing(
+        base_listing,
+        listing_id=listing_b_id,
+        source_name=source_name,
+        title="Staging event listing B v2",
+        observed_at=date(2026, 7, 20),
+    )
+    import_partner_records_in_session(
+        repository.session,
+        [
+            _event_pipeline_record(listing_b_v2, observed_at=date(2026, 7, 20), hash_suffix="b2"),
+        ],
+    )
+
+    events_a = repository.get_listing_events(listing_a_id)
+    events_b = repository.get_listing_events(listing_b_id)
+    event_types_a = [event.event_type for event in events_a]
+    event_types_b = [event.event_type for event in events_b]
+    if "description_changed" not in event_types_a:
+        raise RuntimeError("Expected description_changed event for staging listing A.")
+    if "removed" not in event_types_b or "republished" not in event_types_b:
+        raise RuntimeError("Expected removed and republished events for staging listing B.")
+
+    active_event_listing_ids = {
+        item.id for item in repository.list_listings(query="Staging event listing")
+    }
+    if {listing_a_id, listing_b_id} - active_event_listing_ids:
+        raise RuntimeError("Expected republished staging listings to be active in search.")
+
+    return {
+        "listing_a_event_types": event_types_a,
+        "listing_b_event_types": event_types_b,
+        "active_listing_ids": sorted(active_event_listing_ids),
+    }
+
+
+def _event_pipeline_listing(
+    base_listing,
+    *,
+    listing_id: str,
+    source_name: str,
+    title: str,
+    observed_at: date,
+):
+    return base_listing.model_copy(
+        update={
+            "id": listing_id,
+            "title": title,
+            "source_name": source_name,
+            "source_url": f"https://example.com/{listing_id}",
+            "first_seen_at": observed_at,
+            "last_seen_at": observed_at,
+            "days_on_market": 0,
+            "price_reductions": 0,
+            "price_increases": 0,
+            "relisted": False,
+        }
+    )
+
+
+def _event_pipeline_record(listing, *, observed_at: date, hash_suffix: str) -> PartnerListingRecord:
+    return PartnerListingRecord(
+        source_name=listing.source_name,
+        source_type="partner_csv",
+        source_base_url="https://example.com",
+        source_listing_id=listing.id,
+        source_url=listing.source_url,
+        observed_at=observed_at,
+        raw_payload={
+            "source_listing_id": listing.id,
+            "source_url": listing.source_url,
+            "active_status": "active",
+            "description_hash": f"staging-description-{hash_suffix}",
+        },
+        listing=listing,
+    )
 
 
 def _run_infrastructure_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:

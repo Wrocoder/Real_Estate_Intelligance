@@ -29,7 +29,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Проверены Alembic migrations на живой PostgreSQL/PostGIS БД через staging verifier.
 - Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
 - Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
-- Добавлен `listing_events` timeline из snapshots: first seen, price moves, parameter/status changes и relist events.
+- Добавлен `listing_events` pipeline из snapshots: first seen, price moves, parameter/status/description hash changes, removed/republished и relist events.
 - Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison и admin UI.
 - Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
 - Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
@@ -295,11 +295,26 @@ rooms, площади и координатам, создается новый `
 После записи snapshot importer пересчитывает price history metrics по всей
 истории конкретного объявления: `first_seen_at`, `last_seen_at`,
 `days_on_market`, `price_reductions`, `price_increases`, текущую цену и
-`price_per_m2`. Для уже существующих PostgreSQL snapshots можно выполнить
+`price_per_m2`. Если CSV содержит `active_status`/`status`, importer сохраняет
+нормализованный статус в private snapshot payload. Если CSV содержит
+`description_hash`, он сохраняется для события `description_changed`; если
+передано поле `description`, importer сохраняет только SHA-256 hash, а не
+полный текст описания. Для full-feed импорта можно явно включить
+`mark_missing_removed=true`: ранее активные объявления этого источника,
+отсутствующие в новом полном snapshot, будут отмечены `removed`, а повторное
+появление создаст `republished`. Для уже существующих PostgreSQL snapshots можно выполнить
 backfill:
 
 ```powershell
 .\.venv\Scripts\domarion.exe rebuild-price-history
+```
+
+Полный source snapshot через CLI можно импортировать так:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-partner-csv data/samples/partner_listings_wroclaw.csv `
+  --source-name "Demo Partner" `
+  --mark-missing-removed
 ```
 
 Internal admin API для того же backfill:

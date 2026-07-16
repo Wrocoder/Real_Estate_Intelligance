@@ -46,6 +46,7 @@ from domarion.schemas import (
     TransportRouteReference,
     TransportStopReference,
 )
+from domarion.services.listing_events import REMOVED_STATUSES
 from domarion.services.listing_text_search import normalize_search_tokens
 from domarion.services.price_history import listing_with_price_history_metrics
 
@@ -117,6 +118,11 @@ def _search_query_sql() -> str:
         translate(lower(:query), '{_SEARCH_TRANSLATE_FROM}', '{_SEARCH_TRANSLATE_TO}')
     )
     """
+
+
+def _is_removed_listing_payload(payload: dict) -> bool:
+    raw_status = payload.get("active_status") or payload.get("status") or "active"
+    return str(raw_status).strip().casefold() in REMOVED_STATUSES
 
 
 class PostgresRealEstateRepository:
@@ -698,6 +704,8 @@ class PostgresRealEstateRepository:
         listings = []
         for listing_snapshots in snapshots_by_listing_id.values():
             latest_snapshot = listing_snapshots[-1]
+            if _is_removed_listing_payload(latest_snapshot.normalized_payload):
+                continue
             listing = Listing.model_validate(latest_snapshot.normalized_payload)
             history = [
                 self._snapshot_to_price_history_point(snapshot)

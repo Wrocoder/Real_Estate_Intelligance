@@ -115,6 +115,7 @@ ListingEventType = Literal[
     "price_reduced",
     "price_increased",
     "parameter_changed",
+    "description_changed",
     "relisted",
     "removed",
     "republished",
@@ -891,6 +892,7 @@ class PartnerCsvImportResponse(BaseModel):
     properties_updated: int = Field(ge=0)
     snapshots_created: int = Field(ge=0)
     snapshots_updated: int = Field(ge=0)
+    removed_marked: int = Field(default=0, ge=0)
     dry_run: bool
     listing_ids: list[str] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
