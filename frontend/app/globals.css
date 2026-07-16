@@ -1075,6 +1075,10 @@ button {
   gap: 5px;
 }
 
+.field.compact-field {
+  gap: 4px;
+}
+
 .field.inline-field {
   min-width: 190px;
 }
@@ -1102,6 +1106,20 @@ button {
   width: 16px;
   height: 16px;
   accent-color: var(--accent);
+}
+
+.alert-preferences {
+  display: grid;
+  grid-template-columns: 130px 130px minmax(180px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+}
+
+.alert-active-field {
+  min-height: 38px;
+  padding-top: 0;
+  white-space: nowrap;
 }
 
 .pagination-row {
@@ -1303,6 +1321,7 @@ button {
   .pricing-grid,
   .seo-area-grid,
   .compare-selector,
+  .alert-preferences,
   .form-grid {
     grid-template-columns: 1fr;
   }

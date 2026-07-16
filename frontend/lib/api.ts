@@ -1812,17 +1812,29 @@ export type AlertFilters = {
   max_days_on_market?: number | null;
 };
 
+export type AlertChannel = "email" | "telegram";
+export type AlertFrequency = "instant" | "daily" | "weekly";
+
 export type Alert = {
   id: string;
   owner_id: string;
   name: string;
   filters: AlertFilters;
-  channel: "email" | "telegram";
-  frequency: "instant" | "daily" | "weekly";
+  channel: AlertChannel;
+  frequency: AlertFrequency;
   delivery_target: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
+};
+
+export type AlertUpdate = {
+  name?: string;
+  filters?: AlertFilters;
+  channel?: AlertChannel;
+  frequency?: AlertFrequency;
+  delivery_target?: string | null;
+  is_active?: boolean;
 };
 
 export type AlertPreview = {
@@ -2591,8 +2603,8 @@ export const api = {
   createAlert: (payload: {
     name: string;
     filters: AlertFilters;
-    channel?: "email" | "telegram";
-    frequency?: "instant" | "daily" | "weekly";
+    channel?: AlertChannel;
+    frequency?: AlertFrequency;
     delivery_target?: string | null;
   }) =>
     request<Alert>(`/api/v1/alerts?owner_id=${OWNER_ID}`, {
@@ -2606,6 +2618,11 @@ export const api = {
       }),
     }),
   listAlerts: () => request<Alert[]>(`/api/v1/alerts?owner_id=${OWNER_ID}`),
+  updateAlert: (alertId: string, payload: AlertUpdate) =>
+    request<Alert>(`/api/v1/alerts/${encodeURIComponent(alertId)}?owner_id=${OWNER_ID}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
   previewAlert: (alertId: string) =>
     request<AlertPreview>(`/api/v1/alerts/${alertId}/preview?owner_id=${OWNER_ID}`),
   deliverAlert: (alertId: string, dryRun = true, maxMatches = 10) =>

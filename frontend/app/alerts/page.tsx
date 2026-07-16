@@ -4,7 +4,15 @@ import { useEffect, useState } from "react";
 import { Bell, Eye, RefreshCw, Send } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { api, type Alert, type AlertDeliveryJob, type AlertPreview } from "@/lib/api";
+import {
+  api,
+  type Alert,
+  type AlertChannel,
+  type AlertDeliveryJob,
+  type AlertFrequency,
+  type AlertPreview,
+  type AlertUpdate,
+} from "@/lib/api";
 import { money } from "@/lib/format";
 
 export default function AlertsPage() {
@@ -13,6 +21,7 @@ export default function AlertsPage() {
   const [preview, setPreview] = useState<AlertPreview | null>(null);
   const [status, setStatus] = useState("Загрузка alerts...");
   const [error, setError] = useState("");
+  const [savingAlertId, setSavingAlertId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: "Fabryczna до 700k",
     query: "",
@@ -30,8 +39,8 @@ export default function AlertsPage() {
     minRental: "",
     minPriceReductions: "",
     maxDaysOnMarket: "",
-    channel: "email" as "email" | "telegram",
-    frequency: "daily" as "instant" | "daily" | "weekly",
+    channel: "email" as AlertChannel,
+    frequency: "daily" as AlertFrequency,
     deliveryTarget: "",
   });
 
@@ -102,6 +111,26 @@ export default function AlertsPage() {
     const job = await api.deliverAlert(alertId, dryRun, 5);
     setJobs([job, ...jobs.filter((item) => item.id !== job.id)]);
     setStatus(`${job.status}: ${job.message}`);
+  }
+
+  async function updateAlertPreferences(alertId: string, payload: AlertUpdate) {
+    setSavingAlertId(alertId);
+    setError("");
+    try {
+      const updated = await api.updateAlert(alertId, payload);
+      setAlerts((current) =>
+        current.map((item) => (item.id === alertId ? updated : item)),
+      );
+      setPreview((current) =>
+        current?.alert.id === alertId ? { ...current, alert: updated } : current,
+      );
+      setStatus(`Alert обновлен: ${updated.name}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown alert update error");
+      setStatus("Не удалось обновить alert");
+    } finally {
+      setSavingAlertId(null);
+    }
   }
 
   return (
@@ -284,7 +313,7 @@ export default function AlertsPage() {
               className="input"
               value={form.channel}
               onChange={(event) =>
-                setForm({ ...form, channel: event.target.value as "email" | "telegram" })
+                setForm({ ...form, channel: event.target.value as AlertChannel })
               }
             >
               <option value="email">email</option>
@@ -299,7 +328,7 @@ export default function AlertsPage() {
               onChange={(event) =>
                 setForm({
                   ...form,
-                  frequency: event.target.value as "instant" | "daily" | "weekly",
+                  frequency: event.target.value as AlertFrequency,
                 })
               }
             >
@@ -357,6 +386,88 @@ export default function AlertsPage() {
                             </span>
                           ))}
                       </div>
+                      <div className="alert-preferences">
+                        <label className="field compact-field">
+                          <span>Частота</span>
+                          <select
+                            className="input"
+                            disabled={savingAlertId === alert.id}
+                            value={alert.frequency}
+                            onChange={(event) =>
+                              void updateAlertPreferences(alert.id, {
+                                frequency: event.target.value as AlertFrequency,
+                              })
+                            }
+                          >
+                            <option value="instant">instant</option>
+                            <option value="daily">daily</option>
+                            <option value="weekly">weekly</option>
+                          </select>
+                        </label>
+                        <label className="field compact-field">
+                          <span>Канал</span>
+                          <select
+                            className="input"
+                            disabled={savingAlertId === alert.id}
+                            value={alert.channel}
+                            onChange={(event) =>
+                              void updateAlertPreferences(alert.id, {
+                                channel: event.target.value as AlertChannel,
+                              })
+                            }
+                          >
+                            <option value="email">email</option>
+                            <option value="telegram">telegram</option>
+                          </select>
+                        </label>
+                        <label className="field compact-field">
+                          <span>Delivery target</span>
+                          <input
+                            key={`${alert.id}-${alert.delivery_target ?? "default"}`}
+                            className="input"
+                            defaultValue={alert.delivery_target ?? ""}
+                            disabled={savingAlertId === alert.id}
+                            placeholder={
+                              alert.channel === "telegram"
+                                ? "Telegram chat id"
+                                : "email optional"
+                            }
+                            onBlur={(event) => {
+                              const nextTarget = event.currentTarget.value.trim();
+                              const currentTarget = alert.delivery_target ?? "";
+                              if (nextTarget === currentTarget) {
+                                return;
+                              }
+                              void updateAlertPreferences(alert.id, {
+                                delivery_target: nextTarget || null,
+                              });
+                            }}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter") {
+                                event.currentTarget.blur();
+                              }
+                            }}
+                          />
+                        </label>
+                        <label className="field checkbox-field alert-active-field">
+                          <input
+                            type="checkbox"
+                            checked={alert.is_active}
+                            disabled={savingAlertId === alert.id}
+                            onChange={(event) =>
+                              void updateAlertPreferences(alert.id, {
+                                is_active: event.target.checked,
+                              })
+                            }
+                          />
+                          <span>{alert.is_active ? "Активен" : "На паузе"}</span>
+                        </label>
+                      </div>
+                      {savingAlertId === alert.id ? (
+                        <div className="meta-row">
+                          <span>Сохранение настроек...</span>
+                        </div>
+                      ) : null}
                     </div>
                     <div className="button-row">
                       <button className="button" type="button" onClick={() => void loadPreview(alert.id)}>

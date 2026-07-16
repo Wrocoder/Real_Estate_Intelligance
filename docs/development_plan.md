@@ -256,7 +256,7 @@
 - [x] Добавить hidden gems alert v1.
 - [x] Добавить advanced investor alerts v1: below market, price drop/fresh candidate, negotiation, liquidity and high rental potential.
 - [ ] Добавить realtor saved-search digests для клиентов.
-- [ ] Добавить alert frequency controls: instant, daily, weekly.
+- [x] Добавить alert frequency controls: instant, daily, weekly.
 - [ ] Добавить unsubscribe/manage preferences flow.
 
 ## 10. Frontend MVP
@@ -501,6 +501,7 @@
 - [x] Commit 63: proximity filters for search and hidden gems.
 - [x] Commit 64: text and address search for listings.
 - [x] Commit 65: developer reputation data model and source-backed report section.
+- [x] Commit 66: alert preference controls.
 
 ## Current Sprint
 
@@ -590,6 +591,7 @@
 - [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 - [x] Добавить granular amenity sublayers на карту: parks, healthcare, retail, office/university/jobs, public services.
 - [x] Добавить admin dedup review actions: filter open/all, mark resolved and reopen.
+- [x] Добавить alert preference controls на `/alerts`: instant/daily/weekly, channel, active/pause и delivery target update.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
