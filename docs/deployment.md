@@ -11,7 +11,8 @@ Jobs:
 
 - `Backend`: Python 3.12, `ruff`, `pytest` с coverage report, performance smoke,
   offline-проверка Alembic migrations.
-- `Frontend`: Node 22, `npm ci`, `lint`, `typecheck`, `npm audit --audit-level=moderate`, `next build`.
+- `Frontend`: Node 22, `npm ci`, `lint`, `typecheck`, frontend smoke,
+  `npm audit --audit-level=moderate`, `next build`.
 - `Docker Build`: сборка backend image и frontend image без публикации registry.
 
 Локальный эквивалент:
@@ -26,6 +27,7 @@ cd frontend
 npm ci
 npm run lint
 npm run typecheck
+npm run smoke
 npm audit --audit-level=moderate
 npm run build
 ```

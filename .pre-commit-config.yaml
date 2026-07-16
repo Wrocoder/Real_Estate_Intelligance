@@ -25,3 +25,10 @@ repos:
         language: system
         files: '^frontend/.*\.(js|jsx|mjs|ts|tsx)$'
         pass_filenames: false
+
+      - id: frontend-smoke
+        name: frontend smoke
+        entry: npm --prefix frontend run smoke
+        language: system
+        files: '^frontend/.*\.(js|jsx|mjs|ts|tsx)$'
+        pass_filenames: false

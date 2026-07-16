@@ -386,7 +386,7 @@
 - [x] Добавить performance smoke tests.
 - [x] Добавить data quality acceptance tests для geocoding, dedup и source freshness.
 - [x] Добавить contract tests для paid artifacts и report metadata.
-- [ ] Добавить frontend smoke tests для search, map, reports, admin и payments.
+- [x] Добавить frontend smoke tests для search, map, reports, admin и payments.
 - [x] Добавить load/performance smoke для listings search и map features.
 
 ## 16. Deployment
@@ -529,6 +529,7 @@
 - [x] Commit 84: performance smoke tests for search and map APIs.
 - [x] Commit 85: data quality acceptance tests for geocoding, dedup and source freshness.
 - [x] Commit 86: paid artifact and report metadata contract tests.
+- [x] Commit 87: frontend smoke tests for search, map, reports, admin and payments.
 
 ## Current Sprint
 

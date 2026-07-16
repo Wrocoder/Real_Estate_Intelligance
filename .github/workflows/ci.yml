@@ -83,6 +83,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Frontend smoke
+        run: npm run smoke
+
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
 

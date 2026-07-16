@@ -7,7 +7,7 @@ endif
 NPM ?= npm
 FRONTEND_DIR ?= frontend
 
-.PHONY: install test lint backend-dev migrate frontend-install frontend-lint frontend-typecheck frontend-dev pre-commit-install pre-commit check
+.PHONY: install test lint backend-dev migrate frontend-install frontend-lint frontend-typecheck frontend-smoke frontend-dev pre-commit-install pre-commit check
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -33,6 +33,9 @@ frontend-lint:
 frontend-typecheck:
 	cd $(FRONTEND_DIR) && $(NPM) run typecheck
 
+frontend-smoke:
+	cd $(FRONTEND_DIR) && $(NPM) run smoke
+
 frontend-dev:
 	cd $(FRONTEND_DIR) && $(NPM) run dev -- --hostname 127.0.0.1 --port 3000
 
@@ -42,4 +45,4 @@ pre-commit-install:
 pre-commit:
 	$(PYTHON) -m pre_commit run --all-files
 
-check: test lint frontend-lint frontend-typecheck
+check: test lint frontend-lint frontend-typecheck frontend-smoke

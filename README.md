@@ -95,12 +95,14 @@ make lint
 make backend-dev
 make frontend-lint
 make frontend-typecheck
+make frontend-smoke
 make pre-commit-install
 make pre-commit
 make check
 ```
 
-Pre-commit hooks запускают `ruff check`, `npm run lint` и `npm run typecheck`.
+Pre-commit hooks запускают `ruff check`, `npm run lint`, `npm run typecheck`
+и `npm run smoke`.
 Для ручной проверки без `make`:
 
 ```powershell
@@ -155,6 +157,7 @@ cd frontend
 npm install
 npm run lint
 npm run typecheck
+npm run smoke
 npm run build
 npm run dev -- --hostname 127.0.0.1 --port 3000
 ```
