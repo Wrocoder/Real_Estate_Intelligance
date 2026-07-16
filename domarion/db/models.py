@@ -281,6 +281,79 @@ class PropertyDeduplicationMatch(Base):
     source: Mapped[ListingSource | None] = relationship()
 
 
+class DeveloperProfileRow(Base):
+    __tablename__ = "developer_profiles"
+
+    id: Mapped[str] = mapped_column(String(120), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), index=True)
+    legal_name: Mapped[str | None] = mapped_column(String(200), index=True)
+    brand_names_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    krs: Mapped[str | None] = mapped_column(String(32), index=True)
+    nip: Mapped[str | None] = mapped_column(String(32), index=True)
+    regon: Mapped[str | None] = mapped_column(String(32), index=True)
+    website_url: Mapped[str | None] = mapped_column(String(500))
+    headquarters_city: Mapped[str | None] = mapped_column(String(120), index=True)
+    founded_year: Mapped[int | None] = mapped_column(Integer)
+    source_names_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
+class DeveloperProjectRow(Base):
+    __tablename__ = "developer_projects"
+
+    id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    developer_id: Mapped[str] = mapped_column(
+        ForeignKey("developer_profiles.id"),
+        index=True,
+    )
+    name: Mapped[str] = mapped_column(String(200), index=True)
+    city: Mapped[str] = mapped_column(String(120), index=True)
+    district: Mapped[str | None] = mapped_column(String(120), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="unknown", index=True)
+    units_count: Mapped[int | None] = mapped_column(Integer)
+    completed_year: Mapped[int | None] = mapped_column(Integer)
+    source_url: Mapped[str | None] = mapped_column(String(500))
+
+    developer: Mapped[DeveloperProfileRow] = relationship()
+
+
+class DeveloperQualitySignalRow(Base):
+    __tablename__ = "developer_quality_signals"
+
+    id: Mapped[str] = mapped_column(String(180), primary_key=True)
+    developer_id: Mapped[str] = mapped_column(
+        ForeignKey("developer_profiles.id"),
+        index=True,
+    )
+    signal_type: Mapped[str] = mapped_column(String(60), index=True)
+    severity: Mapped[str] = mapped_column(String(40), index=True)
+    title: Mapped[str] = mapped_column(String(220))
+    summary: Mapped[str] = mapped_column(Text)
+    source_name: Mapped[str] = mapped_column(String(160), index=True)
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    observed_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
+    confidence_score: Mapped[int] = mapped_column(Integer, default=50)
+
+    developer: Mapped[DeveloperProfileRow] = relationship()
+
+
+class DeveloperReputationSnapshotRow(Base):
+    __tablename__ = "developer_reputation_snapshots"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    developer_id: Mapped[str] = mapped_column(
+        ForeignKey("developer_profiles.id"),
+        index=True,
+    )
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    reputation_score: Mapped[int] = mapped_column(Integer)
+    confidence_score: Mapped[int] = mapped_column(Integer)
+    label: Mapped[str] = mapped_column(String(40), index=True)
+    score_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    developer: Mapped[DeveloperProfileRow] = relationship()
+
+
 class PropertyScore(Base):
     __tablename__ = "property_scores"
 

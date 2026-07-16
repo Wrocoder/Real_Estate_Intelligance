@@ -7,6 +7,9 @@ from sqlalchemy.orm import Session
 from domarion.db.models import (
     Amenity,
     AreaStatistic,
+    DeveloperProfileRow,
+    DeveloperProjectRow,
+    DeveloperQualitySignalRow,
     District,
     IndustrialZone,
     Kindergarten,
@@ -29,6 +32,9 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperProfile,
+    DeveloperProject,
+    DeveloperQualitySignal,
     DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
@@ -46,6 +52,7 @@ from domarion.schemas import (
     TransportRouteReference,
     TransportStopReference,
 )
+from domarion.services.developer_reputation import build_developer_reputation
 from domarion.services.listing_events import REMOVED_STATUSES
 from domarion.services.listing_text_search import normalize_search_tokens
 from domarion.services.price_history import listing_with_price_history_metrics
@@ -123,6 +130,60 @@ def _search_query_sql() -> str:
 def _is_removed_listing_payload(payload: dict) -> bool:
     raw_status = payload.get("active_status") or payload.get("status") or "active"
     return str(raw_status).strip().casefold() in REMOVED_STATUSES
+
+
+def _developer_reputation_matches_city(
+    reputation: DeveloperReputation,
+    city_key: str,
+) -> bool:
+    headquarters = reputation.developer.headquarters_city
+    if headquarters is not None and headquarters.casefold() == city_key:
+        return True
+    return any(project.city.casefold() == city_key for project in reputation.projects)
+
+
+def _developer_listing_match_score(
+    reputation: DeveloperReputation,
+    listing: Listing,
+) -> int:
+    score = 0
+    listing_text = _normalized_developer_match_text(
+        " ".join(
+            [
+                listing.title,
+                listing.source_name,
+                listing.address,
+                listing.city,
+                listing.district,
+            ]
+        )
+    )
+    developer_names = [
+        reputation.developer.name,
+        reputation.developer.legal_name,
+        *reputation.developer.brand_names,
+        *reputation.developer.source_names,
+    ]
+    for name in developer_names:
+        if name and _normalized_developer_match_text(name) in listing_text:
+            score = max(score, 70)
+    if listing.market_type == "primary":
+        score += 8
+    for project in reputation.projects:
+        project_score = 0
+        if project.city.casefold() == listing.city.casefold():
+            project_score += 20
+        if project.district and project.district.casefold() == listing.district.casefold():
+            project_score += 18
+        project_name = _normalized_developer_match_text(project.name)
+        if project_name and project_name in listing_text:
+            project_score += 35
+        score = max(score, project_score)
+    return min(score, 100)
+
+
+def _normalized_developer_match_text(value: str) -> str:
+    return " ".join(value.casefold().replace("-", " ").split())
 
 
 class PostgresRealEstateRepository:
@@ -218,16 +279,49 @@ class PostgresRealEstateRepository:
         self,
         city: str | None = None,
     ) -> list[DeveloperReputation]:
-        return []
+        rows = self.session.scalars(
+            select(DeveloperProfileRow).order_by(DeveloperProfileRow.name)
+        ).all()
+        reputations = [
+            reputation
+            for row in rows
+            if (reputation := self._developer_reputation_from_row(row)) is not None
+        ]
+        if city:
+            city_key = city.casefold()
+            reputations = [
+                reputation
+                for reputation in reputations
+                if _developer_reputation_matches_city(reputation, city_key)
+            ]
+        return sorted(
+            reputations,
+            key=lambda item: (-item.reputation_score, -item.confidence_score, item.developer.name),
+        )
 
     def get_developer_reputation(self, developer_id: str) -> DeveloperReputation | None:
-        return None
+        row = self.session.get(DeveloperProfileRow, developer_id)
+        if row is None:
+            return None
+        return self._developer_reputation_from_row(row)
 
     def get_developer_reputation_for_listing(
         self,
         listing_id: str,
     ) -> DeveloperReputation | None:
-        return None
+        listing = self.get_listing(listing_id)
+        if listing is None:
+            return None
+
+        candidates = self.list_developer_reputations(city=listing.city)
+        scored = [
+            (_developer_listing_match_score(reputation, listing), reputation)
+            for reputation in candidates
+        ]
+        scored = [item for item in scored if item[0] >= 50]
+        if not scored:
+            return None
+        return max(scored, key=lambda item: item[0])[1]
 
     def list_municipalities(self) -> list[MunicipalityReference]:
         rows = self.session.scalars(select(Municipality).order_by(Municipality.name)).all()
@@ -499,6 +593,43 @@ class PostgresRealEstateRepository:
             for row in rows
         ]
 
+    def _developer_reputation_from_row(
+        self,
+        row: DeveloperProfileRow,
+    ) -> DeveloperReputation | None:
+        profile = self._developer_profile_to_schema(row)
+        projects = self._developer_projects_for(row.id)
+        signals = self._developer_signals_for(row.id)
+        return build_developer_reputation(profile, projects, signals)
+
+    def _developer_projects_for(self, developer_id: str) -> list[DeveloperProject]:
+        rows = self.session.scalars(
+            select(DeveloperProjectRow)
+            .where(DeveloperProjectRow.developer_id == developer_id)
+            .order_by(DeveloperProjectRow.city, DeveloperProjectRow.name)
+        ).all()
+        projects = [self._developer_project_to_schema(row) for row in rows]
+        return sorted(
+            projects,
+            key=lambda project: (
+                project.status != "active",
+                -(project.completed_year or 0),
+                project.name,
+            ),
+        )
+
+    def _developer_signals_for(self, developer_id: str) -> list[DeveloperQualitySignal]:
+        rows = self.session.scalars(
+            select(DeveloperQualitySignalRow)
+            .where(DeveloperQualitySignalRow.developer_id == developer_id)
+            .order_by(DeveloperQualitySignalRow.severity, DeveloperQualitySignalRow.title)
+        ).all()
+        signals = [self._developer_signal_to_schema(row) for row in rows]
+        return sorted(
+            signals,
+            key=lambda signal: (signal.severity != "risk", signal.severity, signal.title),
+        )
+
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
         candidates = [
             candidate
@@ -747,6 +878,52 @@ class PostgresRealEstateRepository:
             average_days_on_market=row.average_days_on_market,
             price_change_90d_pct=row.price_change_90d_pct,
             supply_change_90d_pct=row.supply_change_90d_pct,
+        )
+
+    @staticmethod
+    def _developer_profile_to_schema(row: DeveloperProfileRow) -> DeveloperProfile:
+        return DeveloperProfile(
+            id=row.id,
+            name=row.name,
+            legal_name=row.legal_name,
+            brand_names=row.brand_names_json or [],
+            krs=row.krs,
+            nip=row.nip,
+            regon=row.regon,
+            website_url=row.website_url,
+            headquarters_city=row.headquarters_city,
+            founded_year=row.founded_year,
+            source_names=row.source_names_json or [],
+            updated_at=row.updated_at.date(),
+        )
+
+    @staticmethod
+    def _developer_project_to_schema(row: DeveloperProjectRow) -> DeveloperProject:
+        return DeveloperProject(
+            id=row.id,
+            developer_id=row.developer_id,
+            name=row.name,
+            city=row.city,
+            district=row.district,
+            status=row.status,
+            units_count=row.units_count,
+            completed_year=row.completed_year,
+            source_url=row.source_url,
+        )
+
+    @staticmethod
+    def _developer_signal_to_schema(row: DeveloperQualitySignalRow) -> DeveloperQualitySignal:
+        return DeveloperQualitySignal(
+            id=row.id,
+            developer_id=row.developer_id,
+            signal_type=row.signal_type,
+            severity=row.severity,
+            title=row.title,
+            summary=row.summary,
+            source_name=row.source_name,
+            source_url=row.source_url,
+            observed_at=row.observed_at.date() if row.observed_at is not None else None,
+            confidence_score=row.confidence_score,
         )
 
     @staticmethod

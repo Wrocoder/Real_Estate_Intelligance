@@ -33,6 +33,7 @@ from domarion.schemas import (
     TransportRouteReference,
     TransportStopReference,
 )
+from domarion.services.developer_reputation import build_developer_reputation
 from domarion.services.listing_events import ListingEventInput, derive_listing_events
 from domarion.services.listing_text_search import listing_matches_query
 
@@ -1100,85 +1101,7 @@ class InMemoryRealEstateRepository:
 
         projects = self._developer_projects_for(developer_id)
         signals = self._developer_signals_for(developer_id)
-        completed_projects_count = sum(1 for project in projects if project.status == "completed")
-        active_projects_count = sum(1 for project in projects if project.status == "active")
-        local_projects_count = sum(
-            1 for project in projects if project.city.casefold() == "Wrocław".casefold()
-        )
-
-        track_record_score = _clamp_score(
-            45 + completed_projects_count * 13 + active_projects_count * 4
-        )
-        delivery_score = _developer_factor_score(signals, "delivery", base=62)
-        technical_quality_score = _developer_factor_score(signals, "technical_quality", base=64)
-        legal_compliance_score = _developer_factor_score(signals, "legal", base=66)
-        financial_stability_score = _developer_factor_score(signals, "financial", base=62)
-        transparency_score = _developer_factor_score(signals, "transparency", base=58)
-        local_experience_score = _clamp_score(42 + local_projects_count * 12)
-
-        reputation_score = _clamp_score(
-            track_record_score * 0.20
-            + delivery_score * 0.15
-            + technical_quality_score * 0.17
-            + legal_compliance_score * 0.14
-            + financial_stability_score * 0.12
-            + transparency_score * 0.10
-            + local_experience_score * 0.12
-        )
-        confidence_score = _clamp_score(
-            34
-            + len(set(profile.source_names)) * 8
-            + min(len(signals), 8) * 5
-            + min(len(projects), 10) * 4
-        )
-        risk_signals = [
-            signal.summary
-            for signal in signals
-            if signal.severity in {"warning", "risk"}
-        ]
-        positive_signals = [
-            signal.summary
-            for signal in signals
-            if signal.severity == "positive"
-        ]
-
-        if any(signal.severity == "risk" for signal in signals):
-            label = "risk_review"
-        elif reputation_score >= 75 and confidence_score >= 60:
-            label = "strong"
-        elif reputation_score >= 65:
-            label = "good"
-        elif reputation_score >= 52:
-            label = "mixed"
-        else:
-            label = "limited_data"
-
-        return DeveloperReputation(
-            developer=profile,
-            reputation_score=reputation_score,
-            confidence_score=confidence_score,
-            label=label,
-            track_record_score=track_record_score,
-            delivery_score=delivery_score,
-            technical_quality_score=technical_quality_score,
-            legal_compliance_score=legal_compliance_score,
-            financial_stability_score=financial_stability_score,
-            transparency_score=transparency_score,
-            local_experience_score=local_experience_score,
-            completed_projects_count=completed_projects_count,
-            active_projects_count=active_projects_count,
-            positive_signals=positive_signals,
-            risk_signals=risk_signals,
-            due_diligence_questions=_developer_due_diligence_questions(
-                reputation_score=reputation_score,
-                confidence_score=confidence_score,
-                risk_signals=risk_signals,
-                active_projects_count=active_projects_count,
-            ),
-            source_citations=_developer_source_citations(profile, signals),
-            projects=projects,
-            quality_signals=signals,
-        )
+        return build_developer_reputation(profile, projects, signals)
 
     def _developer_projects_for(self, developer_id: str) -> list[DeveloperProject]:
         return sorted(

@@ -9,6 +9,7 @@ from domarion.ingestion.db_writer import (
     import_partner_csv,
     rebuild_price_history_metrics_in_session,
 )
+from domarion.ingestion.developers import import_developer_feed
 from domarion.ingestion.infrastructure_references import import_infrastructure_references
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
@@ -81,6 +82,21 @@ def main() -> None:
         "--dry-run",
         action="store_true",
         help="Parse and validate the file without writing to PostgreSQL.",
+    )
+    developer_parser = subparsers.add_parser(
+        "import-developer-feed",
+        help="Import legal-first developer profiles, projects and quality signals from JSON.",
+    )
+    developer_parser.add_argument("path", help="Path to UTF-8 developer feed JSON file.")
+    developer_parser.add_argument(
+        "--source-name",
+        default=None,
+        help="Fallback source name if the feed does not define one.",
+    )
+    developer_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Parse and validate the feed without writing to PostgreSQL.",
     )
     report_parser = subparsers.add_parser(
         "generate-report-html",
@@ -198,6 +214,22 @@ def main() -> None:
                 args.path,
                 session,
                 default_layer=args.layer,
+                default_source_name=args.source_name,
+                dry_run=args.dry_run,
+            )
+            if not args.dry_run:
+                session.commit()
+        _print_json(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "import-developer-feed":
+        if not args.dry_run and get_settings().data_repository_backend != "postgres":
+            raise SystemExit(
+                "import-developer-feed writes require DATA_REPOSITORY_BACKEND=postgres. "
+                "Use --dry-run for local validation."
+            )
+        with SessionLocal() as session:
+            result = import_developer_feed(
+                args.path,
+                session,
                 default_source_name=args.source_name,
                 dry_run=args.dry_run,
             )

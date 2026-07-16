@@ -15,6 +15,7 @@ from alembic import command
 from domarion.ai_insight_store.postgres import PostgresAIInsightStore
 from domarion.core.config import get_settings
 from domarion.ingestion.db_writer import import_partner_records_in_session
+from domarion.ingestion.developers import import_developer_feed
 from domarion.ingestion.partner_csv import PartnerListingRecord
 from domarion.ingestion_admin_store.postgres import PostgresIngestionAdminStore
 from domarion.report_store.postgres import PostgresReportStore
@@ -127,6 +128,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
     source_error_check = _run_source_error_check(repository)
     enrichment_check = _run_infrastructure_enrichment_check(repository)
     full_text_search_check = _run_full_text_search_check(repository)
+    developer_ingestion_check = _run_developer_ingestion_check(repository)
 
     created = repository.create_planned_investment(
         PlannedInvestmentCreate(
@@ -173,6 +175,7 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
         "source_errors": source_error_check,
         "infrastructure_enrichment": enrichment_check,
         "full_text_search": full_text_search_check,
+        "developer_ingestion": developer_ingestion_check,
         "planned_investment_crud": "ok",
         "spatial": {
             **_spatial_schema_checks(repository),
@@ -181,6 +184,30 @@ def _run_repository_checks(repository: PostgresRealEstateRepository) -> dict[str
             "created_planned_investment_geom": created_spatial,
             "updated_planned_investment_geom": updated_spatial,
         },
+    }
+
+
+def _run_developer_ingestion_check(repository: PostgresRealEstateRepository) -> dict[str, Any]:
+    result = import_developer_feed(
+        "data/samples/developer_feed_wroclaw.json",
+        repository.session,
+        dry_run=False,
+    )
+    ranking = repository.list_developer_reputations(city="Wrocław")
+    developer = repository.get_developer_reputation("demo-development")
+    listing_developer = repository.get_developer_reputation_for_listing("wr-002")
+    if result.profiles_created + result.profiles_updated < 2:
+        raise RuntimeError("Expected developer feed import to upsert profiles.")
+    if len(ranking) < 2:
+        raise RuntimeError("Expected developer ranking from imported Postgres tables.")
+    if developer is None or developer.reputation_score <= 0:
+        raise RuntimeError("Expected demo-development reputation from imported feed.")
+    if listing_developer is None or listing_developer.developer.id != "demo-development":
+        raise RuntimeError("Expected wr-002 to match demo-development developer profile.")
+    return {
+        **result.as_dict(),
+        "ranking_count": len(ranking),
+        "listing_developer_id": listing_developer.developer.id,
     }
 
 

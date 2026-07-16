@@ -1,0 +1,105 @@
+{
+  "source_name": "Demo Developer Legal Feed",
+  "profiles": [
+    {
+      "id": "demo-development",
+      "name": "Demo Development",
+      "legal_name": "Demo Development S.A.",
+      "brand_names": ["Demo Developer"],
+      "krs": "0000123456",
+      "nip": "8990000001",
+      "regon": "930000001",
+      "website_url": "https://example-developer.test",
+      "headquarters_city": "Wrocław",
+      "founded_year": 2012,
+      "source_names": ["Demo Developer Legal Feed", "KRS/REGON sample", "Developer Demo"],
+      "updated_at": "2026-07-10"
+    },
+    {
+      "id": "fabryczna-estate-partners",
+      "name": "Fabryczna Estate Partners",
+      "legal_name": "Fabryczna Estate Partners sp. z o.o.",
+      "brand_names": ["FEP"],
+      "krs": "0000234567",
+      "nip": "8990000002",
+      "regon": "930000002",
+      "website_url": "https://example.com/developers/fep",
+      "headquarters_city": "Wrocław",
+      "founded_year": 2008,
+      "source_names": ["Demo Developer Legal Feed", "Partner inspection sample"],
+      "updated_at": "2026-07-10"
+    }
+  ],
+  "projects": [
+    {
+      "id": "demo-jagodno-gardens",
+      "developer_id": "demo-development",
+      "name": "Jagodno Gardens",
+      "city": "Wrocław",
+      "district": "Krzyki",
+      "status": "active",
+      "units_count": 148,
+      "source_url": "https://example-developer.test/projects/jagodno-gardens"
+    },
+    {
+      "id": "demo-krzyki-park",
+      "developer_id": "demo-development",
+      "name": "Krzyki Park Residence",
+      "city": "Wrocław",
+      "district": "Krzyki",
+      "status": "completed",
+      "units_count": 96,
+      "completed_year": 2024,
+      "source_url": "https://example-developer.test/projects/krzyki-park"
+    },
+    {
+      "id": "fep-nowy-dwor",
+      "developer_id": "fabryczna-estate-partners",
+      "name": "Nowy Dwór Residence",
+      "city": "Wrocław",
+      "district": "Fabryczna",
+      "status": "completed",
+      "units_count": 120,
+      "completed_year": 2012,
+      "source_url": "https://example.com/developers/fep/nowy-dwor"
+    }
+  ],
+  "quality_signals": [
+    {
+      "id": "demo-transparency",
+      "developer_id": "demo-development",
+      "signal_type": "transparency",
+      "severity": "positive",
+      "title": "Clear investment documentation",
+      "summary": "Sample feed includes project pages, schedules and contact-free metadata.",
+      "source_name": "Demo Developer Legal Feed",
+      "source_url": "https://example-developer.test",
+      "observed_at": "2026-07-10",
+      "confidence_score": 72
+    },
+    {
+      "id": "demo-local-track-record",
+      "developer_id": "demo-development",
+      "signal_type": "local_market",
+      "severity": "positive",
+      "title": "Recent Wrocław project experience",
+      "summary": "Two sample projects are linked to Wrocław districts in the demo dataset.",
+      "source_name": "Demo Developer Legal Feed",
+      "source_url": "https://example-developer.test/projects",
+      "observed_at": "2026-07-10",
+      "confidence_score": 68
+    },
+    {
+      "id": "fep-track-record",
+      "developer_id": "fabryczna-estate-partners",
+      "signal_type": "track_record",
+      "severity": "info",
+      "title": "Older completed project",
+      "summary": "The linked building was completed in 2012; verify current management and defects.",
+      "source_name": "Partner inspection sample",
+      "source_url": "https://example.com/listings/wr-001",
+      "observed_at": "2026-07-10",
+      "confidence_score": 55
+    }
+  ]
+}

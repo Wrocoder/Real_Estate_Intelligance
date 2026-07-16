@@ -41,8 +41,10 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен hidden gems search mode: `/api/v1/listings/hidden-gems`, ranked signals и frontend режим с investor-фильтрами.
 - Добавлены proximity-фильтры поиска и hidden gems: distance to center, stop, school, major road и industrial zone.
 - Добавлен text/address search для listings, hidden gems и saved-search alerts: title/address/district/city/source metadata, accent-insensitive matching.
+- Добавлен рейтинг застройщиков: API, frontend page, developer блоки в listing/check/compare reports и due-diligence citations.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
+- Добавлен legal-first developer feed import: JSON-фид профилей, проектов и quality signals с dry-run и Postgres upsert.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
@@ -105,6 +107,9 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/payment-webhooks/stripe
 - http://127.0.0.1:8000/api/v1/payment-webhooks/payu
 - http://127.0.0.1:8000/api/v1/listings
+- http://127.0.0.1:8000/api/v1/developers
+- http://127.0.0.1:8000/api/v1/developers/{developer_id}
+- http://127.0.0.1:8000/api/v1/listings/{listing_id}/developer
 - http://127.0.0.1:8000/api/v1/areas/compare
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/import-from-url
@@ -167,6 +172,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/areas/compare — сравнение районов по city baseline, value/growth и market pressure.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
+- http://127.0.0.1:3000/developers — рейтинг застройщиков.
 - http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/pricing — разовые paid reports, checkout и audit trail.
@@ -326,6 +332,27 @@ curl.exe -X POST http://127.0.0.1:8000/api/v1/admin/price-history/rebuild `
   -H "X-Domarion-Role: admin" `
   -H "X-Domarion-Plan: enterprise"
 ```
+
+## Импорт данных застройщиков
+
+Developer reputation data импортируется из legal-first JSON-фидов: профили
+компаний, проекты и source-backed quality/legal/transparency signals. Пример:
+`data/samples/developer_feed_wroclaw.json`.
+
+Проверить фид без записи:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-developer-feed data\samples\developer_feed_wroclaw.json --dry-run
+```
+
+Импортировать в PostgreSQL после миграций:
+
+```powershell
+.\.venv\Scripts\domarion.exe import-developer-feed data\samples\developer_feed_wroclaw.json
+```
+
+После импорта рейтинг доступен через `/api/v1/developers`, а lookup для объекта
+через `/api/v1/listings/{listing_id}/developer`.
 
 PostGIS infrastructure enrichment пересчитывает для объектов с `geom` поля
 `distance_to_center_km`, `nearest_stop_m`, `nearest_school_m`,

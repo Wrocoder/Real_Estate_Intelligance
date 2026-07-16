@@ -81,7 +81,7 @@
 - [x] Добавить таблицы инфраструктуры: `transport_stops`, `transport_routes`, `schools`, `kindergartens`, `amenities`, `industrial_zones`.
 - [x] Добавить `ai_insights` для сохранения AI summaries и object explanations.
 - [x] Добавить таблицы `agencies` и `agency_memberships` для agency workspaces.
-- [ ] Добавить таблицы `developer_profiles`, `developer_projects`, `developer_quality_signals`, `developer_reputation_snapshots`.
+- [x] Добавить таблицы `developer_profiles`, `developer_projects`, `developer_quality_signals`, `developer_reputation_snapshots`.
 - [ ] Связать listings/user-submitted drafts с `developer_id`, `investment_name` и primary-market project metadata.
 - [x] Добавить `scraping_jobs`/`source_errors` или эквивалент для легальных source checks без агрессивного scraping lock-in.
 - [x] Добавить S3-compatible storage abstraction для generated PDF/HTML artifacts.
@@ -161,7 +161,8 @@
 - [x] Добавить official open-data ingestion roadmap: GUGiK/Geoportal, RCN, GUS/BDL, MPZP/Studium, OSM, GTFS.
 - [x] Добавить импорт schools/kindergartens/transport/healthcare/parks/industrial zones.
 - [x] Добавить ingestion/source type `user_submitted_reference` для приватных ссылок и ручных параметров пользователя.
-- [ ] Добавить legal-first developer data ingestion: developer feeds, KRS/REGON lookup, UOKiK events, directories, partner inspection datasets.
+- [x] Добавить legal-first developer feed ingestion для профилей, проектов и quality signals.
+- [ ] Расширить legal-first developer ingestion: KRS/REGON lookup, UOKiK events, directories, partner inspection datasets.
 - [ ] Добавить нормализацию developer aliases: brand name, legal entity, SPV/project company, parent company.
 - [x] Улучшить deduplication v2: этаж, описание, агентство, источник, text similarity, distance threshold, photo hashes only if allowed.
 - [ ] Добавить source-specific retention и delete-request handling.
@@ -513,6 +514,7 @@
 - [x] Commit 74: PostgreSQL full-text indexes for listing search.
 - [x] Commit 75: listing event pipeline for removed, republished and description changes.
 - [x] Commit 76: deduplication v2 evidence and review blockers.
+- [x] Commit 77: developer reputation Postgres tables and legal-first feed importer.
 
 ## Current Sprint
 
@@ -610,6 +612,7 @@
 - [x] Добавить realtor saved-search client digest: API, client-ready copy и UI генерация из alert.
 - [x] Добавить realtor client shortlist preview на compare page: ranked copy, mortgage/rental context и client-ready message.
 - [x] Добавить lightweight SVG charts: listing price history line chart и market distribution bar charts.
+- [x] Добавить developer reputation Postgres tables и legal-first JSON feed importer.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

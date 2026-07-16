@@ -7,6 +7,8 @@
 - В `docs/partner_onboarding.md` уже предусмотрен `source_type=developer_feed`.
 - В listing-модели пока нет нормализованного `developer_id`, `developer_name`, `investment_name` и связи с проектом застройщика.
 - Добавлен первый in-memory слой: developer profiles, projects, quality signals и listing-to-developer mapping.
+- Добавлены PostgreSQL таблицы для developer profiles, projects, quality signals и reputation snapshots.
+- Добавлен legal-first JSON feed importer для source-backed developer data без копирования персональных данных.
 - Public API уже отдает ranking, developer detail и lookup by listing для MVP/demo данных.
 - В object reports добавлена секция о застройщике, если для объекта есть сопоставление.
 
@@ -53,11 +55,12 @@ Every object report should include a developer section when developer data exist
 ## MVP Slices
 
 1. [x] Data model and sample data: developer profiles, projects and listing-to-developer mapping.
-2. [ ] Admin import/manual editor for developer profiles and quality signals.
+2. [x] Legal-first feed import for developer profiles, projects and quality signals.
 3. [x] Public API: developer ranking list, developer detail, lookup by listing.
 4. [x] Developer Reputation Score v1 with transparent factors and confidence score.
 5. [x] Add developer section to object reports.
 6. [x] Add developer reputation block to user-submitted link reports when developer is recognized.
 7. [x] Frontend ranking page and developer block on listing detail.
 8. [x] Dedicated developer profile page with source freshness and project timeline.
-9. [ ] Add source citation and dispute-correction workflow.
+9. [ ] Add admin manual editor for developer profiles and quality signals.
+10. [ ] Add source citation and dispute-correction workflow.
