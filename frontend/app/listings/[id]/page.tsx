@@ -231,6 +231,10 @@ export default function ListingDetailPage() {
         ) : null}
       </section>
 
+      <p className="muted" style={{ marginTop: 12 }}>
+        {analysis.disclaimer}
+      </p>
+
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
           <h2 className="icon-title">

@@ -649,6 +649,9 @@ export default function CheckListingPage() {
                     <li key={warning}>{warning}</li>
                   ))}
                 </ul>
+                <p className="muted" style={{ marginTop: 12 }}>
+                  {analysis.disclaimer}
+                </p>
               </>
             ) : (
               <div className="empty-state">Введите параметры и запустите проверку.</div>

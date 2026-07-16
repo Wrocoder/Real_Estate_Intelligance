@@ -25,6 +25,11 @@ class ScoringConfigurationError(ValueError):
 
 SCORING_FORMULA_VERSION = "domarion-scoring-v1"
 DEFAULT_SCORING_WEIGHTS_PROFILE = "default-v1"
+SCORING_DISCLAIMER = (
+    "Scoring outputs are decision-support screening signals, not financial, legal or "
+    "investment advice, not a valuation certificate and not a guarantee of price, financing, "
+    "legal status or future performance."
+)
 
 
 @dataclass(frozen=True)
@@ -366,6 +371,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         insights=insights,
         negotiation_arguments=negotiation_arguments,
         data_quality_notes=data_quality_notes,
+        disclaimer=SCORING_DISCLAIMER,
     )
 
 

@@ -527,6 +527,8 @@ def test_listing_analysis() -> None:
     assert payload["rental_estimate"]["listing_id"] == "wr-001"
     assert payload["rental_estimate"]["monthly_rent_mid_pln"] > 0
     assert payload["rental_estimate"]["cashflow_scenarios"]
+    assert "not financial, legal or investment advice" in payload["disclaimer"]
+    assert "not a guarantee" in payload["disclaimer"]
 
 
 def test_listing_future_impact_returns_radius_buckets() -> None:

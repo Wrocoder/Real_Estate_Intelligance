@@ -885,6 +885,7 @@ export type ListingAnalysis = {
   insights: string[];
   negotiation_arguments: string[];
   data_quality_notes: string[];
+  disclaimer: string;
 };
 
 export type UserSubmittedListingRequest = {

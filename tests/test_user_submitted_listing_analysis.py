@@ -55,6 +55,7 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert payload["draft_id"]
     assert payload["draft_expires_at"]
     assert payload["analysis"]["comparables"]
+    assert "not financial, legal or investment advice" in payload["analysis"]["disclaimer"]
     assert "legal-first" in payload["comparables_basis"]
     assert any("confirmed user-submitted fields" in item for item in payload["warnings"])
 

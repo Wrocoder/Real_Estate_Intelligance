@@ -45,7 +45,7 @@
 - [ ] Описать запрет на копирование фото и контактных данных без правового основания.
 - [x] Добавить процесс удаления данных по запросу.
 - [x] Добавить GDPR/RODO data retention policy.
-- [ ] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
+- [x] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
 - [x] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
 - [ ] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
 
@@ -510,6 +510,7 @@
 - [x] Commit 70: lightweight market and price history charts.
 - [x] Commit 71: source retention governance and deletion request backend.
 - [x] Commit 72: data deletion request admin moderation workflow.
+- [x] Commit 73: explicit scoring disclaimers in analysis surfaces.
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.

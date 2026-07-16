@@ -1319,6 +1319,11 @@ class ListingAnalysis(BaseModel):
     insights: list[str]
     negotiation_arguments: list[str]
     data_quality_notes: list[str]
+    disclaimer: str = (
+        "Scoring outputs are decision-support screening signals, not financial, legal or "
+        "investment advice, not a valuation certificate and not a guarantee of price, financing, "
+        "legal status or future performance."
+    )
 
 
 class SourceReferencePreviewRequest(BaseModel):
