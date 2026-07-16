@@ -36,8 +36,27 @@ type VisibleMapLayers = {
   schools: boolean;
   kindergartens: boolean;
   amenities: boolean;
+  amenityParks: boolean;
+  amenityHealthcare: boolean;
+  amenityRetail: boolean;
+  amenityJobsEducation: boolean;
+  amenityPublicServices: boolean;
   industrialZones: boolean;
 };
+
+type InfrastructureLayerControlKey = keyof Pick<
+  VisibleMapLayers,
+  | "transportStops"
+  | "schools"
+  | "kindergartens"
+  | "amenities"
+  | "amenityParks"
+  | "amenityHealthcare"
+  | "amenityRetail"
+  | "amenityJobsEducation"
+  | "amenityPublicServices"
+  | "industrialZones"
+>;
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -69,20 +88,28 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   schools: true,
   kindergartens: true,
   amenities: true,
+  amenityParks: true,
+  amenityHealthcare: true,
+  amenityRetail: true,
+  amenityJobsEducation: true,
+  amenityPublicServices: true,
   industrialZones: true,
 };
 
 const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
-  key: keyof Pick<
-    VisibleMapLayers,
-    "transportStops" | "schools" | "kindergartens" | "amenities" | "industrialZones"
-  >;
+  key: InfrastructureLayerControlKey;
   label: string;
+  parentKey?: InfrastructureLayerControlKey;
 }> = [
   { key: "transportStops", label: "Транспорт" },
   { key: "schools", label: "Школы" },
   { key: "kindergartens", label: "Сады" },
   { key: "amenities", label: "Сервисы" },
+  { key: "amenityParks", label: "Парки", parentKey: "amenities" },
+  { key: "amenityHealthcare", label: "Медицина", parentKey: "amenities" },
+  { key: "amenityRetail", label: "Торговля", parentKey: "amenities" },
+  { key: "amenityJobsEducation", label: "Работа/вузы", parentKey: "amenities" },
+  { key: "amenityPublicServices", label: "Госуслуги", parentKey: "amenities" },
   { key: "industrialZones", label: "Промзоны" },
 ];
 
@@ -284,17 +311,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           />
           <span>Инфраструктура</span>
         </label>
-        {INFRASTRUCTURE_LAYER_CONTROLS.map((control) => (
-          <label className="map-layer-subtoggle" key={control.key}>
-            <input
-              type="checkbox"
-              checked={visibleLayers[control.key]}
-              disabled={!visibleLayers.infrastructure}
-              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
-            />
-            <span>{control.label}</span>
-          </label>
-        ))}
+        {INFRASTRUCTURE_LAYER_CONTROLS.map((control) => {
+          const parentEnabled = control.parentKey ? visibleLayers[control.parentKey] : true;
+          return (
+            <label
+              className={
+                control.parentKey ? "map-layer-subtoggle nested" : "map-layer-subtoggle"
+              }
+              key={control.key}
+            >
+              <input
+                type="checkbox"
+                checked={visibleLayers[control.key]}
+                disabled={!visibleLayers.infrastructure || !parentEnabled}
+                onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+              />
+              <span>{control.label}</span>
+            </label>
+          );
+        })}
       </div>
       <div className="map-legend" aria-label="Легенда карты">
         <span>
@@ -666,7 +701,7 @@ function visibleMapCollection(
 ): MapFeatureCollection | null {
   if (!collection) return null;
   const features = collection.features.filter((feature) =>
-    isFeatureVisible(feature.properties.feature_type, visibleLayers),
+    isFeatureVisible(feature, visibleLayers),
   );
   return {
     ...collection,
@@ -675,10 +710,11 @@ function visibleMapCollection(
   };
 }
 
-function isFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
+function isFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  const featureType = feature.properties.feature_type;
   if (featureType === "listing") return visibleLayers.listings || visibleLayers.priceHeatmap;
   if (featureType === "planned_investment") return visibleLayers.planned;
-  return isInfrastructureFeatureVisible(featureType, visibleLayers);
+  return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
 
 function markerMapCollection(
@@ -687,7 +723,7 @@ function markerMapCollection(
 ): MapFeatureCollection | null {
   if (!collection) return null;
   const features = collection.features.filter((feature) =>
-    isMarkerFeatureVisible(feature.properties.feature_type, visibleLayers),
+    isMarkerFeatureVisible(feature, visibleLayers),
   );
   return {
     ...collection,
@@ -696,23 +732,51 @@ function markerMapCollection(
   };
 }
 
-function isMarkerFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
+function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  const featureType = feature.properties.feature_type;
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
-  return isInfrastructureFeatureVisible(featureType, visibleLayers);
+  return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
 
 function isInfrastructureFeatureVisible(
-  featureType: MapFeatureType,
+  feature: MapFeature,
   visibleLayers: VisibleMapLayers,
 ) {
+  const featureType = feature.properties.feature_type;
   if (!visibleLayers.infrastructure) return false;
   if (featureType === "transport_stop") return visibleLayers.transportStops;
   if (featureType === "school") return visibleLayers.schools;
   if (featureType === "kindergarten") return visibleLayers.kindergartens;
-  if (featureType === "amenity") return visibleLayers.amenities;
+  if (featureType === "amenity") return isAmenityFeatureVisible(feature, visibleLayers);
   if (featureType === "industrial_zone") return visibleLayers.industrialZones;
   return false;
+}
+
+function isAmenityFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  if (!visibleLayers.amenities) return false;
+  const amenityType = String(feature.properties.amenity_type ?? "").toLocaleLowerCase("en-US");
+  if (amenityType.includes("park") || amenityType.includes("green")) {
+    return visibleLayers.amenityParks;
+  }
+  if (
+    amenityType.includes("health") ||
+    amenityType.includes("clinic") ||
+    amenityType.includes("hospital")
+  ) {
+    return visibleLayers.amenityHealthcare;
+  }
+  if (amenityType.includes("retail") || amenityType.includes("shop")) {
+    return visibleLayers.amenityRetail;
+  }
+  if (
+    amenityType.includes("office") ||
+    amenityType.includes("university") ||
+    amenityType.includes("campus")
+  ) {
+    return visibleLayers.amenityJobsEducation;
+  }
+  return visibleLayers.amenityPublicServices;
 }
 
 function setMapLayerVisibility(map: MaplibreMap, layerId: string, visible: boolean) {

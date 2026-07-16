@@ -307,6 +307,7 @@
 - [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
 - [x] Добавить infrastructure point layers в `/map/features` и UI: transport stops with route lines, schools, kindergartens, amenities, industrial zones.
 - [x] Добавить granular UI-переключатели для infrastructure map layers: transport stops, schools, kindergartens, amenities, industrial zones.
+- [x] Добавить granular amenity sublayers на карте: parks, healthcare, retail, office/university/jobs, public services.
 - [ ] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
 - [ ] Добавить MPZP/Studium layer.
 - [ ] Добавить future roads, tram lines and bus routes layers.
@@ -587,6 +588,7 @@
 - [x] Добавить price-per-m2 heatmap layer на карту.
 - [x] Добавить granular infrastructure layer toggles на карту.
 - [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
+- [x] Добавить granular amenity sublayers на карту: parks, healthcare, retail, office/university/jobs, public services.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
