@@ -1140,6 +1140,7 @@ export type SourceCheckType =
   | "manual_review";
 export type SourceCheckJobStatus = "queued" | "running" | "succeeded" | "failed" | "blocked";
 export type SourceErrorStatus = "open" | "retry_scheduled" | "resolved" | "ignored";
+export type AdminAuditLogStatus = "succeeded" | "failed" | "blocked";
 export type DataDeletionRequestStatus = "open" | "processed" | "rejected";
 export type DataDeletionTargetType =
   | "raw_listing"
@@ -1789,6 +1790,19 @@ export type SourceRetentionPruneResult = {
   raw_payloads_pruned: number;
   item_ids: string[];
   cutoff_by_source: Record<string, string>;
+};
+
+export type AdminAuditLog = {
+  id: string;
+  action_type: string;
+  actor_id: string;
+  actor_role: string;
+  resource_type: string;
+  resource_id: string | null;
+  status: AdminAuditLogStatus;
+  message: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
 };
 
 export type DataDeletionRequest = {
@@ -2564,6 +2578,16 @@ export const api = {
       `/api/v1/admin/ingestion/sources/prune-retained-raw-payloads${toQueryString(params)}`,
       { method: "POST", headers: ADMIN_HEADERS },
     ),
+  listAdminAuditLogs: (params: {
+    action_type?: string;
+    actor_id?: string;
+    resource_type?: string;
+    status?: AdminAuditLogStatus;
+    limit?: number;
+  } = {}) =>
+    request<AdminAuditLog[]>(`/api/v1/admin/audit-logs${toQueryString(params)}`, {
+      headers: ADMIN_HEADERS,
+    }),
   listAdminDataDeletionRequests: (params: {
     status?: DataDeletionRequestStatus;
     target_type?: DataDeletionTargetType;

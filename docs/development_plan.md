@@ -332,7 +332,7 @@
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [x] Добавить moderation workflow для data deletion requests.
 - [x] Добавить просмотр source errors и retry actions.
-- [ ] Добавить admin audit log UI.
+- [x] Добавить admin audit log UI.
 
 ## 13. AI Assistant
 
@@ -512,6 +512,7 @@
 - [x] Commit 72: data deletion request admin moderation workflow.
 - [x] Commit 73: explicit scoring disclaimers in analysis surfaces.
 - [x] Commit 74: admin audit log backend and API.
+- [x] Commit 75: admin audit log UI.
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.

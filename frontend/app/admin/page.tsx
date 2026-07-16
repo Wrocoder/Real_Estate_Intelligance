@@ -15,6 +15,7 @@ import {
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  type AdminAuditLog,
   type AlertDeliveryBatchResult,
   type DataDeletionRequest,
   type DataDeletionRequestStatus,
@@ -138,6 +139,7 @@ export default function AdminPage() {
   const [dedupMatches, setDedupMatches] = useState<PropertyDeduplicationMatch[]>([]);
   const [plannedInvestments, setPlannedInvestments] = useState<PlannedInvestment[]>([]);
   const [partnerReferrals, setPartnerReferrals] = useState<PartnerReferral[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [dataDeletionRequests, setDataDeletionRequests] = useState<DataDeletionRequest[]>([]);
   const [dailyAlertRun, setDailyAlertRun] =
     useState<AlertDeliveryBatchResult | null>(null);
@@ -151,6 +153,8 @@ export default function AdminPage() {
   const dedupReviewFilterRef = useRef<PropertyDeduplicationReviewStatus | "">("open");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedDeletionRequestId, setSelectedDeletionRequestId] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditResourceFilter, setAuditResourceFilter] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
   const [selectedReferralId, setSelectedReferralId] = useState("");
   const [referralStatus, setReferralStatus] =
@@ -201,6 +205,7 @@ export default function AdminPage() {
         dedupData,
         investmentData,
         referralData,
+        auditData,
         deletionRequestData,
       ] =
         await Promise.all([
@@ -220,6 +225,7 @@ export default function AdminPage() {
           }),
           api.listAdminPlannedInvestments({ city: "Wrocław" }),
           api.listAdminPartnerReferrals({ limit: 100 }),
+          api.listAdminAuditLogs({ limit: 100 }),
           api.listAdminDataDeletionRequests({ limit: 50 }),
         ]);
       setJobs(jobData);
@@ -234,6 +240,7 @@ export default function AdminPage() {
       setDedupMatches(dedupData);
       setPlannedInvestments(investmentData);
       setPartnerReferrals(referralData);
+      setAuditLogs(auditData);
       setDataDeletionRequests(deletionRequestData);
       setStatus("Admin dashboard обновлен");
     } catch (caught) {
@@ -271,6 +278,23 @@ export default function AdminPage() {
   const sourceNames = useMemo(
     () => Array.from(new Set(rawListings.map((item) => item.source_name))),
     [rawListings],
+  );
+  const auditActionOptions = useMemo(
+    () => Array.from(new Set(auditLogs.map((item) => item.action_type))).sort(),
+    [auditLogs],
+  );
+  const auditResourceOptions = useMemo(
+    () => Array.from(new Set(auditLogs.map((item) => item.resource_type))).sort(),
+    [auditLogs],
+  );
+  const filteredAuditLogs = useMemo(
+    () =>
+      auditLogs.filter(
+        (log) =>
+          (!auditActionFilter || log.action_type === auditActionFilter) &&
+          (!auditResourceFilter || log.resource_type === auditResourceFilter),
+      ),
+    [auditActionFilter, auditLogs, auditResourceFilter],
   );
   const openDeletionRequestCount = dataDeletionRequests.filter(
     (request) => request.status === "open",
@@ -620,6 +644,10 @@ export default function AdminPage() {
           <strong>
             {numberValue(openDeletionRequestCount)} / {numberValue(dataDeletionRequests.length)}
           </strong>
+        </div>
+        <div className="metric">
+          <span>Audit events</span>
+          <strong>{numberValue(auditLogs.length)}</strong>
         </div>
         <div className="metric">
           <span>Warnings / errors</span>
@@ -1705,6 +1733,106 @@ export default function AdminPage() {
 
           <section className="panel admin-wide">
             <div className="panel-header">
+              <h2>Admin Audit Logs</h2>
+              <span className="muted">
+                {numberValue(filteredAuditLogs.length)} shown · {numberValue(auditLogs.length)} total
+              </span>
+            </div>
+            <div className="panel-body">
+              <div className="form-grid compact" style={{ marginBottom: 12 }}>
+                <label className="field">
+                  <span>Action</span>
+                  <select
+                    className="select"
+                    value={auditActionFilter}
+                    onChange={(event) => setAuditActionFilter(event.target.value)}
+                  >
+                    <option value="">All actions</option>
+                    {auditActionOptions.map((actionType) => (
+                      <option key={actionType} value={actionType}>
+                        {actionType}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Resource</span>
+                  <select
+                    className="select"
+                    value={auditResourceFilter}
+                    onChange={(event) => setAuditResourceFilter(event.target.value)}
+                  >
+                    <option value="">All resources</option>
+                    {auditResourceOptions.map((resourceType) => (
+                      <option key={resourceType} value={resourceType}>
+                        {resourceType}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="toolbar">
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setAuditActionFilter("");
+                      setAuditResourceFilter("");
+                    }}
+                  >
+                    Reset filters
+                  </button>
+                </div>
+              </div>
+              {filteredAuditLogs.length === 0 ? (
+                <EmptyBlock label="Нет audit events для выбранного фильтра." />
+              ) : (
+                <div className="table-scroll">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Action</th>
+                        <th>Resource</th>
+                        <th>Actor</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                        <th>Metadata</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAuditLogs.slice(0, 50).map((auditLog) => (
+                        <tr key={auditLog.id}>
+                          <td>
+                            <strong>{auditLog.action_type}</strong>
+                            <small>{auditLog.message ?? auditLog.id}</small>
+                          </td>
+                          <td>
+                            {auditLog.resource_type}
+                            <small>{auditLog.resource_id ?? "-"}</small>
+                          </td>
+                          <td>
+                            {auditLog.actor_id}
+                            <small>{auditLog.actor_role}</small>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${auditStatusClass(auditLog.status)}`}>
+                              {auditLog.status}
+                            </span>
+                          </td>
+                          <td>{formatDate(auditLog.created_at)}</td>
+                          <td>
+                            <code>{auditMetadataPreview(auditLog.metadata)}</code>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
               <h2>Scoring Backtest</h2>
               <BarChart3 size={18} />
             </div>
@@ -2400,6 +2528,18 @@ function deletionStatusClass(status: DataDeletionRequestStatus) {
   if (status === "processed") return "healthy";
   if (status === "rejected") return "failed";
   return "warning";
+}
+
+function auditStatusClass(status: AdminAuditLog["status"]) {
+  if (status === "succeeded") return "healthy";
+  if (status === "blocked") return "warning";
+  return "failed";
+}
+
+function auditMetadataPreview(metadata: Record<string, unknown>) {
+  const text = JSON.stringify(metadata);
+  if (text.length <= 120) return text;
+  return `${text.slice(0, 117)}...`;
 }
 
 function sourceErrorStatusClass(sourceError: SourceError) {
