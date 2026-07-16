@@ -303,6 +303,7 @@
 - [x] Добавить risk/growth map overlays.
 - [ ] Добавить price-per-m2 heatmap.
 - [ ] Добавить переключаемые слои районов, гмин и воеводства.
+- [x] Добавить UI-переключатели видимости для map layers: listings, planned investments, infrastructure.
 - [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
 - [x] Добавить infrastructure point layers в `/map/features` и UI: transport stops with route lines, schools, kindergartens, amenities, industrial zones.
 - [ ] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
@@ -580,6 +581,7 @@
 - [x] Добавить floor/year filters в search stack: listings API, hidden gems, map query, explorer UI и saved-search alerts.
 - [x] Добавить infrastructure point layers на карту: stops/routes labels, schools, kindergartens, amenities and industrial zones.
 - [x] Добавить advanced investor alert filters: below fair price, negotiation, liquidity, rental potential, price reductions and fresh listings.
+- [x] Добавить frontend layer toggles для карты: listings, planned investments и infrastructure.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

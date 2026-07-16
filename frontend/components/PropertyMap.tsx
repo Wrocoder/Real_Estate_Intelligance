@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   Map as MaplibreMap,
   Marker as MaplibreMarker,
@@ -17,6 +17,11 @@ type GeoJsonData = {
 type SourceWithData = {
   setData: (data: GeoJsonData) => void;
 };
+type VisibleMapLayers = {
+  listings: boolean;
+  planned: boolean;
+  infrastructure: boolean;
+};
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -28,6 +33,11 @@ const WROCLAW_CENTER: [number, number] = [17.0385, 51.1079];
 const LISTINGS_SOURCE_ID = "domarion-listings";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
+const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
+  listings: true,
+  planned: true,
+  infrastructure: true,
+};
 
 const OSM_RASTER_STYLE: StyleSpecification = {
   version: 8,
@@ -54,13 +64,34 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const maplibreRef = useRef<MaplibreModule | null>(null);
   const markersRef = useRef<MaplibreMarker[]>([]);
   const collectionRef = useRef<MapFeatureCollection | null>(collection);
+  const visibleLayersRef = useRef<VisibleMapLayers>(DEFAULT_VISIBLE_LAYERS);
+  const [visibleLayers, setVisibleLayers] = useState<VisibleMapLayers>(DEFAULT_VISIBLE_LAYERS);
 
   useEffect(() => {
     collectionRef.current = collection;
     if (mapRef.current && maplibreRef.current) {
-      syncMapData(mapRef.current, maplibreRef.current, markersRef.current, collection);
+      syncMapData(
+        mapRef.current,
+        maplibreRef.current,
+        markersRef.current,
+        collection,
+        visibleLayersRef.current,
+      );
     }
   }, [collection]);
+
+  useEffect(() => {
+    visibleLayersRef.current = visibleLayers;
+    if (mapRef.current && maplibreRef.current) {
+      syncMapData(
+        mapRef.current,
+        maplibreRef.current,
+        markersRef.current,
+        collectionRef.current,
+        visibleLayers,
+      );
+    }
+  }, [visibleLayers]);
 
   useEffect(() => {
     let disposed = false;
@@ -87,7 +118,13 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
 
       map.on("load", () => {
         ensureMapLayers(map);
-        syncMapData(map, maplibre, markersRef.current, collectionRef.current);
+        syncMapData(
+          map,
+          maplibre,
+          markersRef.current,
+          collectionRef.current,
+          visibleLayersRef.current,
+        );
       });
     }
 
@@ -113,6 +150,47 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
         <span>{infrastructureCount} infrastructure</span>
+      </div>
+      <div className="map-layer-controls" aria-label="Слои карты">
+        <label>
+          <input
+            type="checkbox"
+            checked={visibleLayers.listings}
+            onChange={(event) =>
+              setVisibleLayers((current) => ({
+                ...current,
+                listings: event.target.checked,
+              }))
+            }
+          />
+          <span>Объекты</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={visibleLayers.planned}
+            onChange={(event) =>
+              setVisibleLayers((current) => ({
+                ...current,
+                planned: event.target.checked,
+              }))
+            }
+          />
+          <span>Планы</span>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={visibleLayers.infrastructure}
+            onChange={(event) =>
+              setVisibleLayers((current) => ({
+                ...current,
+                infrastructure: event.target.checked,
+              }))
+            }
+          />
+          <span>Инфраструктура</span>
+        </label>
       </div>
       <div className="map-legend" aria-label="Легенда карты">
         <span>
@@ -236,20 +314,43 @@ function syncMapData(
   maplibre: MaplibreModule,
   markers: MaplibreMarker[],
   collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
 ) {
   if (!map.isStyleLoaded()) return;
 
   ensureMapLayers(map);
 
-  const listings = splitCollection(collection, "listing");
-  const investments = splitCollection(collection, "planned_investment");
+  const visibleCollection = visibleMapCollection(collection, visibleLayers);
+  const listings = splitCollection(visibleCollection, "listing");
+  const investments = splitCollection(visibleCollection, "planned_investment");
   const listingSource = map.getSource(LISTINGS_SOURCE_ID) as SourceWithData | undefined;
   const investmentSource = map.getSource(INVESTMENTS_SOURCE_ID) as SourceWithData | undefined;
 
   listingSource?.setData(listings);
   investmentSource?.setData(investments);
-  syncMarkers(map, maplibre, markers, collection);
-  fitToCollection(map, maplibre, collection);
+  syncMarkers(map, maplibre, markers, visibleCollection);
+  fitToCollection(map, maplibre, visibleCollection);
+}
+
+function visibleMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): MapFeatureCollection | null {
+  if (!collection) return null;
+  const features = collection.features.filter((feature) =>
+    isFeatureVisible(feature.properties.feature_type, visibleLayers),
+  );
+  return {
+    ...collection,
+    features,
+    bbox: calculateFeatureBbox(features),
+  };
+}
+
+function isFeatureVisible(featureType: MapFeatureType, visibleLayers: VisibleMapLayers) {
+  if (featureType === "listing") return visibleLayers.listings;
+  if (featureType === "planned_investment") return visibleLayers.planned;
+  return visibleLayers.infrastructure;
 }
 
 function splitCollection(
@@ -524,4 +625,17 @@ function fitToCollection(
 
   const bounds = new maplibre.LngLatBounds([minLon, minLat], [maxLon, maxLat]);
   map.fitBounds(bounds, { padding: 58, maxZoom: 13.5, duration: 450 });
+}
+
+function calculateFeatureBbox(features: MapFeatureCollection["features"]) {
+  if (features.length === 0) return null;
+
+  const lonValues = features.map((feature) => feature.geometry.coordinates[0]);
+  const latValues = features.map((feature) => feature.geometry.coordinates[1]);
+  return [
+    Math.min(...lonValues),
+    Math.min(...latValues),
+    Math.max(...lonValues),
+    Math.max(...latValues),
+  ] satisfies [number, number, number, number];
 }

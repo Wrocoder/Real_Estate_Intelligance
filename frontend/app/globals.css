@@ -533,6 +533,7 @@ button {
 }
 
 .map-summary,
+.map-layer-controls,
 .map-legend,
 .map-state {
   position: absolute;
@@ -559,6 +560,30 @@ button {
   border-radius: 999px;
   background: #edf3f2;
   padding: 5px 8px;
+}
+
+.map-layer-controls {
+  right: 12px;
+  bottom: 12px;
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.map-layer-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 22px;
+  white-space: nowrap;
+}
+
+.map-layer-controls input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
 }
 
 .map-legend {
