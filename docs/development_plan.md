@@ -286,7 +286,7 @@
 - [x] Сделать news page.
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
-- [ ] Добавить charting library и графики price history/market distributions.
+- [x] Добавить charting library и графики price history/market distributions.
 - [x] Добавить realtor подборки объектов для клиента.
 - [x] Добавить investor hidden gems view.
 
@@ -505,6 +505,7 @@
 - [x] Commit 67: alert unsubscribe action.
 - [x] Commit 68: realtor saved-search client digests.
 - [x] Commit 69: realtor client shortlist preview.
+- [x] Commit 70: lightweight market and price history charts.
 
 ## Current Sprint
 
@@ -598,6 +599,7 @@
 - [x] Добавить alert unsubscribe/delete action на `/alerts` с подтверждением и очисткой preview.
 - [x] Добавить realtor saved-search client digest: API, client-ready copy и UI генерация из alert.
 - [x] Добавить realtor client shortlist preview на compare page: ranked copy, mortgage/rental context и client-ready message.
+- [x] Добавить lightweight SVG charts: listing price history line chart и market distribution bar charts.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

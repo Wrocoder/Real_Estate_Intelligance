@@ -817,6 +817,69 @@ button {
   gap: 10px;
 }
 
+.bar-list.compact {
+  gap: 7px;
+}
+
+.distribution-panel-body,
+.chart-block {
+  display: grid;
+  gap: 10px;
+}
+
+.chart-svg {
+  width: 100%;
+  height: auto;
+  min-height: 180px;
+  overflow: visible;
+}
+
+.chart-grid-line {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.chart-point {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.chart-bar {
+  fill: var(--accent);
+}
+
+.chart-axis-label,
+.chart-bar-value {
+  fill: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.chart-bar-value {
+  text-anchor: middle;
+}
+
+.chart-summary-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.chart-summary-row strong {
+  color: var(--ink);
+}
+
 .bar-row {
   display: grid;
   grid-template-columns: 96px minmax(0, 1fr) 34px;

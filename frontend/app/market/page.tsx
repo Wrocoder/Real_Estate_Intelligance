@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BarChart3, RefreshCw } from "lucide-react";
 
+import { DistributionBarChart } from "@/components/Charts";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { api, type MarketDashboard, type MarketDistributionBucket } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
@@ -186,19 +187,22 @@ function DistributionPanel({
       </div>
       <div className="panel-body">
         {buckets.length > 0 ? (
-          <div className="bar-list">
-            {buckets.map((bucket) => (
-              <div className="bar-row" key={bucket.label}>
-                <span>{bucket.label}</span>
-                <div className="bar-track">
-                  <div
-                    className="bar-fill"
-                    style={{ width: `${Math.max((bucket.count / maxCount) * 100, 2)}%` }}
-                  />
+          <div className="distribution-panel-body">
+            <DistributionBarChart ariaLabel={`${title} distribution`} buckets={buckets} />
+            <div className="bar-list compact">
+              {buckets.map((bucket) => (
+                <div className="bar-row" key={bucket.label}>
+                  <span>{bucket.label}</span>
+                  <div className="bar-track">
+                    <div
+                      className="bar-fill"
+                      style={{ width: `${Math.max((bucket.count / maxCount) * 100, 2)}%` }}
+                    />
+                  </div>
+                  <strong>{bucket.count}</strong>
                 </div>
-                <strong>{bucket.count}</strong>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         ) : (
           <div className="empty-state">Нет данных для распределения.</div>

@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { LineChart } from "@/components/Charts";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -138,6 +139,11 @@ export default function ListingDetailPage() {
   const { listing, scores, area_statistics: areaStats } = analysis;
   const verdictTone = decisionTone(scores);
   const developer = analysis.developer_reputation;
+  const priceHistoryPoints = analysis.price_history.map((point) => ({
+    label: point.observed_at,
+    value: point.price,
+    helper: `${money(point.price_per_m2)}/m2`,
+  }));
 
   return (
     <>
@@ -320,6 +326,11 @@ export default function ListingDetailPage() {
             </ul>
 
             <h2>История цены</h2>
+            <LineChart
+              ariaLabel={`Price history for ${listing.title}`}
+              points={priceHistoryPoints}
+              valueFormatter={money}
+            />
             <table className="table">
               <thead>
                 <tr>
