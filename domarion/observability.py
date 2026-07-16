@@ -2,6 +2,7 @@ import json
 import logging
 import time
 from collections.abc import Awaitable, Callable
+from urllib.parse import urlsplit, urlunsplit
 from uuid import uuid4
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -10,6 +11,8 @@ from starlette.responses import Response
 
 REQUEST_ID_HEADER = "X-Request-ID"
 REQUEST_LOGGER_NAME = "domarion.request"
+ERROR_TRACKING_LOGGER_NAME = "domarion.error_tracking"
+SENTRY_REQUEST_KEYS_TO_DROP = {"cookies", "data", "env", "headers", "query_string"}
 
 
 def configure_logging(log_level: str) -> None:
@@ -17,6 +20,40 @@ def configure_logging(log_level: str) -> None:
     if not isinstance(level, int):
         level = logging.INFO
     logging.getLogger("domarion").setLevel(level)
+
+
+def configure_error_tracking(
+    *,
+    dsn: str | None,
+    environment: str,
+    release: str,
+    traces_sample_rate: float,
+) -> bool:
+    if not dsn:
+        return False
+
+    logger = logging.getLogger(ERROR_TRACKING_LOGGER_NAME)
+    try:
+        import sentry_sdk
+    except ImportError:
+        logger.warning("sentry_sdk_missing")
+        return False
+
+    try:
+        sentry_sdk.init(
+            dsn=dsn,
+            environment=environment,
+            release=release,
+            traces_sample_rate=traces_sample_rate,
+            send_default_pii=False,
+            before_send=_sanitize_sentry_event,
+        )
+    except Exception:
+        logger.warning("sentry_init_failed", exc_info=True)
+        return False
+
+    logger.info("sentry_initialized")
+    return True
 
 
 class StructuredRequestLoggingMiddleware(BaseHTTPMiddleware):
@@ -94,3 +131,25 @@ def _request_id(request: Request) -> str:
     if raw_value:
         return raw_value[:128]
     return uuid4().hex
+
+
+def _sanitize_sentry_event(event: dict, hint: dict | None = None) -> dict:
+    request_data = event.get("request")
+    if not isinstance(request_data, dict):
+        return event
+
+    for key in SENTRY_REQUEST_KEYS_TO_DROP:
+        request_data.pop(key, None)
+
+    url = request_data.get("url")
+    if isinstance(url, str):
+        request_data["url"] = _strip_url_query(url)
+    return event
+
+
+def _strip_url_query(url: str) -> str:
+    try:
+        parts = urlsplit(url)
+        return urlunsplit((parts.scheme, parts.netloc, parts.path, "", ""))
+    except ValueError:
+        return url.split("?", maxsplit=1)[0]

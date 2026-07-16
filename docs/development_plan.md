@@ -382,7 +382,7 @@
 - [x] Добавить contract tests для API.
 - [x] Добавить coverage report.
 - [x] Добавить structured logging.
-- [ ] Добавить error tracking.
+- [x] Добавить error tracking.
 - [ ] Добавить performance smoke tests.
 - [ ] Добавить data quality acceptance tests для geocoding, dedup и source freshness.
 - [ ] Добавить contract tests для paid artifacts и report metadata.
@@ -525,6 +525,7 @@
 - [x] Commit 80: developer registry, UOKiK, directory and partner-inspection evidence ingestion.
 - [x] Commit 81: structured API request logging.
 - [x] Commit 82: backend coverage report in CI.
+- [x] Commit 83: privacy-safe optional Sentry error tracking.
 
 ## Current Sprint
 

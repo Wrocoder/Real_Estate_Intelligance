@@ -109,6 +109,8 @@ python scripts\smoke_deployment.py
 | `DATABASE_URL` | PostgreSQL/PostGIS connection string | memory/local в dev |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `CORS_ORIGINS` | JSON-массив frontend origins | localhost origins |
+| `SENTRY_DSN` | включает Sentry error tracking, если задан | пусто |
+| `SENTRY_TRACES_SAMPLE_RATE` | доля performance traces для Sentry от `0` до `1` | `0` |
 | `DATA_REPOSITORY_BACKEND` | `memory` или `postgres` | `memory` |
 | `REPORT_STORE_BACKEND` | `memory` или `postgres` | `memory` |
 | `REPORT_ORDER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
@@ -146,6 +148,17 @@ Backend пишет request logs в JSON через logger `domarion.request`. К
 Входящий `X-Request-ID` сохраняется, возвращается в response header и попадает в log payload.
 Если header не передан, API генерирует новый request id. Уровень `domarion.*` логов управляется
 переменной `LOG_LEVEL`.
+
+## Error tracking
+
+Backend поддерживает optional Sentry integration. Она включается только при заданном `SENTRY_DSN`;
+без DSN приложение стартует без внешнего error tracking. Release передается как
+`domarion-analytics@<version>`, environment берется из `ENVIRONMENT`, performance traces
+управляются через `SENTRY_TRACES_SAMPLE_RATE`.
+
+`send_default_pii` отключен. Дополнительно `before_send` удаляет из Sentry events request
+`headers`, `cookies`, `data`, `query_string` и `env`, а URL сохраняет без query string, чтобы
+адреса квартир и параметры проверки не уходили во внешний сервис.
 
 Минимум для frontend build:
 
