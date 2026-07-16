@@ -299,6 +299,10 @@ button {
   grid-template-columns: 150px 190px minmax(0, 1fr) auto;
 }
 
+.client-shortlist-controls {
+  grid-template-columns: 150px minmax(0, 1fr) 130px auto;
+}
+
 .ai-verdict-result {
   display: grid;
   gap: 14px;
@@ -1106,6 +1110,11 @@ button {
   width: 16px;
   height: 16px;
   accent-color: var(--accent);
+}
+
+.compact-checkbox-field {
+  min-height: 38px;
+  padding-top: 0;
 }
 
 .alert-preferences {

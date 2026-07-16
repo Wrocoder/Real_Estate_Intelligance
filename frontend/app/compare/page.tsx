@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Brain, RefreshCw, ShieldCheck } from "lucide-react";
+import { BarChart3, Brain, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -13,6 +13,7 @@ import {
   type DeveloperReputation,
   type ListingAnalysis,
   type ReportAudience,
+  type RealtorClientShortlist,
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import { scoreLabel } from "@/lib/scoreLabels";
@@ -27,6 +28,15 @@ export default function ComparePage() {
   const [aiStatus, setAiStatus] = useState("AI verdict не создан");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [shortlist, setShortlist] = useState<RealtorClientShortlist | null>(null);
+  const [shortlistStatus, setShortlistStatus] = useState("Client shortlist не создан");
+  const [shortlistError, setShortlistError] = useState("");
+  const [shortlistLoading, setShortlistLoading] = useState(false);
+  const [shortlistForm, setShortlistForm] = useState({
+    clientName: "",
+    intro: "",
+    includeSourceLinks: false,
+  });
   const [status, setStatus] = useState("Загрузка объектов...");
   const [error, setError] = useState("");
   const items = comparison?.items ?? [];
@@ -79,12 +89,17 @@ export default function ComparePage() {
         setAiAnswer(null);
         setAiError("");
         setAiStatus("AI verdict готов к генерации");
+        setShortlist(null);
+        setShortlistError("");
+        setShortlistStatus("Client shortlist готов к генерации");
         setStatus(`Сравнивается объектов: ${response.items.length}`);
       } catch (caught) {
         if (cancelled) return;
         setComparison(null);
         setAiAnswer(null);
         setAiStatus("AI verdict недоступен");
+        setShortlist(null);
+        setShortlistStatus("Client shortlist недоступен");
         setError(caught instanceof Error ? caught.message : "unknown error");
         setStatus("Сравнение недоступно для текущего набора");
       }
@@ -139,6 +154,30 @@ export default function ComparePage() {
       setAiStatus("AI verdict недоступен");
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function generateClientShortlist() {
+    if (!comparison || selectedIds.length < 2) return;
+
+    setShortlistLoading(true);
+    setShortlistError("");
+    setShortlistStatus("Client shortlist строится...");
+    try {
+      const response = await api.buildRealtorClientShortlist({
+        listing_ids: selectedIds,
+        client_name: shortlistForm.clientName || null,
+        intro: shortlistForm.intro || null,
+        include_source_links: shortlistForm.includeSourceLinks,
+      });
+      setShortlist(response);
+      setShortlistStatus(`${response.items.length} объектов в клиентской подборке`);
+    } catch (caught) {
+      setShortlist(null);
+      setShortlistError(caught instanceof Error ? caught.message : "unknown error");
+      setShortlistStatus("Client shortlist недоступен");
+    } finally {
+      setShortlistLoading(false);
     }
   }
 
@@ -324,6 +363,103 @@ export default function ComparePage() {
               ) : (
                 <p className="empty-state">
                   AI verdict появится здесь после генерации для выбранных объектов.
+                </p>
+              )}
+            </div>
+          </section>
+
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <div className="panel-header">
+              <h2 className="icon-title">
+                <FileText size={16} /> Client shortlist
+              </h2>
+              <span className="status-line">{shortlistStatus}</span>
+            </div>
+            <div className="panel-body ai-verdict-body">
+              <div className="ai-verdict-controls client-shortlist-controls">
+                <label className="field">
+                  <span>Клиент</span>
+                  <input
+                    className="input"
+                    value={shortlistForm.clientName}
+                    onChange={(event) =>
+                      setShortlistForm({ ...shortlistForm, clientName: event.target.value })
+                    }
+                    placeholder="Anna"
+                  />
+                </label>
+                <label className="field">
+                  <span>Intro</span>
+                  <input
+                    className="input"
+                    value={shortlistForm.intro}
+                    onChange={(event) =>
+                      setShortlistForm({ ...shortlistForm, intro: event.target.value })
+                    }
+                    placeholder="Контекст для письма клиенту"
+                  />
+                </label>
+                <label className="field checkbox-field compact-checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={shortlistForm.includeSourceLinks}
+                    onChange={(event) =>
+                      setShortlistForm({
+                        ...shortlistForm,
+                        includeSourceLinks: event.target.checked,
+                      })
+                    }
+                  />
+                  <span>Source links</span>
+                </label>
+                <button
+                  className="button primary"
+                  type="button"
+                  disabled={shortlistLoading || selectedIds.length < 2}
+                  onClick={() => void generateClientShortlist()}
+                >
+                  <FileText size={16} /> Собрать подборку
+                </button>
+              </div>
+
+              {shortlistError ? <ErrorBlock message={shortlistError} /> : null}
+
+              {shortlist ? (
+                <div className="digest-layout">
+                  <div>
+                    <h3>{shortlist.subject}</h3>
+                    <p className="muted">{shortlist.summary}</p>
+                    <textarea
+                      className="input digest-message"
+                      readOnly
+                      value={shortlist.client_message}
+                    />
+                  </div>
+                  <div className="grid-3">
+                    {shortlist.items.map((item) => (
+                      <article className="metric" key={item.listing_id}>
+                        <span>
+                          #{item.rank} · {item.district}
+                        </span>
+                        <strong>
+                          {item.decision_score}/100 · {scoreLabel(item.decision_label)}
+                        </strong>
+                        <small className="muted" style={{ display: "block", marginTop: 8 }}>
+                          {item.client_pitch}
+                        </small>
+                        <div className="meta-row">
+                          <span>{money(item.price)}</span>
+                          <span>{money(item.estimated_monthly_payment_pln)}/мес</span>
+                          <span>{item.estimated_gross_rental_yield_pct.toFixed(2)}% rent</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                  <p className="muted">{shortlist.disclaimer}</p>
+                </div>
+              ) : (
+                <p className="empty-state">
+                  Client shortlist появится здесь после генерации для выбранных объектов.
                 </p>
               )}
             </div>

@@ -168,6 +168,8 @@ from domarion.schemas import (
     PropertyDeduplicationMatchUpdate,
     PropertyDeduplicationReviewStatus,
     RawListingSummary,
+    RealtorClientShortlist,
+    RealtorClientShortlistRequest,
     RealtorSavedSearchDigest,
     RealtorSavedSearchDigestRequest,
     ReportAudience,
@@ -249,6 +251,7 @@ from domarion.services.payments import (
 )
 from domarion.services.plans import get_plan_limits, list_plan_limits
 from domarion.services.realtor_digests import build_realtor_saved_search_digest
+from domarion.services.realtor_shortlists import build_realtor_client_shortlist
 from domarion.services.report_delivery import deliver_report_email
 from domarion.services.report_generation import (
     generate_and_store_area_report,
@@ -2683,6 +2686,24 @@ def compare_listings(
 
     try:
         return build_listing_comparison(analyses)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/realtor/client-shortlists/preview", response_model=RealtorClientShortlist)
+def build_realtor_client_shortlist_preview(
+    payload: RealtorClientShortlistRequest,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> RealtorClientShortlist:
+    analyses = _build_compare_analyses(payload.listing_ids, repository, account)
+    try:
+        return build_realtor_client_shortlist(
+            analyses=analyses,
+            request=payload,
+            agent_name=account.user.display_name,
+            agent_email=account.user.email,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

@@ -1482,6 +1482,53 @@ export type CompareSummary = {
   notes: string[];
 };
 
+export type RealtorClientShortlistRequest = {
+  listing_ids: string[];
+  client_name?: string | null;
+  intro?: string | null;
+  include_source_links?: boolean;
+};
+
+export type RealtorClientShortlistItem = {
+  listing_id: string;
+  rank: number;
+  title: string;
+  address: string;
+  district: string;
+  city: string;
+  price: number;
+  currency: string;
+  area_m2: number;
+  rooms: number;
+  decision_score: number;
+  decision_label: PropertyScores["decision_label"];
+  fair_price_mid: number;
+  price_delta_to_fair_mid_pct: number;
+  estimated_monthly_payment_pln: number;
+  upfront_cash_needed_pln: number;
+  estimated_monthly_rent_pln: number;
+  estimated_gross_rental_yield_pct: number;
+  recommendation: string;
+  client_pitch: string;
+  talking_points: string[];
+  cautions: string[];
+  source_url: string | null;
+};
+
+export type RealtorClientShortlist = {
+  client_name: string | null;
+  agent_name: string | null;
+  agent_email: string | null;
+  subject: string;
+  summary: string;
+  client_message: string;
+  items: RealtorClientShortlistItem[];
+  comparison_summary: CompareSummary;
+  mortgage_assumptions: CompareMortgageAssumptions;
+  generated_at: string;
+  disclaimer: string;
+};
+
 export type IngestionJob = {
   id: string;
   source_name: string;
@@ -2543,6 +2590,16 @@ export const api = {
     request<CompareResponse>("/api/v1/compare", {
       method: "POST",
       body: JSON.stringify({ listing_ids: listingIds }),
+    }),
+  buildRealtorClientShortlist: (payload: RealtorClientShortlistRequest) =>
+    request<RealtorClientShortlist>("/api/v1/realtor/client-shortlists/preview", {
+      method: "POST",
+      body: JSON.stringify({
+        listing_ids: payload.listing_ids,
+        client_name: payload.client_name || null,
+        intro: payload.intro || null,
+        include_source_links: payload.include_source_links ?? false,
+      }),
     }),
   answerCompareAIQuestion: (payload: AICompareAnswerRequest) =>
     request<AICompareAnswer>("/api/v1/ai/compare/answer", {

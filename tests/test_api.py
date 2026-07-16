@@ -632,6 +632,40 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
     assert summary["notes"]
 
 
+def test_realtor_client_shortlist_preview_builds_client_copy() -> None:
+    response = client.post(
+        "/api/v1/realtor/client-shortlists/preview",
+        headers={
+            "X-Domarion-User-Id": "realtor-shortlist-owner",
+            "X-Domarion-Email": "agent@example.com",
+            "X-Domarion-Display-Name": "Agent One",
+            "X-Domarion-Role": "realtor",
+            "X-Domarion-Plan": "realtor",
+        },
+        json={
+            "listing_ids": ["wr-001", "wr-002"],
+            "client_name": "Anna",
+            "intro": "I ranked the two strongest options for your brief.",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["client_name"] == "Anna"
+    assert payload["agent_name"] == "Agent One"
+    assert payload["agent_email"] == "agent@example.com"
+    assert payload["subject"].startswith("Anna: 2 property shortlist")
+    assert len(payload["items"]) == 2
+    assert [item["rank"] for item in payload["items"]] == [1, 2]
+    assert {item["listing_id"] for item in payload["items"]} == {"wr-001", "wr-002"}
+    assert payload["items"][0]["decision_score"] >= payload["items"][1]["decision_score"]
+    assert payload["items"][0]["source_url"] is None
+    assert "Hi Anna" in payload["client_message"]
+    assert "I ranked the two strongest options" in payload["client_message"]
+    assert "Prepared by Agent One" in payload["client_message"]
+    assert "not financial, legal or investment advice" in payload["disclaimer"]
+
+
 def test_object_report() -> None:
     response = client.post("/api/v1/reports/object", json={"listing_id": "wr-001"})
     payload = response.json()

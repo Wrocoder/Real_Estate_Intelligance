@@ -1430,6 +1430,53 @@ class CompareResponse(BaseModel):
     mortgage_assumptions: CompareMortgageAssumptions
 
 
+class RealtorClientShortlistRequest(BaseModel):
+    listing_ids: list[str] = Field(min_length=2, max_length=5)
+    client_name: str | None = Field(default=None, max_length=160)
+    intro: str | None = Field(default=None, max_length=500)
+    include_source_links: bool = False
+
+
+class RealtorClientShortlistItem(BaseModel):
+    listing_id: str
+    rank: int = Field(ge=1)
+    title: str
+    address: str
+    district: str
+    city: str
+    price: int
+    currency: str
+    area_m2: float
+    rooms: int
+    decision_score: int = Field(ge=0, le=100)
+    decision_label: ScoreDecisionLabel
+    fair_price_mid: int
+    price_delta_to_fair_mid_pct: float
+    estimated_monthly_payment_pln: int = Field(ge=0)
+    upfront_cash_needed_pln: int = Field(ge=0)
+    estimated_monthly_rent_pln: int = Field(ge=0)
+    estimated_gross_rental_yield_pct: float = Field(ge=0)
+    recommendation: str
+    client_pitch: str
+    talking_points: list[str] = Field(default_factory=list)
+    cautions: list[str] = Field(default_factory=list)
+    source_url: str | None = None
+
+
+class RealtorClientShortlist(BaseModel):
+    client_name: str | None = None
+    agent_name: str | None = None
+    agent_email: str | None = None
+    subject: str
+    summary: str
+    client_message: str
+    items: list[RealtorClientShortlistItem] = Field(default_factory=list)
+    comparison_summary: CompareSummary
+    mortgage_assumptions: CompareMortgageAssumptions
+    generated_at: datetime
+    disclaimer: str
+
+
 class MarketDistributionBucket(BaseModel):
     label: str
     count: int = Field(ge=0)

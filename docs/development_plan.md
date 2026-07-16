@@ -287,7 +287,7 @@
 - [ ] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
 - [ ] Добавить charting library и графики price history/market distributions.
-- [ ] Добавить realtor подборки объектов для клиента.
+- [x] Добавить realtor подборки объектов для клиента.
 - [x] Добавить investor hidden gems view.
 
 ## 11. Map и GIS
@@ -504,6 +504,7 @@
 - [x] Commit 66: alert preference controls.
 - [x] Commit 67: alert unsubscribe action.
 - [x] Commit 68: realtor saved-search client digests.
+- [x] Commit 69: realtor client shortlist preview.
 
 ## Current Sprint
 
@@ -596,6 +597,7 @@
 - [x] Добавить alert preference controls на `/alerts`: instant/daily/weekly, channel, active/pause и delivery target update.
 - [x] Добавить alert unsubscribe/delete action на `/alerts` с подтверждением и очисткой preview.
 - [x] Добавить realtor saved-search client digest: API, client-ready copy и UI генерация из alert.
+- [x] Добавить realtor client shortlist preview на compare page: ranked copy, mortgage/rental context и client-ready message.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
