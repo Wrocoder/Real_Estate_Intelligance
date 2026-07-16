@@ -1701,6 +1701,10 @@ export type PropertyDeduplicationMatch = {
   created_at: string;
 };
 
+export type PropertyDeduplicationMatchUpdate = {
+  review_status: PropertyDeduplicationReviewStatus;
+};
+
 export type CompareResponse = {
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
@@ -2364,6 +2368,15 @@ export const api = {
       `/api/v1/admin/deduplication/matches${toQueryString(params)}`,
       { headers: ADMIN_HEADERS },
     ),
+  updateAdminDeduplicationMatch: (
+    matchId: number,
+    payload: PropertyDeduplicationMatchUpdate,
+  ) =>
+    request<PropertyDeduplicationMatch>(`/api/v1/admin/deduplication/matches/${matchId}`, {
+      method: "PATCH",
+      headers: ADMIN_HEADERS,
+      body: JSON.stringify(payload),
+    }),
   deliverAdminDailyEmailAlerts: (payload: AlertDeliveryBatchRequest = {}) =>
     request<AlertDeliveryBatchResult>("/api/v1/admin/alerts/deliver-daily-email", {
       method: "POST",

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
   Database,
@@ -27,6 +27,7 @@ import {
   type PlannedInvestmentImportResponse,
   type PlannedInvestmentPayload,
   type PropertyDeduplicationMatch,
+  type PropertyDeduplicationReviewStatus,
   type RawListingSummary,
   type ScoringBacktestReport,
   type ScoringBacktestResult,
@@ -116,6 +117,9 @@ export default function AdminPage() {
   const [enrichmentRun, setEnrichmentRun] =
     useState<InfrastructureEnrichmentJobResult | null>(null);
   const [selectedJobId, setSelectedJobId] = useState("");
+  const [dedupReviewFilter, setDedupReviewFilter] =
+    useState<PropertyDeduplicationReviewStatus | "">("open");
+  const dedupReviewFilterRef = useRef<PropertyDeduplicationReviewStatus | "">("open");
   const [selectedSourceId, setSelectedSourceId] = useState("");
   const [selectedInvestmentId, setSelectedInvestmentId] = useState("");
   const [selectedReferralId, setSelectedReferralId] = useState("");
@@ -140,9 +144,13 @@ export default function AdminPage() {
   const [status, setStatus] = useState("Загрузка ingestion dashboard...");
   const [error, setError] = useState("");
 
-  const load = useCallback(async (jobId: string) => {
+  const load = useCallback(async (
+    jobId: string,
+    dedupStatus?: PropertyDeduplicationReviewStatus | "",
+  ) => {
     setError("");
     setStatus("Загрузка ingestion dashboard...");
+    const activeDedupStatus = dedupStatus ?? dedupReviewFilterRef.current;
     try {
       const [
         jobData,
@@ -170,6 +178,7 @@ export default function AdminPage() {
           api.listAdminRawListings({ limit: 50 }),
           api.listAdminDeduplicationMatches({
             job_id: jobId || undefined,
+            review_status: activeDedupStatus || undefined,
             limit: 50,
           }),
           api.listAdminPlannedInvestments({ city: "Wrocław" }),
@@ -255,6 +264,25 @@ export default function AdminPage() {
     setSourceForm(formFromSource(updated));
     await load(selectedJobId);
     setStatus(`Source обновлен: ${updated.name}`);
+  }
+
+  async function updateDedupReviewStatus(
+    matchId: number,
+    reviewStatus: PropertyDeduplicationReviewStatus,
+  ) {
+    const updated = await api.updateAdminDeduplicationMatch(matchId, {
+      review_status: reviewStatus,
+    });
+    setDedupMatches((current) => {
+      const nextMatches = current.map((match) => (match.id === updated.id ? updated : match));
+      if (dedupReviewFilter && updated.review_status !== dedupReviewFilter) {
+        return nextMatches.filter((match) => match.id !== updated.id);
+      }
+      return nextMatches;
+    });
+    setStatus(
+      `Dedup match ${updated.id} помечен как ${updated.review_status}`,
+    );
   }
 
   async function createSourceCheckForSelectedSource() {
@@ -569,8 +597,9 @@ export default function AdminPage() {
                   className="select"
                   value={selectedJobId}
                   onChange={(event) => {
-                    setSelectedJobId(event.target.value);
-                    void load(event.target.value);
+                    const nextJobId = event.target.value;
+                    setSelectedJobId(nextJobId);
+                    void load(nextJobId, dedupReviewFilter);
                   }}
                 >
                   <option value="">Все jobs</option>
@@ -609,6 +638,29 @@ export default function AdminPage() {
                 {numberValue(openDedupCount)} open · {numberValue(dedupMatches.length)} latest
               </span>
             </div>
+            <div className="panel-body compact-panel-body">
+              <div className="toolbar">
+                <label className="field inline-field">
+                  <span>Review status</span>
+                  <select
+                    className="select"
+                    value={dedupReviewFilter}
+                    onChange={(event) => {
+                      const nextStatus = event.target.value as
+                        | PropertyDeduplicationReviewStatus
+                        | "";
+                      setDedupReviewFilter(nextStatus);
+                      dedupReviewFilterRef.current = nextStatus;
+                      void load(selectedJobId, nextStatus);
+                    }}
+                  >
+                    <option value="open">Open</option>
+                    <option value="auto_resolved">Auto resolved</option>
+                    <option value="">All</option>
+                  </select>
+                </label>
+              </div>
+            </div>
             <div className="table-scroll">
               {dedupMatches.length === 0 ? (
                 <EmptyBlock label="Нет deduplication decisions под текущий фильтр." />
@@ -622,6 +674,7 @@ export default function AdminPage() {
                       <th>Incoming</th>
                       <th>Candidate</th>
                       <th>Reasons</th>
+                      <th>Review</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -653,6 +706,27 @@ export default function AdminPage() {
                           </small>
                         </td>
                         <td>{match.reasons.slice(0, 3).join(" · ") || "-"}</td>
+                        <td>
+                          {match.review_status === "open" ? (
+                            <button
+                              className="button"
+                              type="button"
+                              onClick={() =>
+                                void updateDedupReviewStatus(match.id, "auto_resolved")
+                              }
+                            >
+                              Mark resolved
+                            </button>
+                          ) : (
+                            <button
+                              className="button"
+                              type="button"
+                              onClick={() => void updateDedupReviewStatus(match.id, "open")}
+                            >
+                              Reopen
+                            </button>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>

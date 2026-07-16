@@ -1075,11 +1075,20 @@ button {
   gap: 5px;
 }
 
+.field.inline-field {
+  min-width: 190px;
+}
+
 .field label,
 .field > span {
   color: var(--muted);
   font-size: 12px;
   font-weight: 700;
+}
+
+.compact-panel-body {
+  padding-top: 0;
+  padding-bottom: 10px;
 }
 
 .checkbox-field {

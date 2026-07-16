@@ -319,7 +319,7 @@
 - [x] Добавить список ingestion jobs.
 - [x] Добавить просмотр raw listings.
 - [ ] Добавить ручное исправление normalized listing.
-- [ ] Добавить dedup review queue.
+- [x] Добавить dedup review queue.
 - [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.
 - [x] Добавить source registry UI: legal status, refresh cadence, robots/TOS notes, owner.
@@ -589,6 +589,7 @@
 - [x] Добавить granular infrastructure layer toggles на карту.
 - [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 - [x] Добавить granular amenity sublayers на карту: parks, healthcare, retail, office/university/jobs, public services.
+- [x] Добавить admin dedup review actions: filter open/all, mark resolved and reopen.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

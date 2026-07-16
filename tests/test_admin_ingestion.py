@@ -88,6 +88,13 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert dedup_response.status_code == 403
     assert dedup_response.json()["detail"] == "Admin role required"
 
+    dedup_update_response = client.patch(
+        "/api/v1/admin/deduplication/matches/1",
+        json={"review_status": "auto_resolved"},
+    )
+    assert dedup_update_response.status_code == 403
+    assert dedup_update_response.json()["detail"] == "Admin role required"
+
 
 def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     jobs = client.get("/api/v1/admin/ingestion/jobs", headers=ADMIN_HEADERS).json()
@@ -126,6 +133,17 @@ def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     assert source_errors[0]["source_name"] == "Demo Partner"
     assert source_errors[0]["status"] == "open"
     assert source_errors[0]["retryable"] is True
+
+
+def test_admin_dedup_review_update_requires_postgres_backend() -> None:
+    response = client.patch(
+        "/api/v1/admin/deduplication/matches/1",
+        headers=ADMIN_HEADERS,
+        json={"review_status": "auto_resolved"},
+    )
+
+    assert response.status_code == 409
+    assert "PostgreSQL" in response.json()["detail"]
 
 
 def test_admin_can_manage_source_registry() -> None:

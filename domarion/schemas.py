@@ -967,6 +967,10 @@ class PropertyDeduplicationMatch(BaseModel):
     created_at: datetime
 
 
+class PropertyDeduplicationMatchUpdate(BaseModel):
+    review_status: PropertyDeduplicationReviewStatus
+
+
 class MapPointGeometry(BaseModel):
     type: Literal["Point"] = "Point"
     coordinates: tuple[float, float]

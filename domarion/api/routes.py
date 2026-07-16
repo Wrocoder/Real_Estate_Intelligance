@@ -165,6 +165,7 @@ from domarion.schemas import (
     PriceHistoryRebuildResult,
     PropertyDeduplicationDecision,
     PropertyDeduplicationMatch,
+    PropertyDeduplicationMatchUpdate,
     PropertyDeduplicationReviewStatus,
     RawListingSummary,
     ReportAudience,
@@ -1535,6 +1536,34 @@ def list_admin_property_deduplication_matches(
     with SessionLocal() as session:
         rows = session.scalars(statement.limit(limit)).all()
         return [_deduplication_match_to_schema(row) for row in rows]
+
+
+@router.patch(
+    "/admin/deduplication/matches/{match_id}",
+    response_model=PropertyDeduplicationMatch,
+)
+def update_admin_property_deduplication_match(
+    match_id: int,
+    payload: PropertyDeduplicationMatchUpdate,
+    account: CurrentAccountDep,
+) -> PropertyDeduplicationMatch:
+    _ensure_admin(account)
+    settings = get_settings()
+    if settings.data_repository_backend != "postgres":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Deduplication review updates require PostgreSQL repository backend.",
+        )
+
+    with SessionLocal() as session:
+        row = session.get(PropertyDeduplicationMatchRow, match_id)
+        if row is None:
+            raise HTTPException(status_code=404, detail="Deduplication match not found")
+        row.review_status = payload.review_status
+        session.add(row)
+        session.commit()
+        session.refresh(row)
+        return _deduplication_match_to_schema(row)
 
 
 @router.post(
