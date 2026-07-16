@@ -148,6 +148,21 @@ class SourceError(Base):
     )
 
 
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    action_type: Mapped[str] = mapped_column(String(120), index=True)
+    actor_id: Mapped[str] = mapped_column(String(120), index=True)
+    actor_role: Mapped[str] = mapped_column(String(40), index=True)
+    resource_type: Mapped[str] = mapped_column(String(80), index=True)
+    resource_id: Mapped[str | None] = mapped_column(String(200), index=True)
+    status: Mapped[str] = mapped_column(String(40), default="succeeded", index=True)
+    message: Mapped[str | None] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class DataDeletionRequest(Base):
     __tablename__ = "data_deletion_requests"
 

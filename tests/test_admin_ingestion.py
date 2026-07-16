@@ -60,6 +60,10 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert deletion_requests_response.status_code == 403
     assert deletion_requests_response.json()["detail"] == "Admin role required"
 
+    audit_logs_response = client.get("/api/v1/admin/audit-logs")
+    assert audit_logs_response.status_code == 403
+    assert audit_logs_response.json()["detail"] == "Admin role required"
+
     open_data_response = client.get("/api/v1/admin/ingestion/open-data-roadmap")
     assert open_data_response.status_code == 403
     assert open_data_response.json()["detail"] == "Admin role required"
@@ -240,6 +244,17 @@ def test_admin_can_manage_source_registry() -> None:
     assert updated["raw_payload_retention_days"] == 30
     assert updated["retention_notes"] == "Shorter QA retention after legal approval."
 
+    audit_logs = client.get(
+        "/api/v1/admin/audit-logs",
+        headers=ADMIN_HEADERS,
+        params={"resource_type": "listing_source"},
+    ).json()
+    audit_actions = [log["action_type"] for log in audit_logs]
+    assert audit_actions[:2] == ["source_registry_updated", "source_registry_created"]
+    assert audit_logs[0]["actor_id"] == "admin-test"
+    assert audit_logs[0]["resource_id"] == created["id"]
+    assert audit_logs[0]["metadata"]["source_name"] == "Agency Beta Feed"
+
 
 def test_admin_can_prune_retained_raw_payloads() -> None:
     now = _now()
@@ -271,6 +286,13 @@ def test_admin_can_prune_retained_raw_payloads() -> None:
     assert apply_response.json()["raw_payloads_pruned"] == 1
     assert raw_listing["raw_payload"]["retention_pruned"] is True
     assert raw_listing["raw_payload"]["source_name"] == "Demo Partner"
+    audit_logs = client.get(
+        "/api/v1/admin/audit-logs",
+        headers=ADMIN_HEADERS,
+        params={"action_type": "source_retention_prune"},
+    ).json()
+    assert [log["metadata"]["dry_run"] for log in audit_logs[:2]] == [False, True]
+    assert audit_logs[0]["metadata"]["raw_payloads_pruned"] == 1
 
 
 def test_admin_can_create_and_process_data_deletion_request_for_private_draft() -> None:
@@ -334,6 +356,18 @@ def test_admin_can_create_and_process_data_deletion_request_for_private_draft() 
     assert process_response.json()["processed_by"] == "admin-test"
     assert process_response.json()["result_payload"]["target_deleted"] is True
     assert owner_get_deleted.status_code == 404
+
+    audit_logs = client.get(
+        "/api/v1/admin/audit-logs",
+        headers=ADMIN_HEADERS,
+        params={"resource_type": "data_deletion_request"},
+    ).json()
+    assert [log["action_type"] for log in audit_logs[:2]] == [
+        "data_deletion_request_processed",
+        "data_deletion_request_created",
+    ]
+    assert audit_logs[0]["resource_id"] == deletion_request["id"]
+    assert audit_logs[0]["metadata"]["result_payload"]["target_deleted"] is True
 
 
 def test_admin_can_list_and_filter_open_data_roadmap() -> None:

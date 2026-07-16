@@ -52,3 +52,11 @@ Admin endpoints:
 Requests are stored with target, source metadata, status, requester, processor, timestamps, action summary, and result payload.
 
 The process endpoint can directly delete `user_submitted_draft` targets when `target_owner_id` is provided. Other target types are recorded as manual or not-yet-supported execution targets until a dedicated delete API exists for them.
+
+## Admin Audit Trail
+
+Admin endpoint:
+
+`GET /api/v1/admin/audit-logs`
+
+The audit trail is append-only and records the actor, role, action type, resource type/id, status, message, metadata, and timestamp. Current audited actions include source registry changes, source checks/errors, retention pruning, ingestion job creation, and data deletion request lifecycle events.

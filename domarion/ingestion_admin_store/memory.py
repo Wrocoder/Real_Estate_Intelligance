@@ -5,6 +5,9 @@ from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
+    AdminAuditLog,
+    AdminAuditLogCreate,
+    AdminAuditLogStatus,
     DataDeletionRequest,
     DataDeletionRequestCreate,
     DataDeletionRequestProcess,
@@ -44,6 +47,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._sources: dict[str, SourceRegistryEntry] = {}
         self._source_check_jobs: dict[str, SourceCheckJob] = {}
         self._source_errors: dict[str, SourceError] = {}
+        self._admin_audit_logs: dict[str, AdminAuditLog] = {}
         self._data_deletion_requests: dict[str, DataDeletionRequest] = {}
         self._seed_demo()
 
@@ -54,6 +58,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._sources.clear()
         self._source_check_jobs.clear()
         self._source_errors.clear()
+        self._admin_audit_logs.clear()
         self._data_deletion_requests.clear()
 
     def reset_demo(self) -> None:
@@ -341,6 +346,41 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         source = source.model_copy(update={**update_data, "updated_at": _now()})
         self._sources[source.id] = source
         return source
+
+    def create_admin_audit_log(self, payload: AdminAuditLogCreate) -> AdminAuditLog:
+        audit_log = AdminAuditLog(
+            id=str(uuid4()),
+            action_type=payload.action_type,
+            actor_id=payload.actor_id,
+            actor_role=str(payload.actor_role),
+            resource_type=payload.resource_type,
+            resource_id=payload.resource_id,
+            status=payload.status,
+            message=payload.message,
+            metadata=payload.metadata,
+            created_at=_now(),
+        )
+        self._admin_audit_logs[audit_log.id] = audit_log
+        return audit_log
+
+    def list_admin_audit_logs(
+        self,
+        action_type: str | None = None,
+        actor_id: str | None = None,
+        resource_type: str | None = None,
+        status: AdminAuditLogStatus | None = None,
+        limit: int = 100,
+    ) -> list[AdminAuditLog]:
+        logs = list(self._admin_audit_logs.values())
+        if action_type:
+            logs = [item for item in logs if item.action_type == action_type]
+        if actor_id:
+            logs = [item for item in logs if item.actor_id == actor_id]
+        if resource_type:
+            logs = [item for item in logs if item.resource_type == resource_type]
+        if status:
+            logs = [item for item in logs if item.status == status]
+        return sorted(logs, key=lambda item: item.created_at, reverse=True)[:limit]
 
     def prune_retained_raw_payloads(
         self,

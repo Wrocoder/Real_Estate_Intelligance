@@ -47,7 +47,7 @@
 - [x] Добавить GDPR/RODO data retention policy.
 - [x] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
 - [x] Добавить реестр источников данных с owner, legal status, refresh cadence и quality status.
-- [ ] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
+- [x] Добавить audit trail для доступа к платным отчетам, admin-действий и data deletion requests.
 
 ## 2. Repository и Backend Foundation
 
@@ -511,6 +511,7 @@
 - [x] Commit 71: source retention governance and deletion request backend.
 - [x] Commit 72: data deletion request admin moderation workflow.
 - [x] Commit 73: explicit scoring disclaimers in analysis surfaces.
+- [x] Commit 74: admin audit log backend and API.
 - [x] Commit 71: gmina/municipality search filters.
 - [x] Commit 72: building attributes and voivodeship filters.
 - [x] Commit 73: lifestyle search filters.

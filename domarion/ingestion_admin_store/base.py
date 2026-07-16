@@ -2,6 +2,9 @@ from typing import Protocol
 
 from domarion.ingestion.db_writer import ImportResult
 from domarion.schemas import (
+    AdminAuditLog,
+    AdminAuditLogCreate,
+    AdminAuditLogStatus,
     DataDeletionRequest,
     DataDeletionRequestCreate,
     DataDeletionRequestProcess,
@@ -120,6 +123,19 @@ class IngestionAdminStore(Protocol):
         source_id: str,
         payload: SourceRegistryEntryUpdate,
     ) -> SourceRegistryEntry | None:
+        raise NotImplementedError
+
+    def create_admin_audit_log(self, payload: AdminAuditLogCreate) -> AdminAuditLog:
+        raise NotImplementedError
+
+    def list_admin_audit_logs(
+        self,
+        action_type: str | None = None,
+        actor_id: str | None = None,
+        resource_type: str | None = None,
+        status: AdminAuditLogStatus | None = None,
+        limit: int = 100,
+    ) -> list[AdminAuditLog]:
         raise NotImplementedError
 
     def prune_retained_raw_payloads(

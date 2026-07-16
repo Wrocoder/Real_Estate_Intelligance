@@ -78,6 +78,7 @@ SourceCheckType = Literal[
 ]
 SourceCheckJobStatus = Literal["queued", "running", "succeeded", "failed", "blocked"]
 SourceErrorStatus = Literal["open", "retry_scheduled", "resolved", "ignored"]
+AdminAuditLogStatus = Literal["succeeded", "failed", "blocked"]
 DataDeletionRequestStatus = Literal["open", "processed", "rejected"]
 DataDeletionRequestResolutionStatus = Literal["processed", "rejected"]
 DataDeletionTargetType = Literal[
@@ -911,6 +912,30 @@ class SourceRetentionPruneResult(BaseModel):
     raw_payloads_pruned: int = Field(ge=0)
     item_ids: list[str] = Field(default_factory=list)
     cutoff_by_source: dict[str, datetime] = Field(default_factory=dict)
+
+
+class AdminAuditLogCreate(BaseModel):
+    action_type: str = Field(min_length=1, max_length=120)
+    actor_id: str = Field(min_length=1, max_length=120)
+    actor_role: UserRole | str = Field(default="admin", max_length=40)
+    resource_type: str = Field(min_length=1, max_length=80)
+    resource_id: str | None = Field(default=None, max_length=200)
+    status: AdminAuditLogStatus = "succeeded"
+    message: str | None = Field(default=None, max_length=1000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminAuditLog(BaseModel):
+    id: str
+    action_type: str
+    actor_id: str
+    actor_role: str
+    resource_type: str
+    resource_id: str | None = None
+    status: AdminAuditLogStatus
+    message: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
 
 
 class DataDeletionRequestCreate(BaseModel):

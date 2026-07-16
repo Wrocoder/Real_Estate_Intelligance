@@ -4,6 +4,7 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domarion.db.models import AdminAuditLog as AdminAuditLogRow
 from domarion.db.models import DataDeletionRequest as DataDeletionRequestRow
 from domarion.db.models import DataQualityLog as DataQualityLogRow
 from domarion.db.models import IngestionJob as IngestionJobRow
@@ -14,6 +15,9 @@ from domarion.ingestion.db_writer import ImportResult
 from domarion.ingestion_admin_store.base import IngestionAdminStore
 from domarion.ingestion_admin_store.system_sources import system_source_payloads
 from domarion.schemas import (
+    AdminAuditLog,
+    AdminAuditLogCreate,
+    AdminAuditLogStatus,
     DataDeletionRequest,
     DataDeletionRequestCreate,
     DataDeletionRequestProcess,
@@ -382,6 +386,46 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
         self.session.refresh(row)
         return self._source_to_schema(row)
 
+    def create_admin_audit_log(self, payload: AdminAuditLogCreate) -> AdminAuditLog:
+        row = AdminAuditLogRow(
+            id=str(uuid4()),
+            action_type=payload.action_type,
+            actor_id=payload.actor_id,
+            actor_role=str(payload.actor_role),
+            resource_type=payload.resource_type,
+            resource_id=payload.resource_id,
+            status=payload.status,
+            message=payload.message,
+            metadata_json=payload.metadata,
+            created_at=datetime.utcnow(),
+        )
+        self.session.add(row)
+        self.session.commit()
+        self.session.refresh(row)
+        return self._admin_audit_log_to_schema(row)
+
+    def list_admin_audit_logs(
+        self,
+        action_type: str | None = None,
+        actor_id: str | None = None,
+        resource_type: str | None = None,
+        status: AdminAuditLogStatus | None = None,
+        limit: int = 100,
+    ) -> list[AdminAuditLog]:
+        statement = select(AdminAuditLogRow)
+        if action_type:
+            statement = statement.where(AdminAuditLogRow.action_type == action_type)
+        if actor_id:
+            statement = statement.where(AdminAuditLogRow.actor_id == actor_id)
+        if resource_type:
+            statement = statement.where(AdminAuditLogRow.resource_type == resource_type)
+        if status:
+            statement = statement.where(AdminAuditLogRow.status == status)
+        rows = self.session.scalars(
+            statement.order_by(AdminAuditLogRow.created_at.desc()).limit(limit)
+        ).all()
+        return [self._admin_audit_log_to_schema(row) for row in rows]
+
     def prune_retained_raw_payloads(
         self,
         dry_run: bool = True,
@@ -638,6 +682,21 @@ class PostgresIngestionAdminStore(IngestionAdminStore):
             is_active=row.is_active,
             created_at=row.created_at,
             updated_at=row.updated_at,
+        )
+
+    @staticmethod
+    def _admin_audit_log_to_schema(row: AdminAuditLogRow) -> AdminAuditLog:
+        return AdminAuditLog(
+            id=row.id,
+            action_type=row.action_type,
+            actor_id=row.actor_id,
+            actor_role=row.actor_role,
+            resource_type=row.resource_type,
+            resource_id=row.resource_id,
+            status=row.status,
+            message=row.message,
+            metadata=row.metadata_json,
+            created_at=row.created_at,
         )
 
     @staticmethod

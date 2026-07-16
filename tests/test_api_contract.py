@@ -190,11 +190,16 @@ def test_openapi_exposes_source_registry_contract() -> None:
     deletion_request_process_schema = paths[
         "/api/v1/admin/data-deletion-requests/{request_id}/process"
     ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    audit_logs_schema = paths["/api/v1/admin/audit-logs"]["get"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
     assert retention_prune_schema["$ref"] == "#/components/schemas/SourceRetentionPruneResult"
     assert deletion_request_schema["$ref"] == "#/components/schemas/DataDeletionRequest"
     assert deletion_request_process_schema["$ref"] == (
         "#/components/schemas/DataDeletionRequestProcess"
     )
+    assert audit_logs_schema["type"] == "array"
+    assert audit_logs_schema["items"]["$ref"] == "#/components/schemas/AdminAuditLog"
 
 
 def test_openapi_exposes_recent_request_and_response_models() -> None:
@@ -219,6 +224,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "AgencyWorkspaceCreate",
         "AgencyWorkspaceSummary",
         "AgencyWorkspaceUpdate",
+        "AdminAuditLog",
         "AreaComparison",
         "AreaComparisonItem",
         "AreaImpactSummary",

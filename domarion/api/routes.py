@@ -68,6 +68,9 @@ from domarion.repositories.factory import get_repository
 from domarion.schemas import (
     AccountSummary,
     AccountUsage,
+    AdminAuditLog,
+    AdminAuditLogCreate,
+    AdminAuditLogStatus,
     AgencyMemberCreate,
     AgencyMemberRole,
     AgencyMembership,
@@ -1235,7 +1238,22 @@ def create_admin_source_check_job(
     )
     if not payload.source_name:
         raise HTTPException(status_code=400, detail="Source name is required")
-    return admin_store.create_source_check_job(payload)
+    source_check = admin_store.create_source_check_job(payload)
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_check_created",
+        resource_type="source_check_job",
+        resource_id=source_check.id,
+        message=f"Created source check for {source_check.source_name}",
+        metadata={
+            "source_name": source_check.source_name,
+            "source_type": source_check.source_type,
+            "check_type": source_check.check_type,
+            "status": source_check.status,
+        },
+    )
+    return source_check
 
 
 @router.get("/admin/ingestion/source-errors", response_model=list[SourceError])
@@ -1270,7 +1288,22 @@ def create_admin_source_error(
     payload = payload.model_copy(update={"source_name": payload.source_name.strip()})
     if not payload.source_name:
         raise HTTPException(status_code=400, detail="Source name is required")
-    return admin_store.create_source_error(payload)
+    source_error = admin_store.create_source_error(payload)
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_error_created",
+        resource_type="source_error",
+        resource_id=source_error.id,
+        message=f"Created source error {source_error.error_code}",
+        metadata={
+            "source_name": source_error.source_name,
+            "severity": source_error.severity,
+            "status": source_error.status,
+            "retryable": source_error.retryable,
+        },
+    )
+    return source_error
 
 
 @router.patch("/admin/ingestion/source-errors/{error_id}", response_model=SourceError)
@@ -1286,6 +1319,20 @@ def update_admin_source_error(
     source_error = admin_store.update_source_error(error_id, payload)
     if source_error is None:
         raise HTTPException(status_code=404, detail="Source error not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_error_updated",
+        resource_type="source_error",
+        resource_id=source_error.id,
+        message=f"Updated source error {source_error.error_code}",
+        metadata={
+            "source_name": source_error.source_name,
+            "status": source_error.status,
+            "severity": source_error.severity,
+            "updated_fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+        },
+    )
     return source_error
 
 
@@ -1302,6 +1349,19 @@ def retry_admin_source_error(
     result = admin_store.retry_source_error(error_id, created_by=account.user.id)
     if result is None:
         raise HTTPException(status_code=404, detail="Retryable source error not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_error_retry_scheduled",
+        resource_type="source_error",
+        resource_id=result.error.id,
+        message=f"Scheduled retry for source error {result.error.error_code}",
+        metadata={
+            "retry_job_id": result.retry_job.id,
+            "source_name": result.error.source_name,
+            "retry_count": result.error.retry_count,
+        },
+    )
     return result
 
 
@@ -1339,7 +1399,22 @@ def create_admin_ingestion_source(
     if not payload.name:
         raise HTTPException(status_code=400, detail="Source name is required")
     _ensure_source_name_available(admin_store, payload.name)
-    return admin_store.create_source(payload)
+    source = admin_store.create_source(payload)
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_registry_created",
+        resource_type="listing_source",
+        resource_id=source.id,
+        message=f"Created ingestion source {source.name}",
+        metadata={
+            "source_name": source.name,
+            "source_type": source.source_type,
+            "legal_status": source.legal_status,
+            "allowed_use": source.allowed_use,
+        },
+    )
+    return source
 
 
 @router.patch("/admin/ingestion/sources/{source_id}", response_model=SourceRegistryEntry)
@@ -1358,7 +1433,41 @@ def update_admin_ingestion_source(
     source = admin_store.update_source(source_id, payload)
     if source is None:
         raise HTTPException(status_code=404, detail="Ingestion source not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_registry_updated",
+        resource_type="listing_source",
+        resource_id=source.id,
+        message=f"Updated ingestion source {source.name}",
+        metadata={
+            "source_name": source.name,
+            "legal_status": source.legal_status,
+            "is_active": source.is_active,
+            "updated_fields": sorted(payload.model_dump(exclude_unset=True).keys()),
+        },
+    )
     return source
+
+
+@router.get("/admin/audit-logs", response_model=list[AdminAuditLog])
+def list_admin_audit_logs(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    action_type: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    actor_id: Annotated[str | None, Query(min_length=1, max_length=120)] = None,
+    resource_type: Annotated[str | None, Query(min_length=1, max_length=80)] = None,
+    audit_status: Annotated[AdminAuditLogStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[AdminAuditLog]:
+    _ensure_admin(account)
+    return admin_store.list_admin_audit_logs(
+        action_type=action_type,
+        actor_id=actor_id,
+        resource_type=resource_type,
+        status=audit_status,
+        limit=limit,
+    )
 
 
 @router.post(
@@ -1373,11 +1482,31 @@ def prune_admin_retained_raw_payloads(
     limit: Annotated[int, Query(ge=1, le=5000)] = 500,
 ) -> SourceRetentionPruneResult:
     _ensure_admin(account)
-    return admin_store.prune_retained_raw_payloads(
+    result = admin_store.prune_retained_raw_payloads(
         dry_run=dry_run,
         source_name=source_name,
         limit=limit,
     )
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="source_retention_prune",
+        resource_type="listing_source",
+        resource_id=source_name,
+        message=(
+            f"{'Dry-run' if dry_run else 'Applied'} raw payload retention prune"
+            f" for {source_name or 'all eligible sources'}"
+        ),
+        metadata={
+            "dry_run": result.dry_run,
+            "source_name": result.source_name,
+            "sources_checked": result.sources_checked,
+            "raw_listings_seen": result.raw_listings_seen,
+            "raw_payloads_pruned": result.raw_payloads_pruned,
+            "item_ids": result.item_ids[:50],
+        },
+    )
+    return result
 
 
 @router.get("/admin/data-deletion-requests", response_model=list[DataDeletionRequest])
@@ -1410,10 +1539,26 @@ def create_admin_data_deletion_request(
     account: CurrentAccountDep,
 ) -> DataDeletionRequest:
     _ensure_admin(account)
-    return admin_store.create_data_deletion_request(
+    deletion_request = admin_store.create_data_deletion_request(
         payload,
         requested_by=payload.requested_by or account.user.id,
     )
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="data_deletion_request_created",
+        resource_type="data_deletion_request",
+        resource_id=deletion_request.id,
+        message=f"Created data deletion request for {deletion_request.target_type}",
+        metadata={
+            "target_type": deletion_request.target_type,
+            "target_id": deletion_request.target_id,
+            "target_owner_id": deletion_request.target_owner_id,
+            "source_name": deletion_request.source_name,
+            "requested_by": deletion_request.requested_by,
+        },
+    )
+    return deletion_request
 
 
 @router.post(
@@ -1450,6 +1595,22 @@ def process_admin_data_deletion_request(
     )
     if processed is None:
         raise HTTPException(status_code=404, detail="Data deletion request not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type=f"data_deletion_request_{processed.status}",
+        resource_type="data_deletion_request",
+        resource_id=processed.id,
+        message=processed.action_summary,
+        metadata={
+            "target_type": processed.target_type,
+            "target_id": processed.target_id,
+            "target_owner_id": processed.target_owner_id,
+            "source_name": processed.source_name,
+            "result_payload": processed.result_payload,
+            "execute_target_deletion": payload.execute_target_deletion,
+        },
+    )
     return processed
 
 
@@ -1586,7 +1747,22 @@ def create_admin_ingestion_job(
 ) -> IngestionJob:
     _ensure_admin(account)
     audited_payload = payload.model_copy(update={"created_by": account.user.id})
-    return admin_store.create_job(audited_payload)
+    job = admin_store.create_job(audited_payload)
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="ingestion_job_created",
+        resource_type="ingestion_job",
+        resource_id=job.id,
+        message=f"Created ingestion job for {job.source_name}",
+        metadata={
+            "source_name": job.source_name,
+            "source_type": job.source_type,
+            "status": job.status,
+            "notes": job.notes,
+        },
+    )
+    return job
 
 
 @router.get("/admin/ingestion/jobs/{job_id}", response_model=IngestionJob)
@@ -3765,6 +3941,30 @@ def _execute_data_deletion_target(
         "target_delete_mode": "user_submitted_draft_store",
         "target_type": deletion_request.target_type,
     }
+
+
+def _write_admin_audit_log(
+    admin_store: IngestionAdminStore,
+    account: CurrentAccount,
+    *,
+    action_type: str,
+    resource_type: str,
+    resource_id: str | None = None,
+    message: str | None = None,
+    metadata: dict[str, object] | None = None,
+) -> AdminAuditLog:
+    return admin_store.create_admin_audit_log(
+        AdminAuditLogCreate(
+            action_type=action_type,
+            actor_id=account.user.id,
+            actor_role=account.user.role,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            status="succeeded",
+            message=message,
+            metadata=metadata or {},
+        )
+    )
 
 
 def _build_account_summary(
