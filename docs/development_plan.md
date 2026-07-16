@@ -304,6 +304,7 @@
 - [ ] Добавить price-per-m2 heatmap.
 - [ ] Добавить переключаемые слои районов, гмин и воеводства.
 - [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
+- [x] Добавить infrastructure point layers в `/map/features` и UI: transport stops with route lines, schools, kindergartens, amenities, industrial zones.
 - [ ] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
 - [ ] Добавить MPZP/Studium layer.
 - [ ] Добавить future roads, tram lines and bus routes layers.
@@ -577,6 +578,7 @@
 - [x] Добавить news v1: article schema/store, manual admin ingestion, public news page, category/area-impact fields and source-grounded news AI summary.
 - [x] Добавить area-aware news linking в UI: area query filter, area SEO links and listing detail related news.
 - [x] Добавить floor/year filters в search stack: listings API, hidden gems, map query, explorer UI и saved-search alerts.
+- [x] Добавить infrastructure point layers на карту: stops/routes labels, schools, kindergartens, amenities and industrial zones.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

@@ -9,6 +9,14 @@ from domarion.services.scoring import build_listing_analysis
 
 BBox = tuple[float, float, float, float]
 WROCLAW_CENTER = (17.0385, 51.1079)
+INFRASTRUCTURE_FEATURE_TYPES = {
+    "transport_stop",
+    "school",
+    "kindergarten",
+    "amenity",
+    "industrial_zone",
+}
+INFRASTRUCTURE_LAYER_LIMIT = 500
 
 
 class MapQueryError(ValueError):
@@ -80,6 +88,15 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    infrastructure_features = _infrastructure_features(
+        repository,
+        city=city,
+        district=district,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
 
     features: list[MapFeature] = []
     skipped_listings = 0
@@ -123,12 +140,20 @@ def build_map_feature_collection(
             continue
         features.append(_planned_investment_to_feature(investment))
 
+    features.extend(infrastructure_features)
+
     listing_count = sum(
         1 for feature in features if feature.properties["feature_type"] == "listing"
     )
     planned_count = sum(
         1 for feature in features if feature.properties["feature_type"] == "planned_investment"
     )
+    infrastructure_counts = {
+        f"{feature_type}_count": sum(
+            1 for feature in features if feature.properties["feature_type"] == feature_type
+        )
+        for feature_type in sorted(INFRASTRUCTURE_FEATURE_TYPES)
+    }
 
     return MapFeatureCollection(
         features=features,
@@ -136,6 +161,8 @@ def build_map_feature_collection(
         metadata={
             "listing_count": listing_count,
             "planned_investment_count": planned_count,
+            "infrastructure_count": sum(infrastructure_counts.values()),
+            "infrastructure_counts": infrastructure_counts,
             "skipped_listings": skipped_listings,
             "filters": {
                 "city": city,
@@ -156,6 +183,60 @@ def build_map_feature_collection(
             },
         },
     )
+
+
+def _infrastructure_features(
+    repository: RealEstateRepository,
+    *,
+    city: str | None,
+    district: str | None,
+    bbox: BBox | None,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> list[MapFeature]:
+    features: list[MapFeature] = []
+    layer_builders = [
+        (
+            repository.list_transport_stops(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            _transport_stop_to_feature,
+        ),
+        (
+            repository.list_schools(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            _school_to_feature,
+        ),
+        (
+            repository.list_kindergartens(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            _kindergarten_to_feature,
+        ),
+        (
+            repository.list_amenities(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            _amenity_to_feature,
+        ),
+        (
+            repository.list_industrial_zones(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            _industrial_zone_to_feature,
+        ),
+    ]
+
+    for references, builder in layer_builders:
+        for reference in references:
+            if not _reference_matches_district(reference, district):
+                continue
+            if reference.lat is None or reference.lon is None:
+                continue
+            if not _is_inside_spatial_window(
+                reference.lat,
+                reference.lon,
+                bbox,
+                lat,
+                lon,
+                radius_km,
+            ):
+                continue
+            features.append(builder(reference))
+
+    return features
 
 
 def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
@@ -205,6 +286,117 @@ def _listing_to_feature(listing: Listing, scores: dict[str, Any]) -> MapFeature:
         geometry=MapPointGeometry(coordinates=(listing.lon, listing.lat)),
         properties=properties,
     )
+
+
+def _transport_stop_to_feature(stop) -> MapFeature:
+    return _infrastructure_reference_to_feature(
+        feature_type="transport_stop",
+        reference_id=stop.id,
+        lat=stop.lat,
+        lon=stop.lon,
+        properties={
+            "name": stop.name,
+            "municipality": stop.municipality_name,
+            "district": stop.district_name,
+            "stop_type": stop.stop_type,
+            "lines_label": ", ".join(stop.lines),
+            "source_url": stop.source_url,
+        },
+    )
+
+
+def _school_to_feature(school) -> MapFeature:
+    return _infrastructure_reference_to_feature(
+        feature_type="school",
+        reference_id=school.id,
+        lat=school.lat,
+        lon=school.lon,
+        properties={
+            "name": school.name,
+            "municipality": school.municipality_name,
+            "district": school.district_name,
+            "school_type": school.school_type,
+            "operator_type": school.operator_type,
+            "source_url": school.source_url,
+        },
+    )
+
+
+def _kindergarten_to_feature(kindergarten) -> MapFeature:
+    return _infrastructure_reference_to_feature(
+        feature_type="kindergarten",
+        reference_id=kindergarten.id,
+        lat=kindergarten.lat,
+        lon=kindergarten.lon,
+        properties={
+            "name": kindergarten.name,
+            "municipality": kindergarten.municipality_name,
+            "district": kindergarten.district_name,
+            "kindergarten_type": kindergarten.kindergarten_type,
+            "operator_type": kindergarten.operator_type,
+            "source_url": kindergarten.source_url,
+        },
+    )
+
+
+def _amenity_to_feature(amenity) -> MapFeature:
+    return _infrastructure_reference_to_feature(
+        feature_type="amenity",
+        reference_id=amenity.id,
+        lat=amenity.lat,
+        lon=amenity.lon,
+        properties={
+            "name": amenity.name,
+            "municipality": amenity.municipality_name,
+            "district": amenity.district_name,
+            "amenity_type": amenity.amenity_type,
+            "source_url": amenity.source_url,
+        },
+    )
+
+
+def _industrial_zone_to_feature(zone) -> MapFeature:
+    return _infrastructure_reference_to_feature(
+        feature_type="industrial_zone",
+        reference_id=zone.id,
+        lat=zone.lat,
+        lon=zone.lon,
+        properties={
+            "name": zone.name,
+            "municipality": zone.municipality_name,
+            "district": zone.district_name,
+            "zone_type": zone.zone_type,
+            "risk_level": zone.risk_level,
+            "impact_radius_m": zone.impact_radius_m,
+            "source_url": zone.source_url,
+        },
+    )
+
+
+def _infrastructure_reference_to_feature(
+    *,
+    feature_type: str,
+    reference_id: str,
+    lat: float,
+    lon: float,
+    properties: dict[str, Any],
+) -> MapFeature:
+    return MapFeature(
+        id=f"{feature_type}-{reference_id}",
+        geometry=MapPointGeometry(coordinates=(lon, lat)),
+        properties={
+            "feature_type": feature_type,
+            "reference_id": reference_id,
+            **properties,
+        },
+    )
+
+
+def _reference_matches_district(reference, district: str | None) -> bool:
+    if district is None:
+        return True
+    reference_district = getattr(reference, "district_name", None)
+    return reference_district is not None and reference_district.casefold() == district.casefold()
 
 
 def _planned_investment_to_feature(investment: PlannedInvestmentSchema) -> MapFeature:

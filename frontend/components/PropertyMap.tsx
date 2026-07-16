@@ -104,6 +104,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
 
   const listingCount = collection?.metadata.listing_count ?? 0;
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
+  const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
 
   return (
     <div className="map-shell">
@@ -111,6 +112,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
       <div className="map-summary">
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
+        <span>{infrastructureCount} infrastructure</span>
       </div>
       <div className="map-legend" aria-label="Легенда карты">
         <span>
@@ -121,6 +123,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         </span>
         <span>
           <i className="legend-dot investment" /> план
+        </span>
+        <span>
+          <i className="legend-dot infrastructure" /> инфраструктура
         </span>
       </div>
       {(isLoading || error) && (
@@ -270,9 +275,7 @@ function syncMarkers(
 
   collection.features.forEach((feature) => {
     const [lon, lat] = feature.geometry.coordinates;
-    const element = feature.properties.feature_type === "listing"
-      ? createListingMarker(feature)
-      : createInvestmentMarker(feature, map, maplibre);
+    const element = markerElement(feature, map, maplibre);
 
     const marker = new maplibre.Marker({
       element,
@@ -300,6 +303,20 @@ function createListingMarker(feature: MapFeature) {
   return element;
 }
 
+function markerElement(
+  feature: MapFeature,
+  map: MaplibreMap,
+  maplibre: MaplibreModule,
+) {
+  if (feature.properties.feature_type === "listing") {
+    return createListingMarker(feature);
+  }
+  if (feature.properties.feature_type === "planned_investment") {
+    return createInvestmentMarker(feature, map, maplibre);
+  }
+  return createInfrastructureMarker(feature, map, maplibre);
+}
+
 function createInvestmentMarker(
   feature: MapFeature,
   map: MaplibreMap,
@@ -320,9 +337,30 @@ function createInvestmentMarker(
   return element;
 }
 
+function createInfrastructureMarker(
+  feature: MapFeature,
+  map: MaplibreMap,
+  maplibre: MaplibreModule,
+) {
+  const element = document.createElement("button");
+  const featureClass = String(feature.properties.feature_type).replaceAll("_", "-");
+  element.className = `map-infrastructure-marker ${featureClass}`;
+  element.type = "button";
+  element.textContent = infrastructureInitial(feature);
+  element.title = infrastructureTitle(feature);
+  element.addEventListener("click", () => {
+    const popupContent = buildInfrastructurePopup(feature);
+    new maplibre.Popup({ offset: 16 })
+      .setLngLat(feature.geometry.coordinates)
+      .setDOMContent(popupContent)
+      .addTo(map);
+  });
+  return element;
+}
+
 function buildInvestmentPopup(feature: MapFeature) {
   const container = document.createElement("div");
-  container.className = "investment-popup";
+  container.className = "map-feature-popup";
 
   const title = document.createElement("strong");
   title.textContent = String(feature.properties.name ?? "Planned investment");
@@ -345,12 +383,123 @@ function buildInvestmentPopup(feature: MapFeature) {
   return container;
 }
 
+function buildInfrastructurePopup(feature: MapFeature) {
+  const container = document.createElement("div");
+  container.className = "map-feature-popup";
+
+  const title = document.createElement("strong");
+  title.textContent = String(feature.properties.name ?? infrastructureTitle(feature));
+  container.appendChild(title);
+
+  const meta = document.createElement("span");
+  meta.textContent = infrastructureMeta(feature);
+  container.appendChild(meta);
+
+  const detail = document.createElement("p");
+  detail.textContent = infrastructureDetail(feature);
+  container.appendChild(detail);
+
+  return container;
+}
+
 function investmentInitial(feature: MapFeature) {
   const type = String(feature.properties.investment_type ?? "P");
   if (type.includes("tram")) return "T";
   if (type.includes("school")) return "S";
   if (type.includes("park")) return "P";
   return "I";
+}
+
+function infrastructureInitial(feature: MapFeature) {
+  switch (feature.properties.feature_type) {
+    case "transport_stop":
+      return "T";
+    case "school":
+      return "S";
+    case "kindergarten":
+      return "K";
+    case "industrial_zone":
+      return "!";
+    case "amenity":
+      return amenityInitial(feature);
+    default:
+      return "I";
+  }
+}
+
+function amenityInitial(feature: MapFeature) {
+  const type = String(feature.properties.amenity_type ?? "");
+  if (type.includes("park")) return "P";
+  if (type.includes("health")) return "H";
+  if (type.includes("retail")) return "R";
+  if (type.includes("office")) return "O";
+  if (type.includes("university")) return "U";
+  return "A";
+}
+
+function infrastructureTitle(feature: MapFeature) {
+  const name = String(feature.properties.name ?? "Infrastructure");
+  return `${infrastructureLabel(feature)} · ${name}`;
+}
+
+function infrastructureMeta(feature: MapFeature) {
+  return [
+    infrastructureLabel(feature),
+    feature.properties.district,
+    feature.properties.municipality,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+function infrastructureDetail(feature: MapFeature) {
+  if (feature.properties.feature_type === "transport_stop") {
+    return [
+      feature.properties.stop_type,
+      feature.properties.lines_label ? `lines: ${feature.properties.lines_label}` : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (feature.properties.feature_type === "school") {
+    return [feature.properties.school_type, feature.properties.operator_type]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (feature.properties.feature_type === "kindergarten") {
+    return [feature.properties.kindergarten_type, feature.properties.operator_type]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (feature.properties.feature_type === "industrial_zone") {
+    return [
+      feature.properties.zone_type,
+      `risk: ${feature.properties.risk_level ?? "unknown"}`,
+      feature.properties.impact_radius_m
+        ? `impact radius: ${feature.properties.impact_radius_m} m`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  return String(feature.properties.amenity_type ?? "amenity");
+}
+
+function infrastructureLabel(feature: MapFeature) {
+  switch (feature.properties.feature_type) {
+    case "transport_stop":
+      return "Transport";
+    case "school":
+      return "School";
+    case "kindergarten":
+      return "Kindergarten";
+    case "amenity":
+      return "Amenity";
+    case "industrial_zone":
+      return "Industrial zone";
+    default:
+      return "Infrastructure";
+  }
 }
 
 function clearMarkers(markers: MaplibreMarker[]) {

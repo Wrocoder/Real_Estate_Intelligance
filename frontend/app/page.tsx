@@ -200,7 +200,7 @@ export default function ExplorerPage() {
         setMapStatus(
           `${data.metadata.listing_count ?? 0} объектов · ${
             data.metadata.planned_investment_count ?? 0
-          } planned investments`,
+          } planned investments · ${data.metadata.infrastructure_count ?? 0} infrastructure`,
         );
       } catch (caught) {
         if (cancelled) return;

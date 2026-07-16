@@ -1868,7 +1868,14 @@ export type AlertDeliveryBatchResult = {
   skipped: AlertDeliveryBatchSkip[];
 };
 
-export type MapFeatureType = "listing" | "planned_investment";
+export type MapFeatureType =
+  | "listing"
+  | "planned_investment"
+  | "transport_stop"
+  | "school"
+  | "kindergarten"
+  | "amenity"
+  | "industrial_zone";
 
 export type MapFeatureProperties = {
   feature_type: MapFeatureType;
@@ -1892,6 +1899,8 @@ export type MapFeatureCollection = {
   metadata: {
     listing_count?: number;
     planned_investment_count?: number;
+    infrastructure_count?: number;
+    infrastructure_counts?: Record<string, number>;
     skipped_listings?: number;
     filters?: Record<string, unknown>;
     [key: string]: unknown;

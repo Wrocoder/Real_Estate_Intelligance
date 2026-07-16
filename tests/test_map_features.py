@@ -5,7 +5,7 @@ from domarion.main import app
 client = TestClient(app)
 
 
-def test_map_features_returns_listings_and_planned_investments() -> None:
+def test_map_features_returns_listings_planned_investments_and_infrastructure() -> None:
     response = client.get("/api/v1/map/features")
     payload = response.json()
 
@@ -13,9 +13,20 @@ def test_map_features_returns_listings_and_planned_investments() -> None:
     assert payload["type"] == "FeatureCollection"
     assert payload["metadata"]["listing_count"] >= 3
     assert payload["metadata"]["planned_investment_count"] >= 4
+    assert payload["metadata"]["infrastructure_count"] >= 10
+    assert payload["metadata"]["infrastructure_counts"]["transport_stop_count"] >= 2
+    assert payload["metadata"]["infrastructure_counts"]["school_count"] >= 2
 
     feature_types = {feature["properties"]["feature_type"] for feature in payload["features"]}
-    assert feature_types == {"listing", "planned_investment"}
+    assert {
+        "listing",
+        "planned_investment",
+        "transport_stop",
+        "school",
+        "kindergarten",
+        "amenity",
+        "industrial_zone",
+    } <= feature_types
 
     listing = next(
         feature
@@ -25,6 +36,15 @@ def test_map_features_returns_listings_and_planned_investments() -> None:
     assert listing["geometry"]["coordinates"] == [16.9653, 51.1117]
     assert listing["properties"]["price_label"] == "690k zł"
     assert 0 <= listing["properties"]["investment_score"] <= 100
+
+    stop = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"].get("reference_id") == "stop-wroclaw-nowy-dwor-pr"
+    )
+    assert stop["geometry"]["coordinates"] == [16.9671, 51.1125]
+    assert stop["properties"]["feature_type"] == "transport_stop"
+    assert stop["properties"]["lines_label"] == "13, 23, 142"
 
 
 def test_map_features_supports_bbox_filter() -> None:
@@ -41,6 +61,35 @@ def test_map_features_supports_bbox_filter() -> None:
         if feature["properties"]["feature_type"] == "listing"
     }
     assert listing_ids == {"wr-001"}
+    infrastructure_ids = {
+        feature["properties"].get("reference_id")
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] != "listing"
+        and feature["properties"]["feature_type"] != "planned_investment"
+    }
+    assert "stop-wroclaw-nowy-dwor-pr" in infrastructure_ids
+    assert "stop-wroclaw-jagodno-buforowa" not in infrastructure_ids
+
+
+def test_map_features_supports_district_infrastructure_filter() -> None:
+    response = client.get(
+        "/api/v1/map/features",
+        params={"city": "Wrocław", "district": "Fabryczna"},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["infrastructure_count"] >= 1
+    infrastructure_features = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"]
+        in {"transport_stop", "school", "kindergarten", "amenity", "industrial_zone"}
+    ]
+    assert infrastructure_features
+    assert {feature["properties"]["district"] for feature in infrastructure_features} == {
+        "Fabryczna"
+    }
 
 
 def test_map_features_supports_radius_and_score_filters() -> None:
