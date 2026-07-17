@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   BarChart3,
   Bell,
+  BadgeCheck,
   Building2,
   Calculator,
   ClipboardCheck,
@@ -11,6 +12,7 @@ import {
   CreditCard,
   Database,
   FileText,
+  Handshake,
   MapPinned,
   Newspaper,
   Search,
@@ -40,6 +42,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </span>
             </Link>
             <nav className="nav-list" aria-label="Primary navigation">
+              <Link href="/beta">
+                <BadgeCheck size={18} />
+                Beta
+              </Link>
+              <Link href="/realtors">
+                <Handshake size={18} />
+                Риелторы
+              </Link>
               <Link href="/">
                 <Search size={18} />
                 Подбор

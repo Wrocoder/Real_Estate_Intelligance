@@ -24,7 +24,7 @@
 - [ ] Провести 20 интервью: покупатели, риелторы, инвесторы.
 - [ ] Провести отдельные интервью с ипотечными брокерами и малыми агентствами.
 - [ ] Сформировать список первых 30 агентств/риелторов для paid beta.
-- [ ] Подготовить коммерческий оффер для риелторов.
+- [x] Подготовить коммерческий оффер для риелторов.
 - [ ] Подготовить оценку коммерческого потенциала по шкале из `First_prompt_ru.md`.
 - [ ] Подготовить конкурентный анализ Otodom, OLX, Morizon, Gratka, SonarHome, Cenatorium, urban.one и агентских CRM.
 - [ ] Подготовить risk register: юридические, технические и бизнес-риски с mitigation-планом.
@@ -286,7 +286,7 @@
 - [x] Добавить developer block на listing detail page.
 - [x] Добавить developer block на compare page.
 - [x] Сделать news page.
-- [ ] Сделать public demand-validation landing page для paid beta.
+- [x] Сделать public demand-validation landing page для paid beta.
 - [ ] Сделать mobile-friendly QA pass для ключевых страниц.
 - [x] Добавить charting library и графики price history/market distributions.
 - [x] Добавить realtor подборки объектов для клиента.
@@ -406,14 +406,14 @@
 
 ## 17. Go-to-Market, Sales и Partnerships
 
-- [ ] Сделать demand-validation landing page для “проверка квартиры перед покупкой”.
-- [ ] Сделать landing variant для “аналитика и отчеты для риелторов”.
-- [ ] Подготовить outreach scripts для LinkedIn, Facebook groups и cold emails агентствам.
+- [x] Сделать demand-validation landing page для “проверка квартиры перед покупкой”.
+- [x] Сделать landing variant для “аналитика и отчеты для риелторов”.
+- [x] Подготовить outreach scripts для LinkedIn, Facebook groups и cold emails агентствам.
 - [ ] Запустить список paid beta candidates: риелторы, маленькие агентства, инвесторы, ипотечные брокеры.
-- [ ] Описать manual/semi-automated workflow первого платного отчета.
-- [ ] Подготовить offer для отчетов: object report, area report, realtor report, hidden gems подборка.
-- [ ] Подготовить партнерскую модель: mortgage brokers, banks, insurers, lawyers, notaries, appraisers, renovation/design partners.
-- [ ] Добавить правило явной маркировки рекламы, promoted listings и sponsored reports.
+- [x] Описать manual/semi-automated workflow первого платного отчета.
+- [x] Подготовить offer для отчетов: object report, area report, realtor report, hidden gems подборка.
+- [x] Подготовить партнерскую модель: mortgage brokers, banks, insurers, lawyers, notaries, appraisers, renovation/design partners.
+- [x] Добавить правило явной маркировки рекламы, promoted listings и sponsored reports.
 - [x] Добавить lead tracking для partner referrals и early sales.
 
 ## 18. Agency, Enterprise/API и Data Products
@@ -530,6 +530,7 @@
 - [x] Commit 85: data quality acceptance tests for geocoding, dedup and source freshness.
 - [x] Commit 86: paid artifact and report metadata contract tests.
 - [x] Commit 87: frontend smoke tests for search, map, reports, admin and payments.
+- [x] Commit 88: paid beta landing pages and GTM playbook.
 
 ## Current Sprint
 

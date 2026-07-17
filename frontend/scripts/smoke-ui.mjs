@@ -48,6 +48,9 @@ const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const adminPage = read("app/admin/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
+const buyerBetaPage = read("app/beta/page.tsx");
+const realtorsPage = read("app/realtors/page.tsx");
+const landingScene = read("components/LandingMapScene.tsx");
 const layout = read("app/layout.tsx");
 const sitemap = read("app/sitemap.ts");
 
@@ -142,12 +145,39 @@ expectIncludes("payments page", pricingPage, [
   "billingPayload(billingForm)",
 ]);
 
+expectIncludes("buyer beta landing", buyerBetaPage, [
+  "Проверка квартиры перед покупкой",
+  "href=\"/check?source=buyer-beta\"",
+  "href=\"/pricing?source=buyer-beta\"",
+  "LandingMapScene",
+  "Source URL хранится как приватный reference",
+]);
+
+expectIncludes("realtor beta landing", realtorsPage, [
+  "Аналитика и отчеты для риелторов",
+  "href=\"/pricing?source=realtor-beta\"",
+  "href=\"/reports?source=realtor-beta\"",
+  "Realtor branded report",
+  "LandingMapScene",
+]);
+
+expectIncludes("landing map scene", landingScene, [
+  "buyerBadges",
+  "realtorBadges",
+  "landing-map-scene",
+  "scene-badge",
+]);
+
 expectIncludes("primary navigation", layout, [
+  "href=\"/beta\"",
+  "href=\"/realtors\"",
   "href=\"/reports\"",
   "href=\"/pricing\"",
   "href=\"/admin\"",
 ]);
 expectIncludes("public sitemap", sitemap, [
+  "\"/beta\"",
+  "\"/realtors\"",
   "\"/pricing\"",
   "\"/reports\"",
 ]);

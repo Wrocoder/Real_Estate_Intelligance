@@ -181,6 +181,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 
 Основные страницы:
 
+- http://127.0.0.1:3000/beta — public paid-beta landing “проверка квартиры перед покупкой”.
+- http://127.0.0.1:3000/realtors — landing variant для риелторов и агентств.
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам, private URL reference и one-off автозаполнение из Otodom/OLX.
 - http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
@@ -198,6 +200,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
 - http://127.0.0.1:3000/sitemap.xml — sitemap для SEO.
 - http://127.0.0.1:3000/robots.txt — robots rules.
+
+Paid beta GTM/offers/workflow описаны в `docs/paid_beta_playbook.md`.
 
 ## Запуск инфраструктуры
 
