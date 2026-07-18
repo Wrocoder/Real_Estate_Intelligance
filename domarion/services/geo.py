@@ -8,6 +8,7 @@ from domarion.schemas import (
     Listing,
     MapFeature,
     MapFeatureCollection,
+    MapLineStringGeometry,
     MapPointGeometry,
     MapPolygonGeometry,
     MunicipalityReference,
@@ -20,6 +21,7 @@ from domarion.services.scoring import build_listing_analysis
 BBox = tuple[float, float, float, float]
 WROCLAW_CENTER = (17.0385, 51.1079)
 INFRASTRUCTURE_FEATURE_TYPES = {
+    "transport_route",
     "transport_stop",
     "school",
     "kindergarten",
@@ -351,9 +353,13 @@ def _infrastructure_features(
     radius_km: float | None,
 ) -> list[MapFeature]:
     features: list[MapFeature] = []
+    transport_stops = repository.list_transport_stops(
+        city=city,
+        limit=INFRASTRUCTURE_LAYER_LIMIT,
+    )
     layer_builders = [
         (
-            repository.list_transport_stops(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT),
+            transport_stops,
             _transport_stop_to_feature,
         ),
         (
@@ -392,6 +398,25 @@ def _infrastructure_features(
             ):
                 continue
             features.append(builder(reference))
+
+    stop_by_id = {stop.id: stop for stop in transport_stops}
+    for route in repository.list_transport_routes(city=city, limit=INFRASTRUCTURE_LAYER_LIMIT):
+        if not _reference_matches_municipality(route, municipality):
+            continue
+        if not _reference_matches_district(route, district):
+            continue
+        route_feature = _transport_route_to_feature(route, stop_by_id)
+        if route_feature is None:
+            continue
+        if not _line_is_inside_spatial_window(
+            route_feature.geometry.coordinates,
+            bbox,
+            lat,
+            lon,
+            radius_km,
+        ):
+            continue
+        features.append(route_feature)
 
     return features
 
@@ -804,6 +829,121 @@ def _transport_stop_to_feature(stop) -> MapFeature:
     )
 
 
+def _transport_route_to_feature(route, stop_by_id: dict[str, Any]) -> MapFeature | None:
+    route_line = _transport_route_coordinates(route, stop_by_id)
+    if route_line is None:
+        return None
+    coordinates, geometry_accuracy = route_line
+    return MapFeature(
+        id=f"transport-route-{route.id}",
+        geometry=MapLineStringGeometry(coordinates=coordinates),
+        properties={
+            "feature_type": "transport_route",
+            "reference_id": route.id,
+            "route_number": route.route_number,
+            "route_name": route.route_name,
+            "route_type": route.route_type,
+            "operator": route.operator,
+            "status": route.status,
+            "municipality": route.municipality_name,
+            "district": route.district_name,
+            "stop_count": len(route.stop_ids),
+            "geometry_accuracy": geometry_accuracy,
+            "geometry_source": _transport_route_geometry_source(geometry_accuracy),
+        },
+    )
+
+
+def _transport_route_coordinates(
+    route,
+    stop_by_id: dict[str, Any],
+) -> tuple[tuple[tuple[float, float], ...], str] | None:
+    metadata_coordinates = _metadata_line_coordinates(route.metadata)
+    if metadata_coordinates is not None:
+        return metadata_coordinates, "source_shape"
+
+    stop_coordinates = tuple(
+        (stop.lon, stop.lat)
+        for stop_id in route.stop_ids
+        if (stop := stop_by_id.get(stop_id)) is not None
+        and stop.lat is not None
+        and stop.lon is not None
+    )
+    if len(stop_coordinates) >= 2:
+        return stop_coordinates, "route_stops"
+    if len(stop_coordinates) == 1:
+        return (stop_coordinates[0], _route_proxy_target(route, stop_coordinates[0])), (
+            "route_stop_proxy"
+        )
+    return None
+
+
+def _metadata_line_coordinates(metadata: dict[str, Any]) -> tuple[tuple[float, float], ...] | None:
+    raw_coordinates = (
+        metadata.get("coordinates")
+        or metadata.get("line_coordinates")
+        or metadata.get("shape")
+        or metadata.get("path")
+    )
+    if isinstance(raw_coordinates, dict):
+        if raw_coordinates.get("type") != "LineString":
+            return None
+        raw_coordinates = raw_coordinates.get("coordinates")
+    if not isinstance(raw_coordinates, list):
+        return None
+
+    coordinates: list[tuple[float, float]] = []
+    for item in raw_coordinates:
+        if not isinstance(item, (list, tuple)) or len(item) < 2:
+            return None
+        lon_value = _numeric_value(item[0])
+        lat_value = _numeric_value(item[1])
+        if lon_value is None or lat_value is None:
+            return None
+        coordinates.append((round(lon_value, 6), round(lat_value, 6)))
+
+    return tuple(coordinates) if len(coordinates) >= 2 else None
+
+
+def _route_proxy_target(route, start: tuple[float, float]) -> tuple[float, float]:
+    for lon_key, lat_key in (
+        ("target_lon", "target_lat"),
+        ("endpoint_lon", "endpoint_lat"),
+        ("approximate_target_lon", "approximate_target_lat"),
+    ):
+        target_lon = _numeric_value(route.metadata.get(lon_key))
+        target_lat = _numeric_value(route.metadata.get(lat_key))
+        if target_lon is not None and target_lat is not None:
+            return round(target_lon, 6), round(target_lat, 6)
+
+    if route.municipality_name.casefold() == "wrocław".casefold():
+        return WROCLAW_CENTER
+
+    start_lon, start_lat = start
+    return round(start_lon + 0.018, 6), round(start_lat + 0.006, 6)
+
+
+def _numeric_value(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _transport_route_geometry_source(geometry_accuracy: str) -> str:
+    if geometry_accuracy == "source_shape":
+        return "transport route metadata LineString"
+    if geometry_accuracy == "route_stops":
+        return "transport route stop_ids connected as a line"
+    return "single route stop connected to local centre as MVP proxy"
+
+
 def _school_to_feature(school) -> MapFeature:
     return _infrastructure_reference_to_feature(
         feature_type="school",
@@ -940,6 +1080,21 @@ def _is_inside_spatial_window(
     return True
 
 
+def _line_is_inside_spatial_window(
+    coordinates: tuple[tuple[float, float], ...],
+    bbox: BBox | None,
+    center_lat: float | None,
+    center_lon: float | None,
+    radius_km: float | None,
+) -> bool:
+    if bbox is None and radius_km is None:
+        return True
+    return any(
+        _is_inside_spatial_window(lat, lon, bbox, center_lat, center_lon, radius_km)
+        for lon, lat in coordinates
+    )
+
+
 def _haversine_km(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:
     radius = 6371.0
     delta_lat = radians(lat_2 - lat_1)
@@ -971,6 +1126,8 @@ def _calculate_bbox(features: list[MapFeature]) -> BBox | None:
 def _feature_coordinate_pairs(feature: MapFeature) -> list[tuple[float, float]]:
     if feature.geometry.type == "Point":
         return [feature.geometry.coordinates]
+    if feature.geometry.type == "LineString":
+        return list(feature.geometry.coordinates)
     return [
         coordinate
         for ring in feature.geometry.coordinates

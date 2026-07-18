@@ -2522,6 +2522,7 @@ export type AlertDeliveryBatchResult = {
 export type MapFeatureType =
   | "listing"
   | "planned_investment"
+  | "transport_route"
   | "transport_stop"
   | "school"
   | "kindergarten"
@@ -2553,6 +2554,10 @@ export type MapFeature = {
     | {
         type: "Polygon";
         coordinates: [number, number][][];
+      }
+    | {
+        type: "LineString";
+        coordinates: [number, number][];
       };
   properties: MapFeatureProperties;
 };

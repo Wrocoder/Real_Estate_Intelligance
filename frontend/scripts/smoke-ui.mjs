@@ -138,6 +138,7 @@ expectIncludes("map component", mapComponent, [
   "ADMINISTRATIVE_LAYER_CONTROLS",
   "RISK_SOURCE_ID",
   "RISK_LAYER_CONTROLS",
+  "TRANSPORT_ROUTES_SOURCE_ID",
   "INFRASTRUCTURE_LAYER_CONTROLS",
   "isAdministrativeFeatureVisible",
   "isRiskFeatureVisible",

@@ -306,7 +306,7 @@
 - [x] Добавить price-per-m2 heatmap.
 - [x] Добавить переключаемые слои районов, гмин и воеводства.
 - [x] Добавить UI-переключатели видимости для map layers: listings, planned investments, infrastructure.
-- [ ] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
+- [x] Добавить слои transport stops/routes, schools, kindergartens, hospitals, parks, retail.
 - [x] Добавить infrastructure point layers в `/map/features` и UI: transport stops with route lines, schools, kindergartens, amenities, industrial zones.
 - [x] Добавить granular UI-переключатели для infrastructure map layers: transport stops, schools, kindergartens, amenities, industrial zones.
 - [x] Добавить granular amenity sublayers на карте: parks, healthcare, retail, office/university/jobs, public services.
@@ -546,6 +546,7 @@
 - [x] Commit 100: Agency CRM-light account UI.
 - [x] Commit 101: Administrative map layers for districts, gminas and voivodeship.
 - [x] Commit 102: GIS risk map proxy layers for roads, industrial buffers, rail, airport, flood and pollution review.
+- [x] Commit 103: Transport route LineString map layers.
 
 ## Current Sprint
 
@@ -622,6 +623,7 @@
 - [x] Добавить fair-price backtesting report: error buckets, area/period drift, severity, findings and recalibration recommendations.
 - [x] Добавить administrative map layers: district/gmina/voivodeship boundaries, metadata counts и UI toggles.
 - [x] Добавить GIS risk map proxy layers: industrial buffers, major-road noise, rail/airport/flood/pollution review zones, metadata counts и UI toggles.
+- [x] Добавить transport route LineString map layer: active/planned tram/bus routes, source shape support, stop proxy fallback и UI toggle.
 - [x] Добавить source-grounded listing AI assistant API: data contract, question set, citations, guardrails, refusal rules and usage logging.
 - [x] Подключить listing AI assistant UI: audience, question set, custom question, citations, guardrails and saved usage id.
 - [x] Добавить agency CRM-light API: clients, notes, enriched shortlists and safe public sharing.

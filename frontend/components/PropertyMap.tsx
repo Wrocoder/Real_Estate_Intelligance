@@ -42,6 +42,7 @@ type VisibleMapLayers = {
   railAirportRisk: boolean;
   floodPollutionRisk: boolean;
   infrastructure: boolean;
+  transportRoutes: boolean;
   transportStops: boolean;
   schools: boolean;
   kindergartens: boolean;
@@ -56,6 +57,7 @@ type VisibleMapLayers = {
 
 type InfrastructureLayerControlKey = keyof Pick<
   VisibleMapLayers,
+  | "transportRoutes"
   | "transportStops"
   | "schools"
   | "kindergartens"
@@ -88,6 +90,7 @@ const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const ADMINISTRATIVE_SOURCE_ID = "domarion-administrative-boundaries";
 const RISK_SOURCE_ID = "domarion-risk-zones";
+const TRANSPORT_ROUTES_SOURCE_ID = "domarion-transport-routes";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
 const LISTING_MARKER_MIN_ZOOM = 12;
 const EARTH_RADIUS_KM = 6371;
@@ -113,6 +116,7 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   railAirportRisk: true,
   floodPollutionRisk: true,
   infrastructure: true,
+  transportRoutes: true,
   transportStops: true,
   schools: true,
   kindergartens: true,
@@ -161,7 +165,8 @@ const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
   label: string;
   parentKey?: InfrastructureLayerControlKey;
 }> = [
-  { key: "transportStops", label: "Транспорт" },
+  { key: "transportRoutes", label: "Маршруты" },
+  { key: "transportStops", label: "Остановки" },
   { key: "schools", label: "Школы" },
   { key: "kindergartens", label: "Сады" },
   { key: "amenities", label: "Сервисы" },
@@ -697,6 +702,79 @@ function ensureMapLayers(map: MaplibreMap) {
     });
   }
 
+  if (!map.getSource(TRANSPORT_ROUTES_SOURCE_ID)) {
+    map.addSource(TRANSPORT_ROUTES_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("transport-route-line")) {
+    map.addLayer({
+      id: "transport-route-line",
+      type: "line",
+      source: TRANSPORT_ROUTES_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "line-cap": "round",
+        "line-join": "round",
+      },
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "route_type"],
+          "tram",
+          "#155eef",
+          "bus",
+          "#087443",
+          "#667085",
+        ],
+        "line-opacity": [
+          "match",
+          ["get", "status"],
+          "planned",
+          0.52,
+          0.78,
+        ],
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          9,
+          2,
+          13,
+          4,
+        ],
+        "line-dasharray": [
+          "match",
+          ["get", "status"],
+          "planned",
+          ["literal", [1.5, 1.2]],
+          ["literal", [1, 0]],
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("transport-route-label")) {
+    map.addLayer({
+      id: "transport-route-label",
+      type: "symbol",
+      source: TRANSPORT_ROUTES_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "symbol-placement": "line",
+        "text-field": ["concat", ["get", "route_number"], " ", ["get", "route_name"]],
+        "text-size": 11,
+      },
+      paint: {
+        "text-color": "#344054",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
+    });
+  }
+
   if (!map.getLayer("listing-price-heatmap")) {
     map.addLayer({
       id: "listing-price-heatmap",
@@ -895,6 +973,9 @@ function syncMapData(
     : EMPTY_COLLECTION;
   const administrative = administrativeMapCollection(collection, visibleLayers);
   const riskZones = riskMapCollection(collection, visibleLayers);
+  const transportRoutes = visibleLayers.infrastructure && visibleLayers.transportRoutes
+    ? splitCollection(collection, "transport_route")
+    : EMPTY_COLLECTION;
   const listingSource = map.getSource(LISTINGS_SOURCE_ID) as SourceWithData | undefined;
   const heatmapSource = map.getSource(LISTING_HEATMAP_SOURCE_ID) as SourceWithData | undefined;
   const investmentSource = map.getSource(INVESTMENTS_SOURCE_ID) as SourceWithData | undefined;
@@ -902,12 +983,16 @@ function syncMapData(
     | SourceWithData
     | undefined;
   const riskSource = map.getSource(RISK_SOURCE_ID) as SourceWithData | undefined;
+  const transportRouteSource = map.getSource(TRANSPORT_ROUTES_SOURCE_ID) as
+    | SourceWithData
+    | undefined;
 
   listingSource?.setData(listings);
   heatmapSource?.setData(heatmapListings);
   investmentSource?.setData(investments);
   administrativeSource?.setData(administrative);
   riskSource?.setData(riskZones);
+  transportRouteSource?.setData(transportRoutes);
   setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
   ADMINISTRATIVE_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.administrative);
@@ -915,6 +1000,16 @@ function syncMapData(
   RISK_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.riskLayers);
   });
+  setMapLayerVisibility(
+    map,
+    "transport-route-line",
+    visibleLayers.infrastructure && visibleLayers.transportRoutes,
+  );
+  setMapLayerVisibility(
+    map,
+    "transport-route-label",
+    visibleLayers.infrastructure && visibleLayers.transportRoutes,
+  );
   syncMarkers(map, maplibre, markers, markerCollection);
   fitToCollection(map, maplibre, boundsCollection);
 }
@@ -1062,6 +1157,7 @@ function markerMapCollection(
 }
 
 function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  if (feature.geometry.type !== "Point") return false;
   const featureType = feature.properties.feature_type;
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
@@ -1140,6 +1236,7 @@ function isRiskFeatureType(featureType: MapFeatureType) {
 
 function isInfrastructureFeatureType(featureType: MapFeatureType) {
   return (
+    featureType === "transport_route" ||
     featureType === "transport_stop" ||
     featureType === "school" ||
     featureType === "kindergarten" ||
@@ -1154,6 +1251,7 @@ function isInfrastructureFeatureVisible(
 ) {
   const featureType = feature.properties.feature_type;
   if (!visibleLayers.infrastructure) return false;
+  if (featureType === "transport_route") return visibleLayers.transportRoutes;
   if (featureType === "transport_stop") return visibleLayers.transportStops;
   if (featureType === "school") return visibleLayers.schools;
   if (featureType === "kindergarten") return visibleLayers.kindergartens;
@@ -1493,6 +1591,7 @@ function featurePoint(feature: MapFeature): PointCoordinates | null {
 
 function featureCoordinates(feature: MapFeature): PointCoordinates[] {
   if (feature.geometry.type === "Point") return [feature.geometry.coordinates];
+  if (feature.geometry.type === "LineString") return feature.geometry.coordinates;
   const coordinates: PointCoordinates[] = [];
   feature.geometry.coordinates.forEach((ring) => {
     coordinates.push(...ring);

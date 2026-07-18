@@ -14,6 +14,7 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert payload["metadata"]["listing_count"] >= 3
     assert payload["metadata"]["planned_investment_count"] >= 4
     assert payload["metadata"]["infrastructure_count"] >= 10
+    assert payload["metadata"]["infrastructure_counts"]["transport_route_count"] >= 2
     assert payload["metadata"]["infrastructure_counts"]["transport_stop_count"] >= 2
     assert payload["metadata"]["infrastructure_counts"]["school_count"] >= 2
     assert payload["metadata"]["administrative_layer_count"] >= 3
@@ -26,6 +27,7 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert {
         "listing",
         "planned_investment",
+        "transport_route",
         "transport_stop",
         "school",
         "kindergarten",
@@ -60,6 +62,18 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert stop["geometry"]["coordinates"] == [16.9671, 51.1125]
     assert stop["properties"]["feature_type"] == "transport_stop"
     assert stop["properties"]["lines_label"] == "13, 23, 142"
+
+    route = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "transport_route"
+        and feature["properties"].get("route_number") == "13"
+    )
+    assert route["geometry"]["type"] == "LineString"
+    assert route["geometry"]["coordinates"][0] == [16.9671, 51.1125]
+    assert route["properties"]["route_type"] == "tram"
+    assert route["properties"]["status"] == "planned"
+    assert route["properties"]["geometry_accuracy"] == "route_stop_proxy"
 
     district_boundary = next(
         feature
@@ -127,7 +141,14 @@ def test_map_features_supports_district_infrastructure_filter() -> None:
         feature
         for feature in payload["features"]
         if feature["properties"]["feature_type"]
-        in {"transport_stop", "school", "kindergarten", "amenity", "industrial_zone"}
+        in {
+            "transport_route",
+            "transport_stop",
+            "school",
+            "kindergarten",
+            "amenity",
+            "industrial_zone",
+        }
     ]
     assert infrastructure_features
     assert {feature["properties"]["district"] for feature in infrastructure_features} == {
