@@ -47,11 +47,17 @@ const explorerPage = read("app/page.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const adminPage = read("app/admin/page.tsx");
+const areasPage = read("app/areas/page.tsx");
+const areaDetailPage = read("app/areas/[areaId]/page.tsx");
+const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
 const buyerBetaPage = read("app/beta/page.tsx");
 const realtorsPage = read("app/realtors/page.tsx");
+const guidesPage = read("app/guides/page.tsx");
+const guideDetailPage = read("app/guides/[guideId]/page.tsx");
 const landingScene = read("components/LandingMapScene.tsx");
 const betaLeadForm = read("components/BetaLeadForm.tsx");
+const seoGuides = read("lib/seoGuides.ts");
 const layout = read("app/layout.tsx");
 const sitemap = read("app/sitemap.ts");
 
@@ -186,9 +192,61 @@ expectIncludes("beta lead form", betaLeadForm, [
   "consent_to_contact",
 ]);
 
+expectIncludes("seo guides content", seoGuides, [
+  "wroclaw-price-per-m2",
+  "best-districts-wroclaw",
+  "where-to-buy-near-wroclaw",
+  "district-comparison-wroclaw",
+  "flats-with-growth-potential",
+  "dolnoslaskie-market-analysis",
+  "mortgage-calculator-poland",
+  "purchase-checklist-poland",
+  "ksiega-wieczysta-checklist",
+  "total-purchase-cost-poland",
+  "internalLinks",
+  "relatedAreaSlugs",
+]);
+expectMinSize("seo guides content", seoGuides, 20_000);
+
+expectIncludes("seo guides index", guidesPage, [
+  "SEO_GUIDES.map",
+  "href=\"/areas\"",
+  "href=\"/check\"",
+  "href={`/guides/${guide.slug}`}",
+]);
+
+expectIncludes("seo guide detail", guideDetailPage, [
+  "generateStaticParams",
+  "getSeoGuide",
+  "application/ld+json",
+  "guide.internalLinks.map",
+  "relatedAreas.map",
+  "href=\"/pricing\"",
+  "href=\"/check\"",
+]);
+
+expectIncludes("area guide internal links", areasPage, [
+  "SEO_GUIDES.slice(0, 4)",
+  "href=\"/guides\"",
+  "href={`/guides/${guide.slug}`}",
+]);
+
+expectIncludes("area detail guide internal links", areaDetailPage, [
+  "relatedGuides",
+  "guide.relatedAreaSlugs.includes(area.slug)",
+  "href={`/guides/${guide.slug}`}",
+]);
+
+expectIncludes("listing detail guide internal links", listingDetailPage, [
+  "SEO_GUIDES.slice(0, 3)",
+  "href={`/guides/${guide.slug}`}",
+  "<BookOpen",
+]);
+
 expectIncludes("primary navigation", layout, [
   "href=\"/beta\"",
   "href=\"/realtors\"",
+  "href=\"/guides\"",
   "href=\"/reports\"",
   "href=\"/pricing\"",
   "href=\"/admin\"",
@@ -196,6 +254,8 @@ expectIncludes("primary navigation", layout, [
 expectIncludes("public sitemap", sitemap, [
   "\"/beta\"",
   "\"/realtors\"",
+  "\"/guides\"",
+  "SEO_GUIDES.map",
   "\"/pricing\"",
   "\"/reports\"",
 ]);

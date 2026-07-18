@@ -5,6 +5,7 @@ import { ArrowLeft, Bell, FileText, Newspaper, Search } from "lucide-react";
 
 import { money, numberValue, percent } from "@/lib/format";
 import { getSeoArea, SEO_AREAS, siteUrl } from "@/lib/seoAreas";
+import { SEO_GUIDES } from "@/lib/seoGuides";
 
 type PageProps = {
   params: Promise<{ areaId: string }>;
@@ -38,6 +39,9 @@ export default async function AreaPage({ params }: PageProps) {
   const { areaId } = await params;
   const area = getSeoArea(areaId);
   if (!area) notFound();
+  const relatedGuides = SEO_GUIDES.filter((guide) =>
+    guide.relatedAreaSlugs.includes(area.slug),
+  ).slice(0, 4);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -152,6 +156,16 @@ export default async function AreaPage({ params }: PageProps) {
             <ul className="section-list compact">
               {area.plannedInvestments.map((item) => (
                 <li key={item}>{item}</li>
+              ))}
+            </ul>
+
+            <h2>Гайды</h2>
+            <ul className="section-list compact">
+              {relatedGuides.map((guide) => (
+                <li key={guide.slug}>
+                  <Link href={`/guides/${guide.slug}`}>{guide.title}</Link>
+                  <small>{guide.category}</small>
+                </li>
               ))}
             </ul>
 

@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
+import { SEO_GUIDES } from "@/lib/seoGuides";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = siteUrl();
@@ -9,6 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "",
     "/beta",
     "/realtors",
+    "/guides",
     "/areas",
     "/areas/compare",
     "/compare",
@@ -33,6 +35,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.85,
+    })),
+    ...SEO_GUIDES.map((guide) => ({
+      url: `${baseUrl}/guides/${guide.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.82,
     })),
   ];
 }

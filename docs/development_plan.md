@@ -365,10 +365,10 @@
 - [x] Добавить structured data.
 - [x] Добавить news categories: market, mortgage, tax, legal, developer, city investment, transport, MPZP.
 - [x] Добавить area impact fields для news: affected districts, price impact hypothesis, audience relevance.
-- [ ] Добавить SEO pages: Wrocław price per m2, best districts, where to buy near Wrocław, district comparison.
-- [ ] Добавить SEO pages: flats with growth potential, Dolnośląskie market analysis, mortgage calculator Poland.
-- [ ] Добавить SEO pages: purchase checklist, księga wieczysta checklist, total purchase cost in Poland.
-- [ ] Добавить internal linking между SEO pages, area pages, listings и reports.
+- [x] Добавить SEO pages: Wrocław price per m2, best districts, where to buy near Wrocław, district comparison.
+- [x] Добавить SEO pages: flats with growth potential, Dolnośląskie market analysis, mortgage calculator Poland.
+- [x] Добавить SEO pages: purchase checklist, księga wieczysta checklist, total purchase cost in Poland.
+- [x] Добавить internal linking между SEO pages, area pages, listings и reports.
 - [x] Связать news с area/listing UI: `/news?area_id=...`, SEO area links и listing detail news panel.
 
 ## 15. Testing, Quality и Observability
@@ -535,6 +535,7 @@
 - [x] Commit 89: paid beta lead capture and admin queue.
 - [x] Commit 90: source compliance policy for ToS, robots, rate limits and prohibited data.
 - [x] Commit 91: product validation strategy and competitor analysis.
+- [x] Commit 92: SEO guide pages and internal linking.
 
 ## Current Sprint
 

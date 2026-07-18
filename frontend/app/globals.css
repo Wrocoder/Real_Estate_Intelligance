@@ -1044,6 +1044,78 @@ button {
   gap: 8px;
 }
 
+.seo-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.seo-guide-card {
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  min-height: 300px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+  box-shadow: var(--shadow);
+}
+
+.seo-guide-card h2 {
+  margin: 12px 0 8px;
+  font-size: 20px;
+  line-height: 1.22;
+}
+
+.seo-guide-card p,
+.guide-content p {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.guide-content {
+  display: grid;
+  gap: 18px;
+}
+
+.guide-content section h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.guide-content section p {
+  margin: 0 0 10px;
+}
+
+.guide-link-grid,
+.guide-related-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.guide-related-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.guide-related-link {
+  display: grid;
+  gap: 6px;
+  min-height: 82px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.guide-related-link strong {
+  line-height: 1.25;
+}
+
+.guide-related-link small {
+  color: var(--muted);
+}
+
 .usage-row {
   display: grid;
   gap: 5px;
@@ -1835,6 +1907,8 @@ button {
   .plan-grid,
   .pricing-grid,
   .seo-area-grid,
+  .seo-guide-grid,
+  .guide-related-grid,
   .compare-selector,
   .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1903,6 +1977,8 @@ button {
   .plan-grid,
   .pricing-grid,
   .seo-area-grid,
+  .seo-guide-grid,
+  .guide-related-grid,
   .compare-selector,
   .alert-preferences,
   .form-grid {

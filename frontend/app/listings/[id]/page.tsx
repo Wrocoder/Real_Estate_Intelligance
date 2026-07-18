@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import {
   ArrowLeft,
   Brain,
+  BookOpen,
   Building2,
   FileText,
   Heart,
@@ -31,6 +32,7 @@ import {
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
+import { SEO_GUIDES } from "@/lib/seoGuides";
 
 export default function ListingDetailPage() {
   const params = useParams<{ id: string }>();
@@ -448,6 +450,15 @@ export default function ListingDetailPage() {
             ) : (
               <p className="empty-state">Для района пока нет привязанных новостей.</p>
             )}
+            <h2>Гайды</h2>
+            <ul className="section-list compact">
+              {SEO_GUIDES.slice(0, 3).map((guide) => (
+                <li key={guide.slug}>
+                  <BookOpen size={14} />{" "}
+                  <Link href={`/guides/${guide.slug}`}>{guide.title}</Link>
+                </li>
+              ))}
+            </ul>
             <h2>Готовый HTML</h2>
             <a
               className="button primary"

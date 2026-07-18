@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   BadgeCheck,
+  BookOpen,
   Building2,
   Calculator,
   ClipboardCheck,
@@ -49,6 +50,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <Link href="/realtors">
                 <Handshake size={18} />
                 Риелторы
+              </Link>
+              <Link href="/guides">
+                <BookOpen size={18} />
+                Гайды
               </Link>
               <Link href="/">
                 <Search size={18} />

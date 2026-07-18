@@ -4,6 +4,7 @@ import { ArrowRight, BarChart3, MapPinned } from "lucide-react";
 
 import { money, numberValue, percent } from "@/lib/format";
 import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
+import { SEO_GUIDES } from "@/lib/seoGuides";
 
 export const metadata: Metadata = {
   title: "Районы Вроцлава: цены квартир, риски и потенциал | Domarion",
@@ -62,6 +63,23 @@ export default function AreasPage() {
             </Link>
           </article>
         ))}
+      </section>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>Гайды для выбора района</h2>
+          <Link className="button" href="/guides">
+            Все гайды
+          </Link>
+        </div>
+        <div className="panel-body guide-related-grid">
+          {SEO_GUIDES.slice(0, 4).map((guide) => (
+            <Link className="guide-related-link" href={`/guides/${guide.slug}`} key={guide.slug}>
+              <strong>{guide.title}</strong>
+              <small>{guide.category}</small>
+            </Link>
+          ))}
+        </div>
       </section>
     </>
   );

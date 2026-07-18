@@ -67,6 +67,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
 - Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
+- Добавлены SEO guide pages: `/guides`, price-per-m2, district comparison, mortgage, purchase checklist и total cost.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 
 ## Backend локально
@@ -189,6 +190,8 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/ — подбор объектов, фильтры, MapLibre-карта, избранное, быстрые отчеты.
 - http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам, private URL reference и one-off автозаполнение из Otodom/OLX.
 - http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
+- http://127.0.0.1:3000/guides — SEO-гайды: цена за m2, районы, ипотека, checklist и total cost.
+- http://127.0.0.1:3000/guides/wroclaw-price-per-m2 — пример guide page по цене за m2 во Вроцлаве.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
 - http://127.0.0.1:3000/areas/compare — сравнение районов по city baseline, value/growth и market pressure.
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
