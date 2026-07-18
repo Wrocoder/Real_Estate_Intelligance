@@ -501,6 +501,21 @@ class DeveloperRankingResponse(BaseModel):
     filters: dict[str, Any] = Field(default_factory=dict)
 
 
+class DeveloperFeedImportResponse(BaseModel):
+    rows_seen: int = Field(ge=0)
+    profiles_created: int = Field(ge=0)
+    profiles_updated: int = Field(ge=0)
+    aliases_created: int = Field(ge=0)
+    aliases_updated: int = Field(ge=0)
+    projects_created: int = Field(ge=0)
+    projects_updated: int = Field(ge=0)
+    signals_created: int = Field(ge=0)
+    signals_updated: int = Field(ge=0)
+    dry_run: bool
+    developer_ids: list[str] = Field(default_factory=list)
+    job: "IngestionJob"
+
+
 class MunicipalityReference(BaseModel):
     id: str
     name: str

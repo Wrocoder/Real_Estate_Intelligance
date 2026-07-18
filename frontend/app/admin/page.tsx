@@ -22,6 +22,7 @@ import {
   type DataDeletionRequestStatus,
   type DataDeletionTargetType,
   type DataQualityLog,
+  type DeveloperFeedImportResponse,
   type IngestionJob,
   type IngestionSourceHealth,
   type InfrastructureEnrichmentJobResult,
@@ -258,6 +259,12 @@ export default function AdminPage() {
   const [partnerDryRun, setPartnerDryRun] = useState(true);
   const [partnerImportResult, setPartnerImportResult] =
     useState<PartnerCsvImportResponse | null>(null);
+  const [developerFeedFile, setDeveloperFeedFile] = useState<File | null>(null);
+  const [developerFeedSourceName, setDeveloperFeedSourceName] =
+    useState("Developer Feed");
+  const [developerFeedDryRun, setDeveloperFeedDryRun] = useState(true);
+  const [developerFeedImportResult, setDeveloperFeedImportResult] =
+    useState<DeveloperFeedImportResponse | null>(null);
   const [importFile, setImportFile] = useState<File | null>(null);
   const [importSourceName, setImportSourceName] = useState("wroclaw.pl WPT");
   const [importDryRun, setImportDryRun] = useState(true);
@@ -679,6 +686,34 @@ export default function AdminPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown partner CSV import error");
       setStatus("Partner CSV import failed");
+    }
+  }
+
+  async function importDeveloperFeed(dryRun = developerFeedDryRun) {
+    if (!developerFeedFile) {
+      setStatus("Выбери JSON файл developer feed");
+      return;
+    }
+
+    setError("");
+    setStatus(dryRun ? "Проверка developer feed..." : "Импорт developer feed...");
+    try {
+      const result = await api.importAdminDeveloperFeed({
+        file: developerFeedFile,
+        sourceName: developerFeedSourceName,
+        dryRun,
+      });
+      setDeveloperFeedImportResult(result);
+      setSelectedJobId(result.job.id);
+      await load(result.job.id);
+      setStatus(
+        `${dryRun ? "Dry-run" : "Import"} developer feed: ${result.rows_seen} rows, ` +
+          `profiles +${result.profiles_created}/~${result.profiles_updated}, ` +
+          `signals +${result.signals_created}/~${result.signals_updated}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer feed import error");
+      setStatus("Developer feed import failed");
     }
   }
 
@@ -2410,6 +2445,109 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Developer Feed Import</h2>
+              <Upload size={18} />
+            </div>
+            <div className="panel-body">
+              <div className="form-grid compact">
+                <label className="field">
+                  <span>File</span>
+                  <input
+                    className="input"
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(event) => {
+                      setDeveloperFeedFile(event.target.files?.[0] ?? null);
+                      setDeveloperFeedImportResult(null);
+                    }}
+                  />
+                </label>
+                <label className="field">
+                  <span>Source name</span>
+                  <input
+                    className="input"
+                    value={developerFeedSourceName}
+                    onChange={(event) => setDeveloperFeedSourceName(event.target.value)}
+                  />
+                </label>
+                <label className="field checkbox-field">
+                  <span>Dry-run</span>
+                  <input
+                    type="checkbox"
+                    checked={developerFeedDryRun}
+                    onChange={(event) => setDeveloperFeedDryRun(event.target.checked)}
+                  />
+                </label>
+              </div>
+              <div className="toolbar" style={{ marginTop: 12 }}>
+                <button
+                  className="button primary"
+                  type="button"
+                  onClick={() => void importDeveloperFeed()}
+                >
+                  <Upload size={16} /> {developerFeedDryRun ? "Check feed" : "Import feed"}
+                </button>
+                <button
+                  className="button"
+                  type="button"
+                  onClick={() => {
+                    setDeveloperFeedDryRun(false);
+                    void importDeveloperFeed(false);
+                  }}
+                >
+                  Import now
+                </button>
+              </div>
+              {developerFeedImportResult ? (
+                <>
+                  <div className="metric-grid compact" style={{ marginTop: 14 }}>
+                    <div className="metric">
+                      <span>Rows</span>
+                      <strong>{numberValue(developerFeedImportResult.rows_seen)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Profiles</span>
+                      <strong>
+                        +{numberValue(developerFeedImportResult.profiles_created)} / ~
+                        {numberValue(developerFeedImportResult.profiles_updated)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Aliases</span>
+                      <strong>
+                        +{numberValue(developerFeedImportResult.aliases_created)} / ~
+                        {numberValue(developerFeedImportResult.aliases_updated)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Projects</span>
+                      <strong>
+                        +{numberValue(developerFeedImportResult.projects_created)} / ~
+                        {numberValue(developerFeedImportResult.projects_updated)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Signals</span>
+                      <strong>
+                        +{numberValue(developerFeedImportResult.signals_created)} / ~
+                        {numberValue(developerFeedImportResult.signals_updated)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Job</span>
+                      <strong>{developerFeedImportResult.job.status}</strong>
+                    </div>
+                  </div>
+                  <p className="muted" style={{ marginTop: 10 }}>
+                    Developers: {developerFeedImportResult.developer_ids.join(", ") || "-"}
+                  </p>
+                </>
+              ) : null}
             </div>
           </section>
 

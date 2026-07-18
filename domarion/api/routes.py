@@ -43,6 +43,11 @@ from domarion.ingestion.db_writer import (
     import_partner_records_in_session,
     rebuild_price_history_metrics_in_session,
 )
+from domarion.ingestion.developers import (
+    DeveloperFeedError,
+    DeveloperFeedImportResult,
+    import_developer_feed,
+)
 from domarion.ingestion.infrastructure_references import (
     InfrastructureReferenceImportError,
     InfrastructureReferenceImportResult,
@@ -138,6 +143,7 @@ from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
+    DeveloperFeedImportResponse,
     DeveloperRankingResponse,
     DeveloperReputation,
     DistrictReference,
@@ -362,6 +368,8 @@ MAX_PLANNED_INVESTMENTS_UPLOAD_BYTES = 2 * 1024 * 1024
 PLANNED_INVESTMENTS_UPLOAD_EXTENSIONS = {".csv", ".json"}
 MAX_INFRASTRUCTURE_REFERENCES_UPLOAD_BYTES = 2 * 1024 * 1024
 INFRASTRUCTURE_REFERENCES_UPLOAD_EXTENSIONS = {".csv", ".json"}
+MAX_DEVELOPER_FEED_UPLOAD_BYTES = 2 * 1024 * 1024
+DEVELOPER_FEED_UPLOAD_EXTENSIONS = {".json"}
 SOURCE_HEALTH_PRIORITY = {"failing": 0, "warning": 1, "healthy": 2}
 AGENCY_CREATABLE_PLANS = {"agency", "enterprise"}
 AGENCY_ADMIN_ROLES = {"owner", "admin"}
@@ -721,6 +729,127 @@ def get_developer(
     if reputation is None:
         raise HTTPException(status_code=404, detail="Developer not found")
     return reputation
+
+
+@router.post("/admin/developers/import", response_model=DeveloperFeedImportResponse)
+async def import_admin_developer_feed(
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+    file: Annotated[UploadFile, File(description="UTF-8 developer reputation JSON feed.")],
+    source_name: Annotated[str | None, Form()] = None,
+    dry_run: Annotated[bool, Form()] = True,
+) -> DeveloperFeedImportResponse:
+    _ensure_admin(account)
+    filename = file.filename or "developer_feed.json"
+    suffix = Path(filename).suffix.lower()
+    if suffix not in DEVELOPER_FEED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Supported developer feed upload format: .json",
+        )
+
+    content = await file.read(MAX_DEVELOPER_FEED_UPLOAD_BYTES + 1)
+    if not content:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty")
+    if len(content) > MAX_DEVELOPER_FEED_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Uploaded file is too large")
+
+    source_label = (source_name or Path(filename).stem).strip() or Path(filename).stem
+    job = admin_store.create_job(
+        IngestionJobCreate(
+            source_name=source_label,
+            source_type="developer_feed_import",
+            status="running",
+            created_by=account.user.id,
+            notes="Developer reputation feed upload from internal admin endpoint.",
+            metadata={
+                "file_name": filename,
+                "dry_run": dry_run,
+                "bytes": len(content),
+            },
+        )
+    )
+    temp_path = _write_upload_to_temp_file(content, suffix)
+    try:
+        if not dry_run and get_settings().data_repository_backend != "postgres":
+            failed_job = _fail_import_job(
+                admin_store,
+                job.id,
+                source_label,
+                code="developer_feed_import_requires_postgres",
+                message="Developer feed writes require DATA_REPOSITORY_BACKEND=postgres.",
+                payload={
+                    "backend": get_settings().data_repository_backend,
+                    "file_name": filename,
+                },
+                result=ImportResult(rows_seen=0),
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "message": "Developer feed import requires Postgres data repository",
+                    "job_id": failed_job.id if failed_job else job.id,
+                },
+            )
+
+        with SessionLocal() as session:
+            result = import_developer_feed(
+                temp_path,
+                session,
+                default_source_name=source_label,
+                dry_run=dry_run,
+            )
+            if not dry_run:
+                session.commit()
+    except DeveloperFeedError as exc:
+        failed_job = _fail_import_job(
+            admin_store,
+            job.id,
+            source_label,
+            code="developer_feed_import_failed",
+            message=str(exc),
+            payload={"file_name": filename, "dry_run": dry_run},
+            result=_developer_import_to_ingestion_result(DeveloperFeedImportResult()),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "message": "Developer feed import failed",
+                "error": str(exc),
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    except HTTPException:
+        raise
+    except Exception as exc:
+        failed_job = _fail_import_job(
+            admin_store,
+            job.id,
+            source_label,
+            code="developer_feed_write_failed",
+            message=str(exc),
+            payload={"file_name": filename, "exception_type": type(exc).__name__},
+            result=ImportResult(rows_seen=0),
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "Developer feed import failed while writing to database",
+                "job_id": failed_job.id if failed_job else job.id,
+            },
+        ) from exc
+    finally:
+        temp_path.unlink(missing_ok=True)
+
+    finished_job = admin_store.finish_job(
+        job.id,
+        _developer_import_to_ingestion_result(result),
+        status="succeeded",
+        errors_count=0,
+    )
+    if finished_job is None:
+        raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
+    return DeveloperFeedImportResponse(**result.as_dict(), job=finished_job)
 
 
 @router.get("/locations/municipalities", response_model=list[MunicipalityReference])
@@ -4580,6 +4709,20 @@ def _infrastructure_import_to_ingestion_result(
         rows_seen=result.rows_seen,
         raw_created=result.created,
         raw_updated=result.updated,
+    )
+
+
+def _developer_import_to_ingestion_result(result: DeveloperFeedImportResult) -> ImportResult:
+    return ImportResult(
+        rows_seen=result.rows_seen,
+        properties_created=result.profiles_created,
+        properties_updated=result.profiles_updated,
+        raw_created=(
+            result.aliases_created + result.projects_created + result.signals_created
+        ),
+        raw_updated=(
+            result.aliases_updated + result.projects_updated + result.signals_updated
+        ),
     )
 
 

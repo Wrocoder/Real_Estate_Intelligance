@@ -661,6 +661,21 @@ export type DeveloperRankingResponse = {
   filters: Record<string, unknown>;
 };
 
+export type DeveloperFeedImportResponse = {
+  rows_seen: number;
+  profiles_created: number;
+  profiles_updated: number;
+  aliases_created: number;
+  aliases_updated: number;
+  projects_created: number;
+  projects_updated: number;
+  signals_created: number;
+  signals_updated: number;
+  dry_run: boolean;
+  developer_ids: string[];
+  job: IngestionJob;
+};
+
 export type ReportAudience = "buyer" | "realtor" | "investor";
 export type NewsCategory =
   | "market"
@@ -2776,6 +2791,28 @@ export const api = {
     request<DeveloperReputation>(
       `/api/v1/listings/${encodeURIComponent(listingId)}/developer`,
     ),
+  importAdminDeveloperFeed: async (payload: {
+    file: File;
+    sourceName?: string;
+    dryRun?: boolean;
+  }) => {
+    const form = new FormData();
+    form.set("file", payload.file);
+    if (payload.sourceName) form.set("source_name", payload.sourceName);
+    form.set("dry_run", String(payload.dryRun ?? true));
+
+    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/import`, {
+      method: "POST",
+      headers: ADMIN_HEADERS,
+      body: form,
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+    return response.json() as Promise<DeveloperFeedImportResponse>;
+  },
   listMunicipalities: () =>
     request<MunicipalityReference[]>("/api/v1/locations/municipalities"),
   listDistrictReferences: (params: { municipality_id?: string; city?: string } = {}) =>

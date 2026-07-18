@@ -177,8 +177,10 @@ expectIncludes("admin page", adminPage, [
   "api.listAdminAuditLogs(",
   "api.listAdminDeduplicationMatches(",
   "api.correctAdminNormalizedListing(",
+  "api.importAdminDeveloperFeed(",
   "api.deliverAdminDailyEmailAlerts(",
   "Normalized Listing Correction",
+  "Developer Feed Import",
   "referralTypeLabel",
   "referralLeadContext",
 ]);

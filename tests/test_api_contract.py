@@ -10,6 +10,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
 
     expected_response_refs = {
         ("/api/v1/admin/listings/import-csv", "post"): "PartnerCsvImportResponse",
+        ("/api/v1/admin/developers/import", "post"): "DeveloperFeedImportResponse",
         ("/api/v1/admin/planned-investments/import", "post"): "PlannedInvestmentImportResponse",
         ("/api/v1/admin/scoring/backtest", "get"): "ScoringBacktestResult",
         ("/api/v1/admin/scoring/backtest-report", "get"): "ScoringBacktestReport",
@@ -329,6 +330,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "DataDeletionRequestCreate",
         "DataDeletionRequestProcess",
         "DeveloperAlias",
+        "DeveloperFeedImportResponse",
         "DeveloperProfile",
         "DeveloperProject",
         "DeveloperQualitySignal",

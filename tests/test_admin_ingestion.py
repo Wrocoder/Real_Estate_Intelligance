@@ -1,6 +1,7 @@
 import csv
 from datetime import timedelta
 from io import StringIO
+from pathlib import Path
 
 from fastapi.testclient import TestClient
 
@@ -99,6 +100,14 @@ def test_admin_endpoints_require_admin_role() -> None:
     )
     assert import_response.status_code == 403
     assert import_response.json()["detail"] == "Admin role required"
+
+    developer_import_response = client.post(
+        "/api/v1/admin/developers/import",
+        data={"source_name": "Unauthorized Developer Feed", "dry_run": "true"},
+        files={"file": ("developers.json", _developer_feed_bytes(), "application/json")},
+    )
+    assert developer_import_response.status_code == 403
+    assert developer_import_response.json()["detail"] == "Admin role required"
 
     dedup_response = client.get("/api/v1/admin/deduplication/matches")
     assert dedup_response.status_code == 403
@@ -799,6 +808,56 @@ def test_partner_csv_import_requires_postgres_for_writes_in_memory_mode() -> Non
     ).json()
     assert len(logs) == 1
     assert logs[0]["code"] == "partner_csv_import_requires_postgres"
+
+
+def test_admin_can_dry_run_developer_feed_import() -> None:
+    response = client.post(
+        "/api/v1/admin/developers/import",
+        headers=ADMIN_HEADERS,
+        data={"source_name": "Developer Feed API", "dry_run": "true"},
+        files={"file": ("developers.json", _developer_feed_bytes(), "application/json")},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["rows_seen"] == 15
+    assert payload["dry_run"] is True
+    assert payload["profiles_created"] == 0
+    assert payload["developer_ids"] == [
+        "demo-development",
+        "fabryczna-estate-partners",
+    ]
+    assert payload["job"]["source_type"] == "developer_feed_import"
+    assert payload["job"]["status"] == "succeeded"
+    assert payload["job"]["rows_seen"] == 15
+
+
+def test_developer_feed_import_requires_postgres_for_writes_in_memory_mode() -> None:
+    response = client.post(
+        "/api/v1/admin/developers/import",
+        headers=ADMIN_HEADERS,
+        data={"source_name": "Developer Feed API", "dry_run": "false"},
+        files={"file": ("developers.json", _developer_feed_bytes(), "application/json")},
+    )
+    payload = response.json()
+
+    assert response.status_code == 409
+    assert (
+        payload["detail"]["message"]
+        == "Developer feed import requires Postgres data repository"
+    )
+
+    logs = client.get(
+        "/api/v1/admin/data-quality/logs",
+        headers=ADMIN_HEADERS,
+        params={"job_id": payload["detail"]["job_id"], "severity": "error"},
+    ).json()
+    assert len(logs) == 1
+    assert logs[0]["code"] == "developer_feed_import_requires_postgres"
+
+
+def _developer_feed_bytes() -> bytes:
+    return Path("data/samples/developer_feed_wroclaw.json").read_bytes()
 
 
 def _partner_csv_bytes(source_listing_id: str = "api-partner-import") -> bytes:
