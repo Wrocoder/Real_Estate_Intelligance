@@ -49,6 +49,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
+- Добавлена source compliance policy: Terms/robots/rate limits gate, запрет фото/контактов/full descriptions и guardrails для user-submitted URL.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.

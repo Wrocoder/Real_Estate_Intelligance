@@ -1,6 +1,7 @@
 # Hybrid User-Provided Listing Analysis
 
 Цель: дать пользователю почти тот же UX, что и “найди объект на портале и сравни”, но не строить MVP на массовом скрапинге чужих баз объявлений.
+Source compliance gate для этого flow описан в `docs/source_compliance_policy.md`.
 
 ## Product Flow
 

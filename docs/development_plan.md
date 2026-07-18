@@ -29,7 +29,7 @@
 - [ ] Подготовить конкурентный анализ Otodom, OLX, Morizon, Gratka, SonarHome, Cenatorium, urban.one и агентских CRM.
 - [ ] Подготовить risk register: юридические, технические и бизнес-риски с mitigation-планом.
 - [ ] Описать moat strategy: история цен, дедупликация, snapshots, геоданные, SEO и агентские партнерства.
-- [ ] Описать hybrid user-provided listing strategy: пользователь вводит адрес/URL/параметры, а анализ строится без массового копирования порталов.
+- [x] Описать hybrid user-provided listing strategy: пользователь вводит адрес/URL/параметры, а анализ строится без массового копирования порталов.
 - [x] Зафиксировать hybrid flow spec в `docs/hybrid_listing_analysis.md`.
 - [x] Зафиксировать developer reputation/ranking backlog и candidate sources в `docs/developer_reputation_plan.md`.
 - [ ] Провести legal/data review источников для рейтинга застройщиков: directories, UOKiK, KRS/REGON, DFG, partner inspection data, public reviews.
@@ -39,10 +39,10 @@
 
 ## 1.1 Legal, Compliance и Data Governance
 
-- [ ] Зафиксировать policy по Terms of Service, robots.txt и rate limiting для каждого источника.
+- [x] Зафиксировать policy по Terms of Service, robots.txt и rate limiting для каждого источника.
 - [x] Описать правила хранения оригинальных ссылок, raw payload и минимально необходимых данных.
 - [x] Описать policy для user-submitted source URL: хранить приватно, не показывать пользователям, не использовать для bulk crawling без legal approval.
-- [ ] Описать запрет на копирование фото и контактных данных без правового основания.
+- [x] Описать запрет на копирование фото и контактных данных без правового основания.
 - [x] Добавить процесс удаления данных по запросу.
 - [x] Добавить GDPR/RODO data retention policy.
 - [x] Добавить финансовые, юридические и инвестиционные disclaimers для scoring, AI и отчетов.
@@ -533,6 +533,7 @@
 - [x] Commit 87: frontend smoke tests for search, map, reports, admin and payments.
 - [x] Commit 88: paid beta landing pages and GTM playbook.
 - [x] Commit 89: paid beta lead capture and admin queue.
+- [x] Commit 90: source compliance policy for ToS, robots, rate limits and prohibited data.
 
 ## Current Sprint
 

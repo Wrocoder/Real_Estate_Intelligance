@@ -1,6 +1,8 @@
 # Partner Data Onboarding
 
 Цель: получать актуальные квартиры в продаже legal-first способом, без неразрешенного копирования чужих порталов.
+Общая policy по Terms/robots/rate limits и запрещенным данным описана в
+`docs/source_compliance_policy.md`.
 
 ## 1. Допустимые источники
 
