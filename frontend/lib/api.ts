@@ -2529,7 +2529,13 @@ export type MapFeatureType =
   | "industrial_zone"
   | "district_boundary"
   | "municipality_boundary"
-  | "voivodeship_boundary";
+  | "voivodeship_boundary"
+  | "industrial_risk_zone"
+  | "major_road_noise_zone"
+  | "rail_noise_review_zone"
+  | "airport_noise_review_zone"
+  | "flood_risk_review_zone"
+  | "pollution_review_zone";
 
 export type MapFeatureProperties = {
   feature_type: MapFeatureType;
@@ -2562,6 +2568,8 @@ export type MapFeatureCollection = {
     infrastructure_counts?: Record<string, number>;
     administrative_layer_count?: number;
     administrative_counts?: Record<string, number>;
+    risk_layer_count?: number;
+    risk_counts?: Record<string, number>;
     skipped_listings?: number;
     filters?: Record<string, unknown>;
     [key: string]: unknown;

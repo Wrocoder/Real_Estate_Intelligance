@@ -15,6 +15,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлены административные map layers: районы, гмины и воеводство как переключаемые GeoJSON Polygon слои с metadata counts.
+- Добавлены GIS risk proxy layers: industrial buffers, major-road noise, rail/airport/flood/pollution review zones с отдельными UI toggles.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
 - Добавлен CRM-light для агентств: API и account UI для clients, notes, enriched shortlists и safe public share preview без portal source links.

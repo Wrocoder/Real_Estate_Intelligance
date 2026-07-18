@@ -31,11 +31,72 @@ ADMINISTRATIVE_FEATURE_TYPES = {
     "municipality_boundary",
     "voivodeship_boundary",
 }
+RISK_FEATURE_TYPES = {
+    "industrial_risk_zone",
+    "major_road_noise_zone",
+    "rail_noise_review_zone",
+    "airport_noise_review_zone",
+    "flood_risk_review_zone",
+    "pollution_review_zone",
+}
 INFRASTRUCTURE_LAYER_LIMIT = 500
 VOIVODESHIP_NAMES = {
     "dolnoslaskie": "Dolnośląskie",
     "dolnośląskie": "Dolnośląskie",
 }
+MAJOR_ROAD_NOISE_THRESHOLD_M = 600
+RISK_REVIEW_ZONES = (
+    {
+        "feature_type": "rail_noise_review_zone",
+        "reference_id": "wroclaw-central-rail-corridor-review",
+        "name": "Central rail corridor review",
+        "city": "Wrocław",
+        "district": "Krzyki",
+        "lat": 51.0987,
+        "lon": 17.0308,
+        "radius_km": 1.35,
+        "risk_level": "review",
+        "review_reason": "Rail proximity/noise needs official map and site visit verification.",
+    },
+    {
+        "feature_type": "airport_noise_review_zone",
+        "reference_id": "wroclaw-airport-approach-review",
+        "name": "Airport approach review",
+        "city": "Wrocław",
+        "district": "Fabryczna",
+        "lat": 51.1027,
+        "lon": 16.8858,
+        "radius_km": 2.6,
+        "risk_level": "review",
+        "review_reason": "Airport/approach corridor exposure requires official noise map check.",
+    },
+    {
+        "feature_type": "flood_risk_review_zone",
+        "reference_id": "wroclaw-odra-floodplain-review",
+        "name": "Odra floodplain review",
+        "city": "Wrocław",
+        "district": "Psie Pole",
+        "lat": 51.1308,
+        "lon": 17.0645,
+        "radius_km": 2.4,
+        "risk_level": "review",
+        "review_reason": "Flood exposure needs official flood hazard map verification.",
+    },
+    {
+        "feature_type": "pollution_review_zone",
+        "reference_id": "wroclaw-west-industrial-pollution-review",
+        "name": "West industrial/traffic pollution review",
+        "city": "Wrocław",
+        "district": "Fabryczna",
+        "lat": 51.1055,
+        "lon": 16.944,
+        "radius_km": 2.1,
+        "risk_level": "review",
+        "review_reason": (
+            "Air quality and industrial/traffic exposure need official/public data check."
+        ),
+    },
+)
 
 
 class MapQueryError(ValueError):
@@ -141,8 +202,19 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    risk_features = _risk_features(
+        repository,
+        listings,
+        city=city,
+        district=district,
+        municipality=municipality,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
 
-    features: list[MapFeature] = [*administrative_features]
+    features: list[MapFeature] = [*administrative_features, *risk_features]
     skipped_listings = 0
 
     for listing in listings:
@@ -216,6 +288,12 @@ def build_map_feature_collection(
         )
         for feature_type in sorted(ADMINISTRATIVE_FEATURE_TYPES)
     }
+    risk_counts = {
+        f"{feature_type}_count": sum(
+            1 for feature in features if feature.properties["feature_type"] == feature_type
+        )
+        for feature_type in sorted(RISK_FEATURE_TYPES)
+    }
 
     return MapFeatureCollection(
         features=features,
@@ -227,6 +305,8 @@ def build_map_feature_collection(
             "infrastructure_counts": infrastructure_counts,
             "administrative_layer_count": sum(administrative_counts.values()),
             "administrative_counts": administrative_counts,
+            "risk_layer_count": sum(risk_counts.values()),
+            "risk_counts": risk_counts,
             "skipped_listings": skipped_listings,
             "filters": {
                 "voivodeship": voivodeship,
@@ -368,6 +448,151 @@ def _administrative_features(
         features.append(voivodeship_feature)
 
     return features
+
+
+def _risk_features(
+    repository: RealEstateRepository,
+    listings: list[Listing],
+    *,
+    city: str | None,
+    district: str | None,
+    municipality: str | None,
+    bbox: BBox | None,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> list[MapFeature]:
+    features: list[MapFeature] = []
+    location_city = municipality or city
+
+    for zone in repository.list_industrial_zones(
+        city=location_city,
+        limit=INFRASTRUCTURE_LAYER_LIMIT,
+    ):
+        if not _reference_matches_municipality(zone, municipality):
+            continue
+        if not _reference_matches_district(zone, district):
+            continue
+        if zone.lat is None or zone.lon is None:
+            continue
+        if not _is_inside_spatial_window(zone.lat, zone.lon, bbox, lat, lon, radius_km):
+            continue
+        features.append(_industrial_risk_zone_to_feature(zone))
+
+    for listing in listings:
+        if listing.nearest_major_road_m > MAJOR_ROAD_NOISE_THRESHOLD_M:
+            continue
+        if not _is_inside_spatial_window(listing.lat, listing.lon, bbox, lat, lon, radius_km):
+            continue
+        features.append(_major_road_noise_zone_to_feature(listing))
+
+    for zone in RISK_REVIEW_ZONES:
+        if not _risk_review_zone_matches_filters(zone, city, district, municipality):
+            continue
+        if not _is_inside_spatial_window(
+            zone["lat"],
+            zone["lon"],
+            bbox,
+            lat,
+            lon,
+            radius_km,
+        ):
+            continue
+        features.append(_risk_review_zone_to_feature(zone))
+
+    return features
+
+
+def _industrial_risk_zone_to_feature(zone: Any) -> MapFeature:
+    impact_radius_m = zone.impact_radius_m or 900
+    return MapFeature(
+        id=f"industrial-risk-zone-{zone.id}",
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(zone.lon, zone.lat, impact_radius_m / 1000),
+        ),
+        properties={
+            "feature_type": "industrial_risk_zone",
+            "risk_layer": "industrial",
+            "reference_id": zone.id,
+            "name": zone.name,
+            "municipality": zone.municipality_name,
+            "district": zone.district_name,
+            "zone_type": zone.zone_type,
+            "risk_level": zone.risk_level,
+            "impact_radius_m": impact_radius_m,
+            "source_url": zone.source_url,
+            "geometry_accuracy": "source_radius_proxy",
+            "geometry_source": "industrial zone point and impact radius",
+            "review_reason": "Verify exact land-use, truck routes, smell and noise on site.",
+        },
+    )
+
+
+def _major_road_noise_zone_to_feature(listing: Listing) -> MapFeature:
+    nearest_major_road_m = listing.nearest_major_road_m
+    risk_level = "high" if nearest_major_road_m <= 350 else "moderate"
+    radius_km = max(0.25, (MAJOR_ROAD_NOISE_THRESHOLD_M - nearest_major_road_m + 220) / 1000)
+    return MapFeature(
+        id=f"major-road-noise-zone-{listing.id}",
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(listing.lon, listing.lat, radius_km, points=32),
+        ),
+        properties={
+            "feature_type": "major_road_noise_zone",
+            "risk_layer": "major_road_noise",
+            "reference_id": listing.id,
+            "listing_id": listing.id,
+            "name": "Major-road noise proxy",
+            "address": listing.address,
+            "city": listing.city,
+            "district": listing.district,
+            "municipality": listing.municipality,
+            "risk_level": risk_level,
+            "nearest_major_road_m": nearest_major_road_m,
+            "impact_radius_m": round(radius_km * 1000),
+            "geometry_accuracy": "listing_distance_proxy",
+            "geometry_source": "listing nearest_major_road_m enrichment",
+            "review_reason": "Check official noise map and visit during peak traffic.",
+        },
+    )
+
+
+def _risk_review_zone_matches_filters(
+    zone: dict[str, Any],
+    city: str | None,
+    district: str | None,
+    municipality: str | None,
+) -> bool:
+    if municipality and zone["city"].casefold() != municipality.casefold():
+        return False
+    if city and zone["city"].casefold() != city.casefold():
+        return False
+    if district and zone["district"].casefold() != district.casefold():
+        return False
+    return True
+
+
+def _risk_review_zone_to_feature(zone: dict[str, Any]) -> MapFeature:
+    return MapFeature(
+        id=str(zone["reference_id"]),
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(zone["lon"], zone["lat"], zone["radius_km"]),
+        ),
+        properties={
+            "feature_type": zone["feature_type"],
+            "risk_layer": str(zone["feature_type"]).replace("_review_zone", ""),
+            "reference_id": zone["reference_id"],
+            "name": zone["name"],
+            "city": zone["city"],
+            "district": zone["district"],
+            "municipality": zone["city"],
+            "risk_level": zone["risk_level"],
+            "impact_radius_m": round(zone["radius_km"] * 1000),
+            "geometry_accuracy": "screening_proxy",
+            "geometry_source": "MVP review zone; replace with official GIS feed",
+            "review_reason": zone["review_reason"],
+        },
+    )
 
 
 def _district_reference_matches_filters(

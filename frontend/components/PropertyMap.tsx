@@ -36,6 +36,11 @@ type VisibleMapLayers = {
   districts: boolean;
   municipalities: boolean;
   voivodeshipBoundary: boolean;
+  riskLayers: boolean;
+  majorRoadNoise: boolean;
+  industrialRisk: boolean;
+  railAirportRisk: boolean;
+  floodPollutionRisk: boolean;
   infrastructure: boolean;
   transportStops: boolean;
   schools: boolean;
@@ -66,6 +71,10 @@ type AdministrativeLayerControlKey = keyof Pick<
   VisibleMapLayers,
   "districts" | "municipalities" | "voivodeshipBoundary"
 >;
+type RiskLayerControlKey = keyof Pick<
+  VisibleMapLayers,
+  "majorRoadNoise" | "industrialRisk" | "railAirportRisk" | "floodPollutionRisk"
+>;
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -78,6 +87,7 @@ const LISTINGS_SOURCE_ID = "domarion-listings";
 const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const ADMINISTRATIVE_SOURCE_ID = "domarion-administrative-boundaries";
+const RISK_SOURCE_ID = "domarion-risk-zones";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
 const LISTING_MARKER_MIN_ZOOM = 12;
 const EARTH_RADIUS_KM = 6371;
@@ -97,6 +107,11 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   districts: true,
   municipalities: true,
   voivodeshipBoundary: false,
+  riskLayers: false,
+  majorRoadNoise: true,
+  industrialRisk: true,
+  railAirportRisk: true,
+  floodPollutionRisk: true,
   infrastructure: true,
   transportStops: true,
   schools: true,
@@ -123,6 +138,22 @@ const ADMINISTRATIVE_LAYER_CONTROLS: Array<{
   { key: "districts", label: "Районы" },
   { key: "municipalities", label: "Гмины" },
   { key: "voivodeshipBoundary", label: "Воеводство" },
+];
+
+const RISK_LAYER_IDS = [
+  "risk-zone-fill",
+  "risk-zone-line",
+  "risk-zone-label",
+];
+
+const RISK_LAYER_CONTROLS: Array<{
+  key: RiskLayerControlKey;
+  label: string;
+}> = [
+  { key: "majorRoadNoise", label: "Дороги/шум" },
+  { key: "industrialRisk", label: "Промбуферы" },
+  { key: "railAirportRisk", label: "Rail/airport" },
+  { key: "floodPollutionRisk", label: "Flood/pollution" },
 ];
 
 const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
@@ -273,6 +304,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
   const administrativeCount = collection?.metadata.administrative_layer_count ?? 0;
+  const riskLayerCount = collection?.metadata.risk_layer_count ?? 0;
   const radiusBuckets = buildRadiusBuckets(collection, visibleLayers, radiusCenter);
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
     setVisibleLayersState((current) => ({
@@ -288,6 +320,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
         <span>{administrativeCount} адм. зон</span>
+        <span>{riskLayerCount} risk zones</span>
         <span>{infrastructureCount} infrastructure</span>
       </div>
       <div className="map-radius-panel" aria-label="Анализ радиуса от центра карты">
@@ -356,6 +389,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <label>
           <input
             type="checkbox"
+            checked={visibleLayers.riskLayers}
+            onChange={(event) => updateVisibleLayer("riskLayers", event.target.checked)}
+          />
+          <span>Риски</span>
+        </label>
+        {RISK_LAYER_CONTROLS.map((control) => (
+          <label className="map-layer-subtoggle" key={control.key}>
+            <input
+              type="checkbox"
+              checked={visibleLayers[control.key]}
+              disabled={!visibleLayers.riskLayers}
+              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+            />
+            <span>{control.label}</span>
+          </label>
+        ))}
+        <label>
+          <input
+            type="checkbox"
             checked={visibleLayers.infrastructure}
             onChange={(event) => updateVisibleLayer("infrastructure", event.target.checked)}
           />
@@ -393,6 +445,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         </span>
         <span>
           <i className="legend-dot boundary" /> границы
+        </span>
+        <span>
+          <i className="legend-dot risk-zone" /> risk zones
         </span>
         <span>
           <i className="legend-dot infrastructure" /> инфраструктура
@@ -531,6 +586,111 @@ function ensureMapLayers(map: MaplibreMap) {
       },
       paint: {
         "text-color": "#344054",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
+    });
+  }
+
+  if (!map.getSource(RISK_SOURCE_ID)) {
+    map.addSource(RISK_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("risk-zone-fill")) {
+    map.addLayer({
+      id: "risk-zone-fill",
+      type: "fill",
+      source: RISK_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "feature_type"],
+          "industrial_risk_zone",
+          "#b42318",
+          "major_road_noise_zone",
+          "#d92d20",
+          "rail_noise_review_zone",
+          "#b54708",
+          "airport_noise_review_zone",
+          "#93370d",
+          "flood_risk_review_zone",
+          "#175cd3",
+          "pollution_review_zone",
+          "#7a2e0e",
+          "#667085",
+        ],
+        "fill-opacity": [
+          "match",
+          ["get", "risk_level"],
+          "high",
+          0.2,
+          "moderate",
+          0.14,
+          0.1,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("risk-zone-line")) {
+    map.addLayer({
+      id: "risk-zone-line",
+      type: "line",
+      source: RISK_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "feature_type"],
+          "industrial_risk_zone",
+          "#b42318",
+          "major_road_noise_zone",
+          "#d92d20",
+          "rail_noise_review_zone",
+          "#b54708",
+          "airport_noise_review_zone",
+          "#93370d",
+          "flood_risk_review_zone",
+          "#175cd3",
+          "pollution_review_zone",
+          "#7a2e0e",
+          "#667085",
+        ],
+        "line-opacity": 0.76,
+        "line-width": [
+          "match",
+          ["get", "risk_level"],
+          "high",
+          2,
+          "moderate",
+          1.5,
+          1.1,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("risk-zone-label")) {
+    map.addLayer({
+      id: "risk-zone-label",
+      type: "symbol",
+      source: RISK_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "text-field": ["get", "name"],
+        "text-size": 11,
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#7a2e0e",
         "text-halo-color": "#ffffff",
         "text-halo-width": 1,
       },
@@ -734,20 +894,26 @@ function syncMapData(
     ? splitCollection(collection, "planned_investment")
     : EMPTY_COLLECTION;
   const administrative = administrativeMapCollection(collection, visibleLayers);
+  const riskZones = riskMapCollection(collection, visibleLayers);
   const listingSource = map.getSource(LISTINGS_SOURCE_ID) as SourceWithData | undefined;
   const heatmapSource = map.getSource(LISTING_HEATMAP_SOURCE_ID) as SourceWithData | undefined;
   const investmentSource = map.getSource(INVESTMENTS_SOURCE_ID) as SourceWithData | undefined;
   const administrativeSource = map.getSource(ADMINISTRATIVE_SOURCE_ID) as
     | SourceWithData
     | undefined;
+  const riskSource = map.getSource(RISK_SOURCE_ID) as SourceWithData | undefined;
 
   listingSource?.setData(listings);
   heatmapSource?.setData(heatmapListings);
   investmentSource?.setData(investments);
   administrativeSource?.setData(administrative);
+  riskSource?.setData(riskZones);
   setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
   ADMINISTRATIVE_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.administrative);
+  });
+  RISK_LAYER_IDS.forEach((layerId) => {
+    setMapLayerVisibility(map, layerId, visibleLayers.riskLayers);
   });
   syncMarkers(map, maplibre, markers, markerCollection);
   fitToCollection(map, maplibre, boundsCollection);
@@ -876,6 +1042,7 @@ function isFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) 
   if (isAdministrativeFeatureType(featureType)) {
     return isAdministrativeFeatureVisible(feature, visibleLayers);
   }
+  if (isRiskFeatureType(featureType)) return isRiskFeatureVisible(feature, visibleLayers);
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
 
@@ -899,6 +1066,7 @@ function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLa
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
   if (isAdministrativeFeatureType(featureType)) return false;
+  if (isRiskFeatureType(featureType)) return false;
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
 
@@ -932,6 +1100,41 @@ function isAdministrativeFeatureType(featureType: MapFeatureType) {
     featureType === "district_boundary" ||
     featureType === "municipality_boundary" ||
     featureType === "voivodeship_boundary"
+  );
+}
+
+function riskMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): GeoJsonData {
+  return {
+    type: "FeatureCollection",
+    features:
+      collection?.features.filter((feature) => isRiskFeatureVisible(feature, visibleLayers)) ??
+      [],
+  };
+}
+
+function isRiskFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  const featureType = feature.properties.feature_type;
+  if (!visibleLayers.riskLayers) return false;
+  if (featureType === "major_road_noise_zone") return visibleLayers.majorRoadNoise;
+  if (featureType === "industrial_risk_zone") return visibleLayers.industrialRisk;
+  if (featureType === "rail_noise_review_zone") return visibleLayers.railAirportRisk;
+  if (featureType === "airport_noise_review_zone") return visibleLayers.railAirportRisk;
+  if (featureType === "flood_risk_review_zone") return visibleLayers.floodPollutionRisk;
+  if (featureType === "pollution_review_zone") return visibleLayers.floodPollutionRisk;
+  return false;
+}
+
+function isRiskFeatureType(featureType: MapFeatureType) {
+  return (
+    featureType === "industrial_risk_zone" ||
+    featureType === "major_road_noise_zone" ||
+    featureType === "rail_noise_review_zone" ||
+    featureType === "airport_noise_review_zone" ||
+    featureType === "flood_risk_review_zone" ||
+    featureType === "pollution_review_zone"
   );
 }
 

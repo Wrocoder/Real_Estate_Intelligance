@@ -18,6 +18,9 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert payload["metadata"]["infrastructure_counts"]["school_count"] >= 2
     assert payload["metadata"]["administrative_layer_count"] >= 3
     assert payload["metadata"]["administrative_counts"]["district_boundary_count"] >= 3
+    assert payload["metadata"]["risk_layer_count"] >= 4
+    assert payload["metadata"]["risk_counts"]["major_road_noise_zone_count"] >= 2
+    assert payload["metadata"]["risk_counts"]["industrial_risk_zone_count"] >= 1
 
     feature_types = {feature["properties"]["feature_type"] for feature in payload["features"]}
     assert {
@@ -31,12 +34,19 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
         "district_boundary",
         "municipality_boundary",
         "voivodeship_boundary",
+        "industrial_risk_zone",
+        "major_road_noise_zone",
+        "rail_noise_review_zone",
+        "airport_noise_review_zone",
+        "flood_risk_review_zone",
+        "pollution_review_zone",
     } <= feature_types
 
     listing = next(
         feature
         for feature in payload["features"]
-        if feature["properties"].get("listing_id") == "wr-001"
+        if feature["properties"]["feature_type"] == "listing"
+        and feature["properties"].get("listing_id") == "wr-001"
     )
     assert listing["geometry"]["coordinates"] == [16.9653, 51.1117]
     assert listing["properties"]["price_label"] == "690k zł"
@@ -60,6 +70,24 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert district_boundary["properties"]["feature_type"] == "district_boundary"
     assert district_boundary["properties"]["geometry_accuracy"] == "approximate"
     assert district_boundary["properties"]["median_price_per_m2"] == 11800
+
+    road_noise_zone = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "major_road_noise_zone"
+        and feature["properties"].get("listing_id") == "wr-001"
+    )
+    assert road_noise_zone["geometry"]["type"] == "Polygon"
+    assert road_noise_zone["properties"]["risk_level"] == "moderate"
+    assert road_noise_zone["properties"]["geometry_accuracy"] == "listing_distance_proxy"
+
+    industrial_risk_zone = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "industrial_risk_zone"
+    )
+    assert industrial_risk_zone["geometry"]["type"] == "Polygon"
+    assert industrial_risk_zone["properties"]["geometry_accuracy"] == "source_radius_proxy"
 
 
 def test_map_features_supports_bbox_filter() -> None:
@@ -143,6 +171,7 @@ def test_map_features_does_not_return_default_administrative_layer_for_unknown_c
 
     assert response.status_code == 200
     assert payload["metadata"]["administrative_layer_count"] == 0
+    assert payload["metadata"]["risk_layer_count"] == 0
     assert payload["features"] == []
 
 

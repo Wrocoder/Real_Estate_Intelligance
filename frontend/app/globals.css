@@ -677,6 +677,11 @@ button {
   border: 1px solid #155eef;
 }
 
+.legend-dot.risk-zone {
+  background: rgba(217, 45, 32, 0.18);
+  border: 1px solid #d92d20;
+}
+
 .legend-dot.cluster {
   background: #0f766e;
   box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
