@@ -29,6 +29,8 @@ from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
 from domarion.core import get_settings
+from domarion.crm_store.base import CrmStore
+from domarion.crm_store.factory import get_crm_store
 from domarion.custom_dashboard_store.base import CustomDashboardStore
 from domarion.custom_dashboard_store.factory import get_custom_dashboard_store
 from domarion.db.models import (
@@ -112,6 +114,18 @@ from domarion.schemas import (
     CheckoutSession,
     CompareRequest,
     CompareResponse,
+    CrmClient,
+    CrmClientCreate,
+    CrmClientDetail,
+    CrmClientStatus,
+    CrmClientUpdate,
+    CrmNote,
+    CrmNoteCreate,
+    CrmNoteUpdate,
+    CrmSharePreview,
+    CrmShortlist,
+    CrmShortlistCreate,
+    CrmShortlistUpdate,
     CustomDashboardConfig,
     CustomDashboardCreate,
     CustomDashboardPreview,
@@ -260,6 +274,12 @@ from domarion.services.area_ai_summary import (
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import build_scoring_backtest_report, run_scoring_backtest
+from domarion.services.crm import (
+    attach_crm_shortlist_items,
+    build_crm_share_preview,
+    crm_share_is_active,
+    missing_listing_ids,
+)
 from domarion.services.custom_dashboards import build_custom_dashboard_preview
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
@@ -325,6 +345,7 @@ ReportStoreDep = Annotated[ReportStore, Depends(get_report_store)]
 UserStoreDep = Annotated[UserStore, Depends(get_user_store)]
 AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
 AgencyStoreDep = Annotated[AgencyStore, Depends(get_agency_store)]
+CrmStoreDep = Annotated[CrmStore, Depends(get_crm_store)]
 PartnerReferralStoreDep = Annotated[PartnerReferralStore, Depends(get_partner_referral_store)]
 NewsStoreDep = Annotated[NewsStore, Depends(get_news_store)]
 CustomDashboardStoreDep = Annotated[CustomDashboardStore, Depends(get_custom_dashboard_store)]
@@ -2860,6 +2881,312 @@ def remove_agency_member(
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
+@router.get("/agencies/{agency_id}/crm/clients", response_model=list[CrmClient])
+def list_agency_crm_clients(
+    agency_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+    client_status: Annotated[CrmClientStatus | None, Query(alias="status")] = None,
+    query: Annotated[str | None, Query(max_length=120)] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> list[CrmClient]:
+    _ensure_agency_member(agency_store, account, agency_id)
+    return crm_store.list_clients(
+        agency_id,
+        limit=limit,
+        status=client_status,
+        query=query,
+    )
+
+
+@router.post(
+    "/agencies/{agency_id}/crm/clients",
+    response_model=CrmClient,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_agency_crm_client(
+    agency_id: str,
+    payload: CrmClientCreate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> CrmClient:
+    _ensure_agency_member(agency_store, account, agency_id)
+    return crm_store.create_client(
+        agency_id=agency_id,
+        owner_id=account.user.id,
+        created_by=account.user.id,
+        payload=payload,
+    )
+
+
+@router.get("/agencies/{agency_id}/crm/clients/{client_id}", response_model=CrmClientDetail)
+def get_agency_crm_client(
+    agency_id: str,
+    client_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> CrmClientDetail:
+    _ensure_agency_member(agency_store, account, agency_id)
+    client = _crm_client_or_404(crm_store, agency_id, client_id)
+    return _crm_client_detail(crm_store, repository, client)
+
+
+@router.patch("/agencies/{agency_id}/crm/clients/{client_id}", response_model=CrmClient)
+def update_agency_crm_client(
+    agency_id: str,
+    client_id: str,
+    payload: CrmClientUpdate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> CrmClient:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    updated = crm_store.update_client(agency_id, client_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=400, detail="Invalid CRM client update")
+    return updated
+
+
+@router.get(
+    "/agencies/{agency_id}/crm/clients/{client_id}/notes",
+    response_model=list[CrmNote],
+)
+def list_agency_crm_notes(
+    agency_id: str,
+    client_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 100,
+) -> list[CrmNote]:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    return crm_store.list_notes(agency_id, client_id, limit=limit)
+
+
+@router.post(
+    "/agencies/{agency_id}/crm/clients/{client_id}/notes",
+    response_model=CrmNote,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_agency_crm_note(
+    agency_id: str,
+    client_id: str,
+    payload: CrmNoteCreate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> CrmNote:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    return crm_store.create_note(
+        agency_id=agency_id,
+        client_id=client_id,
+        author_id=account.user.id,
+        payload=payload,
+    )
+
+
+@router.patch(
+    "/agencies/{agency_id}/crm/clients/{client_id}/notes/{note_id}",
+    response_model=CrmNote,
+)
+def update_agency_crm_note(
+    agency_id: str,
+    client_id: str,
+    note_id: str,
+    payload: CrmNoteUpdate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> CrmNote:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    updated = crm_store.update_note(agency_id, client_id, note_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="CRM note not found")
+    return updated
+
+
+@router.delete(
+    "/agencies/{agency_id}/crm/clients/{client_id}/notes/{note_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_agency_crm_note(
+    agency_id: str,
+    client_id: str,
+    note_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    if not crm_store.delete_note(agency_id, client_id, note_id):
+        raise HTTPException(status_code=404, detail="CRM note not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.get(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists",
+    response_model=list[CrmShortlist],
+)
+def list_agency_crm_shortlists(
+    agency_id: str,
+    client_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[CrmShortlist]:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    shortlists = crm_store.list_shortlists(agency_id, client_id, limit=limit)
+    return [attach_crm_shortlist_items(shortlist, repository) for shortlist in shortlists]
+
+
+@router.post(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists",
+    response_model=CrmShortlist,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_agency_crm_shortlist(
+    agency_id: str,
+    client_id: str,
+    payload: CrmShortlistCreate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> CrmShortlist:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    _ensure_crm_listings_exist(payload.listing_ids, repository)
+    shortlist = crm_store.create_shortlist(
+        agency_id=agency_id,
+        client_id=client_id,
+        owner_id=account.user.id,
+        created_by=account.user.id,
+        payload=payload,
+    )
+    return attach_crm_shortlist_items(shortlist, repository)
+
+
+@router.get(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}",
+    response_model=CrmShortlist,
+)
+def get_agency_crm_shortlist(
+    agency_id: str,
+    client_id: str,
+    shortlist_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> CrmShortlist:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    shortlist = _crm_shortlist_or_404(crm_store, agency_id, client_id, shortlist_id)
+    return attach_crm_shortlist_items(shortlist, repository)
+
+
+@router.patch(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}",
+    response_model=CrmShortlist,
+)
+def update_agency_crm_shortlist(
+    agency_id: str,
+    client_id: str,
+    shortlist_id: str,
+    payload: CrmShortlistUpdate,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> CrmShortlist:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    _crm_shortlist_or_404(crm_store, agency_id, client_id, shortlist_id)
+    if payload.listing_ids is not None:
+        _ensure_crm_listings_exist(payload.listing_ids, repository)
+    updated = crm_store.update_shortlist(agency_id, client_id, shortlist_id, payload)
+    if updated is None:
+        raise HTTPException(status_code=404, detail="CRM shortlist not found")
+    return attach_crm_shortlist_items(updated, repository)
+
+
+@router.delete(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_agency_crm_shortlist(
+    agency_id: str,
+    client_id: str,
+    shortlist_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_agency_member(agency_store, account, agency_id)
+    _crm_client_or_404(crm_store, agency_id, client_id)
+    if not crm_store.delete_shortlist(agency_id, client_id, shortlist_id):
+        raise HTTPException(status_code=404, detail="CRM shortlist not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}/share-preview",
+    response_model=CrmSharePreview,
+)
+def preview_agency_crm_shortlist_share(
+    agency_id: str,
+    client_id: str,
+    shortlist_id: str,
+    agency_store: AgencyStoreDep,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> CrmSharePreview:
+    _ensure_agency_member(agency_store, account, agency_id)
+    client = _crm_client_or_404(crm_store, agency_id, client_id)
+    shortlist = _crm_shortlist_or_404(crm_store, agency_id, client_id, shortlist_id)
+    notes = crm_store.list_notes(agency_id, client_id, limit=200)
+    return build_crm_share_preview(
+        client=client,
+        shortlist=shortlist,
+        notes=notes,
+        repository=repository,
+    )
+
+
+@router.get("/crm/shared-shortlists/{share_token}", response_model=CrmSharePreview)
+def get_public_crm_shared_shortlist(
+    share_token: str,
+    crm_store: CrmStoreDep,
+    repository: RepositoryDep,
+) -> CrmSharePreview:
+    shortlist = crm_store.get_shortlist_by_share_token(share_token)
+    if shortlist is None or not crm_share_is_active(shortlist):
+        raise HTTPException(status_code=404, detail="Shared CRM shortlist not found")
+    client = crm_store.get_client(shortlist.agency_id, shortlist.client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="Shared CRM shortlist not found")
+    notes = crm_store.list_notes(shortlist.agency_id, shortlist.client_id, limit=200)
+    return build_crm_share_preview(
+        client=client,
+        shortlist=shortlist,
+        notes=notes,
+        repository=repository,
+    )
+
+
 @router.post(
     "/report-orders",
     response_model=CheckoutSession,
@@ -4321,6 +4648,74 @@ def _ensure_agency_admin(
             },
         )
     return membership
+
+
+def _ensure_agency_member(
+    agency_store: AgencyStore,
+    account: CurrentAccount,
+    agency_id: str,
+) -> AgencyMembership:
+    membership = agency_store.get_membership(agency_id, account.user.id)
+    if membership is None or membership.status == "disabled":
+        raise HTTPException(status_code=404, detail="Agency workspace not found")
+    if membership.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "agency_membership_inactive",
+                "status": membership.status,
+            },
+        )
+    return membership
+
+
+def _crm_client_or_404(
+    crm_store: CrmStore,
+    agency_id: str,
+    client_id: str,
+) -> CrmClient:
+    client = crm_store.get_client(agency_id, client_id)
+    if client is None:
+        raise HTTPException(status_code=404, detail="CRM client not found")
+    return client
+
+
+def _crm_shortlist_or_404(
+    crm_store: CrmStore,
+    agency_id: str,
+    client_id: str,
+    shortlist_id: str,
+) -> CrmShortlist:
+    shortlist = crm_store.get_shortlist(agency_id, client_id, shortlist_id)
+    if shortlist is None:
+        raise HTTPException(status_code=404, detail="CRM shortlist not found")
+    return shortlist
+
+
+def _crm_client_detail(
+    crm_store: CrmStore,
+    repository: RealEstateRepository,
+    client: CrmClient,
+) -> CrmClientDetail:
+    notes = crm_store.list_notes(client.agency_id, client.id, limit=200)
+    shortlists = [
+        attach_crm_shortlist_items(shortlist, repository)
+        for shortlist in crm_store.list_shortlists(client.agency_id, client.id, limit=100)
+    ]
+    return CrmClientDetail(
+        **client.model_dump(),
+        notes=notes,
+        shortlists=shortlists,
+    )
+
+
+def _ensure_crm_listings_exist(
+    listing_ids: list[str],
+    repository: RealEstateRepository,
+) -> None:
+    missing = missing_listing_ids(listing_ids, repository)
+    if missing:
+        raise HTTPException(status_code=404, detail={"missing_listing_ids": missing})
 
 
 def _agency_member_or_404(

@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     user_store_backend: str = "memory"
     auth_store_backend: str = "memory"
     agency_store_backend: str = "memory"
+    crm_store_backend: str = "memory"
     ingestion_admin_store_backend: str = "memory"
     user_submitted_listing_store_backend: str = "memory"
     partner_referral_store_backend: str = "memory"

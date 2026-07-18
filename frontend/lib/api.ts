@@ -1454,6 +1454,164 @@ export type AgencyWorkspace = AgencyWorkspaceSummary & {
   members: AgencyMembership[];
 };
 
+export type CrmClientStatus = "active" | "paused" | "won" | "lost" | "archived";
+export type CrmNoteVisibility = "internal" | "client_shareable";
+export type CrmShortlistStatus = "draft" | "shared" | "accepted" | "rejected" | "archived";
+
+export type CrmClientPayload = {
+  display_name: string;
+  email?: string | null;
+  phone?: string | null;
+  city?: string | null;
+  district?: string | null;
+  budget_min?: number | null;
+  budget_max?: number | null;
+  preferred_rooms?: number[];
+  status?: CrmClientStatus;
+  tags?: string[];
+  consent_to_contact?: boolean;
+  profile_notes?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type CrmClientUpdatePayload = Partial<CrmClientPayload>;
+
+export type CrmClient = {
+  id: string;
+  agency_id: string;
+  owner_id: string;
+  display_name: string;
+  email: string | null;
+  phone: string | null;
+  city: string | null;
+  district: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  preferred_rooms: number[];
+  status: CrmClientStatus;
+  tags: string[];
+  consent_to_contact: boolean;
+  profile_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmNotePayload = {
+  body: string;
+  visibility?: CrmNoteVisibility;
+  pinned?: boolean;
+  metadata?: Record<string, unknown>;
+};
+
+export type CrmNoteUpdatePayload = Partial<CrmNotePayload>;
+
+export type CrmNote = {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  author_id: string;
+  body: string;
+  visibility: CrmNoteVisibility;
+  pinned: boolean;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmShortlistPayload = {
+  title: string;
+  listing_ids: string[];
+  report_ids?: string[];
+  client_message?: string | null;
+  status?: CrmShortlistStatus;
+  share_enabled?: boolean;
+  expires_in_days?: number | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type CrmShortlistUpdatePayload = Partial<CrmShortlistPayload>;
+
+export type CrmShortlistItem = {
+  listing_id: string;
+  rank: number;
+  title: string;
+  address: string;
+  district: string;
+  city: string;
+  price: number;
+  currency: string;
+  area_m2: number;
+  rooms: number;
+  floor: number | null;
+  building_floors: number | null;
+  building_year: number | null;
+  market_type: "primary" | "secondary";
+  developer_id: string | null;
+  developer_name: string | null;
+  investment_name: string | null;
+  developer_reputation_score: number | null;
+  developer_reputation_label:
+    | "strong"
+    | "good"
+    | "mixed"
+    | "limited_data"
+    | "risk_review"
+    | null;
+  decision_score: number;
+  decision_label: PropertyScores["decision_label"];
+  investment_score: number;
+  risk_score: number;
+  negotiation_score: number;
+  liquidity_score: number;
+  rental_potential_score: number;
+  fair_price_mid_pln: number;
+  price_delta_to_fair_mid_pct: number;
+  recommendation: string;
+  talking_points: string[];
+  cautions: string[];
+};
+
+export type CrmShortlist = {
+  id: string;
+  agency_id: string;
+  client_id: string;
+  owner_id: string;
+  title: string;
+  listing_ids: string[];
+  report_ids: string[];
+  items: CrmShortlistItem[];
+  client_message: string | null;
+  status: CrmShortlistStatus;
+  share_enabled: boolean;
+  share_token: string | null;
+  share_url: string | null;
+  expires_at: string | null;
+  metadata: Record<string, unknown>;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CrmClientDetail = CrmClient & {
+  notes: CrmNote[];
+  shortlists: CrmShortlist[];
+};
+
+export type CrmSharePreview = {
+  share_token: string | null;
+  share_url: string | null;
+  title: string;
+  client_display_name: string | null;
+  client_message: string | null;
+  items: CrmShortlistItem[];
+  client_shareable_notes: string[];
+  generated_at: string;
+  expires_at: string | null;
+  disclaimer: string;
+};
+
 export type MortgageCalculationRequest = {
   property_price_pln: number;
   down_payment_pln: number;
@@ -2710,6 +2868,169 @@ export const api = {
       throw new Error(`API ${response.status}: ${body}`);
     }
   },
+  listAgencyCrmClients: (
+    agencyId: string,
+    params: { status?: CrmClientStatus; query?: string; limit?: number } = {},
+  ) =>
+    request<CrmClient[]>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients${toQueryString(params)}`,
+    ),
+  createAgencyCrmClient: (agencyId: string, payload: CrmClientPayload) =>
+    request<CrmClient>(`/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getAgencyCrmClient: (agencyId: string, clientId: string) =>
+    request<CrmClientDetail>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}`,
+    ),
+  updateAgencyCrmClient: (
+    agencyId: string,
+    clientId: string,
+    payload: CrmClientUpdatePayload,
+  ) =>
+    request<CrmClient>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    ),
+  listAgencyCrmNotes: (
+    agencyId: string,
+    clientId: string,
+    params: { limit?: number } = {},
+  ) =>
+    request<CrmNote[]>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/notes${toQueryString(params)}`,
+    ),
+  createAgencyCrmNote: (agencyId: string, clientId: string, payload: CrmNotePayload) =>
+    request<CrmNote>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/notes`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  updateAgencyCrmNote: (
+    agencyId: string,
+    clientId: string,
+    noteId: string,
+    payload: CrmNoteUpdatePayload,
+  ) =>
+    request<CrmNote>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/notes/${encodeURIComponent(noteId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAgencyCrmNote: async (agencyId: string, clientId: string, noteId: string) => {
+    const response = await fetch(
+      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
+        agencyId,
+      )}/crm/clients/${encodeURIComponent(clientId)}/notes/${encodeURIComponent(noteId)}`,
+      {
+        method: "DELETE",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
+  listAgencyCrmShortlists: (
+    agencyId: string,
+    clientId: string,
+    params: { limit?: number } = {},
+  ) =>
+    request<CrmShortlist[]>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists${toQueryString(params)}`,
+    ),
+  createAgencyCrmShortlist: (
+    agencyId: string,
+    clientId: string,
+    payload: CrmShortlistPayload,
+  ) =>
+    request<CrmShortlist>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  getAgencyCrmShortlist: (agencyId: string, clientId: string, shortlistId: string) =>
+    request<CrmShortlist>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists/${encodeURIComponent(shortlistId)}`,
+    ),
+  updateAgencyCrmShortlist: (
+    agencyId: string,
+    clientId: string,
+    shortlistId: string,
+    payload: CrmShortlistUpdatePayload,
+  ) =>
+    request<CrmShortlist>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists/${encodeURIComponent(shortlistId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAgencyCrmShortlist: async (
+    agencyId: string,
+    clientId: string,
+    shortlistId: string,
+  ) => {
+    const response = await fetch(
+      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
+        agencyId,
+      )}/crm/clients/${encodeURIComponent(clientId)}/shortlists/${encodeURIComponent(
+        shortlistId,
+      )}`,
+      {
+        method: "DELETE",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
+  previewAgencyCrmShortlistShare: (
+    agencyId: string,
+    clientId: string,
+    shortlistId: string,
+  ) =>
+    request<CrmSharePreview>(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists/${encodeURIComponent(shortlistId)}/share-preview`,
+      { method: "POST" },
+    ),
+  getPublicCrmSharedShortlist: (shareToken: string) =>
+    request<CrmSharePreview>(
+      `/api/v1/crm/shared-shortlists/${encodeURIComponent(shareToken)}`,
+    ),
   calculateMortgage: (payload: MortgageCalculationRequest) =>
     request<MortgageCalculationResult>("/api/v1/mortgage/calculate", {
       method: "POST",

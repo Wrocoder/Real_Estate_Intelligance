@@ -16,6 +16,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
+- Добавлен CRM-light API для агентств: clients, notes, enriched shortlists и safe public share preview без portal source links.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
 - Добавлен lead capture: paid beta buyer/realtor заявки, mortgage/legal/renovation referrals,
@@ -134,6 +135,8 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/market/intelligence-report
 - http://127.0.0.1:8000/api/v1/scoring/evaluate
 - http://127.0.0.1:8000/api/v1/enterprise/custom-dashboards
+- http://127.0.0.1:8000/api/v1/agencies/{agency_id}/crm/clients
+- http://127.0.0.1:8000/api/v1/crm/shared-shortlists/{share_token}
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -744,6 +747,34 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/agencies/$($agency.id)/members" 
   -Method Post `
   -ContentType "application/json" `
   -Body '{"user_id":"agent-1","email":"agent@example.com","role":"agent"}'
+```
+
+CRM-light endpoints позволяют агентству вести клиентов, заметки, shortlist и
+client-safe шаринг подборки. Shortlist хранит listing ids/report ids, а в
+ответах API обогащается scoring, liquidity/rental, fair price и developer
+reputation сигналами из нашей базы; portal `source_url` в public preview не
+отдается.
+
+```powershell
+$crmClient = Invoke-RestMethod "http://127.0.0.1:8000/api/v1/agencies/$($agency.id)/crm/clients" `
+  -Headers $agencyHeaders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"display_name":"Anna Buyer","city":"Wrocław","budget_min":650000,"budget_max":900000,"preferred_rooms":[2,3]}'
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/agencies/$($agency.id)/crm/clients/$($crmClient.id)/notes" `
+  -Headers $agencyHeaders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"body":"Client prefers quiet building and tram access.","visibility":"client_shareable","pinned":true}'
+
+$shortlist = Invoke-RestMethod "http://127.0.0.1:8000/api/v1/agencies/$($agency.id)/crm/clients/$($crmClient.id)/shortlists" `
+  -Headers $agencyHeaders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"title":"Top options","listing_ids":["wr-001","wr-002"],"client_message":"These are worth discussing before viewings.","share_enabled":true}'
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/crm/shared-shortlists/$($shortlist.share_token)"
 ```
 
 ## Internal admin MVP

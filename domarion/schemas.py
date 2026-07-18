@@ -14,6 +14,9 @@ SubscriptionPlan = Literal["free", "buyer_pro", "investor", "realtor", "agency",
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
 AgencyMemberRole = Literal["owner", "admin", "agent"]
 AgencyMembershipStatus = Literal["active", "invited", "disabled"]
+CrmClientStatus = Literal["active", "paused", "won", "lost", "archived"]
+CrmNoteVisibility = Literal["internal", "client_shareable"]
+CrmShortlistStatus = Literal["draft", "shared", "accepted", "rejected", "archived"]
 ReportProductCode = Literal[
     "object_report",
     "full_object_analysis",
@@ -2843,6 +2846,253 @@ class AgencyWorkspace(AgencyWorkspaceSummary):
     members: list[AgencyMembership] = Field(default_factory=list)
 
 
+class CrmClientCreate(BaseModel):
+    display_name: str = Field(min_length=2, max_length=160)
+    email: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=80)
+    city: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    budget_min: int | None = Field(default=None, ge=0)
+    budget_max: int | None = Field(default=None, ge=0)
+    preferred_rooms: list[int] = Field(default_factory=list, max_length=10)
+    status: CrmClientStatus = "active"
+    tags: list[str] = Field(default_factory=list, max_length=20)
+    consent_to_contact: bool = False
+    profile_notes: str | None = Field(default=None, max_length=2000)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_create_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+    @model_validator(mode="after")
+    def validate_create_payload(self) -> "CrmClientCreate":
+        _validate_optional_email(self.email)
+        _validate_budget_range(self.budget_min, self.budget_max)
+        object.__setattr__(self, "preferred_rooms", _deduplicate_room_counts(self.preferred_rooms))
+        object.__setattr__(self, "tags", _deduplicate_strings(self.tags))
+        return self
+
+
+class CrmClientUpdate(BaseModel):
+    display_name: str | None = Field(default=None, min_length=2, max_length=160)
+    email: str | None = Field(default=None, max_length=160)
+    phone: str | None = Field(default=None, max_length=80)
+    city: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    budget_min: int | None = Field(default=None, ge=0)
+    budget_max: int | None = Field(default=None, ge=0)
+    preferred_rooms: list[int] | None = Field(default=None, max_length=10)
+    status: CrmClientStatus | None = None
+    tags: list[str] | None = Field(default=None, max_length=20)
+    consent_to_contact: bool | None = None
+    profile_notes: str | None = Field(default=None, max_length=2000)
+    metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_update_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+    @model_validator(mode="after")
+    def validate_update_payload(self) -> "CrmClientUpdate":
+        _validate_optional_email(self.email)
+        _validate_budget_range(self.budget_min, self.budget_max)
+        if self.preferred_rooms is not None:
+            object.__setattr__(
+                self,
+                "preferred_rooms",
+                _deduplicate_room_counts(self.preferred_rooms),
+            )
+        if self.tags is not None:
+            object.__setattr__(self, "tags", _deduplicate_strings(self.tags))
+        return self
+
+
+class CrmClient(BaseModel):
+    id: str
+    agency_id: str
+    owner_id: str
+    display_name: str
+    email: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    district: str | None = None
+    budget_min: int | None = None
+    budget_max: int | None = None
+    preferred_rooms: list[int] = Field(default_factory=list)
+    status: CrmClientStatus
+    tags: list[str] = Field(default_factory=list)
+    consent_to_contact: bool = False
+    profile_notes: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CrmNoteCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=4000)
+    visibility: CrmNoteVisibility = "internal"
+    pinned: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_create_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+
+class CrmNoteUpdate(BaseModel):
+    body: str | None = Field(default=None, min_length=1, max_length=4000)
+    visibility: CrmNoteVisibility | None = None
+    pinned: bool | None = None
+    metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_update_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+
+class CrmNote(BaseModel):
+    id: str
+    agency_id: str
+    client_id: str
+    author_id: str
+    body: str
+    visibility: CrmNoteVisibility
+    pinned: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+    updated_at: datetime
+
+
+class CrmShortlistCreate(BaseModel):
+    title: str = Field(min_length=2, max_length=180)
+    listing_ids: list[str] = Field(min_length=1, max_length=10)
+    report_ids: list[str] = Field(default_factory=list, max_length=10)
+    client_message: str | None = Field(default=None, max_length=2000)
+    status: CrmShortlistStatus = "draft"
+    share_enabled: bool = False
+    expires_in_days: int | None = Field(default=14, ge=1, le=90)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_create_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+    @model_validator(mode="after")
+    def validate_create_payload(self) -> "CrmShortlistCreate":
+        object.__setattr__(self, "listing_ids", _deduplicate_strings(self.listing_ids))
+        object.__setattr__(self, "report_ids", _deduplicate_strings(self.report_ids))
+        if not self.listing_ids:
+            raise ValueError("listing_ids must contain at least one listing id")
+        return self
+
+
+class CrmShortlistUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=2, max_length=180)
+    listing_ids: list[str] | None = Field(default=None, min_length=1, max_length=10)
+    report_ids: list[str] | None = Field(default=None, max_length=10)
+    client_message: str | None = Field(default=None, max_length=2000)
+    status: CrmShortlistStatus | None = None
+    share_enabled: bool | None = None
+    expires_in_days: int | None = Field(default=None, ge=1, le=90)
+    metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_update_payload(cls, value: Any) -> Any:
+        return _normalize_crm_payload(value)
+
+    @model_validator(mode="after")
+    def validate_update_payload(self) -> "CrmShortlistUpdate":
+        if self.listing_ids is not None:
+            listing_ids = _deduplicate_strings(self.listing_ids)
+            if not listing_ids:
+                raise ValueError("listing_ids must contain at least one listing id")
+            object.__setattr__(self, "listing_ids", listing_ids)
+        if self.report_ids is not None:
+            object.__setattr__(self, "report_ids", _deduplicate_strings(self.report_ids))
+        return self
+
+
+class CrmShortlistItem(BaseModel):
+    listing_id: str
+    rank: int = Field(ge=1)
+    title: str
+    address: str
+    district: str
+    city: str
+    price: int
+    currency: str
+    area_m2: float
+    rooms: int
+    floor: int | None = None
+    building_floors: int | None = None
+    building_year: int | None = None
+    market_type: MarketType
+    developer_id: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
+    developer_reputation_score: int | None = Field(default=None, ge=0, le=100)
+    developer_reputation_label: DeveloperReputationLabel | None = None
+    decision_score: int = Field(ge=0, le=100)
+    decision_label: ScoreDecisionLabel
+    investment_score: int = Field(ge=0, le=100)
+    risk_score: int = Field(ge=0, le=100)
+    negotiation_score: int = Field(ge=0, le=100)
+    liquidity_score: int = Field(ge=0, le=100)
+    rental_potential_score: int = Field(ge=0, le=100)
+    fair_price_mid_pln: int
+    price_delta_to_fair_mid_pct: float
+    recommendation: str
+    talking_points: list[str] = Field(default_factory=list)
+    cautions: list[str] = Field(default_factory=list)
+
+
+class CrmShortlist(BaseModel):
+    id: str
+    agency_id: str
+    client_id: str
+    owner_id: str
+    title: str
+    listing_ids: list[str] = Field(default_factory=list)
+    report_ids: list[str] = Field(default_factory=list)
+    items: list[CrmShortlistItem] = Field(default_factory=list)
+    client_message: str | None = None
+    status: CrmShortlistStatus
+    share_enabled: bool = False
+    share_token: str | None = None
+    share_url: str | None = None
+    expires_at: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    created_by: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class CrmClientDetail(CrmClient):
+    notes: list[CrmNote] = Field(default_factory=list)
+    shortlists: list[CrmShortlist] = Field(default_factory=list)
+
+
+class CrmSharePreview(BaseModel):
+    share_token: str | None = None
+    share_url: str | None = None
+    title: str
+    client_display_name: str | None = None
+    client_message: str | None = None
+    items: list[CrmShortlistItem] = Field(default_factory=list)
+    client_shareable_notes: list[str] = Field(default_factory=list)
+    generated_at: datetime
+    expires_at: datetime | None = None
+    disclaimer: str
+
+
 def _normalize_agency_payload(value: Any) -> Any:
     if not isinstance(value, dict):
         return value
@@ -2876,14 +3126,62 @@ def _validate_optional_http_url(field_name: str, value: str | None) -> None:
         raise ValueError(f"{field_name} must be an http(s) URL")
 
 
-def _deduplicate_strings(values: list[str]) -> list[str]:
+def _normalize_crm_payload(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    normalized: dict[str, Any] = {}
+    for key, item in value.items():
+        if isinstance(item, str):
+            item = item.strip()
+            normalized[key] = item or None
+        elif isinstance(item, list):
+            normalized[key] = [_strip_optional_string(entry) for entry in item]
+        else:
+            normalized[key] = item
+    email = normalized.get("email")
+    if isinstance(email, str):
+        normalized["email"] = email.lower()
+    return normalized
+
+
+def _strip_optional_string(value: Any) -> Any:
+    if isinstance(value, str):
+        stripped = value.strip()
+        return stripped or None
+    return value
+
+
+def _validate_budget_range(budget_min: int | None, budget_max: int | None) -> None:
+    if budget_min is not None and budget_max is not None and budget_min > budget_max:
+        raise ValueError("budget_min cannot be greater than budget_max")
+
+
+def _deduplicate_room_counts(values: list[int]) -> list[int]:
+    result: list[int] = []
+    seen: set[int] = set()
+    for value in values:
+        room_count = int(value)
+        if room_count <= 0 or room_count in seen:
+            continue
+        seen.add(room_count)
+        result.append(room_count)
+    return result
+
+
+def _deduplicate_strings(values: list[str | None]) -> list[str]:
     result: list[str] = []
     seen: set[str] = set()
     for value in values:
-        if value in seen:
+        if value is None:
             continue
-        seen.add(value)
-        result.append(value)
+        normalized = value.strip()
+        if not normalized:
+            continue
+        key = normalized.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        result.append(normalized)
     return result
 
 

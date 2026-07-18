@@ -99,6 +99,25 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/reports/{report_id}/email", "post"): "ReportEmailResult",
         ("/api/v1/agencies/{agency_id}", "get"): "AgencyWorkspace",
         ("/api/v1/agencies/{agency_id}", "patch"): "AgencyWorkspace",
+        ("/api/v1/agencies/{agency_id}/crm/clients/{client_id}", "get"): "CrmClientDetail",
+        ("/api/v1/agencies/{agency_id}/crm/clients/{client_id}", "patch"): "CrmClient",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/notes/{note_id}",
+            "patch",
+        ): "CrmNote",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}",
+            "get",
+        ): "CrmShortlist",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}",
+            "patch",
+        ): "CrmShortlist",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists/{shortlist_id}/share-preview",
+            "post",
+        ): "CrmSharePreview",
+        ("/api/v1/crm/shared-shortlists/{share_token}", "get"): "CrmSharePreview",
         (
             "/api/v1/agencies/{agency_id}/members/{membership_id}",
             "patch",
@@ -136,6 +155,15 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/news/articles", "post"): "NewsArticle",
         ("/api/v1/agencies", "post"): "AgencyWorkspace",
         ("/api/v1/agencies/{agency_id}/members", "post"): "AgencyMembership",
+        ("/api/v1/agencies/{agency_id}/crm/clients", "post"): "CrmClient",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/notes",
+            "post",
+        ): "CrmNote",
+        (
+            "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists",
+            "post",
+        ): "CrmShortlist",
         ("/api/v1/enterprise/custom-dashboards", "post"): "CustomDashboardConfig",
     }
     for (path, method), schema_name in expected_created_refs.items():
@@ -280,6 +308,18 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "CompareMortgageAssumptions",
         "CompareResponse",
         "CompareSummary",
+        "CrmClient",
+        "CrmClientCreate",
+        "CrmClientDetail",
+        "CrmClientUpdate",
+        "CrmNote",
+        "CrmNoteCreate",
+        "CrmNoteUpdate",
+        "CrmSharePreview",
+        "CrmShortlist",
+        "CrmShortlistCreate",
+        "CrmShortlistItem",
+        "CrmShortlistUpdate",
         "CustomDashboardConfig",
         "CustomDashboardCreate",
         "CustomDashboardPreview",
@@ -391,6 +431,24 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     assert agencies_list_schema["type"] == "array"
     assert agencies_list_schema["items"]["$ref"] == "#/components/schemas/AgencyWorkspaceSummary"
 
+    crm_clients_list_schema = openapi["paths"]["/api/v1/agencies/{agency_id}/crm/clients"][
+        "get"
+    ]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert crm_clients_list_schema["type"] == "array"
+    assert crm_clients_list_schema["items"]["$ref"] == "#/components/schemas/CrmClient"
+
+    crm_notes_list_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/notes"
+    ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert crm_notes_list_schema["type"] == "array"
+    assert crm_notes_list_schema["items"]["$ref"] == "#/components/schemas/CrmNote"
+
+    crm_shortlists_list_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists"
+    ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert crm_shortlists_list_schema["type"] == "array"
+    assert crm_shortlists_list_schema["items"]["$ref"] == "#/components/schemas/CrmShortlist"
+
     agency_create_schema = openapi["paths"]["/api/v1/agencies"]["post"]["requestBody"][
         "content"
     ]["application/json"]["schema"]
@@ -400,6 +458,26 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "/api/v1/agencies/{agency_id}/members"
     ]["post"]["requestBody"]["content"]["application/json"]["schema"]
     assert agency_member_create_schema["$ref"] == "#/components/schemas/AgencyMemberCreate"
+
+    crm_client_create_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert crm_client_create_schema["$ref"] == "#/components/schemas/CrmClientCreate"
+
+    crm_client_update_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients/{client_id}"
+    ]["patch"]["requestBody"]["content"]["application/json"]["schema"]
+    assert crm_client_update_schema["$ref"] == "#/components/schemas/CrmClientUpdate"
+
+    crm_note_create_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/notes"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert crm_note_create_schema["$ref"] == "#/components/schemas/CrmNoteCreate"
+
+    crm_shortlist_create_schema = openapi["paths"][
+        "/api/v1/agencies/{agency_id}/crm/clients/{client_id}/shortlists"
+    ]["post"]["requestBody"]["content"]["application/json"]["schema"]
+    assert crm_shortlist_create_schema["$ref"] == "#/components/schemas/CrmShortlistCreate"
 
     report_request = schemas["ReportRequest"]
     assert report_request["properties"]["branding"]["anyOf"][0]["$ref"] == (
