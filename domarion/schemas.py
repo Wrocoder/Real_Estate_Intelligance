@@ -33,6 +33,8 @@ PartnerReferralType = Literal[
     "realtor_beta",
 ]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
+PartnerLeadPriority = Literal["hot", "warm", "nurture", "low_fit", "disqualified"]
+PartnerLeadFit = Literal["mortgage", "legal", "renovation", "beta_sales", "general"]
 AIInsightSubjectType = Literal[
     "listing",
     "user_submitted_draft",
@@ -2151,6 +2153,32 @@ class PartnerReferral(BaseModel):
     notes: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class PartnerLeadScoreComponent(BaseModel):
+    code: str
+    label: str
+    score: int = Field(ge=0, le=100)
+    weight: float = Field(ge=0, le=1)
+    weighted_score: float = Field(ge=0, le=100)
+    reason: str
+
+
+class PartnerLeadScore(BaseModel):
+    referral: PartnerReferral
+    generated_at: datetime
+    total_score: int = Field(ge=0, le=100)
+    priority: PartnerLeadPriority
+    partner_fit: PartnerLeadFit
+    qualification_status: str
+    estimated_deal_value_pln: int | None = None
+    next_action_due_hours: int = Field(ge=0)
+    routing_tags: list[str] = Field(default_factory=list)
+    reasons: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    components: list[PartnerLeadScoreComponent] = Field(default_factory=list)
+    disclaimer: str
 
 
 class ReportBranding(BaseModel):

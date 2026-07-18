@@ -20,6 +20,8 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
 - Добавлен lead capture: paid beta buyer/realtor заявки, mortgage/legal/renovation referrals,
   admin review queue и Postgres store.
+- Добавлен lead scoring для partner referrals: admin API считает priority, partner fit,
+  estimated deal value, routing tags и next actions для mortgage/broker handoff.
 - Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
 - Добавлены B2B invoice/VAT details для checkout: company/NIP/address/email хранятся на order и попадают в payment metadata.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
@@ -159,6 +161,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals
+- http://127.0.0.1:8000/api/v1/admin/partner-referrals/lead-scores
 - http://127.0.0.1:8000/api/v1/admin/alerts/deliver-daily-email
 - http://127.0.0.1:8000/api/v1/alert-delivery-jobs
 - http://127.0.0.1:8000/api/v1/map/features
@@ -1239,6 +1242,16 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/partner-referrals/$($lead.
   -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"} `
   -ContentType "application/json" `
   -Body '{"status":"qualified","assigned_to":"ops@example.com","notes":"Ready to hand off."}'
+```
+
+Приоритизировать очередь для mortgage/broker handoff:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/partner-referrals/lead-scores?referral_type=mortgage&min_score=60" `
+  -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"}
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/partner-referrals/$($lead.id)/lead-score" `
+  -Headers @{"X-Domarion-User-Id"="admin-1";"X-Domarion-Role"="admin";"X-Domarion-Plan"="enterprise"}
 ```
 
 ## Избранное и уведомления

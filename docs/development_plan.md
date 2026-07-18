@@ -427,7 +427,7 @@
 - [x] Добавить market intelligence reports для banks, developers and funds.
 - [x] Добавить scoring-as-a-service endpoint design.
 - [x] Добавить custom dashboard backlog для enterprise clients.
-- [ ] Добавить lead scoring backlog для mortgage/broker partnerships.
+- [x] Добавить lead scoring backlog для mortgage/broker partnerships.
 
 ## 19. Expansion Roadmap
 
@@ -541,6 +541,7 @@
 - [x] Commit 95: Market intelligence reports for banks, developers and funds.
 - [x] Commit 96: Scoring-as-a-service endpoint.
 - [x] Commit 97: Enterprise custom dashboard API foundation.
+- [x] Commit 98: Partner referral lead scoring.
 
 ## Current Sprint
 
@@ -647,6 +648,7 @@
 - [x] Добавить market intelligence report API для banks/developers/funds: audience-specific report, KPIs, risks, opportunities и area watchlist.
 - [x] Добавить scoring-as-a-service endpoint: API-only object evaluation, plan gating, no draft persistence, comparables, risk flags and recommended actions.
 - [x] Добавить enterprise custom dashboard API: owner-scoped configs, widget selection, preview snapshots and enterprise plan gating.
+- [x] Добавить partner referral lead scoring: admin priority queue, mortgage/broker fit, estimated deal value, routing tags and next actions.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

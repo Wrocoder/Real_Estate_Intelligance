@@ -1565,6 +1565,35 @@ export type PartnerReferral = {
   updated_at: string;
 };
 
+export type PartnerLeadPriority = "hot" | "warm" | "nurture" | "low_fit" | "disqualified";
+export type PartnerLeadFit = "mortgage" | "legal" | "renovation" | "beta_sales" | "general";
+
+export type PartnerLeadScoreComponent = {
+  code: string;
+  label: string;
+  score: number;
+  weight: number;
+  weighted_score: number;
+  reason: string;
+};
+
+export type PartnerLeadScore = {
+  referral: PartnerReferral;
+  generated_at: string;
+  total_score: number;
+  priority: PartnerLeadPriority;
+  partner_fit: PartnerLeadFit;
+  qualification_status: string;
+  estimated_deal_value_pln: number | null;
+  next_action_due_hours: number;
+  routing_tags: string[];
+  reasons: string[];
+  risks: string[];
+  recommended_actions: string[];
+  components: PartnerLeadScoreComponent[];
+  disclaimer: string;
+};
+
 export type AccountUsage = {
   favorites: number;
   alerts: number;
@@ -2710,6 +2739,21 @@ export const api = {
   } = {}) =>
     request<PartnerReferral[]>(
       `/api/v1/admin/partner-referrals${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  listAdminPartnerLeadScores: (params: {
+    status?: PartnerReferralStatus;
+    referral_type?: PartnerReferralType;
+    min_score?: number;
+    limit?: number;
+  } = {}) =>
+    request<PartnerLeadScore[]>(
+      `/api/v1/admin/partner-referrals/lead-scores${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  getAdminPartnerLeadScore: (referralId: string) =>
+    request<PartnerLeadScore>(
+      `/api/v1/admin/partner-referrals/${encodeURIComponent(referralId)}/lead-score`,
       { headers: ADMIN_HEADERS },
     ),
   updateAdminPartnerReferral: (

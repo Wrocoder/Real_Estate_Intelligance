@@ -170,6 +170,7 @@ from domarion.schemas import (
     OpenDataRoadmapItem,
     OpenDataRoadmapStatus,
     PartnerCsvImportResponse,
+    PartnerLeadScore,
     PartnerReferral,
     PartnerReferralCreate,
     PartnerReferralStatus,
@@ -265,6 +266,7 @@ from domarion.services.geo import MapQueryError, build_map_feature_collection, p
 from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.hidden_gems import find_hidden_gems
 from domarion.services.infrastructure_enrichment import run_infrastructure_enrichment_job
+from domarion.services.lead_scoring import build_partner_lead_score, build_partner_lead_scores
 from domarion.services.listing_ai_assistant import (
     build_compare_ai_answer,
     build_listing_ai_answer,
@@ -1179,6 +1181,43 @@ def list_admin_partner_referrals(
         status=referral_status,
         referral_type=referral_type,
     )
+
+
+@router.get("/admin/partner-referrals/lead-scores", response_model=list[PartnerLeadScore])
+def list_admin_partner_referral_lead_scores(
+    repository: RepositoryDep,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+    referral_status: Annotated[PartnerReferralStatus | None, Query(alias="status")] = None,
+    referral_type: Annotated[PartnerReferralType | None, Query()] = None,
+    min_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[PartnerLeadScore]:
+    _ensure_admin(account)
+    referrals = referral_store.list_all(
+        limit=limit,
+        status=referral_status,
+        referral_type=referral_type,
+    )
+    return build_partner_lead_scores(repository, referrals, min_score=min_score)
+
+
+@router.get(
+    "/admin/partner-referrals/{referral_id}/lead-score",
+    response_model=PartnerLeadScore,
+)
+def get_admin_partner_referral_lead_score(
+    referral_id: str,
+    repository: RepositoryDep,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+) -> PartnerLeadScore:
+    _ensure_admin(account)
+    referrals = referral_store.list_all(limit=10_000)
+    referral = next((item for item in referrals if item.id == referral_id), None)
+    if referral is None:
+        raise HTTPException(status_code=404, detail="Partner referral not found")
+    return build_partner_lead_score(repository, referral)
 
 
 @router.patch("/admin/partner-referrals/{referral_id}", response_model=PartnerReferral)

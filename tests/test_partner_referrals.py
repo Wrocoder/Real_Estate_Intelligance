@@ -187,6 +187,88 @@ def test_admin_can_list_filter_and_update_partner_referrals() -> None:
     assert payload["notes"] == "Ready to hand off."
 
 
+def test_admin_can_score_partner_referrals_for_handoff_priority() -> None:
+    buyer_headers = {
+        "X-Domarion-User-Id": "mortgage-buyer-1",
+        "X-Domarion-Email": "buyer@example.com",
+    }
+    admin_headers = {
+        "X-Domarion-User-Id": "admin-1",
+        "X-Domarion-Role": "admin",
+        "X-Domarion-Plan": "enterprise",
+    }
+    hot_lead = client.post(
+        "/api/v1/partner-referrals",
+        headers=buyer_headers,
+        json={
+            "referral_type": "mortgage",
+            "source_context": "mortgage_calculator",
+            "listing_id": "wr-001",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "contact_name": "Buyer One",
+            "contact_email": "buyer@example.com",
+            "contact_phone": "+48 500 000 009",
+            "message": "Urgent mortgage financing. Ready to make an offer this week.",
+            "consent_to_contact": True,
+            "metadata": {
+                "property_price_pln": 800000,
+                "purchase_timeline": "this month",
+            },
+        },
+    ).json()
+    nurture_lead = client.post(
+        "/api/v1/partner-referrals",
+        headers={"X-Domarion-User-Id": "buyer-beta-1", "X-Domarion-Email": "beta@example.com"},
+        json={
+            "referral_type": "buyer_beta",
+            "source_context": "buyer_beta_landing",
+            "city": "Wrocław",
+            "contact_email": "beta@example.com",
+            "consent_to_contact": True,
+        },
+    ).json()
+
+    scores_response = client.get(
+        "/api/v1/admin/partner-referrals/lead-scores?min_score=60",
+        headers=admin_headers,
+    )
+    scores = scores_response.json()
+
+    assert scores_response.status_code == 200
+    assert [score["referral"]["id"] for score in scores] == [hot_lead["id"]]
+    assert scores[0]["priority"] == "hot"
+    assert scores[0]["partner_fit"] == "mortgage"
+    assert scores[0]["qualification_status"] == "ready_for_partner_handoff"
+    assert scores[0]["estimated_deal_value_pln"] == 800000
+    assert scores[0]["next_action_due_hours"] == 4
+    assert "mortgage" in scores[0]["routing_tags"]
+    assert scores[0]["components"]
+    assert "not credit advice" in scores[0]["disclaimer"]
+
+    single_response = client.get(
+        f"/api/v1/admin/partner-referrals/{nurture_lead['id']}/lead-score",
+        headers=admin_headers,
+    )
+    single = single_response.json()
+
+    assert single_response.status_code == 200
+    assert single["referral"]["id"] == nurture_lead["id"]
+    assert single["partner_fit"] == "beta_sales"
+    assert single["priority"] in {"nurture", "warm"}
+    assert single["recommended_actions"]
+
+
+def test_partner_referral_lead_scores_require_admin_role() -> None:
+    response = client.get(
+        "/api/v1/admin/partner-referrals/lead-scores",
+        headers={"X-Domarion-User-Id": "buyer-1"},
+    )
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "Admin role required"
+
+
 def test_partner_referral_admin_endpoints_require_admin_role() -> None:
     response = client.get(
         "/api/v1/admin/partner-referrals",

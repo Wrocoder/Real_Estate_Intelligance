@@ -91,6 +91,8 @@ expectIncludes("api client contracts", apiClient, [
   "createCustomDashboard",
   "previewCustomDashboard",
   "/api/v1/enterprise/custom-dashboards",
+  "listAdminPartnerLeadScores",
+  "/api/v1/admin/partner-referrals/lead-scores",
   "createReportOrder",
   "/api/v1/report-orders",
   "mockPayReportOrder",

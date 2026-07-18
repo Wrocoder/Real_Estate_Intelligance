@@ -79,6 +79,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/admin/ingestion/source-errors/{error_id}/retry",
             "post",
         ): "SourceErrorRetryResult",
+        (
+            "/api/v1/admin/partner-referrals/{referral_id}/lead-score",
+            "get",
+        ): "PartnerLeadScore",
         ("/api/v1/partner-referrals/{referral_id}", "get"): "PartnerReferral",
         ("/api/v1/admin/partner-referrals/{referral_id}", "patch"): "PartnerReferral",
         ("/api/v1/admin/alerts/deliver-daily-email", "post"): "AlertDeliveryBatchResult",
@@ -325,6 +329,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "AlertDeliveryBatchSkip",
         "PartnerReferral",
         "PartnerReferralCreate",
+        "PartnerLeadScore",
+        "PartnerLeadScoreComponent",
         "PartnerReferralUpdate",
         "PartnerCsvImportResponse",
         "PlannedInvestmentImportResponse",
@@ -502,6 +508,14 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     assert admin_partner_referral_list_schema["type"] == "array"
     assert admin_partner_referral_list_schema["items"]["$ref"] == (
         "#/components/schemas/PartnerReferral"
+    )
+
+    admin_partner_lead_score_list_schema = openapi["paths"][
+        "/api/v1/admin/partner-referrals/lead-scores"
+    ]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
+    assert admin_partner_lead_score_list_schema["type"] == "array"
+    assert admin_partner_lead_score_list_schema["items"]["$ref"] == (
+        "#/components/schemas/PartnerLeadScore"
     )
 
     admin_partner_referral_update_schema = openapi["paths"][
