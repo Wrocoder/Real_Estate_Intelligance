@@ -255,6 +255,44 @@ export type MarketDashboard = {
   areas: MarketDashboardArea[];
 };
 
+export type MarketIntelligenceAudience = "bank" | "developer" | "fund";
+export type MarketIntelligenceSeverity = "positive" | "neutral" | "watch" | "risk";
+
+export type MarketIntelligenceKpi = {
+  code: string;
+  label: string;
+  value: number | string | null;
+  unit: string | null;
+  interpretation: string;
+};
+
+export type MarketIntelligenceFinding = {
+  title: string;
+  severity: MarketIntelligenceSeverity;
+  detail: string;
+  metric_code: string | null;
+};
+
+export type MarketIntelligenceReport = {
+  audience: MarketIntelligenceAudience;
+  city: string | null;
+  district: string | null;
+  generated_at: string;
+  market_scope: string;
+  executive_summary: string;
+  data_confidence: string;
+  kpis: MarketIntelligenceKpi[];
+  findings: MarketIntelligenceFinding[];
+  opportunities: string[];
+  risks: string[];
+  recommended_actions: string[];
+  area_watchlist: AreaComparisonItem[];
+  dashboard: MarketDashboard;
+  area_comparison: AreaComparison;
+  source_notes: string[];
+  disclaimer: string;
+};
+
 export type PlannedInvestment = {
   id: string;
   name: string;
@@ -2376,6 +2414,15 @@ export const api = {
     ),
   getMarketDashboard: (params: { city?: string; district?: string } = {}) =>
     request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
+  getMarketIntelligenceReport: (params: {
+    audience?: MarketIntelligenceAudience;
+    city?: string;
+    district?: string;
+    area_limit?: number;
+  } = {}) =>
+    request<MarketIntelligenceReport>(
+      `/api/v1/market/intelligence-report${toQueryString(params)}`,
+    ),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
   listAgencies: (params: { limit?: number } = {}) =>

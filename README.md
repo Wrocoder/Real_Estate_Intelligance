@@ -53,6 +53,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен product validation strategy: commercial scorecard, competitor analysis, risk register, moat, roadmap, launch team и complexity assessment.
 - Добавлен API-lite для agency/enterprise consumers: `X-Domarion-API-Key`, quotas, usage logs и sanitized listing/area endpoints.
 - Добавлен export datasets для investor/realtor plans: sanitized listing analytics CSV/JSON без source URLs/raw payload.
+- Добавлен market intelligence report API для banks/developers/funds на основе market dashboard и area comparison.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
@@ -126,6 +127,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/api-lite/areas/compare
 - http://127.0.0.1:8000/api/v1/api-lite/usage
 - http://127.0.0.1:8000/api/v1/datasets/listings/export
+- http://127.0.0.1:8000/api/v1/market/intelligence-report
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -858,6 +860,22 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/datasets/listings/export?format=
 Invoke-WebRequest "http://127.0.0.1:8000/api/v1/datasets/listings/export?format=csv&min_investment_score=60" `
   -Headers @{"X-Domarion-User-Id"="agent-1";"X-Domarion-Plan"="realtor"} `
   -OutFile domarion-listings-dataset.csv
+```
+
+## Market intelligence reports
+
+Планы с `can_export=true` могут получить executive market report для трех B2B
+аудиторий: `bank`, `developer`, `fund`. Отчет строится на текущем market
+dashboard, area comparison и Domarion indexes: liquidity, buyer/seller market,
+growth, overheating, price/supply momentum. Это аналитический screening report,
+не банковская оценка, не инвестиционная рекомендация и не прогноз.
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/market/intelligence-report?audience=bank&city=Wrocław&area_limit=5" `
+  -Headers @{"X-Domarion-User-Id"="bank-analyst-1";"X-Domarion-Plan"="enterprise"}
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/market/intelligence-report?audience=developer&city=Wrocław&district=Fabryczna" `
+  -Headers @{"X-Domarion-User-Id"="developer-analyst-1";"X-Domarion-Plan"="enterprise"}
 ```
 
 ## Проверка квартиры по адресу/URL

@@ -148,6 +148,8 @@ from domarion.schemas import (
     LocationReferenceType,
     MapFeatureCollection,
     MarketDashboard,
+    MarketIntelligenceAudience,
+    MarketIntelligenceReport,
     MarketType,
     MortgageCalculationRequest,
     MortgageCalculationResult,
@@ -264,6 +266,7 @@ from domarion.services.listing_ai_assistant import (
 )
 from domarion.services.listing_comparison import build_listing_comparison
 from domarion.services.market_dashboard import build_market_dashboard
+from domarion.services.market_intelligence import build_market_intelligence_report
 from domarion.services.mortgage import calculate_mortgage
 from domarion.services.news_ai_summary import build_news_ai_summary, save_news_ai_summary
 from domarion.services.open_data_roadmap import list_open_data_roadmap
@@ -826,6 +829,25 @@ def get_market_dashboard(
     district: Annotated[str | None, Query()] = None,
 ) -> MarketDashboard:
     return build_market_dashboard(repository, city=city, district=district)
+
+
+@router.get("/market/intelligence-report", response_model=MarketIntelligenceReport)
+def get_market_intelligence_report(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    audience: Annotated[MarketIntelligenceAudience, Query()] = "fund",
+    city: Annotated[str | None, Query()] = "Wrocław",
+    district: Annotated[str | None, Query()] = None,
+    area_limit: Annotated[int, Query(ge=1, le=20)] = 5,
+) -> MarketIntelligenceReport:
+    _ensure_export_allowed(account)
+    return build_market_intelligence_report(
+        repository,
+        audience=audience,
+        city=city,
+        district=district,
+        area_limit=area_limit,
+    )
 
 
 @router.get("/api-lite/listings", response_model=ApiLiteListingSearchResponse)

@@ -195,6 +195,8 @@ DeveloperAliasType = Literal[
 ]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
+MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
+MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -1798,6 +1800,41 @@ class MarketDashboard(BaseModel):
     rooms_distribution: list[MarketDistributionBucket]
     area_distribution: list[MarketDistributionBucket]
     areas: list[MarketDashboardArea]
+
+
+class MarketIntelligenceKpi(BaseModel):
+    code: str
+    label: str
+    value: int | float | str | None = None
+    unit: str | None = None
+    interpretation: str
+
+
+class MarketIntelligenceFinding(BaseModel):
+    title: str
+    severity: MarketIntelligenceSeverity
+    detail: str
+    metric_code: str | None = None
+
+
+class MarketIntelligenceReport(BaseModel):
+    audience: MarketIntelligenceAudience
+    city: str | None = None
+    district: str | None = None
+    generated_at: datetime
+    market_scope: str
+    executive_summary: str
+    data_confidence: str
+    kpis: list[MarketIntelligenceKpi] = Field(default_factory=list)
+    findings: list[MarketIntelligenceFinding] = Field(default_factory=list)
+    opportunities: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    area_watchlist: list[AreaComparisonItem] = Field(default_factory=list)
+    dashboard: MarketDashboard
+    area_comparison: AreaComparison
+    source_notes: list[str] = Field(default_factory=list)
+    disclaimer: str
 
 
 class MortgageCalculationRequest(BaseModel):
