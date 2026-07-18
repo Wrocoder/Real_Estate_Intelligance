@@ -30,6 +30,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/market/dashboard", "get"): "MarketDashboard",
         ("/api/v1/market/intelligence-report", "get"): "MarketIntelligenceReport",
         ("/api/v1/mortgage/calculate", "post"): "MortgageCalculationResult",
+        ("/api/v1/scoring/evaluate", "post"): "ScoringServiceResult",
         ("/api/v1/news/{article_id}", "get"): "NewsArticle",
         ("/api/v1/admin/news/articles/{article_id}", "patch"): "NewsArticle",
         (
@@ -316,6 +317,10 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "ScoringBacktestErrorBucket",
         "ScoringBacktestReport",
         "ScoringBacktestResult",
+        "ScoringServiceComparable",
+        "ScoringServiceRequest",
+        "ScoringServiceResult",
+        "ScoringServiceValuation",
         "SourceReferencePreview",
         "SourceReferencePreviewRequest",
         "SourceCheckJob",

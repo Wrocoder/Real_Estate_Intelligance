@@ -85,6 +85,8 @@ expectIncludes("api client contracts", apiClient, [
   "/api/v1/report-products",
   "getMarketIntelligenceReport",
   "/api/v1/market/intelligence-report",
+  "evaluateScoringServiceListing",
+  "/api/v1/scoring/evaluate",
   "createReportOrder",
   "/api/v1/report-orders",
   "mockPayReportOrder",

@@ -201,6 +201,8 @@ from domarion.schemas import (
     SchoolReference,
     ScoringBacktestReport,
     ScoringBacktestResult,
+    ScoringServiceRequest,
+    ScoringServiceResult,
     SourceCheckJob,
     SourceCheckJobCreate,
     SourceCheckJobStatus,
@@ -293,6 +295,7 @@ from domarion.services.report_products import get_report_product, list_report_pr
 from domarion.services.report_templates import list_report_templates
 from domarion.services.reports import build_object_report, build_user_submitted_object_report
 from domarion.services.scoring import build_listing_analysis
+from domarion.services.scoring_service import evaluate_scoring_service_listing
 from domarion.services.search import ListingSearchError, search_listing_analyses
 from domarion.services.user_submitted_listings import (
     analyze_user_submitted_listing,
@@ -848,6 +851,19 @@ def get_market_intelligence_report(
         district=district,
         area_limit=area_limit,
     )
+
+
+@router.post("/scoring/evaluate", response_model=ScoringServiceResult)
+def evaluate_scoring_service_listing_endpoint(
+    payload: ScoringServiceRequest,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> ScoringServiceResult:
+    _ensure_api_allowed(account)
+    try:
+        return evaluate_scoring_service_listing(repository, payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/api-lite/listings", response_model=ApiLiteListingSearchResponse)
@@ -4361,6 +4377,20 @@ def _ensure_export_allowed(account: CurrentAccount) -> None:
             "resource": "exports",
             "plan": account.subscription.plan,
             "required_capability": "can_export",
+        },
+    )
+
+
+def _ensure_api_allowed(account: CurrentAccount) -> None:
+    if account.limits.can_use_api:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "api",
+            "plan": account.subscription.plan,
+            "required_capability": "can_use_api",
         },
     )
 

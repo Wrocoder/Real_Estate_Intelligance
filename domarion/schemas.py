@@ -197,6 +197,7 @@ MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
 MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
 MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]
+ScoringServiceAudience = Literal["buyer", "realtor", "investor", "underwriting", "developer"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -1588,6 +1589,91 @@ class UserSubmittedListingAnalysis(BaseModel):
     retention_note: str
     draft_id: str | None = None
     draft_expires_at: datetime | None = None
+
+
+class ScoringServiceRequest(BaseModel):
+    external_reference: str | None = Field(default=None, max_length=160)
+    title: str | None = Field(default=None, max_length=220)
+    developer_id: str | None = Field(default=None, max_length=120)
+    developer_name: str | None = Field(default=None, max_length=180)
+    investment_name: str | None = Field(default=None, max_length=180)
+    primary_market_project_id: str | None = Field(default=None, max_length=120)
+    address: str = Field(min_length=3, max_length=240)
+    city: str = Field(default="Wrocław", min_length=2, max_length=120)
+    district: str = Field(min_length=2, max_length=120)
+    market_type: MarketType = "secondary"
+    price: int = Field(gt=0)
+    area_m2: float = Field(gt=0)
+    rooms: int = Field(ge=1, le=10)
+    floor: int | None = Field(default=None, ge=0, le=80)
+    building_floors: int | None = Field(default=None, ge=1, le=120)
+    building_year: int | None = Field(default=None, ge=1800, le=2100)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    distance_to_center_km: float | None = Field(default=None, ge=0)
+    nearest_stop_m: int | None = Field(default=None, ge=0)
+    nearest_school_m: int | None = Field(default=None, ge=0)
+    nearest_major_road_m: int | None = Field(default=None, ge=0)
+    nearest_industrial_zone_m: int | None = Field(default=None, ge=0)
+    parks_within_1km: int | None = Field(default=None, ge=0)
+    schools_within_1km: int | None = Field(default=None, ge=0)
+    planned_investments_within_2km: int | None = Field(default=None, ge=0)
+    audience: ScoringServiceAudience = "investor"
+
+    @model_validator(mode="after")
+    def validate_coordinate_pair(self) -> "ScoringServiceRequest":
+        if (self.lat is None) != (self.lon is None):
+            raise ValueError("lat and lon must be provided together")
+        return self
+
+
+class ScoringServiceValuation(BaseModel):
+    asking_price: int
+    price_per_m2: int
+    fair_price_low: int
+    fair_price_mid: int
+    fair_price_high: int
+    fair_price_confidence_score: int = Field(ge=0, le=100)
+    price_delta_to_fair_mid_pct: float
+
+
+class ScoringServiceComparable(BaseModel):
+    listing_id: str
+    title: str
+    address: str
+    city: str
+    district: str
+    market_type: MarketType
+    price: int
+    area_m2: float
+    rooms: int
+    price_per_m2: int
+    floor: int | None = None
+    building_floors: int | None = None
+    building_year: int | None = None
+    price_delta_to_subject_pct: float
+    price_per_m2_delta_to_subject_pct: float
+
+
+class ScoringServiceResult(BaseModel):
+    request_id: str
+    generated_at: datetime
+    audience: ScoringServiceAudience
+    persisted: bool = False
+    input: ScoringServiceRequest
+    confidence_score: int = Field(ge=0, le=100)
+    scores: PropertyScores
+    valuation: ScoringServiceValuation
+    area_statistics: AreaStatistics
+    developer_reputation: DeveloperReputation | None = None
+    comparables: list[ScoringServiceComparable] = Field(default_factory=list)
+    decision_summary: str
+    key_findings: list[str] = Field(default_factory=list)
+    risk_flags: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+    data_quality_notes: list[str] = Field(default_factory=list)
+    methodology_notes: list[str] = Field(default_factory=list)
+    disclaimer: str
 
 
 class UserSubmittedListingDraft(BaseModel):

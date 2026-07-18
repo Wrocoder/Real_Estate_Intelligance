@@ -54,6 +54,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен API-lite для agency/enterprise consumers: `X-Domarion-API-Key`, quotas, usage logs и sanitized listing/area endpoints.
 - Добавлен export datasets для investor/realtor plans: sanitized listing analytics CSV/JSON без source URLs/raw payload.
 - Добавлен market intelligence report API для banks/developers/funds на основе market dashboard и area comparison.
+- Добавлен scoring-as-a-service endpoint для agency/enterprise: оценка caller-submitted объекта без draft persistence.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
@@ -128,6 +129,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/api-lite/usage
 - http://127.0.0.1:8000/api/v1/datasets/listings/export
 - http://127.0.0.1:8000/api/v1/market/intelligence-report
+- http://127.0.0.1:8000/api/v1/scoring/evaluate
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -876,6 +878,38 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/market/intelligence-report?audie
 
 Invoke-RestMethod "http://127.0.0.1:8000/api/v1/market/intelligence-report?audience=developer&city=Wrocław&district=Fabryczna" `
   -Headers @{"X-Domarion-User-Id"="developer-analyst-1";"X-Domarion-Plan"="enterprise"}
+```
+
+## Scoring-as-a-service
+
+Планы с `can_use_api=true` (`agency`, `enterprise`) могут оценить объект,
+переданный из CRM, underwriting pipeline или partner integration. Endpoint не
+требует `source_url`, не сохраняет private draft и возвращает `persisted=false`;
+результат содержит score, fair-price range, comparables, risk flags,
+recommended actions и developer reputation, если застройщик сопоставлен с нашей
+legal-first базой.
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/scoring/evaluate `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="agency-api-1";"X-Domarion-Plan"="enterprise"} `
+  -ContentType "application/json" `
+  -Body '{
+    "external_reference":"crm-lead-4821",
+    "address":"Nowy Dwór, Wrocław",
+    "city":"Wrocław",
+    "district":"Fabryczna",
+    "market_type":"secondary",
+    "price":675000,
+    "area_m2":58.4,
+    "rooms":3,
+    "floor":3,
+    "building_floors":6,
+    "building_year":2014,
+    "developer_name":"Fabryczna Estate Partners",
+    "investment_name":"Nowy Dwór Residence",
+    "audience":"underwriting"
+  }'
 ```
 
 ## Проверка квартиры по адресу/URL

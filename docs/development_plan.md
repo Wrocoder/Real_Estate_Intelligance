@@ -425,7 +425,7 @@
 - [x] Добавить API keys, quotas, usage logs и rate limits.
 - [x] Добавить export datasets для investor/realtor plans.
 - [x] Добавить market intelligence reports для banks, developers and funds.
-- [ ] Добавить scoring-as-a-service endpoint design.
+- [x] Добавить scoring-as-a-service endpoint design.
 - [ ] Добавить custom dashboard backlog для enterprise clients.
 - [ ] Добавить lead scoring backlog для mortgage/broker partnerships.
 
@@ -539,6 +539,7 @@
 - [x] Commit 93: API-lite keys, quotas and usage logs.
 - [x] Commit 94: Investor and realtor dataset exports.
 - [x] Commit 95: Market intelligence reports for banks, developers and funds.
+- [x] Commit 96: Scoring-as-a-service endpoint.
 
 ## Current Sprint
 
@@ -643,6 +644,7 @@
 - [x] Добавить API-lite для agency/enterprise: API key auth, quotas, usage logs и sanitized listing/area endpoints.
 - [x] Добавить investor/realtor listing analytics dataset export: CSV/JSON, plan gating и sanitized fields.
 - [x] Добавить market intelligence report API для banks/developers/funds: audience-specific report, KPIs, risks, opportunities и area watchlist.
+- [x] Добавить scoring-as-a-service endpoint: API-only object evaluation, plan gating, no draft persistence, comparables, risk flags and recommended actions.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

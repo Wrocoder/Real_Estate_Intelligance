@@ -958,6 +958,92 @@ export type UserSubmittedListingRequest = {
   retention_days?: number;
 };
 
+export type ScoringServiceAudience =
+  | "buyer"
+  | "realtor"
+  | "investor"
+  | "underwriting"
+  | "developer";
+
+export type ScoringServiceRequest = {
+  external_reference?: string | null;
+  title?: string | null;
+  developer_id?: string | null;
+  developer_name?: string | null;
+  investment_name?: string | null;
+  primary_market_project_id?: string | null;
+  address: string;
+  city?: string;
+  district: string;
+  market_type?: "primary" | "secondary";
+  price: number;
+  area_m2: number;
+  rooms: number;
+  floor?: number | null;
+  building_floors?: number | null;
+  building_year?: number | null;
+  lat?: number | null;
+  lon?: number | null;
+  distance_to_center_km?: number | null;
+  nearest_stop_m?: number | null;
+  nearest_school_m?: number | null;
+  nearest_major_road_m?: number | null;
+  nearest_industrial_zone_m?: number | null;
+  parks_within_1km?: number | null;
+  schools_within_1km?: number | null;
+  planned_investments_within_2km?: number | null;
+  audience?: ScoringServiceAudience;
+};
+
+export type ScoringServiceValuation = {
+  asking_price: number;
+  price_per_m2: number;
+  fair_price_low: number;
+  fair_price_mid: number;
+  fair_price_high: number;
+  fair_price_confidence_score: number;
+  price_delta_to_fair_mid_pct: number;
+};
+
+export type ScoringServiceComparable = {
+  listing_id: string;
+  title: string;
+  address: string;
+  city: string;
+  district: string;
+  market_type: "primary" | "secondary";
+  price: number;
+  area_m2: number;
+  rooms: number;
+  price_per_m2: number;
+  floor: number | null;
+  building_floors: number | null;
+  building_year: number | null;
+  price_delta_to_subject_pct: number;
+  price_per_m2_delta_to_subject_pct: number;
+};
+
+export type ScoringServiceResult = {
+  request_id: string;
+  generated_at: string;
+  audience: ScoringServiceAudience;
+  persisted: boolean;
+  input: ScoringServiceRequest;
+  confidence_score: number;
+  scores: PropertyScores;
+  valuation: ScoringServiceValuation;
+  area_statistics: AreaStatistics;
+  developer_reputation: DeveloperReputation | null;
+  comparables: ScoringServiceComparable[];
+  decision_summary: string;
+  key_findings: string[];
+  risk_flags: string[];
+  recommended_actions: string[];
+  data_quality_notes: string[];
+  methodology_notes: string[];
+  disclaimer: string;
+};
+
 export type SourceReferencePreview = {
   source_url_private: string;
   source_domain: string | null;
@@ -2423,6 +2509,11 @@ export const api = {
     request<MarketIntelligenceReport>(
       `/api/v1/market/intelligence-report${toQueryString(params)}`,
     ),
+  evaluateScoringServiceListing: (payload: ScoringServiceRequest) =>
+    request<ScoringServiceResult>("/api/v1/scoring/evaluate", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
   listAgencies: (params: { limit?: number } = {}) =>
