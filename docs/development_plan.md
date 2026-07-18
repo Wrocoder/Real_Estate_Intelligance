@@ -415,6 +415,7 @@
 - [x] Подготовить партнерскую модель: mortgage brokers, banks, insurers, lawyers, notaries, appraisers, renovation/design partners.
 - [x] Добавить правило явной маркировки рекламы, promoted listings и sponsored reports.
 - [x] Добавить lead tracking для partner referrals и early sales.
+- [x] Добавить buyer/realtor paid beta lead capture forms с admin queue.
 
 ## 18. Agency, Enterprise/API и Data Products
 
@@ -531,6 +532,7 @@
 - [x] Commit 86: paid artifact and report metadata contract tests.
 - [x] Commit 87: frontend smoke tests for search, map, reports, admin and payments.
 - [x] Commit 88: paid beta landing pages and GTM playbook.
+- [x] Commit 89: paid beta lead capture and admin queue.
 
 ## Current Sprint
 

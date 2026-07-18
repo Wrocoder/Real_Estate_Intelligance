@@ -25,7 +25,13 @@ ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
 BillingCustomerType = Literal["individual", "company"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
-PartnerReferralType = Literal["mortgage", "legal", "renovation"]
+PartnerReferralType = Literal[
+    "mortgage",
+    "legal",
+    "renovation",
+    "buyer_beta",
+    "realtor_beta",
+]
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
 AIInsightSubjectType = Literal[
     "listing",

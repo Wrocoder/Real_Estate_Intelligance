@@ -12,6 +12,7 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
@@ -129,6 +130,8 @@ export default function BuyerBetaPage() {
           ))}
         </ol>
       </section>
+
+      <BetaLeadForm segment="buyer_beta" entryPoint="/beta" />
 
       <section className="landing-section landing-compliance">
         <div>

@@ -431,6 +431,10 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
     ]["schema"]
     assert partner_referral_response_schema["$ref"] == "#/components/schemas/PartnerReferral"
     assert partner_referral_request_schema["$ref"] == "#/components/schemas/PartnerReferralCreate"
+    partner_referral_type_schema = schemas["PartnerReferralCreate"]["properties"][
+        "referral_type"
+    ]
+    assert {"buyer_beta", "realtor_beta"} <= set(partner_referral_type_schema["enum"])
 
     partner_referral_list_schema = openapi["paths"]["/api/v1/partner-referrals"]["get"][
         "responses"

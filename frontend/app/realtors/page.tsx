@@ -13,6 +13,7 @@ import {
   UsersRound,
 } from "lucide-react";
 
+import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
@@ -131,6 +132,8 @@ export default function RealtorsPage() {
           ))}
         </ul>
       </section>
+
+      <BetaLeadForm segment="realtor_beta" entryPoint="/realtors" />
 
       <section className="landing-section landing-compliance">
         <div>

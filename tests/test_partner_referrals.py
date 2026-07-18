@@ -84,6 +84,61 @@ def test_partner_referral_requires_contact_or_account_email() -> None:
     )
 
 
+def test_paid_beta_leads_use_partner_referral_queue() -> None:
+    admin_headers = {
+        "X-Domarion-User-Id": "admin-1",
+        "X-Domarion-Role": "admin",
+        "X-Domarion-Plan": "enterprise",
+    }
+
+    buyer_lead = client.post(
+        "/api/v1/partner-referrals",
+        json={
+            "referral_type": "buyer_beta",
+            "source_context": "buyer_beta_landing",
+            "city": "Wrocław",
+            "contact_email": "buyer@example.com",
+            "message": "Need an object report this week.",
+            "consent_to_contact": True,
+            "metadata": {
+                "entry_point": "/beta",
+                "object_reference_private": "https://www.otodom.pl/example",
+            },
+        },
+    )
+    realtor_lead = client.post(
+        "/api/v1/partner-referrals",
+        json={
+            "referral_type": "realtor_beta",
+            "source_context": "realtor_beta_landing",
+            "city": "Wrocław",
+            "contact_phone": "+48 500 000 003",
+            "message": "Agency wants a 5-report beta bundle.",
+            "consent_to_contact": True,
+            "metadata": {"entry_point": "/realtors", "agency_name": "Demo Realty"},
+        },
+    )
+
+    assert buyer_lead.status_code == 201
+    assert realtor_lead.status_code == 201
+    assert buyer_lead.json()["referral_type"] == "buyer_beta"
+    assert buyer_lead.json()["metadata"]["object_reference_private"].startswith(
+        "https://www.otodom.pl/"
+    )
+    assert realtor_lead.json()["referral_type"] == "realtor_beta"
+    assert realtor_lead.json()["metadata"]["agency_name"] == "Demo Realty"
+
+    listed = client.get(
+        "/api/v1/admin/partner-referrals?status=new&referral_type=buyer_beta",
+        headers=admin_headers,
+    )
+    payload = listed.json()
+
+    assert listed.status_code == 200
+    assert len(payload) == 1
+    assert payload[0]["id"] == buyer_lead.json()["id"]
+
+
 def test_admin_can_list_filter_and_update_partner_referrals() -> None:
     buyer_headers = {
         "X-Domarion-User-Id": "buyer-1",

@@ -18,7 +18,8 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
-- Добавлен partner referral lead capture: mortgage/legal/renovation заявки, admin review queue и Postgres store.
+- Добавлен lead capture: paid beta buyer/realtor заявки, mortgage/legal/renovation referrals,
+  admin review queue и Postgres store.
 - Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
 - Добавлены B2B invoice/VAT details для checkout: company/NIP/address/email хранятся на order и попадают в payment metadata.
 - Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.

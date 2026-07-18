@@ -1320,7 +1320,12 @@ export type MortgageCalculationResult = {
   disclaimer: string;
 };
 
-export type PartnerReferralType = "mortgage" | "legal" | "renovation";
+export type PartnerReferralType =
+  | "mortgage"
+  | "legal"
+  | "renovation"
+  | "buyer_beta"
+  | "realtor_beta";
 export type PartnerReferralStatus = "new" | "contacted" | "qualified" | "closed" | "rejected";
 
 export type PartnerReferralPayload = {

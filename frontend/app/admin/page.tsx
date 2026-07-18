@@ -966,13 +966,13 @@ export default function AdminPage() {
 
           <section className="panel admin-wide">
             <div className="panel-header">
-              <h2>Partner Referrals</h2>
+              <h2>Leads & Partner Referrals</h2>
               <Handshake size={18} />
             </div>
             <div className="panel-body planned-investment-grid">
               <div className="table-scroll">
                 {partnerReferrals.length === 0 ? (
-                  <EmptyBlock label="Нет partner referral заявок." />
+                  <EmptyBlock label="Нет beta/partner lead заявок." />
                 ) : (
                   <table className="table">
                     <thead>
@@ -1000,7 +1000,7 @@ export default function AdminPage() {
                           }}
                         >
                           <td>
-                            <strong>{referral.referral_type}</strong>
+                            <strong>{referralTypeLabel(referral.referral_type)}</strong>
                             <small>{referral.city}</small>
                           </td>
                           <td>
@@ -1014,9 +1014,7 @@ export default function AdminPage() {
                           </td>
                           <td>
                             {referral.source_context}
-                            <small>
-                              {referral.listing_id || referral.report_id || referral.district || "-"}
-                            </small>
+                            <small>{referralLeadContext(referral)}</small>
                           </td>
                           <td>{formatDate(referral.created_at)}</td>
                         </tr>
@@ -1034,9 +1032,14 @@ export default function AdminPage() {
                   <>
                     <ul className="section-list compact" style={{ marginBottom: 12 }}>
                       <li>
-                        <strong>{selectedReferral.referral_type}</strong>
+                        <strong>{referralTypeLabel(selectedReferral.referral_type)}</strong>
                         <p className="muted">{selectedReferral.message || "Без сообщения"}</p>
-                        <small>{selectedReferralContactLine(selectedReferral)}</small>
+                        <small>
+                          {selectedReferralContactLine(selectedReferral)}
+                          {referralLeadContext(selectedReferral) !== "-" ? (
+                            <> · {referralLeadContext(selectedReferral)}</>
+                          ) : null}
+                        </small>
                       </li>
                     </ul>
                     <div className="form-grid compact">
@@ -2480,6 +2483,30 @@ function formFromInvestment(investment: PlannedInvestment): InvestmentForm {
 
 function referralContact(referral: PartnerReferral) {
   return [referral.contact_email, referral.contact_phone].filter(Boolean).join(" · ") || "-";
+}
+
+function referralTypeLabel(referralType: PartnerReferral["referral_type"]) {
+  const labels: Record<PartnerReferral["referral_type"], string> = {
+    buyer_beta: "Buyer beta",
+    realtor_beta: "Realtor beta",
+    mortgage: "Mortgage",
+    legal: "Legal",
+    renovation: "Renovation",
+  };
+  return labels[referralType] ?? referralType;
+}
+
+function referralLeadContext(referral: PartnerReferral) {
+  const metadata = referral.metadata ?? {};
+  const objectReference = metadata.object_reference_private;
+  const agencyName = metadata.agency_name;
+  if (typeof objectReference === "string" && objectReference.trim()) {
+    return `object: ${objectReference}`;
+  }
+  if (typeof agencyName === "string" && agencyName.trim()) {
+    return `agency: ${agencyName}`;
+  }
+  return referral.listing_id || referral.report_id || referral.district || "-";
 }
 
 function selectedReferralContactLine(referral: PartnerReferral) {

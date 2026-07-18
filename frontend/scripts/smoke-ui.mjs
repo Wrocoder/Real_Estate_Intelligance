@@ -51,6 +51,7 @@ const pricingPage = read("app/pricing/page.tsx");
 const buyerBetaPage = read("app/beta/page.tsx");
 const realtorsPage = read("app/realtors/page.tsx");
 const landingScene = read("components/LandingMapScene.tsx");
+const betaLeadForm = read("components/BetaLeadForm.tsx");
 const layout = read("app/layout.tsx");
 const sitemap = read("app/sitemap.ts");
 
@@ -122,6 +123,7 @@ expectIncludes("reports page", reportsPage, [
 ]);
 
 expectIncludes("admin page", adminPage, [
+  "Leads & Partner Referrals",
   "api.listAdminIngestionJobs()",
   "api.listAdminDataQualityLogs(",
   "api.listAdminRawListings(",
@@ -130,6 +132,8 @@ expectIncludes("admin page", adminPage, [
   "api.listAdminAuditLogs(",
   "api.listAdminDeduplicationMatches(",
   "api.deliverAdminDailyEmailAlerts(",
+  "referralTypeLabel",
+  "referralLeadContext",
 ]);
 expectRegex("admin audit table", adminPage, /filteredAuditLogs[\s\S]*auditLog\.action_type/);
 expectMinSize("admin page", adminPage, 50_000);
@@ -149,6 +153,8 @@ expectIncludes("buyer beta landing", buyerBetaPage, [
   "Проверка квартиры перед покупкой",
   "href=\"/check?source=buyer-beta\"",
   "href=\"/pricing?source=buyer-beta\"",
+  "BetaLeadForm",
+  "segment=\"buyer_beta\"",
   "LandingMapScene",
   "Source URL хранится как приватный reference",
 ]);
@@ -157,6 +163,8 @@ expectIncludes("realtor beta landing", realtorsPage, [
   "Аналитика и отчеты для риелторов",
   "href=\"/pricing?source=realtor-beta\"",
   "href=\"/reports?source=realtor-beta\"",
+  "BetaLeadForm",
+  "segment=\"realtor_beta\"",
   "Realtor branded report",
   "LandingMapScene",
 ]);
@@ -166,6 +174,16 @@ expectIncludes("landing map scene", landingScene, [
   "realtorBadges",
   "landing-map-scene",
   "scene-badge",
+]);
+
+expectIncludes("beta lead form", betaLeadForm, [
+  "\"use client\"",
+  "api.createPartnerReferral",
+  "buyer_beta",
+  "realtor_beta",
+  "object_reference_private",
+  "agency_name",
+  "consent_to_contact",
 ]);
 
 expectIncludes("primary navigation", layout, [

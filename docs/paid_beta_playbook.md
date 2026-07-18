@@ -9,6 +9,7 @@
 - `/realtors` - realtor/agency landing: клиентские отчеты и аналитика цены.
 - `/check` - рабочий flow: адрес, ручные параметры или user-submitted URL.
 - `/pricing` - разовые paid reports, bundles и checkout.
+- `/admin` - очередь `Leads & Partner Referrals` для обработки beta leads.
 
 Все paid beta ссылки должны получать `source` query parameter:
 
@@ -34,6 +35,8 @@
 ## Manual / Semi-Automated First Report Workflow
 
 1. Lead arrives from `/beta`, `/realtors`, direct outreach or referral.
+   Landing forms save leads through `/api/v1/partner-referrals` with
+   `referral_type=buyer_beta` or `referral_type=realtor_beta`.
 2. Qualify the request: city, property type, object URL/address, budget,
    decision deadline, buyer/realtor/investor role.
 3. Confirm data consent: the user has the right to use the submitted link/data
@@ -138,3 +141,22 @@ Rules:
   negotiation advice or AI verdict.
 - Reports must separate analytical findings from commercial recommendations.
 - Partner leads require consent to contact.
+
+## Admin Lead Handling
+
+Beta leads are stored in the same reviewed queue as partner referrals:
+
+- `buyer_beta` - buyer object-check request from `/beta`;
+- `realtor_beta` - realtor/agency pilot request from `/realtors`;
+- `mortgage`, `legal`, `renovation` - partner referral categories.
+
+Admin statuses:
+
+- `new` - not contacted yet;
+- `contacted` - first contact sent;
+- `qualified` - valid paid beta opportunity;
+- `closed` - sold or completed;
+- `rejected` - not relevant, duplicate or no consent.
+
+Private object references and agency names live in lead metadata and should not
+be copied into public reports, SEO pages or exported datasets.
