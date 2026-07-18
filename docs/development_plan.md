@@ -421,8 +421,8 @@
 
 - [x] Добавить agency workspace model.
 - [ ] Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
-- [ ] Добавить API-lite для agency/enterprise consumers.
-- [ ] Добавить API keys, quotas, usage logs и rate limits.
+- [x] Добавить API-lite для agency/enterprise consumers.
+- [x] Добавить API keys, quotas, usage logs и rate limits.
 - [ ] Добавить export datasets для investor/realtor plans.
 - [ ] Добавить market intelligence reports для banks, developers and funds.
 - [ ] Добавить scoring-as-a-service endpoint design.
@@ -536,6 +536,7 @@
 - [x] Commit 90: source compliance policy for ToS, robots, rate limits and prohibited data.
 - [x] Commit 91: product validation strategy and competitor analysis.
 - [x] Commit 92: SEO guide pages and internal linking.
+- [x] Commit 93: API-lite keys, quotas and usage logs.
 
 ## Current Sprint
 
@@ -637,6 +638,7 @@
 - [x] Добавить normalized developer/project metadata для listings, partner CSV и private drafts.
 - [x] Добавить developer aliases для brand/legal entity/SPV/project company/parent company matching.
 - [x] Добавить developer evidence ingestion для registry checks, UOKiK events, directories и partner inspections.
+- [x] Добавить API-lite для agency/enterprise: API key auth, quotas, usage logs и sanitized listing/area endpoints.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

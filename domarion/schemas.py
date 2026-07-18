@@ -1357,6 +1357,141 @@ class ListingAnalysis(BaseModel):
     )
 
 
+class ApiLiteListingScore(BaseModel):
+    formula_version: str
+    weights_profile: str
+    decision_label: ScoreDecisionLabel
+    price_label: ScorePriceLabel
+    risk_label: ScoreRiskLabel
+    negotiation_label: ScoreNegotiationLabel
+    liquidity_label: ScorePotentialLabel
+    rental_potential_label: ScorePotentialLabel
+    investment_score: int = Field(ge=0, le=100)
+    risk_score: int = Field(ge=0, le=100)
+    negotiation_score: int = Field(ge=0, le=100)
+    liquidity_score: int = Field(ge=0, le=100)
+    rental_potential_score: int = Field(ge=0, le=100)
+    fair_price_low: int
+    fair_price_mid: int
+    fair_price_high: int
+    fair_price_confidence_score: int = Field(ge=0, le=100)
+    price_delta_to_fair_mid_pct: float
+    reasons: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class ApiLiteListingEvent(BaseModel):
+    listing_id: str
+    event_type: ListingEventType
+    observed_at: date
+    summary: str
+
+
+class ApiLiteListing(BaseModel):
+    id: str
+    title: str
+    source_name: str
+    city: str
+    district: str
+    area_id: str
+    municipality: str
+    address: str
+    market_type: MarketType
+    building_type: str | None = None
+    renovation_state: str | None = None
+    has_balcony: bool | None = None
+    has_terrace: bool | None = None
+    has_garden: bool | None = None
+    has_elevator: bool | None = None
+    parking_type: str | None = None
+    heating_type: str | None = None
+    developer_id: str | None = None
+    developer_name: str | None = None
+    investment_name: str | None = None
+    primary_market_project_id: str | None = None
+    price: int
+    currency: str = "PLN"
+    area_m2: float
+    price_per_m2: int
+    rooms: int
+    floor: int | None = None
+    building_floors: int | None = None
+    building_year: int | None = None
+    first_seen_at: date
+    last_seen_at: date
+    days_on_market: int
+    price_reductions: int
+    price_increases: int
+    relisted: bool
+    lat: float
+    lon: float
+    distance_to_center_km: float
+    nearest_stop_m: int
+    nearest_school_m: int
+    nearest_major_road_m: int
+    nearest_industrial_zone_m: int
+    parks_within_1km: int
+    schools_within_1km: int
+    planned_investments_within_2km: int
+    data_quality_score: int = Field(ge=0, le=100)
+    scores: ApiLiteListingScore
+    insights: list[str] = Field(default_factory=list)
+    data_quality_notes: list[str] = Field(default_factory=list)
+    disclaimer: str
+
+
+class ApiLiteListingDetail(ApiLiteListing):
+    area_statistics: AreaStatistics
+    price_history: list[PriceHistoryPoint] = Field(default_factory=list)
+    listing_events: list[ApiLiteListingEvent] = Field(default_factory=list)
+    comparable_listing_ids: list[str] = Field(default_factory=list)
+    comparables_count: int = Field(ge=0)
+    developer_reputation_score: int | None = Field(default=None, ge=0, le=100)
+    developer_confidence_score: int | None = Field(default=None, ge=0, le=100)
+    developer_risk_signals_count: int = Field(ge=0)
+
+
+class ApiLiteListingSearchResponse(BaseModel):
+    items: list[ApiLiteListing]
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    total_pages: int = Field(ge=0)
+    sort: ListingSort
+    filters: dict[str, Any] = Field(default_factory=dict)
+    data_policy: str = (
+        "API-lite returns normalized analytical fields only. Source URLs, contacts, photos, "
+        "raw HTML and private user-submitted references are not included."
+    )
+
+
+class ApiLiteUsageLog(BaseModel):
+    id: str
+    key_id: str
+    owner_id: str
+    plan: SubscriptionPlan
+    endpoint: str
+    method: str
+    status_code: int
+    request_units: int = Field(ge=1)
+    created_at: datetime
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ApiLiteUsageSummary(BaseModel):
+    key_id: str
+    label: str
+    owner_id: str
+    plan: SubscriptionPlan
+    scopes: list[str] = Field(default_factory=list)
+    usage_period: str
+    monthly_quota: int = Field(ge=1)
+    rate_limit_per_minute: int = Field(ge=1)
+    used_units: int = Field(ge=0)
+    remaining_units: int = Field(ge=0)
+    logs: list[ApiLiteUsageLog] = Field(default_factory=list)
+
+
 class SourceReferencePreviewRequest(BaseModel):
     source_url: str = Field(min_length=3, max_length=1000)
 

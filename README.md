@@ -51,6 +51,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
 - Добавлена source compliance policy: Terms/robots/rate limits gate, запрет фото/контактов/full descriptions и guardrails для user-submitted URL.
 - Добавлен product validation strategy: commercial scorecard, competitor analysis, risk register, moat, roadmap, launch team и complexity assessment.
+- Добавлен API-lite для agency/enterprise consumers: `X-Domarion-API-Key`, quotas, usage logs и sanitized listing/area endpoints.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
@@ -119,6 +120,10 @@ API будет доступен:
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/api/v1/me
 - http://127.0.0.1:8000/api/v1/plans
+- http://127.0.0.1:8000/api/v1/api-lite/listings
+- http://127.0.0.1:8000/api/v1/api-lite/listings/{listing_id}
+- http://127.0.0.1:8000/api/v1/api-lite/areas/compare
+- http://127.0.0.1:8000/api/v1/api-lite/usage
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -798,6 +803,43 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/compare `
   -Method Post `
   -ContentType "application/json" `
   -Body '{"listing_ids":["wr-001","wr-002"]}'
+```
+
+## API-lite для agency/enterprise
+
+Внешний машинный API использует `X-Domarion-API-Key` и доступен только для
+ключей с планом `agency` или `enterprise`. В `ENVIRONMENT=local/test`, если
+`API_LITE_KEYS_JSON` не задан, доступен dev-key `domarion-local-api-key`.
+В production дефолтный ключ не создается.
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/api-lite/listings?city=Wrocław&page_size=5" `
+  -Headers @{"X-Domarion-API-Key"="domarion-local-api-key"}
+```
+
+Детальная аналитика объекта без `source_url`, контактов, фото, raw HTML и
+private user-submitted references:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/api-lite/listings/wr-001 `
+  -Headers @{"X-Domarion-API-Key"="domarion-local-api-key"}
+```
+
+Сравнение районов и usage summary:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/api-lite/areas/compare?city=Wrocław" `
+  -Headers @{"X-Domarion-API-Key"="domarion-local-api-key"}
+
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/api-lite/usage `
+  -Headers @{"X-Domarion-API-Key"="domarion-local-api-key"}
+```
+
+Production-ключи задаются через env. Можно хранить сам ключ или только SHA-256;
+в `.env` значение лучше держать одной строкой:
+
+```env
+API_LITE_KEYS_JSON=[{"key_id":"agency-demo","label":"Agency Demo","owner_id":"agency-owner-1","plan":"agency","monthly_quota":5000,"rate_limit_per_minute":120,"scopes":["listings:read","scores:read","areas:read","usage:read"],"key_sha256":"<sha256-of-client-secret>"}]
 ```
 
 ## Проверка квартиры по адресу/URL

@@ -11,6 +11,7 @@ from fastapi import (
     Depends,
     File,
     Form,
+    Header,
     HTTPException,
     Query,
     Request,
@@ -98,6 +99,9 @@ from domarion.schemas import (
     AlertPreview,
     AlertUpdate,
     AmenityReference,
+    ApiLiteListingDetail,
+    ApiLiteListingSearchResponse,
+    ApiLiteUsageSummary,
     AreaComparison,
     AreaImpactSummary,
     AreaMarketSnapshotJobResult,
@@ -226,6 +230,18 @@ from domarion.services.ai_insights import persist_generated_report_insights
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.alerts import build_alert_preview
+from domarion.services.api_lite import (
+    ApiLiteConfigurationError,
+    ApiLitePrincipal,
+    api_lite_rate_limit_window,
+    api_lite_request_units,
+    build_api_lite_listing,
+    build_api_lite_listing_detail,
+    build_api_lite_usage_summary,
+    current_api_lite_period,
+    memory_api_lite_usage_tracker,
+    resolve_api_lite_key,
+)
 from domarion.services.area_ai_summary import (
     build_area_impact_summary,
     save_area_impact_summary,
@@ -310,6 +326,42 @@ INFRASTRUCTURE_REFERENCES_UPLOAD_EXTENSIONS = {".csv", ".json"}
 SOURCE_HEALTH_PRIORITY = {"failing": 0, "warning": 1, "healthy": 2}
 AGENCY_CREATABLE_PLANS = {"agency", "enterprise"}
 AGENCY_ADMIN_ROLES = {"owner", "admin"}
+
+
+def get_api_lite_principal(
+    x_api_key: Annotated[str | None, Header(alias="X-Domarion-API-Key")] = None,
+) -> ApiLitePrincipal:
+    if not x_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "api_key_required", "header": "X-Domarion-API-Key"},
+        )
+    try:
+        principal = resolve_api_lite_key(x_api_key, get_settings())
+    except ApiLiteConfigurationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={"code": "api_lite_configuration_error", "message": str(exc)},
+        ) from exc
+    if principal is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={"code": "invalid_api_key", "header": "X-Domarion-API-Key"},
+        )
+    if not get_plan_limits(principal.plan).can_use_api:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": "plan_limit_reached",
+                "resource": "api_lite",
+                "plan": principal.plan,
+                "required_capability": "can_use_api",
+            },
+        )
+    return principal
+
+
+ApiLiteContextDep = Annotated[ApiLitePrincipal, Depends(get_api_lite_principal)]
 
 
 @router.get("/listings", response_model=ListingSearchResponse)
@@ -774,6 +826,159 @@ def get_market_dashboard(
     district: Annotated[str | None, Query()] = None,
 ) -> MarketDashboard:
     return build_market_dashboard(repository, city=city, district=district)
+
+
+@router.get("/api-lite/listings", response_model=ApiLiteListingSearchResponse)
+def list_api_lite_listings(
+    repository: RepositoryDep,
+    api_key: ApiLiteContextDep,
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+    municipality: Annotated[str | None, Query(description="Gmina or municipality name")] = None,
+    query: Annotated[
+        str | None,
+        Query(min_length=1, max_length=160, description="Address, district, title or source id"),
+    ] = None,
+    rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
+    market_type: Annotated[MarketType | None, Query()] = None,
+    min_price: Annotated[int | None, Query(gt=0)] = None,
+    max_price: Annotated[int | None, Query(gt=0)] = None,
+    min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    max_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    min_investment_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    max_risk_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_liquidity_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_rental_potential_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_data_quality_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_developer_reputation_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    exclude_developer_risk_signals: Annotated[bool, Query()] = False,
+    sort: Annotated[ListingSort, Query()] = "investment_score_desc",
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> ApiLiteListingSearchResponse:
+    _ensure_api_lite_scope(api_key, "listings:read")
+    request_units = api_lite_request_units(page_size)
+    _ensure_api_lite_quota(api_key, request_units)
+    _ensure_api_lite_rate_limit(api_key, request_units)
+    try:
+        response = search_listing_analyses(
+            repository,
+            city=city,
+            district=district,
+            municipality=municipality,
+            query=query,
+            rooms=rooms,
+            market_type=market_type,
+            min_price=min_price,
+            max_price=max_price,
+            min_area_m2=min_area_m2,
+            max_area_m2=max_area_m2,
+            min_investment_score=min_investment_score,
+            max_risk_score=max_risk_score,
+            min_liquidity_score=min_liquidity_score,
+            min_rental_potential_score=min_rental_potential_score,
+            min_data_quality_score=min_data_quality_score,
+            min_developer_reputation_score=min_developer_reputation_score,
+            exclude_developer_risk_signals=exclude_developer_risk_signals,
+            sort=sort,
+            page=page,
+            page_size=page_size,
+        )
+    except ListingSearchError as exc:
+        _record_api_lite_usage(
+            api_key,
+            endpoint="/api/v1/api-lite/listings",
+            status_code=400,
+            request_units=request_units,
+            metadata={"error": str(exc)},
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    _record_api_lite_usage(
+        api_key,
+        endpoint="/api/v1/api-lite/listings",
+        status_code=200,
+        request_units=request_units,
+        metadata={"total": response.total, "page": response.page, "page_size": response.page_size},
+    )
+    return ApiLiteListingSearchResponse(
+        items=[build_api_lite_listing(item) for item in response.items],
+        total=response.total,
+        page=response.page,
+        page_size=response.page_size,
+        total_pages=response.total_pages,
+        sort=response.sort,
+        filters=response.filters,
+    )
+
+
+@router.get("/api-lite/listings/{listing_id}", response_model=ApiLiteListingDetail)
+def get_api_lite_listing_detail(
+    listing_id: str,
+    repository: RepositoryDep,
+    api_key: ApiLiteContextDep,
+) -> ApiLiteListingDetail:
+    _ensure_api_lite_scope(api_key, "scores:read")
+    _ensure_api_lite_quota(api_key, 1)
+    _ensure_api_lite_rate_limit(api_key, 1)
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        _record_api_lite_usage(
+            api_key,
+            endpoint="/api/v1/api-lite/listings/{listing_id}",
+            status_code=404,
+            metadata={"listing_id": listing_id},
+        )
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    detail = build_api_lite_listing_detail(build_listing_analysis(repository, listing))
+    _record_api_lite_usage(
+        api_key,
+        endpoint="/api/v1/api-lite/listings/{listing_id}",
+        status_code=200,
+        metadata={"listing_id": listing_id},
+    )
+    return detail
+
+
+@router.get("/api-lite/areas/compare", response_model=AreaComparison)
+def compare_api_lite_areas(
+    repository: RepositoryDep,
+    api_key: ApiLiteContextDep,
+    city: Annotated[str | None, Query()] = "Wrocław",
+    sort: Annotated[str, Query()] = "value",
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+) -> AreaComparison:
+    _ensure_api_lite_scope(api_key, "areas:read")
+    _ensure_api_lite_quota(api_key, 1)
+    _ensure_api_lite_rate_limit(api_key, 1)
+    try:
+        comparison = build_area_comparison(repository, city=city, sort=sort, limit=limit)
+    except ValueError as exc:
+        _record_api_lite_usage(
+            api_key,
+            endpoint="/api/v1/api-lite/areas/compare",
+            status_code=400,
+            metadata={"error": str(exc), "city": city, "sort": sort},
+        )
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    _record_api_lite_usage(
+        api_key,
+        endpoint="/api/v1/api-lite/areas/compare",
+        status_code=200,
+        metadata={"area_count": comparison.area_count, "city": city, "sort": sort},
+    )
+    return comparison
+
+
+@router.get("/api-lite/usage", response_model=ApiLiteUsageSummary)
+def get_api_lite_usage(
+    api_key: ApiLiteContextDep,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+) -> ApiLiteUsageSummary:
+    _ensure_api_lite_scope(api_key, "usage:read")
+    return build_api_lite_usage_summary(api_key, limit=limit)
 
 
 @router.post("/mortgage/calculate", response_model=MortgageCalculationResult)
@@ -4036,6 +4241,73 @@ def _ensure_export_allowed(account: CurrentAccount) -> None:
             "plan": account.subscription.plan,
             "required_capability": "can_export",
         },
+    )
+
+
+def _ensure_api_lite_scope(api_key: ApiLitePrincipal, scope: str) -> None:
+    if api_key.can_access(scope):
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "api_scope_forbidden",
+            "required_scope": scope,
+            "key_id": api_key.key_id,
+        },
+    )
+
+
+def _ensure_api_lite_quota(api_key: ApiLitePrincipal, request_units: int) -> None:
+    used_units = memory_api_lite_usage_tracker.used_units(api_key.key_id)
+    if used_units + request_units <= api_key.monthly_quota:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail={
+            "code": "api_quota_exceeded",
+            "key_id": api_key.key_id,
+            "usage_period": current_api_lite_period(),
+            "monthly_quota": api_key.monthly_quota,
+            "used_units": used_units,
+            "request_units": request_units,
+        },
+    )
+
+
+def _ensure_api_lite_rate_limit(api_key: ApiLitePrincipal, request_units: int) -> None:
+    recent_units = memory_api_lite_usage_tracker.recent_units(
+        api_key.key_id,
+        since=api_lite_rate_limit_window(),
+    )
+    if recent_units + request_units <= api_key.rate_limit_per_minute:
+        return
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail={
+            "code": "api_rate_limit_exceeded",
+            "key_id": api_key.key_id,
+            "rate_limit_per_minute": api_key.rate_limit_per_minute,
+            "recent_units": recent_units,
+            "request_units": request_units,
+        },
+    )
+
+
+def _record_api_lite_usage(
+    api_key: ApiLitePrincipal,
+    *,
+    endpoint: str,
+    status_code: int,
+    request_units: int = 1,
+    metadata: dict[str, object] | None = None,
+) -> None:
+    memory_api_lite_usage_tracker.record(
+        api_key,
+        endpoint=endpoint,
+        method="GET",
+        status_code=status_code,
+        request_units=request_units,
+        metadata=metadata,
     )
 
 

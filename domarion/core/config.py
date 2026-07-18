@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    api_lite_keys_json: str | None = None
+    api_lite_default_monthly_quota: int = 1000
+    api_lite_default_rate_limit_per_minute: int = 60
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
