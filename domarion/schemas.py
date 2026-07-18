@@ -1136,10 +1136,15 @@ class MapPointGeometry(BaseModel):
     coordinates: tuple[float, float]
 
 
+class MapPolygonGeometry(BaseModel):
+    type: Literal["Polygon"] = "Polygon"
+    coordinates: tuple[tuple[tuple[float, float], ...], ...]
+
+
 class MapFeature(BaseModel):
     type: Literal["Feature"] = "Feature"
     id: str
-    geometry: MapPointGeometry
+    geometry: MapPointGeometry | MapPolygonGeometry
     properties: dict[str, Any]
 
 

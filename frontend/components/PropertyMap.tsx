@@ -14,6 +14,7 @@ type GeoJsonData = {
   type: "FeatureCollection";
   features: MapFeature[];
 };
+type PointCoordinates = [number, number];
 type SourceWithData = {
   setData: (data: GeoJsonData) => void;
 };
@@ -31,6 +32,10 @@ type VisibleMapLayers = {
   listings: boolean;
   priceHeatmap: boolean;
   planned: boolean;
+  administrative: boolean;
+  districts: boolean;
+  municipalities: boolean;
+  voivodeshipBoundary: boolean;
   infrastructure: boolean;
   transportStops: boolean;
   schools: boolean;
@@ -57,6 +62,10 @@ type InfrastructureLayerControlKey = keyof Pick<
   | "amenityPublicServices"
   | "industrialZones"
 >;
+type AdministrativeLayerControlKey = keyof Pick<
+  VisibleMapLayers,
+  "districts" | "municipalities" | "voivodeshipBoundary"
+>;
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -68,6 +77,7 @@ const WROCLAW_CENTER: [number, number] = [17.0385, 51.1079];
 const LISTINGS_SOURCE_ID = "domarion-listings";
 const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
+const ADMINISTRATIVE_SOURCE_ID = "domarion-administrative-boundaries";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
 const LISTING_MARKER_MIN_ZOOM = 12;
 const EARTH_RADIUS_KM = 6371;
@@ -83,6 +93,10 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   listings: true,
   priceHeatmap: false,
   planned: true,
+  administrative: false,
+  districts: true,
+  municipalities: true,
+  voivodeshipBoundary: false,
   infrastructure: true,
   transportStops: true,
   schools: true,
@@ -95,6 +109,21 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   amenityPublicServices: true,
   industrialZones: true,
 };
+
+const ADMINISTRATIVE_LAYER_IDS = [
+  "administrative-boundary-fill",
+  "administrative-boundary-line",
+  "administrative-boundary-label",
+];
+
+const ADMINISTRATIVE_LAYER_CONTROLS: Array<{
+  key: AdministrativeLayerControlKey;
+  label: string;
+}> = [
+  { key: "districts", label: "Районы" },
+  { key: "municipalities", label: "Гмины" },
+  { key: "voivodeshipBoundary", label: "Воеводство" },
+];
 
 const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
   key: InfrastructureLayerControlKey;
@@ -243,6 +272,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const listingCount = collection?.metadata.listing_count ?? 0;
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
+  const administrativeCount = collection?.metadata.administrative_layer_count ?? 0;
   const radiusBuckets = buildRadiusBuckets(collection, visibleLayers, radiusCenter);
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
     setVisibleLayersState((current) => ({
@@ -257,6 +287,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
       <div className="map-summary">
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
+        <span>{administrativeCount} адм. зон</span>
         <span>{infrastructureCount} infrastructure</span>
       </div>
       <div className="map-radius-panel" aria-label="Анализ радиуса от центра карты">
@@ -306,6 +337,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <label>
           <input
             type="checkbox"
+            checked={visibleLayers.administrative}
+            onChange={(event) => updateVisibleLayer("administrative", event.target.checked)}
+          />
+          <span>Адм. слои</span>
+        </label>
+        {ADMINISTRATIVE_LAYER_CONTROLS.map((control) => (
+          <label className="map-layer-subtoggle" key={control.key}>
+            <input
+              type="checkbox"
+              checked={visibleLayers[control.key]}
+              disabled={!visibleLayers.administrative}
+              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+            />
+            <span>{control.label}</span>
+          </label>
+        ))}
+        <label>
+          <input
+            type="checkbox"
             checked={visibleLayers.infrastructure}
             onChange={(event) => updateVisibleLayer("infrastructure", event.target.checked)}
           />
@@ -340,6 +390,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         </span>
         <span>
           <i className="legend-dot investment" /> план
+        </span>
+        <span>
+          <i className="legend-dot boundary" /> границы
         </span>
         <span>
           <i className="legend-dot infrastructure" /> инфраструктура
@@ -382,6 +435,105 @@ function ensureMapLayers(map: MaplibreMap) {
     map.addSource(INVESTMENTS_SOURCE_ID, {
       type: "geojson",
       data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getSource(ADMINISTRATIVE_SOURCE_ID)) {
+    map.addSource(ADMINISTRATIVE_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("administrative-boundary-fill")) {
+    map.addLayer({
+      id: "administrative-boundary-fill",
+      type: "fill",
+      source: ADMINISTRATIVE_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "feature_type"],
+          "district_boundary",
+          "#155eef",
+          "municipality_boundary",
+          "#087443",
+          "voivodeship_boundary",
+          "#7a5af8",
+          "#667085",
+        ],
+        "fill-opacity": [
+          "match",
+          ["get", "feature_type"],
+          "voivodeship_boundary",
+          0.04,
+          "municipality_boundary",
+          0.08,
+          0.1,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("administrative-boundary-line")) {
+    map.addLayer({
+      id: "administrative-boundary-line",
+      type: "line",
+      source: ADMINISTRATIVE_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "feature_type"],
+          "district_boundary",
+          "#155eef",
+          "municipality_boundary",
+          "#087443",
+          "voivodeship_boundary",
+          "#7a5af8",
+          "#667085",
+        ],
+        "line-opacity": 0.72,
+        "line-width": [
+          "match",
+          ["get", "feature_type"],
+          "voivodeship_boundary",
+          2.2,
+          "municipality_boundary",
+          1.6,
+          1.2,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("administrative-boundary-label")) {
+    map.addLayer({
+      id: "administrative-boundary-label",
+      type: "symbol",
+      source: ADMINISTRATIVE_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "text-field": ["get", "name"],
+        "text-size": [
+          "match",
+          ["get", "feature_type"],
+          "voivodeship_boundary",
+          13,
+          11,
+        ],
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#344054",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
     });
   }
 
@@ -581,14 +733,22 @@ function syncMapData(
   const investments = visibleLayers.planned
     ? splitCollection(collection, "planned_investment")
     : EMPTY_COLLECTION;
+  const administrative = administrativeMapCollection(collection, visibleLayers);
   const listingSource = map.getSource(LISTINGS_SOURCE_ID) as SourceWithData | undefined;
   const heatmapSource = map.getSource(LISTING_HEATMAP_SOURCE_ID) as SourceWithData | undefined;
   const investmentSource = map.getSource(INVESTMENTS_SOURCE_ID) as SourceWithData | undefined;
+  const administrativeSource = map.getSource(ADMINISTRATIVE_SOURCE_ID) as
+    | SourceWithData
+    | undefined;
 
   listingSource?.setData(listings);
   heatmapSource?.setData(heatmapListings);
   investmentSource?.setData(investments);
+  administrativeSource?.setData(administrative);
   setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
+  ADMINISTRATIVE_LAYER_IDS.forEach((layerId) => {
+    setMapLayerVisibility(map, layerId, visibleLayers.administrative);
+  });
   syncMarkers(map, maplibre, markers, markerCollection);
   fitToCollection(map, maplibre, boundsCollection);
 }
@@ -617,8 +777,9 @@ function buildRadiusBuckets(
 
   return RADIUS_BUCKETS.map((bucket) => {
     const nearbyFeatures = features.filter((feature) => {
-      const [lon, lat] = feature.geometry.coordinates;
-      return distanceKm(center, [lon, lat]) <= bucket.radiusKm;
+      const point = featurePoint(feature);
+      if (!point) return false;
+      return distanceKm(center, point) <= bucket.radiusKm;
     });
     const listingFeatures = nearbyFeatures.filter(
       (feature) => feature.properties.feature_type === "listing",
@@ -640,9 +801,7 @@ function buildRadiusBuckets(
         (feature) => feature.properties.feature_type === "planned_investment",
       ).length,
       infrastructureCount: nearbyFeatures.filter(
-        (feature) =>
-          feature.properties.feature_type !== "listing" &&
-          feature.properties.feature_type !== "planned_investment",
+        (feature) => isInfrastructureFeatureType(feature.properties.feature_type),
       ).length,
       medianPricePerM2: median(priceValues),
       averageInvestmentScore: averageRounded(investmentScores),
@@ -714,6 +873,9 @@ function isFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) 
   const featureType = feature.properties.feature_type;
   if (featureType === "listing") return visibleLayers.listings || visibleLayers.priceHeatmap;
   if (featureType === "planned_investment") return visibleLayers.planned;
+  if (isAdministrativeFeatureType(featureType)) {
+    return isAdministrativeFeatureVisible(feature, visibleLayers);
+  }
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
 
@@ -736,7 +898,51 @@ function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLa
   const featureType = feature.properties.feature_type;
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
+  if (isAdministrativeFeatureType(featureType)) return false;
   return isInfrastructureFeatureVisible(feature, visibleLayers);
+}
+
+function administrativeMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): GeoJsonData {
+  return {
+    type: "FeatureCollection",
+    features:
+      collection?.features.filter((feature) =>
+        isAdministrativeFeatureVisible(feature, visibleLayers),
+      ) ?? [],
+  };
+}
+
+function isAdministrativeFeatureVisible(
+  feature: MapFeature,
+  visibleLayers: VisibleMapLayers,
+) {
+  const featureType = feature.properties.feature_type;
+  if (!visibleLayers.administrative) return false;
+  if (featureType === "district_boundary") return visibleLayers.districts;
+  if (featureType === "municipality_boundary") return visibleLayers.municipalities;
+  if (featureType === "voivodeship_boundary") return visibleLayers.voivodeshipBoundary;
+  return false;
+}
+
+function isAdministrativeFeatureType(featureType: MapFeatureType) {
+  return (
+    featureType === "district_boundary" ||
+    featureType === "municipality_boundary" ||
+    featureType === "voivodeship_boundary"
+  );
+}
+
+function isInfrastructureFeatureType(featureType: MapFeatureType) {
+  return (
+    featureType === "transport_stop" ||
+    featureType === "school" ||
+    featureType === "kindergarten" ||
+    featureType === "amenity" ||
+    featureType === "industrial_zone"
+  );
 }
 
 function isInfrastructureFeatureVisible(
@@ -810,14 +1016,15 @@ function syncMarkers(
       return;
     }
 
-    const [lon, lat] = feature.geometry.coordinates;
+    const point = featurePoint(feature);
+    if (!point) return;
     const element = markerElement(feature, map, maplibre);
 
     const marker = new maplibre.Marker({
       element,
       anchor: feature.properties.feature_type === "listing" ? "bottom" : "center",
     })
-      .setLngLat([lon, lat])
+      .setLngLat(point)
       .addTo(map);
     markers.push(marker);
   });
@@ -866,7 +1073,7 @@ function createInvestmentMarker(
   element.addEventListener("click", () => {
     const popupContent = buildInvestmentPopup(feature);
     new maplibre.Popup({ offset: 18 })
-      .setLngLat(feature.geometry.coordinates)
+      .setLngLat(featurePoint(feature) ?? WROCLAW_CENTER)
       .setDOMContent(popupContent)
       .addTo(map);
   });
@@ -887,7 +1094,7 @@ function createInfrastructureMarker(
   element.addEventListener("click", () => {
     const popupContent = buildInfrastructurePopup(feature);
     new maplibre.Popup({ offset: 16 })
-      .setLngLat(feature.geometry.coordinates)
+      .setLngLat(featurePoint(feature) ?? WROCLAW_CENTER)
       .setDOMContent(popupContent)
       .addTo(map);
   });
@@ -1065,12 +1272,27 @@ function fitToCollection(
 function calculateFeatureBbox(features: MapFeatureCollection["features"]) {
   if (features.length === 0) return null;
 
-  const lonValues = features.map((feature) => feature.geometry.coordinates[0]);
-  const latValues = features.map((feature) => feature.geometry.coordinates[1]);
+  const coordinates = features.flatMap((feature) => featureCoordinates(feature));
+  const lonValues = coordinates.map((coordinate) => coordinate[0]);
+  const latValues = coordinates.map((coordinate) => coordinate[1]);
   return [
     Math.min(...lonValues),
     Math.min(...latValues),
     Math.max(...lonValues),
     Math.max(...latValues),
   ] satisfies [number, number, number, number];
+}
+
+function featurePoint(feature: MapFeature): PointCoordinates | null {
+  if (feature.geometry.type === "Point") return feature.geometry.coordinates;
+  return null;
+}
+
+function featureCoordinates(feature: MapFeature): PointCoordinates[] {
+  if (feature.geometry.type === "Point") return [feature.geometry.coordinates];
+  const coordinates: PointCoordinates[] = [];
+  feature.geometry.coordinates.forEach((ring) => {
+    coordinates.push(...ring);
+  });
+  return coordinates;
 }

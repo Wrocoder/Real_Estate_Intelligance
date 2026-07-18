@@ -2526,7 +2526,10 @@ export type MapFeatureType =
   | "school"
   | "kindergarten"
   | "amenity"
-  | "industrial_zone";
+  | "industrial_zone"
+  | "district_boundary"
+  | "municipality_boundary"
+  | "voivodeship_boundary";
 
 export type MapFeatureProperties = {
   feature_type: MapFeatureType;
@@ -2536,10 +2539,15 @@ export type MapFeatureProperties = {
 export type MapFeature = {
   type: "Feature";
   id: string;
-  geometry: {
-    type: "Point";
-    coordinates: [number, number];
-  };
+  geometry:
+    | {
+        type: "Point";
+        coordinates: [number, number];
+      }
+    | {
+        type: "Polygon";
+        coordinates: [number, number][][];
+      };
   properties: MapFeatureProperties;
 };
 
@@ -2552,6 +2560,8 @@ export type MapFeatureCollection = {
     planned_investment_count?: number;
     infrastructure_count?: number;
     infrastructure_counts?: Record<string, number>;
+    administrative_layer_count?: number;
+    administrative_counts?: Record<string, number>;
     skipped_listings?: number;
     filters?: Record<string, unknown>;
     [key: string]: unknown;

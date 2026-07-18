@@ -16,6 +16,8 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert payload["metadata"]["infrastructure_count"] >= 10
     assert payload["metadata"]["infrastructure_counts"]["transport_stop_count"] >= 2
     assert payload["metadata"]["infrastructure_counts"]["school_count"] >= 2
+    assert payload["metadata"]["administrative_layer_count"] >= 3
+    assert payload["metadata"]["administrative_counts"]["district_boundary_count"] >= 3
 
     feature_types = {feature["properties"]["feature_type"] for feature in payload["features"]}
     assert {
@@ -26,6 +28,9 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
         "kindergarten",
         "amenity",
         "industrial_zone",
+        "district_boundary",
+        "municipality_boundary",
+        "voivodeship_boundary",
     } <= feature_types
 
     listing = next(
@@ -45,6 +50,16 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert stop["geometry"]["coordinates"] == [16.9671, 51.1125]
     assert stop["properties"]["feature_type"] == "transport_stop"
     assert stop["properties"]["lines_label"] == "13, 23, 142"
+
+    district_boundary = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"].get("reference_id") == "wroclaw-fabryczna"
+    )
+    assert district_boundary["geometry"]["type"] == "Polygon"
+    assert district_boundary["properties"]["feature_type"] == "district_boundary"
+    assert district_boundary["properties"]["geometry_accuracy"] == "approximate"
+    assert district_boundary["properties"]["median_price_per_m2"] == 11800
 
 
 def test_map_features_supports_bbox_filter() -> None:
@@ -90,6 +105,12 @@ def test_map_features_supports_district_infrastructure_filter() -> None:
     assert {feature["properties"]["district"] for feature in infrastructure_features} == {
         "Fabryczna"
     }
+    district_boundaries = [
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "district_boundary"
+    ]
+    assert {feature["properties"]["name"] for feature in district_boundaries} == {"Fabryczna"}
 
 
 def test_map_features_supports_municipality_filter() -> None:
@@ -114,6 +135,15 @@ def test_map_features_supports_municipality_filter() -> None:
     assert {feature["properties"]["municipality"] for feature in listing_features} == {
         "Kobierzyce"
     }
+
+
+def test_map_features_does_not_return_default_administrative_layer_for_unknown_city() -> None:
+    response = client.get("/api/v1/map/features", params={"city": "Warszawa"})
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["metadata"]["administrative_layer_count"] == 0
+    assert payload["features"] == []
 
 
 def test_map_features_supports_building_attribute_filters() -> None:

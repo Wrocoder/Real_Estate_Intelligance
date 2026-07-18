@@ -1,8 +1,17 @@
-from math import asin, cos, radians, sin, sqrt
+from math import asin, cos, pi, radians, sin, sqrt
 from typing import Any
 
 from domarion.repositories.base import RealEstateRepository
-from domarion.schemas import Listing, MapFeature, MapFeatureCollection, MapPointGeometry
+from domarion.schemas import (
+    AreaStatistics,
+    DistrictReference,
+    Listing,
+    MapFeature,
+    MapFeatureCollection,
+    MapPointGeometry,
+    MapPolygonGeometry,
+    MunicipalityReference,
+)
 from domarion.schemas import PlannedInvestment as PlannedInvestmentSchema
 from domarion.services.building_filters import matches_building_filters
 from domarion.services.lifestyle_filters import matches_lifestyle_filters
@@ -17,7 +26,16 @@ INFRASTRUCTURE_FEATURE_TYPES = {
     "amenity",
     "industrial_zone",
 }
+ADMINISTRATIVE_FEATURE_TYPES = {
+    "district_boundary",
+    "municipality_boundary",
+    "voivodeship_boundary",
+}
 INFRASTRUCTURE_LAYER_LIMIT = 500
+VOIVODESHIP_NAMES = {
+    "dolnoslaskie": "Dolnośląskie",
+    "dolnośląskie": "Dolnośląskie",
+}
 
 
 class MapQueryError(ValueError):
@@ -112,8 +130,19 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    administrative_features = _administrative_features(
+        repository,
+        city=city,
+        district=district,
+        municipality=municipality,
+        voivodeship=voivodeship,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
 
-    features: list[MapFeature] = []
+    features: list[MapFeature] = [*administrative_features]
     skipped_listings = 0
 
     for listing in listings:
@@ -181,6 +210,12 @@ def build_map_feature_collection(
         )
         for feature_type in sorted(INFRASTRUCTURE_FEATURE_TYPES)
     }
+    administrative_counts = {
+        f"{feature_type}_count": sum(
+            1 for feature in features if feature.properties["feature_type"] == feature_type
+        )
+        for feature_type in sorted(ADMINISTRATIVE_FEATURE_TYPES)
+    }
 
     return MapFeatureCollection(
         features=features,
@@ -190,6 +225,8 @@ def build_map_feature_collection(
             "planned_investment_count": planned_count,
             "infrastructure_count": sum(infrastructure_counts.values()),
             "infrastructure_counts": infrastructure_counts,
+            "administrative_layer_count": sum(administrative_counts.values()),
+            "administrative_counts": administrative_counts,
             "skipped_listings": skipped_listings,
             "filters": {
                 "voivodeship": voivodeship,
@@ -277,6 +314,187 @@ def _infrastructure_features(
             features.append(builder(reference))
 
     return features
+
+
+def _administrative_features(
+    repository: RealEstateRepository,
+    *,
+    city: str | None,
+    district: str | None,
+    municipality: str | None,
+    voivodeship: str | None,
+    bbox: BBox | None,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> list[MapFeature]:
+    features: list[MapFeature] = []
+    area_statistics = {area.area_id: area for area in repository.list_area_statistics()}
+    district_city = municipality or city
+
+    for reference in repository.list_district_references(city=district_city):
+        if not _district_reference_matches_filters(reference, district, municipality):
+            continue
+        if reference.lat is None or reference.lon is None:
+            continue
+        if not _is_inside_spatial_window(reference.lat, reference.lon, bbox, lat, lon, radius_km):
+            continue
+        features.append(_district_boundary_to_feature(reference, area_statistics.get(reference.id)))
+
+    for reference in repository.list_municipalities():
+        if not _municipality_reference_matches_filters(reference, city, municipality):
+            continue
+        if reference.lat is None or reference.lon is None:
+            continue
+        if not _is_inside_spatial_window(reference.lat, reference.lon, bbox, lat, lon, radius_km):
+            continue
+        features.append(_municipality_boundary_to_feature(reference))
+
+    has_location_filter = city is not None or district is not None or municipality is not None
+    voivodeship_feature = _voivodeship_boundary_to_feature(voivodeship)
+    voivodeship_in_window = _is_inside_spatial_window(
+        WROCLAW_CENTER[1],
+        WROCLAW_CENTER[0],
+        bbox,
+        lat,
+        lon,
+        radius_km,
+    )
+    if (
+        voivodeship_feature is not None
+        and voivodeship_in_window
+        and (not has_location_filter or features)
+    ):
+        features.append(voivodeship_feature)
+
+    return features
+
+
+def _district_reference_matches_filters(
+    reference: DistrictReference,
+    district: str | None,
+    municipality: str | None,
+) -> bool:
+    if municipality and reference.municipality_name.casefold() != municipality.casefold():
+        return False
+    if district and reference.name.casefold() != district.casefold():
+        return False
+    return True
+
+
+def _municipality_reference_matches_filters(
+    reference: MunicipalityReference,
+    city: str | None,
+    municipality: str | None,
+) -> bool:
+    location_name = municipality or city
+    if location_name and reference.name.casefold() != location_name.casefold():
+        return False
+    return True
+
+
+def _district_boundary_to_feature(
+    reference: DistrictReference,
+    area: AreaStatistics | None,
+) -> MapFeature:
+    radius_km = _district_boundary_radius_km(reference, area)
+    return MapFeature(
+        id=f"district-boundary-{reference.id}",
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(reference.lon or 0, reference.lat or 0, radius_km),
+        ),
+        properties={
+            "feature_type": "district_boundary",
+            "admin_level": "district",
+            "reference_id": reference.id,
+            "area_id": reference.area_id,
+            "name": reference.name,
+            "city": reference.municipality_name,
+            "municipality": reference.municipality_name,
+            "median_price_per_m2": area.median_price_per_m2 if area else None,
+            "active_listings": area.active_listings if area else None,
+            "price_change_90d_pct": area.price_change_90d_pct if area else None,
+            "geometry_accuracy": "approximate",
+            "geometry_source": "district centroid and market area radius",
+        },
+    )
+
+
+def _municipality_boundary_to_feature(reference: MunicipalityReference) -> MapFeature:
+    return MapFeature(
+        id=f"municipality-boundary-{reference.id}",
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(reference.lon or 0, reference.lat or 0, 4.8),
+        ),
+        properties={
+            "feature_type": "municipality_boundary",
+            "admin_level": "municipality",
+            "reference_id": reference.id,
+            "name": reference.name,
+            "municipality": reference.name,
+            "voivodeship": reference.region,
+            "geometry_accuracy": "approximate",
+            "geometry_source": "municipality centroid and reference radius",
+        },
+    )
+
+
+def _voivodeship_boundary_to_feature(voivodeship: str | None) -> MapFeature | None:
+    if voivodeship:
+        voivodeship_name = VOIVODESHIP_NAMES.get(voivodeship.casefold())
+        if voivodeship_name is None:
+            return None
+    else:
+        voivodeship_name = "Dolnośląskie"
+
+    return MapFeature(
+        id="voivodeship-boundary-dolnoslaskie",
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(WROCLAW_CENTER[0], WROCLAW_CENTER[1], 34),
+        ),
+        properties={
+            "feature_type": "voivodeship_boundary",
+            "admin_level": "voivodeship",
+            "reference_id": "dolnoslaskie",
+            "name": voivodeship_name,
+            "voivodeship": voivodeship_name,
+            "geometry_accuracy": "approximate",
+            "geometry_source": "regional centroid and MVP coverage radius",
+        },
+    )
+
+
+def _district_boundary_radius_km(
+    reference: DistrictReference,
+    area: AreaStatistics | None,
+) -> float:
+    if area is None:
+        return 1.8
+    active_listings_factor = min(area.active_listings / 700, 1)
+    base_radius = 1.2 + active_listings_factor * 1.6
+    if reference.municipality_name.casefold() == "wrocław".casefold():
+        return max(base_radius, 2.4)
+    return base_radius
+
+
+def _circle_polygon(
+    center_lon: float,
+    center_lat: float,
+    radius_km: float,
+    points: int = 48,
+) -> tuple[tuple[tuple[float, float], ...], ...]:
+    lat_radius = radius_km / 111.32
+    lon_scale = max(cos(radians(center_lat)), 0.2)
+    lon_radius = radius_km / (111.32 * lon_scale)
+    ring = [
+        (
+            round(center_lon + lon_radius * cos(2 * pi * index / points), 6),
+            round(center_lat + lat_radius * sin(2 * pi * index / points), 6),
+        )
+        for index in range(points)
+    ]
+    ring.append(ring[0])
+    return (tuple(ring),)
 
 
 def _reference_matches_municipality(reference: Any, municipality: str | None) -> bool:
@@ -512,14 +730,27 @@ def _calculate_bbox(features: list[MapFeature]) -> BBox | None:
     if not features:
         return None
 
-    lon_values = [feature.geometry.coordinates[0] for feature in features]
-    lat_values = [feature.geometry.coordinates[1] for feature in features]
+    coordinate_pairs = [
+        coordinate for feature in features for coordinate in _feature_coordinate_pairs(feature)
+    ]
+    lon_values = [coordinate[0] for coordinate in coordinate_pairs]
+    lat_values = [coordinate[1] for coordinate in coordinate_pairs]
     return (
         round(min(lon_values), 6),
         round(min(lat_values), 6),
         round(max(lon_values), 6),
         round(max(lat_values), 6),
     )
+
+
+def _feature_coordinate_pairs(feature: MapFeature) -> list[tuple[float, float]]:
+    if feature.geometry.type == "Point":
+        return [feature.geometry.coordinates]
+    return [
+        coordinate
+        for ring in feature.geometry.coordinates
+        for coordinate in ring
+    ]
 
 
 def _compact_price(price: int) -> str:
