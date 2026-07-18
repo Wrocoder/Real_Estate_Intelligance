@@ -25,17 +25,17 @@
 - [ ] Провести отдельные интервью с ипотечными брокерами и малыми агентствами.
 - [ ] Сформировать список первых 30 агентств/риелторов для paid beta.
 - [x] Подготовить коммерческий оффер для риелторов.
-- [ ] Подготовить оценку коммерческого потенциала по шкале из `First_prompt_ru.md`.
-- [ ] Подготовить конкурентный анализ Otodom, OLX, Morizon, Gratka, SonarHome, Cenatorium, urban.one и агентских CRM.
-- [ ] Подготовить risk register: юридические, технические и бизнес-риски с mitigation-планом.
-- [ ] Описать moat strategy: история цен, дедупликация, snapshots, геоданные, SEO и агентские партнерства.
+- [x] Подготовить оценку коммерческого потенциала по шкале из `First_prompt_ru.md`.
+- [x] Подготовить конкурентный анализ Otodom, OLX, Morizon, Gratka, SonarHome, Cenatorium, urban.one и агентских CRM.
+- [x] Подготовить risk register: юридические, технические и бизнес-риски с mitigation-планом.
+- [x] Описать moat strategy: история цен, дедупликация, snapshots, геоданные, SEO и агентские партнерства.
 - [x] Описать hybrid user-provided listing strategy: пользователь вводит адрес/URL/параметры, а анализ строится без массового копирования порталов.
 - [x] Зафиксировать hybrid flow spec в `docs/hybrid_listing_analysis.md`.
 - [x] Зафиксировать developer reputation/ranking backlog и candidate sources в `docs/developer_reputation_plan.md`.
 - [ ] Провести legal/data review источников для рейтинга застройщиков: directories, UOKiK, KRS/REGON, DFG, partner inspection data, public reviews.
-- [ ] Обновить 12-месячный roadmap по фактическому состоянию продукта.
-- [ ] Описать минимальную команду запуска и зоны ответственности.
-- [ ] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
+- [x] Обновить 12-месячный roadmap по фактическому состоянию продукта.
+- [x] Описать минимальную команду запуска и зоны ответственности.
+- [x] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
 
 ## 1.1 Legal, Compliance и Data Governance
 
@@ -534,6 +534,7 @@
 - [x] Commit 88: paid beta landing pages and GTM playbook.
 - [x] Commit 89: paid beta lead capture and admin queue.
 - [x] Commit 90: source compliance policy for ToS, robots, rate limits and prohibited data.
+- [x] Commit 91: product validation strategy and competitor analysis.
 
 ## Current Sprint
 
