@@ -37,6 +37,11 @@ PLANNING_FEATURE_TYPES = {
     "mpzp_plan_zone",
     "studium_policy_zone",
 }
+FUTURE_TRANSPORT_FEATURE_TYPES = {
+    "future_tram_line",
+    "future_bus_route",
+    "future_road_corridor",
+}
 RISK_FEATURE_TYPES = {
     "industrial_risk_zone",
     "major_road_noise_zone",
@@ -283,6 +288,13 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    future_transport_features = _future_transport_features(
+        planned_investments,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
     risk_features = _risk_features(
         repository,
         listings,
@@ -298,6 +310,7 @@ def build_map_feature_collection(
     features: list[MapFeature] = [
         *administrative_features,
         *planning_features,
+        *future_transport_features,
         *risk_features,
     ]
     skipped_listings = 0
@@ -379,6 +392,12 @@ def build_map_feature_collection(
         )
         for feature_type in sorted(PLANNING_FEATURE_TYPES)
     }
+    future_transport_counts = {
+        f"{feature_type}_count": sum(
+            1 for feature in features if feature.properties["feature_type"] == feature_type
+        )
+        for feature_type in sorted(FUTURE_TRANSPORT_FEATURE_TYPES)
+    }
     risk_counts = {
         f"{feature_type}_count": sum(
             1 for feature in features if feature.properties["feature_type"] == feature_type
@@ -398,6 +417,8 @@ def build_map_feature_collection(
             "administrative_counts": administrative_counts,
             "planning_layer_count": sum(planning_counts.values()),
             "planning_counts": planning_counts,
+            "future_transport_layer_count": sum(future_transport_counts.values()),
+            "future_transport_counts": future_transport_counts,
             "risk_layer_count": sum(risk_counts.values()),
             "risk_counts": risk_counts,
             "skipped_listings": skipped_listings,
@@ -685,6 +706,88 @@ def _planning_zone_to_feature(zone: dict[str, Any]) -> MapFeature:
             "source_name": zone["source_name"],
             "potential_impact": zone["potential_impact"],
             "review_reason": "Check exact parcel in official MPZP/Studium before decision.",
+        },
+    )
+
+
+def _future_transport_features(
+    planned_investments: list[PlannedInvestmentSchema],
+    *,
+    bbox: BBox | None,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> list[MapFeature]:
+    features: list[MapFeature] = []
+    for investment in planned_investments:
+        feature_types = _future_transport_feature_types(investment)
+        if not feature_types:
+            continue
+        coordinates = _future_transport_coordinates(investment)
+        if not _line_is_inside_spatial_window(coordinates, bbox, lat, lon, radius_km):
+            continue
+        features.extend(
+            _future_transport_to_feature(investment, feature_type, coordinates)
+            for feature_type in feature_types
+        )
+    return features
+
+
+def _future_transport_feature_types(investment: PlannedInvestmentSchema) -> list[str]:
+    normalized = f"{investment.investment_type} {investment.name}".casefold()
+    feature_types = []
+    if any(token in normalized for token in ("tram", "tramwaj", "tat")):
+        feature_types.append("future_tram_line")
+    if any(token in normalized for token in ("bus", "autobus")):
+        feature_types.append("future_bus_route")
+    if any(token in normalized for token in ("road", "droga", "transport")):
+        feature_types.append("future_road_corridor")
+    return feature_types
+
+
+def _future_transport_coordinates(
+    investment: PlannedInvestmentSchema,
+) -> tuple[tuple[float, float], ...]:
+    start = (investment.lon, investment.lat)
+    target = _future_transport_target(investment, start)
+    return (start, target)
+
+
+def _future_transport_target(
+    investment: PlannedInvestmentSchema,
+    start: tuple[float, float],
+) -> tuple[float, float]:
+    if investment.city.casefold() == "wrocław".casefold():
+        return WROCLAW_CENTER
+
+    start_lon, start_lat = start
+    return round(start_lon + 0.022, 6), round(start_lat + 0.008, 6)
+
+
+def _future_transport_to_feature(
+    investment: PlannedInvestmentSchema,
+    feature_type: str,
+    coordinates: tuple[tuple[float, float], ...],
+) -> MapFeature:
+    return MapFeature(
+        id=f"{feature_type}-{investment.id}",
+        geometry=MapLineStringGeometry(coordinates=coordinates),
+        properties={
+            "feature_type": feature_type,
+            "investment_id": investment.id,
+            "reference_id": investment.id,
+            "name": investment.name,
+            "investment_type": investment.investment_type,
+            "status": investment.status,
+            "city": investment.city,
+            "district": investment.district,
+            "expected_year": investment.expected_year,
+            "source_url": investment.source_url,
+            "confidence_score": investment.confidence_score,
+            "geometry_accuracy": "future_corridor_proxy",
+            "geometry_source": "planned investment centroid connected to local centre",
+            "review_reason": "Verify exact route alignment in official transport project maps.",
+            "growth_impact": _investment_growth_impact(investment),
         },
     )
 

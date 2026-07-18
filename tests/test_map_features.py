@@ -22,6 +22,10 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert payload["metadata"]["planning_layer_count"] >= 4
     assert payload["metadata"]["planning_counts"]["mpzp_plan_zone_count"] >= 2
     assert payload["metadata"]["planning_counts"]["studium_policy_zone_count"] >= 2
+    assert payload["metadata"]["future_transport_layer_count"] >= 3
+    assert payload["metadata"]["future_transport_counts"]["future_tram_line_count"] >= 1
+    assert payload["metadata"]["future_transport_counts"]["future_bus_route_count"] >= 1
+    assert payload["metadata"]["future_transport_counts"]["future_road_corridor_count"] >= 1
     assert payload["metadata"]["risk_layer_count"] >= 4
     assert payload["metadata"]["risk_counts"]["major_road_noise_zone_count"] >= 2
     assert payload["metadata"]["risk_counts"]["industrial_risk_zone_count"] >= 1
@@ -41,6 +45,9 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
         "voivodeship_boundary",
         "mpzp_plan_zone",
         "studium_policy_zone",
+        "future_tram_line",
+        "future_bus_route",
+        "future_road_corridor",
         "industrial_risk_zone",
         "major_road_noise_zone",
         "rail_noise_review_zone",
@@ -97,6 +104,23 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     )
     assert studium_zone["geometry"]["type"] == "Polygon"
     assert studium_zone["properties"]["planning_status"] == "review_required"
+
+    future_tram_line = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "future_tram_line"
+    )
+    assert future_tram_line["geometry"]["type"] == "LineString"
+    assert future_tram_line["properties"]["geometry_accuracy"] == "future_corridor_proxy"
+    assert future_tram_line["properties"]["growth_impact"] == "positive"
+
+    future_road_corridor = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "future_road_corridor"
+    )
+    assert future_road_corridor["geometry"]["type"] == "LineString"
+    assert future_road_corridor["properties"]["growth_impact"] == "mixed"
 
     district_boundary = next(
         feature
@@ -216,6 +240,7 @@ def test_map_features_does_not_return_default_administrative_layer_for_unknown_c
     assert response.status_code == 200
     assert payload["metadata"]["administrative_layer_count"] == 0
     assert payload["metadata"]["planning_layer_count"] == 0
+    assert payload["metadata"]["future_transport_layer_count"] == 0
     assert payload["metadata"]["risk_layer_count"] == 0
     assert payload["features"] == []
 

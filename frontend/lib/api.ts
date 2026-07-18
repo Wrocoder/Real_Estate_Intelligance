@@ -2533,6 +2533,9 @@ export type MapFeatureType =
   | "voivodeship_boundary"
   | "mpzp_plan_zone"
   | "studium_policy_zone"
+  | "future_tram_line"
+  | "future_bus_route"
+  | "future_road_corridor"
   | "industrial_risk_zone"
   | "major_road_noise_zone"
   | "rail_noise_review_zone"
@@ -2577,6 +2580,8 @@ export type MapFeatureCollection = {
     administrative_counts?: Record<string, number>;
     planning_layer_count?: number;
     planning_counts?: Record<string, number>;
+    future_transport_layer_count?: number;
+    future_transport_counts?: Record<string, number>;
     risk_layer_count?: number;
     risk_counts?: Record<string, number>;
     skipped_listings?: number;

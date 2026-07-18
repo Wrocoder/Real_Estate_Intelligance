@@ -39,6 +39,10 @@ type VisibleMapLayers = {
   planning: boolean;
   mpzpZones: boolean;
   studiumZones: boolean;
+  futureTransport: boolean;
+  futureTramLines: boolean;
+  futureBusRoutes: boolean;
+  futureRoadCorridors: boolean;
   riskLayers: boolean;
   majorRoadNoise: boolean;
   industrialRisk: boolean;
@@ -84,6 +88,10 @@ type PlanningLayerControlKey = keyof Pick<
   VisibleMapLayers,
   "mpzpZones" | "studiumZones"
 >;
+type FutureTransportLayerControlKey = keyof Pick<
+  VisibleMapLayers,
+  "futureTramLines" | "futureBusRoutes" | "futureRoadCorridors"
+>;
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -97,6 +105,7 @@ const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const ADMINISTRATIVE_SOURCE_ID = "domarion-administrative-boundaries";
 const PLANNING_SOURCE_ID = "domarion-planning-zones";
+const FUTURE_TRANSPORT_SOURCE_ID = "domarion-future-transport-corridors";
 const RISK_SOURCE_ID = "domarion-risk-zones";
 const TRANSPORT_ROUTES_SOURCE_ID = "domarion-transport-routes";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
@@ -121,6 +130,10 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   planning: false,
   mpzpZones: true,
   studiumZones: true,
+  futureTransport: false,
+  futureTramLines: true,
+  futureBusRoutes: true,
+  futureRoadCorridors: true,
   riskLayers: false,
   majorRoadNoise: true,
   industrialRisk: true,
@@ -167,6 +180,20 @@ const PLANNING_LAYER_CONTROLS: Array<{
 }> = [
   { key: "mpzpZones", label: "MPZP" },
   { key: "studiumZones", label: "Studium" },
+];
+
+const FUTURE_TRANSPORT_LAYER_IDS = [
+  "future-transport-line",
+  "future-transport-label",
+];
+
+const FUTURE_TRANSPORT_LAYER_CONTROLS: Array<{
+  key: FutureTransportLayerControlKey;
+  label: string;
+}> = [
+  { key: "futureTramLines", label: "Будущие трамваи" },
+  { key: "futureBusRoutes", label: "Будущие автобусы" },
+  { key: "futureRoadCorridors", label: "Будущие дороги" },
 ];
 
 const RISK_LAYER_IDS = [
@@ -335,6 +362,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
   const administrativeCount = collection?.metadata.administrative_layer_count ?? 0;
   const planningCount = collection?.metadata.planning_layer_count ?? 0;
+  const futureTransportCount = collection?.metadata.future_transport_layer_count ?? 0;
   const riskLayerCount = collection?.metadata.risk_layer_count ?? 0;
   const radiusBuckets = buildRadiusBuckets(collection, visibleLayers, radiusCenter);
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
@@ -352,6 +380,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>{plannedCount} planned investments</span>
         <span>{administrativeCount} адм. зон</span>
         <span>{planningCount} planning</span>
+        <span>{futureTransportCount} future routes</span>
         <span>{riskLayerCount} risk zones</span>
         <span>{infrastructureCount} infrastructure</span>
       </div>
@@ -413,6 +442,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
               type="checkbox"
               checked={visibleLayers[control.key]}
               disabled={!visibleLayers.administrative}
+              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+            />
+            <span>{control.label}</span>
+          </label>
+        ))}
+        <label>
+          <input
+            type="checkbox"
+            checked={visibleLayers.futureTransport}
+            onChange={(event) => updateVisibleLayer("futureTransport", event.target.checked)}
+          />
+          <span>Будущие маршруты</span>
+        </label>
+        {FUTURE_TRANSPORT_LAYER_CONTROLS.map((control) => (
+          <label className="map-layer-subtoggle" key={control.key}>
+            <input
+              type="checkbox"
+              checked={visibleLayers[control.key]}
+              disabled={!visibleLayers.futureTransport}
               onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
             />
             <span>{control.label}</span>
@@ -499,6 +547,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         </span>
         <span>
           <i className="legend-dot planning" /> MPZP
+        </span>
+        <span>
+          <i className="legend-dot future-route" /> future routes
         </span>
         <span>
           <i className="legend-dot risk-zone" /> risk zones
@@ -725,6 +776,77 @@ function ensureMapLayers(map: MaplibreMap) {
         "text-field": ["concat", ["get", "plan_code"], " ", ["get", "name"]],
         "text-size": 11,
         "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#344054",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
+    });
+  }
+
+  if (!map.getSource(FUTURE_TRANSPORT_SOURCE_ID)) {
+    map.addSource(FUTURE_TRANSPORT_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("future-transport-line")) {
+    map.addLayer({
+      id: "future-transport-line",
+      type: "line",
+      source: FUTURE_TRANSPORT_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "line-cap": "round",
+        "line-join": "round",
+      },
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "feature_type"],
+          "future_tram_line",
+          "#7a5af8",
+          "future_bus_route",
+          "#155eef",
+          "future_road_corridor",
+          "#b54708",
+          "#667085",
+        ],
+        "line-opacity": [
+          "interpolate",
+          ["linear"],
+          ["to-number", ["get", "confidence_score"], 0],
+          0,
+          0.32,
+          100,
+          0.76,
+        ],
+        "line-width": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          9,
+          2.4,
+          13,
+          4.8,
+        ],
+        "line-dasharray": ["literal", [1.2, 1.1]],
+      },
+    });
+  }
+
+  if (!map.getLayer("future-transport-label")) {
+    map.addLayer({
+      id: "future-transport-label",
+      type: "symbol",
+      source: FUTURE_TRANSPORT_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "symbol-placement": "line",
+        "text-field": ["concat", ["get", "expected_year"], " ", ["get", "name"]],
+        "text-size": 11,
       },
       paint: {
         "text-color": "#344054",
@@ -1110,6 +1232,7 @@ function syncMapData(
     : EMPTY_COLLECTION;
   const administrative = administrativeMapCollection(collection, visibleLayers);
   const planningZones = planningMapCollection(collection, visibleLayers);
+  const futureTransport = futureTransportMapCollection(collection, visibleLayers);
   const riskZones = riskMapCollection(collection, visibleLayers);
   const transportRoutes = visibleLayers.infrastructure && visibleLayers.transportRoutes
     ? splitCollection(collection, "transport_route")
@@ -1121,6 +1244,9 @@ function syncMapData(
     | SourceWithData
     | undefined;
   const planningSource = map.getSource(PLANNING_SOURCE_ID) as SourceWithData | undefined;
+  const futureTransportSource = map.getSource(FUTURE_TRANSPORT_SOURCE_ID) as
+    | SourceWithData
+    | undefined;
   const riskSource = map.getSource(RISK_SOURCE_ID) as SourceWithData | undefined;
   const transportRouteSource = map.getSource(TRANSPORT_ROUTES_SOURCE_ID) as
     | SourceWithData
@@ -1131,6 +1257,7 @@ function syncMapData(
   investmentSource?.setData(investments);
   administrativeSource?.setData(administrative);
   planningSource?.setData(planningZones);
+  futureTransportSource?.setData(futureTransport);
   riskSource?.setData(riskZones);
   transportRouteSource?.setData(transportRoutes);
   setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
@@ -1139,6 +1266,9 @@ function syncMapData(
   });
   PLANNING_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.planning);
+  });
+  FUTURE_TRANSPORT_LAYER_IDS.forEach((layerId) => {
+    setMapLayerVisibility(map, layerId, visibleLayers.futureTransport);
   });
   RISK_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.riskLayers);
@@ -1281,6 +1411,9 @@ function isFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) 
     return isAdministrativeFeatureVisible(feature, visibleLayers);
   }
   if (isPlanningFeatureType(featureType)) return isPlanningFeatureVisible(feature, visibleLayers);
+  if (isFutureTransportFeatureType(featureType)) {
+    return isFutureTransportFeatureVisible(feature, visibleLayers);
+  }
   if (isRiskFeatureType(featureType)) return isRiskFeatureVisible(feature, visibleLayers);
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
@@ -1307,6 +1440,7 @@ function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLa
   if (featureType === "planned_investment") return visibleLayers.planned;
   if (isAdministrativeFeatureType(featureType)) return false;
   if (isPlanningFeatureType(featureType)) return false;
+  if (isFutureTransportFeatureType(featureType)) return false;
   if (isRiskFeatureType(featureType)) return false;
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
@@ -1367,6 +1501,39 @@ function isPlanningFeatureVisible(feature: MapFeature, visibleLayers: VisibleMap
 
 function isPlanningFeatureType(featureType: MapFeatureType) {
   return featureType === "mpzp_plan_zone" || featureType === "studium_policy_zone";
+}
+
+function futureTransportMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): GeoJsonData {
+  return {
+    type: "FeatureCollection",
+    features:
+      collection?.features.filter((feature) =>
+        isFutureTransportFeatureVisible(feature, visibleLayers),
+      ) ?? [],
+  };
+}
+
+function isFutureTransportFeatureVisible(
+  feature: MapFeature,
+  visibleLayers: VisibleMapLayers,
+) {
+  const featureType = feature.properties.feature_type;
+  if (!visibleLayers.futureTransport) return false;
+  if (featureType === "future_tram_line") return visibleLayers.futureTramLines;
+  if (featureType === "future_bus_route") return visibleLayers.futureBusRoutes;
+  if (featureType === "future_road_corridor") return visibleLayers.futureRoadCorridors;
+  return false;
+}
+
+function isFutureTransportFeatureType(featureType: MapFeatureType) {
+  return (
+    featureType === "future_tram_line" ||
+    featureType === "future_bus_route" ||
+    featureType === "future_road_corridor"
+  );
 }
 
 function riskMapCollection(
