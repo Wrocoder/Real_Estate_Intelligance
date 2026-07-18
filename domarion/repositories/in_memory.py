@@ -22,6 +22,7 @@ from domarion.schemas import (
     IndustrialZoneReference,
     KindergartenReference,
     Listing,
+    ListingCorrectionRequest,
     ListingEvent,
     LocationReference,
     LocationReferenceType,
@@ -791,6 +792,26 @@ class InMemoryRealEstateRepository:
 
     def get_listing(self, listing_id: str) -> Listing | None:
         return self._listings.get(listing_id)
+
+    def update_listing(
+        self,
+        listing_id: str,
+        payload: ListingCorrectionRequest,
+    ) -> Listing | None:
+        listing = self._listings.get(listing_id)
+        if listing is None:
+            return None
+
+        corrections = payload.correction_values()
+        updated_values = listing.model_dump()
+        updated_values.update(corrections)
+        if "price" in corrections or "area_m2" in corrections:
+            updated_values["price_per_m2"] = int(
+                round(int(updated_values["price"]) / float(updated_values["area_m2"]))
+            )
+        updated = Listing.model_validate(updated_values)
+        self._listings[listing_id] = updated
+        return updated
 
     def list_area_statistics(self) -> list[AreaStatistics]:
         return list(self._areas.values())

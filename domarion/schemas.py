@@ -310,6 +310,68 @@ class Listing(BaseModel):
     data_quality_score: int = Field(ge=0, le=100)
 
 
+class ListingCorrectionRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    voivodeship: str | None = Field(default=None, min_length=1, max_length=80)
+    city: str | None = Field(default=None, min_length=1, max_length=80)
+    district: str | None = Field(default=None, min_length=1, max_length=80)
+    area_id: str | None = Field(default=None, min_length=1, max_length=120)
+    municipality: str | None = Field(default=None, min_length=1, max_length=80)
+    address: str | None = Field(default=None, min_length=1, max_length=255)
+    market_type: MarketType | None = None
+    building_type: str | None = Field(default=None, min_length=1, max_length=80)
+    renovation_state: str | None = Field(default=None, min_length=1, max_length=80)
+    has_balcony: bool | None = None
+    has_terrace: bool | None = None
+    has_garden: bool | None = None
+    has_elevator: bool | None = None
+    parking_type: str | None = Field(default=None, min_length=1, max_length=80)
+    heating_type: str | None = Field(default=None, min_length=1, max_length=80)
+    developer_id: str | None = Field(default=None, min_length=1, max_length=120)
+    developer_name: str | None = Field(default=None, min_length=1, max_length=160)
+    investment_name: str | None = Field(default=None, min_length=1, max_length=200)
+    primary_market_project_id: str | None = Field(default=None, min_length=1, max_length=160)
+    price: int | None = Field(default=None, gt=0)
+    area_m2: float | None = Field(default=None, gt=0)
+    rooms: int | None = Field(default=None, ge=1, le=20)
+    floor: int | None = Field(default=None, ge=0, le=100)
+    building_floors: int | None = Field(default=None, ge=1, le=150)
+    building_year: int | None = Field(default=None, ge=1800, le=2100)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    distance_to_center_km: float | None = Field(default=None, ge=0)
+    nearest_stop_m: int | None = Field(default=None, ge=0)
+    nearest_school_m: int | None = Field(default=None, ge=0)
+    nearest_major_road_m: int | None = Field(default=None, ge=0)
+    nearest_industrial_zone_m: int | None = Field(default=None, ge=0)
+    parks_within_1km: int | None = Field(default=None, ge=0)
+    schools_within_1km: int | None = Field(default=None, ge=0)
+    planned_investments_within_2km: int | None = Field(default=None, ge=0)
+    data_quality_score: int | None = Field(default=None, ge=0, le=100)
+    correction_reason: str = Field(min_length=3, max_length=500)
+    corrected_by: str | None = Field(default=None, min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def require_listing_field(self) -> "ListingCorrectionRequest":
+        if not self.correction_values():
+            raise ValueError("At least one listing correction field must be provided")
+        return self
+
+    def correction_values(self) -> dict[str, Any]:
+        return self.model_dump(
+            exclude_unset=True,
+            exclude_none=True,
+            exclude={"correction_reason", "corrected_by"},
+        )
+
+
+class ListingCorrectionResult(BaseModel):
+    listing: Listing
+    changed_fields: list[str]
+    correction_reason: str
+    corrected_by: str | None = None
+
+
 class AreaStatistics(BaseModel):
     area_id: str
     name: str

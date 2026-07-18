@@ -52,6 +52,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен text/address search для listings, hidden gems и saved-search alerts: title/address/district/city/source metadata, accent-insensitive matching.
 - Добавлен рейтинг застройщиков: API, frontend page, developer блоки в listing/check/compare reports и due-diligence citations.
 - Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
+- Добавлена ручная correction-панель normalized listings: admin PATCH обновляет report-facing поля и пересчитывает `price_per_m2`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен legal-first developer feed import: JSON-фид профилей, aliases, проектов, registry checks, UOKiK events, directories, partner inspections и quality signals с dry-run и Postgres upsert.
 - Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
@@ -167,6 +168,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/infrastructure/enrich
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
+- http://127.0.0.1:8000/api/v1/admin/listings/{listing_id}/normalized
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals/lead-scores

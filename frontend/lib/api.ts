@@ -2278,6 +2278,55 @@ export type PropertyDeduplicationMatchUpdate = {
   review_status: PropertyDeduplicationReviewStatus;
 };
 
+export type ListingCorrectionPayload = {
+  title?: string;
+  voivodeship?: string;
+  city?: string;
+  district?: string;
+  area_id?: string;
+  municipality?: string;
+  address?: string;
+  market_type?: "primary" | "secondary";
+  building_type?: string;
+  renovation_state?: string;
+  has_balcony?: boolean;
+  has_terrace?: boolean;
+  has_garden?: boolean;
+  has_elevator?: boolean;
+  parking_type?: string;
+  heating_type?: string;
+  developer_id?: string;
+  developer_name?: string;
+  investment_name?: string;
+  primary_market_project_id?: string;
+  price?: number;
+  area_m2?: number;
+  rooms?: number;
+  floor?: number;
+  building_floors?: number;
+  building_year?: number;
+  lat?: number;
+  lon?: number;
+  distance_to_center_km?: number;
+  nearest_stop_m?: number;
+  nearest_school_m?: number;
+  nearest_major_road_m?: number;
+  nearest_industrial_zone_m?: number;
+  parks_within_1km?: number;
+  schools_within_1km?: number;
+  planned_investments_within_2km?: number;
+  data_quality_score?: number;
+  correction_reason: string;
+  corrected_by?: string | null;
+};
+
+export type ListingCorrectionResult = {
+  listing: Listing;
+  changed_fields: string[];
+  correction_reason: string;
+  corrected_by: string | null;
+};
+
 export type CompareResponse = {
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
@@ -3339,6 +3388,15 @@ export const api = {
       headers: ADMIN_HEADERS,
       body: JSON.stringify(payload),
     }),
+  correctAdminNormalizedListing: (listingId: string, payload: ListingCorrectionPayload) =>
+    request<ListingCorrectionResult>(
+      `/api/v1/admin/listings/${encodeURIComponent(listingId)}/normalized`,
+      {
+        method: "PATCH",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
   deliverAdminDailyEmailAlerts: (payload: AlertDeliveryBatchRequest = {}) =>
     request<AlertDeliveryBatchResult>("/api/v1/admin/alerts/deliver-daily-email", {
       method: "POST",

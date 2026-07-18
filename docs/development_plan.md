@@ -320,7 +320,7 @@
 - [x] Добавить internal admin auth.
 - [x] Добавить список ingestion jobs.
 - [x] Добавить просмотр raw listings.
-- [ ] Добавить ручное исправление normalized listing.
+- [x] Добавить ручное исправление normalized listing.
 - [x] Добавить dedup review queue.
 - [x] Добавить planned investments CRUD.
 - [x] Добавить data quality dashboard.

@@ -111,6 +111,17 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert dedup_update_response.status_code == 403
     assert dedup_update_response.json()["detail"] == "Admin role required"
 
+    listing_correction_response = client.patch(
+        "/api/v1/admin/listings/wr-001/normalized",
+        json={
+            "price": 690000,
+            "area_m2": 59.2,
+            "correction_reason": "Unauthorized correction attempt",
+        },
+    )
+    assert listing_correction_response.status_code == 403
+    assert listing_correction_response.json()["detail"] == "Admin role required"
+
 
 def test_admin_can_list_ingestion_jobs_logs_and_raw_listings() -> None:
     jobs = client.get("/api/v1/admin/ingestion/jobs", headers=ADMIN_HEADERS).json()
@@ -160,6 +171,62 @@ def test_admin_dedup_review_update_requires_postgres_backend() -> None:
 
     assert response.status_code == 409
     assert "PostgreSQL" in response.json()["detail"]
+
+
+def test_admin_can_correct_normalized_listing_fields() -> None:
+    response = client.patch(
+        "/api/v1/admin/listings/wr-001/normalized",
+        headers=ADMIN_HEADERS,
+        json={
+            "price": 690000,
+            "area_m2": 59.2,
+            "building_floors": 6,
+            "data_quality_score": 88,
+            "correction_reason": "QA confirmed source parser and report fields.",
+            "corrected_by": "qa@example.com",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["listing"]["id"] == "wr-001"
+    assert payload["listing"]["price"] == 690000
+    assert payload["listing"]["area_m2"] == 59.2
+    assert payload["listing"]["price_per_m2"] == 11655
+    assert payload["listing"]["building_floors"] == 6
+    assert payload["listing"]["data_quality_score"] == 88
+    assert payload["changed_fields"] == [
+        "area_m2",
+        "building_floors",
+        "data_quality_score",
+        "price",
+        "price_per_m2",
+    ]
+    assert payload["correction_reason"] == "QA confirmed source parser and report fields."
+    assert payload["corrected_by"] == "qa@example.com"
+
+    listing_response = client.get("/api/v1/listings/wr-001")
+    assert listing_response.json()["data_quality_score"] == 88
+
+    restore_response = client.patch(
+        "/api/v1/admin/listings/wr-001/normalized",
+        headers=ADMIN_HEADERS,
+        json={
+            "data_quality_score": 82,
+            "correction_reason": "Restore demo fixture score after test.",
+        },
+    )
+    assert restore_response.status_code == 200
+
+
+def test_admin_listing_correction_rejects_empty_update() -> None:
+    response = client.patch(
+        "/api/v1/admin/listings/wr-001/normalized",
+        headers=ADMIN_HEADERS,
+        json={"correction_reason": "No fields"},
+    )
+
+    assert response.status_code == 422
 
 
 def test_admin_can_manage_source_registry() -> None:

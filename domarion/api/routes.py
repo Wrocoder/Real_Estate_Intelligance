@@ -158,6 +158,8 @@ from domarion.schemas import (
     KindergartenReference,
     Listing,
     ListingAnalysis,
+    ListingCorrectionRequest,
+    ListingCorrectionResult,
     ListingFutureImpact,
     ListingGrowthAnalysis,
     ListingRentalEstimate,
@@ -2230,6 +2232,32 @@ def get_admin_raw_listing(
     if raw_listing is None:
         raise HTTPException(status_code=404, detail="Raw listing not found")
     return raw_listing
+
+
+@router.patch(
+    "/admin/listings/{listing_id}/normalized",
+    response_model=ListingCorrectionResult,
+)
+def correct_admin_normalized_listing(
+    listing_id: str,
+    payload: ListingCorrectionRequest,
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+) -> ListingCorrectionResult:
+    _ensure_admin(account)
+    listing = repository.update_listing(listing_id, payload)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    changed_fields = set(payload.correction_values())
+    if {"price", "area_m2"} & changed_fields:
+        changed_fields.add("price_per_m2")
+    return ListingCorrectionResult(
+        listing=listing,
+        changed_fields=sorted(changed_fields),
+        correction_reason=payload.correction_reason,
+        corrected_by=payload.corrected_by,
+    )
 
 
 @router.get("/admin/deduplication/matches", response_model=list[PropertyDeduplicationMatch])

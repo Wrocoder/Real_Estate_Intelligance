@@ -1,5 +1,7 @@
+from datetime import UTC, datetime
 from decimal import Decimal
 from math import cos, radians
+from typing import Any
 
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
@@ -16,6 +18,8 @@ from domarion.db.models import (
     Kindergarten,
     ListingSnapshot,
     Municipality,
+    Property,
+    PropertySource,
     School,
     TransportRoute,
     TransportStop,
@@ -42,6 +46,7 @@ from domarion.schemas import (
     IndustrialZoneReference,
     KindergartenReference,
     Listing,
+    ListingCorrectionRequest,
     ListingEvent,
     LocationReference,
     LocationReferenceType,
@@ -201,6 +206,26 @@ def _normalized_developer_match_text(value: str) -> str:
     return " ".join(value.casefold().replace("-", " ").split())
 
 
+def _append_manual_listing_correction(
+    existing: Any,
+    *,
+    fields: list[str],
+    reason: str,
+    corrected_by: str | None,
+) -> list[dict[str, Any]]:
+    history = existing if isinstance(existing, list) else []
+    corrected_at = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return [
+        *history[-9:],
+        {
+            "corrected_at": corrected_at,
+            "corrected_by": corrected_by,
+            "fields": fields,
+            "reason": reason,
+        },
+    ]
+
+
 class PostgresRealEstateRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -279,6 +304,56 @@ class PostgresRealEstateRepository:
             if listing.id == listing_id:
                 return listing
         return None
+
+    def update_listing(
+        self,
+        listing_id: str,
+        payload: ListingCorrectionRequest,
+    ) -> Listing | None:
+        snapshot = self.session.scalars(
+            select(ListingSnapshot)
+            .join(PropertySource, PropertySource.id == ListingSnapshot.property_source_id)
+            .where(ListingSnapshot.normalized_payload["id"].as_string() == listing_id)
+            .order_by(ListingSnapshot.observed_at.desc(), ListingSnapshot.id.desc())
+        ).first()
+        if snapshot is None:
+            return None
+
+        corrections = payload.correction_values()
+        normalized_payload = dict(snapshot.normalized_payload)
+        normalized_payload.update(corrections)
+        if "price" in corrections or "area_m2" in corrections:
+            normalized_payload["price_per_m2"] = int(
+                round(int(normalized_payload["price"]) / float(normalized_payload["area_m2"]))
+            )
+        normalized_payload["_manual_corrections"] = _append_manual_listing_correction(
+            normalized_payload.get("_manual_corrections"),
+            fields=sorted(corrections.keys()),
+            reason=payload.correction_reason,
+            corrected_by=payload.corrected_by,
+        )
+
+        snapshot.normalized_payload = normalized_payload
+        snapshot.price = int(normalized_payload["price"])
+        snapshot.currency = str(normalized_payload.get("currency", "PLN"))
+        snapshot.area_m2 = Decimal(str(normalized_payload["area_m2"]))
+        snapshot.rooms = int(normalized_payload["rooms"])
+        snapshot.title = str(normalized_payload["title"])
+
+        property_row = snapshot.property_source.property
+        self._apply_listing_correction_to_property(property_row, corrections)
+        if "lat" in corrections or "lon" in corrections:
+            self._refresh_property_geometry(
+                property_row.id,
+                lat=float(normalized_payload["lat"]),
+                lon=float(normalized_payload["lon"]),
+            )
+
+        self.session.add(snapshot)
+        self.session.add(property_row)
+        self.session.commit()
+        self.session.refresh(snapshot)
+        return Listing.model_validate(snapshot.normalized_payload)
 
     def list_area_statistics(self) -> list[AreaStatistics]:
         rows = self.session.scalars(select(AreaStatistic).order_by(AreaStatistic.city)).all()
@@ -1167,6 +1242,69 @@ class PostgresRealEstateRepository:
                 setattr(row, key, Decimal(str(value)))
             else:
                 setattr(row, key, value)
+
+    @staticmethod
+    def _apply_listing_correction_to_property(
+        row: Property,
+        payload: dict[str, Any],
+    ) -> None:
+        field_map = {
+            "address": "canonical_address",
+            "area_id": "area_id",
+            "voivodeship": "voivodeship",
+            "city": "city",
+            "district": "district",
+            "municipality": "municipality",
+            "market_type": "market_type",
+            "building_type": "building_type",
+            "renovation_state": "renovation_state",
+            "has_balcony": "has_balcony",
+            "has_terrace": "has_terrace",
+            "has_garden": "has_garden",
+            "has_elevator": "has_elevator",
+            "parking_type": "parking_type",
+            "heating_type": "heating_type",
+            "developer_id": "developer_id",
+            "developer_name": "developer_name",
+            "investment_name": "investment_name",
+            "primary_market_project_id": "primary_market_project_id",
+            "lat": "lat",
+            "lon": "lon",
+            "area_m2": "area_m2",
+            "rooms": "rooms",
+            "floor": "floor",
+            "building_floors": "building_floors",
+            "building_year": "building_year",
+            "distance_to_center_km": "distance_to_center_km",
+            "nearest_stop_m": "nearest_stop_m",
+            "nearest_school_m": "nearest_school_m",
+            "nearest_major_road_m": "nearest_major_road_m",
+            "nearest_industrial_zone_m": "nearest_industrial_zone_m",
+            "parks_within_1km": "parks_within_1km",
+            "schools_within_1km": "schools_within_1km",
+            "planned_investments_within_2km": "planned_investments_within_2km",
+            "data_quality_score": "data_quality_score",
+        }
+        decimal_fields = {"lat", "lon", "area_m2", "distance_to_center_km"}
+        for source_key, target_key in field_map.items():
+            if source_key not in payload:
+                continue
+            value = payload[source_key]
+            if source_key in decimal_fields:
+                value = Decimal(str(value))
+            setattr(row, target_key, value)
+
+    def _refresh_property_geometry(self, property_id: int, *, lat: float, lon: float) -> None:
+        self.session.execute(
+            text(
+                """
+                update properties
+                set geom = ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)
+                where id = :property_id
+                """
+            ),
+            {"property_id": property_id, "lat": lat, "lon": lon},
+        )
 
     @staticmethod
     def _snapshot_to_price_history_point(snapshot: ListingSnapshot) -> PriceHistoryPoint:

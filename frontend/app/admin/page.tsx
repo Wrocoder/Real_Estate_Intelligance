@@ -6,6 +6,7 @@ import {
   Database,
   Handshake,
   Mail,
+  PencilLine,
   Plus,
   RefreshCw,
   ShieldAlert,
@@ -24,6 +25,8 @@ import {
   type IngestionJob,
   type IngestionSourceHealth,
   type InfrastructureEnrichmentJobResult,
+  type ListingCorrectionPayload,
+  type ListingCorrectionResult,
   type PartnerCsvImportResponse,
   type PartnerReferral,
   type PartnerReferralStatus,
@@ -84,6 +87,55 @@ type DataDeletionRequestForm = {
   reason: string;
 };
 
+type ListingCorrectionForm = {
+  listingId: string;
+  title: string;
+  city: string;
+  district: string;
+  area_id: string;
+  municipality: string;
+  address: string;
+  market_type: "" | "primary" | "secondary";
+  price: string;
+  area_m2: string;
+  rooms: string;
+  floor: string;
+  building_floors: string;
+  building_year: string;
+  lat: string;
+  lon: string;
+  nearest_stop_m: string;
+  nearest_school_m: string;
+  nearest_major_road_m: string;
+  nearest_industrial_zone_m: string;
+  data_quality_score: string;
+  correction_reason: string;
+  corrected_by: string;
+};
+
+type ListingCorrectionTextField =
+  | "title"
+  | "city"
+  | "district"
+  | "area_id"
+  | "municipality"
+  | "address";
+
+type ListingCorrectionNumberField =
+  | "price"
+  | "area_m2"
+  | "rooms"
+  | "floor"
+  | "building_floors"
+  | "building_year"
+  | "lat"
+  | "lon"
+  | "nearest_stop_m"
+  | "nearest_school_m"
+  | "nearest_major_road_m"
+  | "nearest_industrial_zone_m"
+  | "data_quality_score";
+
 const defaultInvestmentForm: InvestmentForm = {
   name: "New planned investment",
   investment_type: "tram",
@@ -122,6 +174,32 @@ const defaultDeletionRequestForm: DataDeletionRequestForm = {
   target_owner_id: "",
   source_name: "User Submitted Private References",
   reason: "User requested deletion of private source reference.",
+};
+
+const defaultListingCorrectionForm: ListingCorrectionForm = {
+  listingId: "wr-001",
+  title: "",
+  city: "",
+  district: "",
+  area_id: "",
+  municipality: "",
+  address: "",
+  market_type: "",
+  price: "",
+  area_m2: "",
+  rooms: "",
+  floor: "",
+  building_floors: "",
+  building_year: "",
+  lat: "",
+  lon: "",
+  nearest_stop_m: "",
+  nearest_school_m: "",
+  nearest_major_road_m: "",
+  nearest_industrial_zone_m: "",
+  data_quality_score: "",
+  correction_reason: "QA correction after source parsing review.",
+  corrected_by: "admin@domarion.local",
 };
 
 export default function AdminPage() {
@@ -165,6 +243,10 @@ export default function AdminPage() {
   const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
   const [deletionRequestForm, setDeletionRequestForm] =
     useState<DataDeletionRequestForm>(defaultDeletionRequestForm);
+  const [listingCorrectionForm, setListingCorrectionForm] =
+    useState<ListingCorrectionForm>(defaultListingCorrectionForm);
+  const [listingCorrectionResult, setListingCorrectionResult] =
+    useState<ListingCorrectionResult | null>(null);
   const [deletionActionSummary, setDeletionActionSummary] = useState(
     "Processed from admin moderation workflow.",
   );
@@ -352,6 +434,34 @@ export default function AdminPage() {
     setStatus(
       `Dedup match ${updated.id} помечен как ${updated.review_status}`,
     );
+  }
+
+  async function correctNormalizedListing() {
+    const listingId = listingCorrectionForm.listingId.trim();
+    if (!listingId) {
+      setStatus("Укажи listing ID для correction");
+      return;
+    }
+    if (!listingCorrectionForm.correction_reason.trim()) {
+      setStatus("Укажи причину correction");
+      return;
+    }
+
+    setError("");
+    setStatus(`Normalized listing correction: ${listingId}...`);
+    try {
+      const result = await api.correctAdminNormalizedListing(
+        listingId,
+        listingCorrectionPayload(listingCorrectionForm),
+      );
+      setListingCorrectionResult(result);
+      setStatus(
+        `Listing ${result.listing.id} обновлен: ${result.changed_fields.join(", ")}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown listing correction error");
+      setStatus("Listing correction failed");
+    }
   }
 
   async function createSourceCheckForSelectedSource() {
@@ -871,6 +981,293 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               )}
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Normalized Listing Correction</h2>
+              <PencilLine size={18} />
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>Manual QA patch</h3>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => {
+                      setListingCorrectionForm(defaultListingCorrectionForm);
+                      setListingCorrectionResult(null);
+                    }}
+                  >
+                    Сброс
+                  </button>
+                </div>
+                <div className="form-grid compact">
+                  <Field
+                    label="Listing ID"
+                    value={listingCorrectionForm.listingId}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, listingId: value })
+                    }
+                  />
+                  <label className="field">
+                    <span>Market</span>
+                    <select
+                      className="select"
+                      value={listingCorrectionForm.market_type}
+                      onChange={(event) =>
+                        setListingCorrectionForm({
+                          ...listingCorrectionForm,
+                          market_type: event.target.value as ListingCorrectionForm["market_type"],
+                        })
+                      }
+                    >
+                      <option value="">No change</option>
+                      <option value="secondary">secondary</option>
+                      <option value="primary">primary</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Price"
+                    value={listingCorrectionForm.price}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, price: value })
+                    }
+                  />
+                  <Field
+                    label="Area m2"
+                    value={listingCorrectionForm.area_m2}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, area_m2: value })
+                    }
+                  />
+                  <Field
+                    label="Rooms"
+                    value={listingCorrectionForm.rooms}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, rooms: value })
+                    }
+                  />
+                  <Field
+                    label="Floor"
+                    value={listingCorrectionForm.floor}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, floor: value })
+                    }
+                  />
+                  <Field
+                    label="Building floors"
+                    value={listingCorrectionForm.building_floors}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        building_floors: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Year"
+                    value={listingCorrectionForm.building_year}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, building_year: value })
+                    }
+                  />
+                  <Field
+                    label="City"
+                    value={listingCorrectionForm.city}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, city: value })
+                    }
+                  />
+                  <Field
+                    label="District"
+                    value={listingCorrectionForm.district}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, district: value })
+                    }
+                  />
+                  <Field
+                    label="Area ID"
+                    value={listingCorrectionForm.area_id}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, area_id: value })
+                    }
+                  />
+                  <Field
+                    label="Municipality"
+                    value={listingCorrectionForm.municipality}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, municipality: value })
+                    }
+                  />
+                  <Field
+                    label="Lat"
+                    value={listingCorrectionForm.lat}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, lat: value })
+                    }
+                  />
+                  <Field
+                    label="Lon"
+                    value={listingCorrectionForm.lon}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, lon: value })
+                    }
+                  />
+                  <Field
+                    label="Stop m"
+                    value={listingCorrectionForm.nearest_stop_m}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        nearest_stop_m: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="School m"
+                    value={listingCorrectionForm.nearest_school_m}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        nearest_school_m: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Road m"
+                    value={listingCorrectionForm.nearest_major_road_m}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        nearest_major_road_m: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Industrial m"
+                    value={listingCorrectionForm.nearest_industrial_zone_m}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        nearest_industrial_zone_m: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Quality"
+                    value={listingCorrectionForm.data_quality_score}
+                    onChange={(value) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        data_quality_score: value,
+                      })
+                    }
+                  />
+                </div>
+                <Field
+                  label="Title"
+                  value={listingCorrectionForm.title}
+                  onChange={(value) =>
+                    setListingCorrectionForm({ ...listingCorrectionForm, title: value })
+                  }
+                />
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Address</span>
+                  <input
+                    className="input"
+                    value={listingCorrectionForm.address}
+                    onChange={(event) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        address: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <div className="form-grid compact" style={{ marginTop: 10 }}>
+                  <Field
+                    label="Corrected by"
+                    value={listingCorrectionForm.corrected_by}
+                    onChange={(value) =>
+                      setListingCorrectionForm({ ...listingCorrectionForm, corrected_by: value })
+                    }
+                  />
+                </div>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Reason</span>
+                  <textarea
+                    className="textarea"
+                    value={listingCorrectionForm.correction_reason}
+                    onChange={(event) =>
+                      setListingCorrectionForm({
+                        ...listingCorrectionForm,
+                        correction_reason: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button
+                    className="button primary"
+                    type="button"
+                    onClick={() => void correctNormalizedListing()}
+                  >
+                    Apply correction
+                  </button>
+                </div>
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>Correction result</h3>
+                </div>
+                {listingCorrectionResult ? (
+                  <>
+                    <div className="metric-grid compact">
+                      <div className="metric">
+                        <span>Price</span>
+                        <strong>{numberValue(listingCorrectionResult.listing.price)} PLN</strong>
+                      </div>
+                      <div className="metric">
+                        <span>PLN/m2</span>
+                        <strong>
+                          {numberValue(listingCorrectionResult.listing.price_per_m2)}
+                        </strong>
+                      </div>
+                      <div className="metric">
+                        <span>Area</span>
+                        <strong>{listingCorrectionResult.listing.area_m2} m2</strong>
+                      </div>
+                      <div className="metric">
+                        <span>Quality</span>
+                        <strong>{listingCorrectionResult.listing.data_quality_score}/100</strong>
+                      </div>
+                    </div>
+                    <ul className="section-list compact" style={{ marginTop: 12 }}>
+                      <li>
+                        <strong>{listingCorrectionResult.listing.title}</strong>
+                        <p className="muted">
+                          {listingCorrectionResult.listing.address} ·{" "}
+                          {listingCorrectionResult.listing.district}
+                        </p>
+                        <small>
+                          fields: {listingCorrectionResult.changed_fields.join(", ")}
+                        </small>
+                      </li>
+                      <li>
+                        <strong>Reason</strong>
+                        <p className="muted">{listingCorrectionResult.correction_reason}</p>
+                        <small>{listingCorrectionResult.corrected_by ?? "admin"}</small>
+                      </li>
+                    </ul>
+                  </>
+                ) : (
+                  <EmptyBlock label="Нет примененной normalized listing correction." />
+                )}
+              </div>
             </div>
           </section>
 
@@ -2463,6 +2860,58 @@ function investmentPayload(form: InvestmentForm): PlannedInvestmentPayload {
     confidence_score: Number(form.confidence_score),
     notes: form.notes || null,
   };
+}
+
+function listingCorrectionPayload(form: ListingCorrectionForm): ListingCorrectionPayload {
+  const payload: ListingCorrectionPayload = {
+    correction_reason: form.correction_reason.trim(),
+    corrected_by: blankToNull(form.corrected_by),
+  };
+  addText(payload, "title", form.title);
+  addText(payload, "city", form.city);
+  addText(payload, "district", form.district);
+  addText(payload, "area_id", form.area_id);
+  addText(payload, "municipality", form.municipality);
+  addText(payload, "address", form.address);
+  if (form.market_type) {
+    payload.market_type = form.market_type;
+  }
+  addNumber(payload, "price", form.price);
+  addNumber(payload, "area_m2", form.area_m2);
+  addNumber(payload, "rooms", form.rooms);
+  addNumber(payload, "floor", form.floor);
+  addNumber(payload, "building_floors", form.building_floors);
+  addNumber(payload, "building_year", form.building_year);
+  addNumber(payload, "lat", form.lat);
+  addNumber(payload, "lon", form.lon);
+  addNumber(payload, "nearest_stop_m", form.nearest_stop_m);
+  addNumber(payload, "nearest_school_m", form.nearest_school_m);
+  addNumber(payload, "nearest_major_road_m", form.nearest_major_road_m);
+  addNumber(payload, "nearest_industrial_zone_m", form.nearest_industrial_zone_m);
+  addNumber(payload, "data_quality_score", form.data_quality_score);
+  return payload;
+}
+
+function addText(
+  payload: ListingCorrectionPayload,
+  key: ListingCorrectionTextField,
+  value: string,
+) {
+  const trimmed = value.trim();
+  if (trimmed) {
+    payload[key] = trimmed;
+  }
+}
+
+function addNumber(
+  payload: ListingCorrectionPayload,
+  key: ListingCorrectionNumberField,
+  value: string,
+) {
+  const trimmed = value.trim();
+  if (trimmed) {
+    payload[key] = Number(trimmed);
+  }
 }
 
 function formFromInvestment(investment: PlannedInvestment): InvestmentForm {

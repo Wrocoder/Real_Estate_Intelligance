@@ -8,6 +8,7 @@ from domarion.schemas import (
     IndustrialZoneReference,
     KindergartenReference,
     Listing,
+    ListingCorrectionRequest,
     ListingEvent,
     LocationReference,
     LocationReferenceType,
@@ -43,6 +44,13 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def get_listing(self, listing_id: str) -> Listing | None:
+        raise NotImplementedError
+
+    def update_listing(
+        self,
+        listing_id: str,
+        payload: ListingCorrectionRequest,
+    ) -> Listing | None:
         raise NotImplementedError
 
     def list_area_statistics(self) -> list[AreaStatistics]:
