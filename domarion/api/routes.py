@@ -3566,6 +3566,105 @@ def export_generated_reports(
     )
 
 
+@router.get(
+    "/datasets/listings/export",
+    response_class=Response,
+    responses={200: {"content": {"application/json": {}, "text/csv": {}}}},
+)
+def export_listing_dataset(
+    repository: RepositoryDep,
+    account: CurrentAccountDep,
+    export_format: Annotated[str, Query(alias="format", pattern="^(csv|json)$")] = "csv",
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+    municipality: Annotated[str | None, Query(description="Gmina or municipality name")] = None,
+    query: Annotated[
+        str | None,
+        Query(min_length=1, max_length=160, description="Address, district, title or source id"),
+    ] = None,
+    rooms: Annotated[int | None, Query(ge=1, le=10)] = None,
+    market_type: Annotated[MarketType | None, Query()] = None,
+    min_price: Annotated[int | None, Query(gt=0)] = None,
+    max_price: Annotated[int | None, Query(gt=0)] = None,
+    min_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    max_area_m2: Annotated[float | None, Query(gt=0)] = None,
+    min_investment_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    max_risk_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_liquidity_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_rental_potential_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_data_quality_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    min_developer_reputation_score: Annotated[int | None, Query(ge=0, le=100)] = None,
+    exclude_developer_risk_signals: Annotated[bool, Query()] = False,
+    sort: Annotated[ListingSort, Query()] = "investment_score_desc",
+    limit: Annotated[int, Query(ge=1, le=10_000)] = 1_000,
+) -> Response:
+    _ensure_export_allowed(account)
+    try:
+        response = search_listing_analyses(
+            repository,
+            city=city,
+            district=district,
+            municipality=municipality,
+            query=query,
+            rooms=rooms,
+            market_type=market_type,
+            min_price=min_price,
+            max_price=max_price,
+            min_area_m2=min_area_m2,
+            max_area_m2=max_area_m2,
+            min_investment_score=min_investment_score,
+            max_risk_score=max_risk_score,
+            min_liquidity_score=min_liquidity_score,
+            min_rental_potential_score=min_rental_potential_score,
+            min_data_quality_score=min_data_quality_score,
+            min_developer_reputation_score=min_developer_reputation_score,
+            exclude_developer_risk_signals=exclude_developer_risk_signals,
+            sort=sort,
+            page=1,
+            page_size=limit,
+        )
+    except ListingSearchError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    rows = [_listing_dataset_export_row(analysis) for analysis in response.items]
+    metadata = {
+        "dataset": "listings_analytics",
+        "rows": len(rows),
+        "total_matching_rows": response.total,
+        "limit": limit,
+        "sort": response.sort,
+        "filters": response.filters,
+        "data_policy": LISTING_DATASET_EXPORT_POLICY,
+    }
+    if export_format == "json":
+        content = json.dumps(
+            {"metadata": metadata, "items": rows},
+            ensure_ascii=False,
+            indent=2,
+        )
+        return Response(
+            content=content,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": 'attachment; filename="domarion-listings-dataset.json"'
+            },
+        )
+
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=LISTING_DATASET_EXPORT_COLUMNS,
+        extrasaction="ignore",
+    )
+    writer.writeheader()
+    writer.writerows(rows)
+    return Response(
+        content=output.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="domarion-listings-dataset.csv"'},
+    )
+
+
 @router.post("/reports/{report_id}/email", response_model=ReportEmailResult)
 def email_generated_report(
     report_id: str,
@@ -4344,6 +4443,91 @@ def _has_white_label_branding(branding: ReportBranding | None) -> bool:
     return any(payload.get(field) for field in WHITE_LABEL_BRANDING_FIELDS)
 
 
+LISTING_DATASET_EXPORT_POLICY = (
+    "Dataset export contains normalized analytical fields only. Source URLs, contacts, photos, "
+    "raw HTML and private user-submitted references are not exported."
+)
+
+
+LISTING_DATASET_EXPORT_COLUMNS = [
+    "listing_id",
+    "title",
+    "source_name",
+    "city",
+    "district",
+    "municipality",
+    "area_id",
+    "address",
+    "market_type",
+    "building_type",
+    "renovation_state",
+    "price",
+    "currency",
+    "area_m2",
+    "price_per_m2",
+    "rooms",
+    "floor",
+    "building_floors",
+    "building_year",
+    "first_seen_at",
+    "last_seen_at",
+    "days_on_market",
+    "price_reductions",
+    "price_increases",
+    "relisted",
+    "lat",
+    "lon",
+    "distance_to_center_km",
+    "nearest_stop_m",
+    "nearest_school_m",
+    "nearest_major_road_m",
+    "nearest_industrial_zone_m",
+    "parks_within_1km",
+    "schools_within_1km",
+    "planned_investments_within_2km",
+    "data_quality_score",
+    "area_median_price_per_m2",
+    "area_average_price_per_m2",
+    "area_active_listings",
+    "area_average_days_on_market",
+    "area_price_change_90d_pct",
+    "area_supply_change_90d_pct",
+    "formula_version",
+    "weights_profile",
+    "decision_label",
+    "price_label",
+    "risk_label",
+    "negotiation_label",
+    "liquidity_label",
+    "rental_potential_label",
+    "investment_score",
+    "risk_score",
+    "negotiation_score",
+    "liquidity_score",
+    "rental_potential_score",
+    "fair_price_low",
+    "fair_price_mid",
+    "fair_price_high",
+    "fair_price_confidence_score",
+    "price_delta_to_fair_mid_pct",
+    "developer_id",
+    "developer_name",
+    "investment_name",
+    "primary_market_project_id",
+    "developer_reputation_score",
+    "developer_confidence_score",
+    "developer_label",
+    "developer_completed_projects_count",
+    "developer_active_projects_count",
+    "developer_risk_signals_count",
+    "score_reasons",
+    "score_warnings",
+    "insights",
+    "data_quality_notes",
+    "data_policy",
+]
+
+
 REPORT_EXPORT_COLUMNS = [
     "id",
     "owner_id",
@@ -4405,6 +4589,103 @@ def _report_export_value(value: object) -> object:
     if isinstance(value, str | int | float | bool) or value is None:
         return value if value is not None else ""
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _listing_dataset_export_row(analysis: ListingAnalysis) -> dict[str, object]:
+    listing = analysis.listing
+    scores = analysis.scores
+    area = analysis.area_statistics
+    developer = analysis.developer_reputation
+    developer_risk_signals_count = len(developer.risk_signals) if developer is not None else 0
+    row: dict[str, object] = {
+        "listing_id": listing.id,
+        "title": listing.title,
+        "source_name": listing.source_name,
+        "city": listing.city,
+        "district": listing.district,
+        "municipality": listing.municipality,
+        "area_id": listing.area_id,
+        "address": listing.address,
+        "market_type": listing.market_type,
+        "building_type": listing.building_type,
+        "renovation_state": listing.renovation_state,
+        "price": listing.price,
+        "currency": listing.currency,
+        "area_m2": listing.area_m2,
+        "price_per_m2": listing.price_per_m2,
+        "rooms": listing.rooms,
+        "floor": listing.floor,
+        "building_floors": listing.building_floors,
+        "building_year": listing.building_year,
+        "first_seen_at": listing.first_seen_at.isoformat(),
+        "last_seen_at": listing.last_seen_at.isoformat(),
+        "days_on_market": listing.days_on_market,
+        "price_reductions": listing.price_reductions,
+        "price_increases": listing.price_increases,
+        "relisted": listing.relisted,
+        "lat": listing.lat,
+        "lon": listing.lon,
+        "distance_to_center_km": listing.distance_to_center_km,
+        "nearest_stop_m": listing.nearest_stop_m,
+        "nearest_school_m": listing.nearest_school_m,
+        "nearest_major_road_m": listing.nearest_major_road_m,
+        "nearest_industrial_zone_m": listing.nearest_industrial_zone_m,
+        "parks_within_1km": listing.parks_within_1km,
+        "schools_within_1km": listing.schools_within_1km,
+        "planned_investments_within_2km": listing.planned_investments_within_2km,
+        "data_quality_score": listing.data_quality_score,
+        "area_median_price_per_m2": area.median_price_per_m2,
+        "area_average_price_per_m2": area.average_price_per_m2,
+        "area_active_listings": area.active_listings,
+        "area_average_days_on_market": area.average_days_on_market,
+        "area_price_change_90d_pct": area.price_change_90d_pct,
+        "area_supply_change_90d_pct": area.supply_change_90d_pct,
+        "formula_version": scores.formula_version,
+        "weights_profile": scores.weights_profile,
+        "decision_label": scores.decision_label,
+        "price_label": scores.price_label,
+        "risk_label": scores.risk_label,
+        "negotiation_label": scores.negotiation_label,
+        "liquidity_label": scores.liquidity_label,
+        "rental_potential_label": scores.rental_potential_label,
+        "investment_score": scores.investment_score,
+        "risk_score": scores.risk_score,
+        "negotiation_score": scores.negotiation_score,
+        "liquidity_score": scores.liquidity_score,
+        "rental_potential_score": scores.rental_potential_score,
+        "fair_price_low": scores.fair_price_low,
+        "fair_price_mid": scores.fair_price_mid,
+        "fair_price_high": scores.fair_price_high,
+        "fair_price_confidence_score": scores.fair_price_confidence_score,
+        "price_delta_to_fair_mid_pct": scores.price_delta_to_fair_mid_pct,
+        "developer_id": listing.developer_id,
+        "developer_name": listing.developer_name,
+        "investment_name": listing.investment_name,
+        "primary_market_project_id": listing.primary_market_project_id,
+        "developer_reputation_score": (
+            developer.reputation_score if developer is not None else ""
+        ),
+        "developer_confidence_score": (
+            developer.confidence_score if developer is not None else ""
+        ),
+        "developer_label": developer.label if developer is not None else "",
+        "developer_completed_projects_count": (
+            developer.completed_projects_count if developer is not None else ""
+        ),
+        "developer_active_projects_count": (
+            developer.active_projects_count if developer is not None else ""
+        ),
+        "developer_risk_signals_count": developer_risk_signals_count,
+        "score_reasons": scores.reasons,
+        "score_warnings": scores.warnings,
+        "insights": analysis.insights,
+        "data_quality_notes": analysis.data_quality_notes,
+        "data_policy": LISTING_DATASET_EXPORT_POLICY,
+    }
+    return {
+        column: _report_export_value(row.get(column, ""))
+        for column in LISTING_DATASET_EXPORT_COLUMNS
+    }
 
 
 def _safe_pdf_filename(value: str) -> str:

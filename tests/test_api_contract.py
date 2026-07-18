@@ -138,6 +138,15 @@ def test_openapi_exposes_pdf_report_exports_as_pdf_contract() -> None:
     assert "application/pdf" in object_report["responses"]["200"]["content"]
 
 
+def test_openapi_exposes_dataset_exports_as_file_contract() -> None:
+    openapi = client.get("/openapi.json").json()
+    dataset_export = openapi["paths"]["/api/v1/datasets/listings/export"]["get"]
+    content = dataset_export["responses"]["200"]["content"]
+
+    assert "application/json" in content
+    assert "text/csv" in content
+
+
 def test_openapi_exposes_source_registry_contract() -> None:
     openapi = client.get("/openapi.json").json()
     paths = openapi["paths"]

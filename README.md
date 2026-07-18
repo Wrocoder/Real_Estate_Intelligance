@@ -52,6 +52,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлена source compliance policy: Terms/robots/rate limits gate, запрет фото/контактов/full descriptions и guardrails для user-submitted URL.
 - Добавлен product validation strategy: commercial scorecard, competitor analysis, risk register, moat, roadmap, launch team и complexity assessment.
 - Добавлен API-lite для agency/enterprise consumers: `X-Domarion-API-Key`, quotas, usage logs и sanitized listing/area endpoints.
+- Добавлен export datasets для investor/realtor plans: sanitized listing analytics CSV/JSON без source URLs/raw payload.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
@@ -124,6 +125,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/api-lite/listings/{listing_id}
 - http://127.0.0.1:8000/api/v1/api-lite/areas/compare
 - http://127.0.0.1:8000/api/v1/api-lite/usage
+- http://127.0.0.1:8000/api/v1/datasets/listings/export
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -840,6 +842,22 @@ Production-ключи задаются через env. Можно хранить
 
 ```env
 API_LITE_KEYS_JSON=[{"key_id":"agency-demo","label":"Agency Demo","owner_id":"agency-owner-1","plan":"agency","monthly_quota":5000,"rate_limit_per_minute":120,"scopes":["listings:read","scores:read","areas:read","usage:read"],"key_sha256":"<sha256-of-client-secret>"}]
+```
+
+## Dataset exports
+
+Планы с `can_export=true` (`investor`, `realtor`, `agency`, `enterprise`) могут
+выгружать нормализованный listing analytics dataset в JSON/CSV. Экспорт строится
+из наших legal-first listings, score/fair-price расчетов и area statistics; он
+не включает `source_url`, контакты, фото, raw HTML или private URL references.
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/datasets/listings/export?format=json&city=Wrocław&limit=100" `
+  -Headers @{"X-Domarion-User-Id"="investor-1";"X-Domarion-Plan"="investor"}
+
+Invoke-WebRequest "http://127.0.0.1:8000/api/v1/datasets/listings/export?format=csv&min_investment_score=60" `
+  -Headers @{"X-Domarion-User-Id"="agent-1";"X-Domarion-Plan"="realtor"} `
+  -OutFile domarion-listings-dataset.csv
 ```
 
 ## Проверка квартиры по адресу/URL

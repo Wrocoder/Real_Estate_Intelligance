@@ -89,6 +89,8 @@ expectIncludes("api client contracts", apiClient, [
   "/mock-pay",
   "fulfillReportOrder",
   "/fulfill",
+  "listingDatasetExportUrl",
+  "/api/v1/datasets/listings/export",
 ]);
 
 expectIncludes("search explorer page", explorerPage, [

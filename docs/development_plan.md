@@ -423,7 +423,7 @@
 - [ ] Добавить CRM-light backlog: clients, shortlists, notes, report sharing.
 - [x] Добавить API-lite для agency/enterprise consumers.
 - [x] Добавить API keys, quotas, usage logs и rate limits.
-- [ ] Добавить export datasets для investor/realtor plans.
+- [x] Добавить export datasets для investor/realtor plans.
 - [ ] Добавить market intelligence reports для banks, developers and funds.
 - [ ] Добавить scoring-as-a-service endpoint design.
 - [ ] Добавить custom dashboard backlog для enterprise clients.
@@ -537,6 +537,7 @@
 - [x] Commit 91: product validation strategy and competitor analysis.
 - [x] Commit 92: SEO guide pages and internal linking.
 - [x] Commit 93: API-lite keys, quotas and usage logs.
+- [x] Commit 94: Investor and realtor dataset exports.
 
 ## Current Sprint
 
@@ -639,6 +640,7 @@
 - [x] Добавить developer aliases для brand/legal entity/SPV/project company/parent company matching.
 - [x] Добавить developer evidence ingestion для registry checks, UOKiK events, directories и partner inspections.
 - [x] Добавить API-lite для agency/enterprise: API key auth, quotas, usage logs и sanitized listing/area endpoints.
+- [x] Добавить investor/realtor listing analytics dataset export: CSV/JSON, plan gating и sanitized fields.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

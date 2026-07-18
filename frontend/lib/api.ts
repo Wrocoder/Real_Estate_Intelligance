@@ -2981,6 +2981,16 @@ export function reportExportUrl(format: "csv" | "json") {
   return `${currentApiBaseUrl()}/api/v1/reports/export${toQueryString({ format })}`;
 }
 
+export function listingDatasetExportUrl(
+  format: "csv" | "json",
+  params: Partial<ListingSearchQuery> & { limit?: number } = {},
+) {
+  return `${currentApiBaseUrl()}/api/v1/datasets/listings/export${toQueryString({
+    ...params,
+    format,
+  })}`;
+}
+
 export function objectReportUrl(listingId: string) {
   return `${currentApiBaseUrl()}/api/v1/reports/object/${listingId}.html`;
 }
