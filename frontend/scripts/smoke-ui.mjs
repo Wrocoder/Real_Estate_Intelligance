@@ -47,6 +47,7 @@ const explorerPage = read("app/page.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const adminPage = read("app/admin/page.tsx");
+const accountPage = read("app/account/page.tsx");
 const areasPage = read("app/areas/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
@@ -106,6 +107,14 @@ expectIncludes("api client contracts", apiClient, [
   "/fulfill",
   "listingDatasetExportUrl",
   "/api/v1/datasets/listings/export",
+]);
+
+expectIncludes("account CRM workspace", accountPage, [
+  "Agency CRM",
+  "createAgencyCrmClient",
+  "createAgencyCrmShortlist",
+  "previewAgencyCrmShortlistShare",
+  "CrmSharePreviewBlock",
 ]);
 
 expectIncludes("search explorer page", explorerPage, [

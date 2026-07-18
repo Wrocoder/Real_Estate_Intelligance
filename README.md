@@ -16,7 +16,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
 - Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
-- Добавлен CRM-light API для агентств: clients, notes, enriched shortlists и safe public share preview без portal source links.
+- Добавлен CRM-light для агентств: API и account UI для clients, notes, enriched shortlists и safe public share preview без portal source links.
 - Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
 - Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
 - Добавлен lead capture: paid beta buyer/realtor заявки, mortgage/legal/renovation referrals,
@@ -221,7 +221,7 @@ NEXT_PUBLIC_OWNER_ID=demo-user
 - http://127.0.0.1:3000/pricing — разовые paid reports, checkout и audit trail.
 - http://127.0.0.1:3000/mortgage — ипотечный расчет и заявка mortgage/legal/renovation партнеру.
 - http://127.0.0.1:3000/alerts — saved searches, preview и delivery dry-run.
-- http://127.0.0.1:3000/account — текущий пользователь, тариф, usage и лимиты.
+- http://127.0.0.1:3000/account — текущий пользователь, тариф, usage, agency workspace и CRM-light.
 - http://127.0.0.1:3000/admin — internal ingestion/data-quality dashboard.
 - http://127.0.0.1:3000/sitemap.xml — sitemap для SEO.
 - http://127.0.0.1:3000/robots.txt — robots rules.

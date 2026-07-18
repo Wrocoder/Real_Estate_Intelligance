@@ -3599,6 +3599,10 @@ export function reportPdfUrl(reportId: string) {
   return `${currentApiBaseUrl()}/api/v1/reports/${reportId}/pdf`;
 }
 
+export function crmSharedShortlistUrl(shareToken: string) {
+  return `${currentApiBaseUrl()}/api/v1/crm/shared-shortlists/${encodeURIComponent(shareToken)}`;
+}
+
 export function reportExportUrl(format: "csv" | "json") {
   return `${currentApiBaseUrl()}/api/v1/reports/export${toQueryString({ format })}`;
 }

@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
   Building2,
+  Clipboard,
   CreditCard,
+  FileText,
+  MessageSquare,
   RefreshCw,
+  Share2,
   ShieldCheck,
   Trash2,
   UserCircle,
@@ -15,17 +19,24 @@ import {
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  crmSharedShortlistUrl,
   reportContentUrl,
   type AccountSummary,
   type AgencyMemberRole,
   type AgencyMembershipStatus,
   type AgencyWorkspace,
   type AgencyWorkspaceSummary,
+  type CrmClient,
+  type CrmClientDetail,
+  type CrmClientStatus,
+  type CrmNoteVisibility,
+  type CrmSharePreview,
+  type CrmShortlist,
   type PlanLimits,
   type ReportOrder,
   type SubscriptionPlan,
 } from "@/lib/api";
-import { numberValue } from "@/lib/format";
+import { money, numberValue, percent } from "@/lib/format";
 
 const PLAN_LABELS: Record<SubscriptionPlan, string> = {
   free: "Free",
@@ -45,6 +56,24 @@ const AGENCY_STATUS_LABELS: Record<AgencyMembershipStatus, string> = {
   active: "Active",
   invited: "Invited",
   disabled: "Disabled",
+};
+const CRM_CLIENT_STATUS_OPTIONS: CrmClientStatus[] = [
+  "active",
+  "paused",
+  "won",
+  "lost",
+  "archived",
+];
+const CRM_CLIENT_STATUS_LABELS: Record<CrmClientStatus, string> = {
+  active: "Active",
+  paused: "Paused",
+  won: "Won",
+  lost: "Lost",
+  archived: "Archived",
+};
+const CRM_NOTE_VISIBILITY_LABELS: Record<CrmNoteVisibility, string> = {
+  internal: "Internal",
+  client_shareable: "Client shareable",
 };
 
 export default function AccountPage() {
@@ -66,8 +95,62 @@ export default function AccountPage() {
     display_name: "",
     role: "agent" as AgencyMemberRole,
   });
+  const [crmClients, setCrmClients] = useState<CrmClient[]>([]);
+  const [selectedCrmClient, setSelectedCrmClient] = useState<CrmClientDetail | null>(null);
+  const [crmSharePreview, setCrmSharePreview] = useState<CrmSharePreview | null>(null);
+  const [crmBusy, setCrmBusy] = useState(false);
+  const [crmClientForm, setCrmClientForm] = useState({
+    display_name: "",
+    email: "",
+    phone: "",
+    city: "Wrocław",
+    district: "",
+    budget_min: "",
+    budget_max: "",
+    preferred_rooms: "",
+    tags: "",
+    consent_to_contact: false,
+    profile_notes: "",
+  });
+  const [crmNoteForm, setCrmNoteForm] = useState({
+    body: "",
+    visibility: "internal" as CrmNoteVisibility,
+    pinned: false,
+  });
+  const [crmShortlistForm, setCrmShortlistForm] = useState({
+    title: "",
+    listing_ids: "wr-001, wr-002",
+    report_ids: "",
+    client_message: "",
+    share_enabled: true,
+  });
   const [status, setStatus] = useState("Загрузка аккаунта...");
   const [error, setError] = useState("");
+
+  const loadCrmForAgency = useCallback(
+    async (agencyId: string, preferredClientId?: string | null) => {
+      setCrmBusy(true);
+      setCrmSharePreview(null);
+      try {
+        const clients = await api.listAgencyCrmClients(agencyId, { limit: 50 });
+        setCrmClients(clients);
+        const clientId =
+          preferredClientId && clients.some((client) => client.id === preferredClientId)
+            ? preferredClientId
+            : clients[0]?.id;
+        if (clientId) {
+          setSelectedCrmClient(await api.getAgencyCrmClient(agencyId, clientId));
+        } else {
+          setSelectedCrmClient(null);
+        }
+      } catch (caught) {
+        setStatus(caught instanceof Error ? caught.message : "Ошибка загрузки CRM");
+      } finally {
+        setCrmBusy(false);
+      }
+    },
+    [],
+  );
 
   const load = useCallback(async (preferredAgencyId?: string | null) => {
     setError("");
@@ -102,6 +185,18 @@ export default function AccountPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const selectedAgencyId = selectedAgency?.id ?? null;
+
+  useEffect(() => {
+    if (!selectedAgencyId) {
+      setCrmClients([]);
+      setSelectedCrmClient(null);
+      setCrmSharePreview(null);
+      return;
+    }
+    void loadCrmForAgency(selectedAgencyId);
+  }, [loadCrmForAgency, selectedAgencyId]);
 
   async function switchPlan(plan: SubscriptionPlan) {
     setStatus(`Переключение на ${PLAN_LABELS[plan]}...`);
@@ -230,6 +325,204 @@ export default function AccountPage() {
       setStatus(caught instanceof Error ? caught.message : "Ошибка удаления участника");
     } finally {
       setAgencyBusy(false);
+    }
+  }
+
+  async function selectCrmClient(clientId: string) {
+    if (!selectedAgency) return;
+    setCrmBusy(true);
+    setCrmSharePreview(null);
+    setStatus("Загрузка CRM клиента...");
+    try {
+      setSelectedCrmClient(await api.getAgencyCrmClient(selectedAgency.id, clientId));
+      setStatus("CRM клиент выбран");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка загрузки CRM клиента");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function createCrmClient(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedAgency || !crmClientForm.display_name.trim()) {
+      setStatus("Имя CRM клиента обязательно");
+      return;
+    }
+    setCrmBusy(true);
+    setStatus("Создание CRM клиента...");
+    try {
+      const created = await api.createAgencyCrmClient(selectedAgency.id, {
+        display_name: crmClientForm.display_name,
+        email: blankToNull(crmClientForm.email),
+        phone: blankToNull(crmClientForm.phone),
+        city: blankToNull(crmClientForm.city),
+        district: blankToNull(crmClientForm.district),
+        budget_min: toOptionalNumber(crmClientForm.budget_min),
+        budget_max: toOptionalNumber(crmClientForm.budget_max),
+        preferred_rooms: parseNumberList(crmClientForm.preferred_rooms),
+        tags: parseTokenList(crmClientForm.tags),
+        consent_to_contact: crmClientForm.consent_to_contact,
+        profile_notes: blankToNull(crmClientForm.profile_notes),
+      });
+      setCrmClientForm({
+        display_name: "",
+        email: "",
+        phone: "",
+        city: selectedAgency.city ?? "Wrocław",
+        district: "",
+        budget_min: "",
+        budget_max: "",
+        preferred_rooms: "",
+        tags: "",
+        consent_to_contact: false,
+        profile_notes: "",
+      });
+      await loadCrmForAgency(selectedAgency.id, created.id);
+      setStatus("CRM клиент создан");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка создания CRM клиента");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function updateCrmClientStatus(clientStatus: CrmClientStatus) {
+    if (!selectedAgency || !selectedCrmClient) return;
+    setCrmBusy(true);
+    setStatus("Обновление статуса клиента...");
+    try {
+      await api.updateAgencyCrmClient(selectedAgency.id, selectedCrmClient.id, {
+        status: clientStatus,
+      });
+      await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
+      setStatus("Статус CRM клиента обновлен");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления CRM клиента");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function createCrmNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedAgency || !selectedCrmClient || !crmNoteForm.body.trim()) {
+      setStatus("Текст заметки обязателен");
+      return;
+    }
+    setCrmBusy(true);
+    setStatus("Добавление заметки...");
+    try {
+      await api.createAgencyCrmNote(selectedAgency.id, selectedCrmClient.id, {
+        body: crmNoteForm.body,
+        visibility: crmNoteForm.visibility,
+        pinned: crmNoteForm.pinned,
+      });
+      setCrmNoteForm({ body: "", visibility: "internal", pinned: false });
+      await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
+      setStatus("CRM заметка добавлена");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка добавления заметки");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function createCrmShortlist(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedAgency || !selectedCrmClient) return;
+    const listingIds = parseTokenList(crmShortlistForm.listing_ids);
+    if (!crmShortlistForm.title.trim() || listingIds.length === 0) {
+      setStatus("Название shortlist и хотя бы один listing id обязательны");
+      return;
+    }
+    setCrmBusy(true);
+    setCrmSharePreview(null);
+    setStatus("Сборка CRM shortlist...");
+    try {
+      const created = await api.createAgencyCrmShortlist(selectedAgency.id, selectedCrmClient.id, {
+        title: crmShortlistForm.title,
+        listing_ids: listingIds,
+        report_ids: parseTokenList(crmShortlistForm.report_ids),
+        client_message: blankToNull(crmShortlistForm.client_message),
+        share_enabled: crmShortlistForm.share_enabled,
+      });
+      setCrmShortlistForm({
+        title: "",
+        listing_ids: "wr-001, wr-002",
+        report_ids: "",
+        client_message: "",
+        share_enabled: true,
+      });
+      await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
+      if (created.share_enabled) {
+        setCrmSharePreview(
+          await api.previewAgencyCrmShortlistShare(
+            selectedAgency.id,
+            selectedCrmClient.id,
+            created.id,
+          ),
+        );
+      }
+      setStatus("CRM shortlist создан");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка сборки CRM shortlist");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function toggleCrmShortlistShare(shortlist: CrmShortlist) {
+    if (!selectedAgency || !selectedCrmClient) return;
+    const nextShareEnabled = !shortlist.share_enabled;
+    setCrmBusy(true);
+    setCrmSharePreview(null);
+    setStatus(nextShareEnabled ? "Включение шаринга..." : "Отключение шаринга...");
+    try {
+      const updated = await api.updateAgencyCrmShortlist(
+        selectedAgency.id,
+        selectedCrmClient.id,
+        shortlist.id,
+        {
+          share_enabled: nextShareEnabled,
+          expires_in_days: nextShareEnabled ? 14 : undefined,
+        },
+      );
+      await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
+      if (updated.share_enabled) {
+        setCrmSharePreview(
+          await api.previewAgencyCrmShortlistShare(
+            selectedAgency.id,
+            selectedCrmClient.id,
+            updated.id,
+          ),
+        );
+      }
+      setStatus(nextShareEnabled ? "Шаринг включен" : "Шаринг отключен");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления шаринга");
+    } finally {
+      setCrmBusy(false);
+    }
+  }
+
+  async function previewCrmShare(shortlist: CrmShortlist) {
+    if (!selectedAgency || !selectedCrmClient) return;
+    setCrmBusy(true);
+    setStatus("Генерация share preview...");
+    try {
+      setCrmSharePreview(
+        await api.previewAgencyCrmShortlistShare(
+          selectedAgency.id,
+          selectedCrmClient.id,
+          shortlist.id,
+        ),
+      );
+      setStatus("Share preview готов");
+    } catch (caught) {
+      setStatus(caught instanceof Error ? caught.message : "Ошибка share preview");
+    } finally {
+      setCrmBusy(false);
     }
   }
 
@@ -637,6 +930,505 @@ export default function AccountPage() {
         </div>
       </section>
 
+      {selectedAgency ? (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <h2 className="icon-title">
+              <MessageSquare size={17} />
+              Agency CRM
+            </h2>
+            <div className="toolbar">
+              <span className="muted">
+                {crmClients.length} clients · {selectedAgency.name}
+              </span>
+              <button
+                className="button"
+                type="button"
+                disabled={crmBusy}
+                onClick={() => void loadCrmForAgency(selectedAgency.id, selectedCrmClient?.id)}
+              >
+                <RefreshCw size={16} />
+                Обновить CRM
+              </button>
+            </div>
+          </div>
+          <div className="panel-body">
+            <form className="form-grid wide" onSubmit={(event) => void createCrmClient(event)}>
+              <label className="field">
+                <span>Клиент</span>
+                <input
+                  className="input"
+                  value={crmClientForm.display_name}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      display_name: event.target.value,
+                    }))
+                  }
+                  placeholder="Anna Buyer"
+                />
+              </label>
+              <label className="field">
+                <span>Email</span>
+                <input
+                  className="input"
+                  value={crmClientForm.email}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({ ...current, email: event.target.value }))
+                  }
+                  placeholder="anna@example.com"
+                />
+              </label>
+              <label className="field">
+                <span>Phone</span>
+                <input
+                  className="input"
+                  value={crmClientForm.phone}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({ ...current, phone: event.target.value }))
+                  }
+                  placeholder="+48..."
+                />
+              </label>
+              <label className="field">
+                <span>City</span>
+                <input
+                  className="input"
+                  value={crmClientForm.city}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({ ...current, city: event.target.value }))
+                  }
+                />
+              </label>
+              <label className="field">
+                <span>District</span>
+                <input
+                  className="input"
+                  value={crmClientForm.district}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      district: event.target.value,
+                    }))
+                  }
+                  placeholder="Fabryczna"
+                />
+              </label>
+              <label className="field">
+                <span>Budget min</span>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={crmClientForm.budget_min}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      budget_min: event.target.value,
+                    }))
+                  }
+                  placeholder="650000"
+                />
+              </label>
+              <label className="field">
+                <span>Budget max</span>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={crmClientForm.budget_max}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      budget_max: event.target.value,
+                    }))
+                  }
+                  placeholder="900000"
+                />
+              </label>
+              <label className="field">
+                <span>Rooms</span>
+                <input
+                  className="input"
+                  value={crmClientForm.preferred_rooms}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      preferred_rooms: event.target.value,
+                    }))
+                  }
+                  placeholder="2, 3"
+                />
+              </label>
+              <label className="field">
+                <span>Tags</span>
+                <input
+                  className="input"
+                  value={crmClientForm.tags}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({ ...current, tags: event.target.value }))
+                  }
+                  placeholder="family, investor"
+                />
+              </label>
+              <label className="field">
+                <span>Profile notes</span>
+                <input
+                  className="input"
+                  value={crmClientForm.profile_notes}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      profile_notes: event.target.value,
+                    }))
+                  }
+                  placeholder="Quiet building, tram access"
+                />
+              </label>
+              <label className="field inline-field">
+                <input
+                  type="checkbox"
+                  checked={crmClientForm.consent_to_contact}
+                  onChange={(event) =>
+                    setCrmClientForm((current) => ({
+                      ...current,
+                      consent_to_contact: event.target.checked,
+                    }))
+                  }
+                />
+                <span>Consent</span>
+              </label>
+              <div className="field">
+                <span>Action</span>
+                <button className="button primary" type="submit" disabled={crmBusy}>
+                  <UserPlus size={16} />
+                  Создать клиента
+                </button>
+              </div>
+            </form>
+
+            <div className="crm-layout">
+              <aside className="crm-client-list">
+                {crmClients.length > 0 ? (
+                  crmClients.map((client) => (
+                    <button
+                      key={client.id}
+                      className={
+                        client.id === selectedCrmClient?.id
+                          ? "crm-client-button selected"
+                          : "crm-client-button"
+                      }
+                      type="button"
+                      disabled={crmBusy}
+                      onClick={() => void selectCrmClient(client.id)}
+                    >
+                      <strong>{client.display_name}</strong>
+                      <small>
+                        {CRM_CLIENT_STATUS_LABELS[client.status]} · {client.city ?? "-"}
+                      </small>
+                      <span>{formatBudget(client.budget_min, client.budget_max)}</span>
+                    </button>
+                  ))
+                ) : (
+                  <p className="empty-state">CRM clients появятся здесь после создания.</p>
+                )}
+              </aside>
+
+              {selectedCrmClient ? (
+                <div className="crm-detail">
+                  <div className="panel-header inline">
+                    <h3>{selectedCrmClient.display_name}</h3>
+                    <div className="toolbar">
+                      <span className={`status-pill ${crmClientStatusTone(selectedCrmClient.status)}`}>
+                        {CRM_CLIENT_STATUS_LABELS[selectedCrmClient.status]}
+                      </span>
+                      <select
+                        className="select"
+                        value={selectedCrmClient.status}
+                        disabled={crmBusy}
+                        onChange={(event) =>
+                          void updateCrmClientStatus(event.target.value as CrmClientStatus)
+                        }
+                      >
+                        {CRM_CLIENT_STATUS_OPTIONS.map((clientStatus) => (
+                          <option key={clientStatus} value={clientStatus}>
+                            {CRM_CLIENT_STATUS_LABELS[clientStatus]}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="metric-grid">
+                    <div className="metric">
+                      <span>Budget</span>
+                      <strong>
+                        {formatBudget(selectedCrmClient.budget_min, selectedCrmClient.budget_max)}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Rooms</span>
+                      <strong>{formatRooms(selectedCrmClient.preferred_rooms)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Location</span>
+                      <strong>
+                        {[selectedCrmClient.city, selectedCrmClient.district]
+                          .filter(Boolean)
+                          .join(", ") || "-"}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Consent</span>
+                      <strong>{selectedCrmClient.consent_to_contact ? "Yes" : "No"}</strong>
+                    </div>
+                  </div>
+
+                  {selectedCrmClient.tags.length > 0 || selectedCrmClient.profile_notes ? (
+                    <div className="meta-row">
+                      {selectedCrmClient.tags.map((tag) => (
+                        <span className="status-pill info" key={tag}>
+                          {tag}
+                        </span>
+                      ))}
+                      {selectedCrmClient.profile_notes ? (
+                        <span>{selectedCrmClient.profile_notes}</span>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="crm-subgrid">
+                    <form className="crm-card-list" onSubmit={(event) => void createCrmNote(event)}>
+                      <div className="panel-header inline">
+                        <h3 className="icon-title">
+                          <MessageSquare size={16} />
+                          Notes
+                        </h3>
+                        <span className="muted">{selectedCrmClient.notes.length}</span>
+                      </div>
+                      <label className="field">
+                        <span>Note</span>
+                        <textarea
+                          className="textarea"
+                          value={crmNoteForm.body}
+                          onChange={(event) =>
+                            setCrmNoteForm((current) => ({
+                              ...current,
+                              body: event.target.value,
+                            }))
+                          }
+                          placeholder="Что важно для клиента или проверки объекта"
+                        />
+                      </label>
+                      <div className="form-grid compact">
+                        <label className="field">
+                          <span>Visibility</span>
+                          <select
+                            className="select"
+                            value={crmNoteForm.visibility}
+                            onChange={(event) =>
+                              setCrmNoteForm((current) => ({
+                                ...current,
+                                visibility: event.target.value as CrmNoteVisibility,
+                              }))
+                            }
+                          >
+                            {Object.entries(CRM_NOTE_VISIBILITY_LABELS).map(([value, label]) => (
+                              <option key={value} value={value}>
+                                {label}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="field inline-field">
+                          <input
+                            type="checkbox"
+                            checked={crmNoteForm.pinned}
+                            onChange={(event) =>
+                              setCrmNoteForm((current) => ({
+                                ...current,
+                                pinned: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>Pinned</span>
+                        </label>
+                        <div className="field">
+                          <span>Action</span>
+                          <button className="button" type="submit" disabled={crmBusy}>
+                            Добавить note
+                          </button>
+                        </div>
+                      </div>
+                      <ul className="section-list compact">
+                        {selectedCrmClient.notes.slice(0, 5).map((note) => (
+                          <li key={note.id}>
+                            <strong>
+                              {note.pinned ? "Pinned · " : ""}
+                              {CRM_NOTE_VISIBILITY_LABELS[note.visibility]}
+                            </strong>
+                            <p className="muted">{note.body}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    </form>
+
+                    <form
+                      className="crm-card-list"
+                      onSubmit={(event) => void createCrmShortlist(event)}
+                    >
+                      <div className="panel-header inline">
+                        <h3 className="icon-title">
+                          <FileText size={16} />
+                          Shortlist
+                        </h3>
+                        <span className="muted">{selectedCrmClient.shortlists.length}</span>
+                      </div>
+                      <label className="field">
+                        <span>Title</span>
+                        <input
+                          className="input"
+                          value={crmShortlistForm.title}
+                          onChange={(event) =>
+                            setCrmShortlistForm((current) => ({
+                              ...current,
+                              title: event.target.value,
+                            }))
+                          }
+                          placeholder="Top options for Anna"
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Listing IDs</span>
+                        <input
+                          className="input"
+                          value={crmShortlistForm.listing_ids}
+                          onChange={(event) =>
+                            setCrmShortlistForm((current) => ({
+                              ...current,
+                              listing_ids: event.target.value,
+                            }))
+                          }
+                          placeholder="wr-001, wr-002"
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Report IDs</span>
+                        <input
+                          className="input"
+                          value={crmShortlistForm.report_ids}
+                          onChange={(event) =>
+                            setCrmShortlistForm((current) => ({
+                              ...current,
+                              report_ids: event.target.value,
+                            }))
+                          }
+                          placeholder="optional saved reports"
+                        />
+                      </label>
+                      <label className="field">
+                        <span>Client message</span>
+                        <textarea
+                          className="textarea"
+                          value={crmShortlistForm.client_message}
+                          onChange={(event) =>
+                            setCrmShortlistForm((current) => ({
+                              ...current,
+                              client_message: event.target.value,
+                            }))
+                          }
+                          placeholder="These options are worth discussing before viewings."
+                        />
+                      </label>
+                      <div className="form-grid compact">
+                        <label className="field inline-field">
+                          <input
+                            type="checkbox"
+                            checked={crmShortlistForm.share_enabled}
+                            onChange={(event) =>
+                              setCrmShortlistForm((current) => ({
+                                ...current,
+                                share_enabled: event.target.checked,
+                              }))
+                            }
+                          />
+                          <span>Share link</span>
+                        </label>
+                        <div className="field">
+                          <span>Action</span>
+                          <button className="button primary" type="submit" disabled={crmBusy}>
+                            <Share2 size={16} />
+                            Собрать
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+
+                  {selectedCrmClient.shortlists.length > 0 ? (
+                    <div className="crm-card-list">
+                      {selectedCrmClient.shortlists.map((shortlist) => (
+                        <article className="crm-shortlist-card" key={shortlist.id}>
+                          <div className="panel-header inline">
+                            <h3>{shortlist.title}</h3>
+                            <div className="toolbar">
+                              <span className={`status-pill ${shortlistStatusTone(shortlist)}`}>
+                                {shortlist.status}
+                              </span>
+                              <span className="muted">
+                                {shortlist.items.length} listings · {formatDate(shortlist.updated_at)}
+                              </span>
+                            </div>
+                          </div>
+                          {shortlist.client_message ? (
+                            <p className="muted">{shortlist.client_message}</p>
+                          ) : null}
+                          <CrmShortlistItems items={shortlist.items} />
+                          <div className="button-row">
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={crmBusy}
+                              onClick={() => void toggleCrmShortlistShare(shortlist)}
+                            >
+                              <Share2 size={16} />
+                              {shortlist.share_enabled ? "Отключить share" : "Включить share"}
+                            </button>
+                            <button
+                              className="button"
+                              type="button"
+                              disabled={crmBusy || !shortlist.share_enabled}
+                              onClick={() => void previewCrmShare(shortlist)}
+                            >
+                              <Clipboard size={16} />
+                              Preview
+                            </button>
+                            {shortlist.share_token ? (
+                              <a
+                                className="button"
+                                href={crmSharedShortlistUrl(shortlist.share_token)}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Public link
+                              </a>
+                            ) : null}
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="empty-state">Shortlists появятся после сборки по listing ids.</p>
+                  )}
+
+                  {crmSharePreview ? <CrmSharePreviewBlock preview={crmSharePreview} /> : null}
+                </div>
+              ) : (
+                <p className="empty-state">Выбери или создай CRM клиента для заметок и shortlist.</p>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
           <h2>Разовые покупки</h2>
@@ -705,6 +1497,101 @@ function Capability({ label, enabled }: { label: string; enabled: boolean }) {
   );
 }
 
+function CrmShortlistItems({ items }: { items: CrmShortlist["items"] }) {
+  if (items.length === 0) {
+    return <p className="empty-state">В shortlist пока нет валидных объектов из базы.</p>;
+  }
+  return (
+    <div className="table-scroll">
+      <table className="table crm-shortlist-table">
+        <thead>
+          <tr>
+            <th>Объект</th>
+            <th>Цена</th>
+            <th>Score</th>
+            <th>Fair delta</th>
+            <th>Developer</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.listing_id}>
+              <td>
+                <strong>
+                  #{item.rank} · {item.title}
+                </strong>
+                <small>
+                  {item.city}, {item.district}, {item.address} · {item.rooms} pok. ·{" "}
+                  {numberValue(item.area_m2)} m2
+                </small>
+              </td>
+              <td>
+                <strong>{money(item.price)}</strong>
+                <small>{money(Math.round(item.price / Math.max(item.area_m2, 1)))}/m2</small>
+              </td>
+              <td>
+                <strong>{item.decision_score}/100</strong>
+                <small>
+                  Risk {item.risk_score}/100 · liquidity {item.liquidity_score}/100
+                </small>
+              </td>
+              <td>
+                <strong>{percent(item.price_delta_to_fair_mid_pct)}</strong>
+                <small>Fair mid {money(item.fair_price_mid_pln)}</small>
+              </td>
+              <td>
+                <strong>{item.developer_name ?? "-"}</strong>
+                <small>
+                  {item.developer_reputation_score !== null
+                    ? `${item.developer_reputation_score}/100 · ${item.developer_reputation_label}`
+                    : "no reputation data"}
+                </small>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function CrmSharePreviewBlock({ preview }: { preview: CrmSharePreview }) {
+  return (
+    <div className="crm-share-preview">
+      <div className="panel-header inline">
+        <h3 className="icon-title">
+          <Share2 size={16} />
+          Share preview
+        </h3>
+        {preview.share_token ? (
+          <a
+            className="button"
+            href={crmSharedShortlistUrl(preview.share_token)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Public link
+          </a>
+        ) : null}
+      </div>
+      <p>
+        <strong>{preview.title}</strong>
+        {preview.client_display_name ? ` · ${preview.client_display_name}` : ""}
+      </p>
+      {preview.client_message ? <p className="muted">{preview.client_message}</p> : null}
+      {preview.client_shareable_notes.length > 0 ? (
+        <ul className="section-list compact">
+          {preview.client_shareable_notes.map((note) => (
+            <li key={note}>{note}</li>
+          ))}
+        </ul>
+      ) : null}
+      <CrmShortlistItems items={preview.items} />
+      <p className="muted">{preview.disclaimer}</p>
+    </div>
+  );
+}
+
 function planWeight(plan: SubscriptionPlan) {
   return ["free", "buyer_pro", "investor", "realtor", "agency", "enterprise"].indexOf(plan);
 }
@@ -712,6 +1599,65 @@ function planWeight(plan: SubscriptionPlan) {
 function blankToNull(value: string) {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+function toOptionalNumber(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const parsed = Number(trimmed.replace(/\s/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+}
+
+function parseTokenList(value: string) {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\s,;]+/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+function parseNumberList(value: string) {
+  return parseTokenList(value)
+    .map((item) => Number(item))
+    .filter((item) => Number.isInteger(item) && item > 0);
+}
+
+function formatBudget(minValue: number | null, maxValue: number | null) {
+  if (minValue !== null && maxValue !== null) return `${money(minValue)} - ${money(maxValue)}`;
+  if (maxValue !== null) return `до ${money(maxValue)}`;
+  if (minValue !== null) return `от ${money(minValue)}`;
+  return "-";
+}
+
+function formatRooms(rooms: number[]) {
+  return rooms.length > 0 ? rooms.join(", ") : "-";
+}
+
+function formatDate(value: string) {
+  return new Intl.DateTimeFormat("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
+}
+
+function crmClientStatusTone(status: CrmClientStatus) {
+  if (status === "active" || status === "won") return "healthy";
+  if (status === "paused") return "warning";
+  if (status === "lost") return "rejected";
+  return "info";
+}
+
+function shortlistStatusTone(shortlist: CrmShortlist) {
+  if (shortlist.status === "accepted") return "healthy";
+  if (shortlist.status === "shared") return shortlist.share_enabled ? "info" : "warning";
+  if (shortlist.status === "rejected") return "rejected";
+  if (shortlist.status === "archived") return "warning";
+  return "queued";
 }
 
 function memberDisplayName(member: AgencyWorkspace["members"][number]) {

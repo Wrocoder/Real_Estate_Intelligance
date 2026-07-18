@@ -1149,6 +1149,77 @@ button {
   color: var(--ok);
 }
 
+.crm-layout {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.crm-client-list,
+.crm-detail,
+.crm-card-list {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.crm-client-button {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  color: var(--ink);
+  padding: 10px;
+  text-align: left;
+}
+
+.crm-client-button:hover,
+.crm-client-button.selected {
+  border-color: var(--accent);
+  background: #f3fbf8;
+}
+
+.crm-client-button small,
+.crm-client-button span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.crm-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.crm-shortlist-card,
+.crm-share-preview {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.crm-share-preview {
+  border-left: 3px solid var(--accent);
+  background: #f7fbfa;
+}
+
+.crm-share-preview p,
+.crm-shortlist-card p,
+.section-list p {
+  margin: 0;
+}
+
+.crm-shortlist-table th,
+.crm-shortlist-table td {
+  min-width: 150px;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -1897,7 +1968,8 @@ button {
   .grid-2,
   .detail-grid,
   .admin-grid,
-  .planned-investment-grid {
+  .planned-investment-grid,
+  .crm-layout {
     grid-template-columns: 1fr;
   }
 
@@ -1928,6 +2000,10 @@ button {
 
   .listing-ai-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .crm-subgrid {
+    grid-template-columns: 1fr;
   }
 
   .landing-hero {
@@ -1981,7 +2057,8 @@ button {
   .guide-related-grid,
   .compare-selector,
   .alert-preferences,
-  .form-grid {
+  .form-grid,
+  .crm-subgrid {
     grid-template-columns: 1fr;
   }
 

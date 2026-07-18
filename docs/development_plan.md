@@ -543,6 +543,7 @@
 - [x] Commit 97: Enterprise custom dashboard API foundation.
 - [x] Commit 98: Partner referral lead scoring.
 - [x] Commit 99: Agency CRM-light API with client shortlists and safe sharing.
+- [x] Commit 100: Agency CRM-light account UI.
 
 ## Current Sprint
 
@@ -620,6 +621,7 @@
 - [x] Добавить source-grounded listing AI assistant API: data contract, question set, citations, guardrails, refusal rules and usage logging.
 - [x] Подключить listing AI assistant UI: audience, question set, custom question, citations, guardrails and saved usage id.
 - [x] Добавить agency CRM-light API: clients, notes, enriched shortlists and safe public sharing.
+- [x] Добавить agency CRM-light UI на account page: clients, notes, shortlists and share preview.
 - [x] Подключить user-submitted draft AI assistant UI для Otodom/OLX link-to-report flow без раскрытия private source URL.
 - [x] Добавить source-grounded compare AI answer API: winner, tradeoffs, citations, refusal rules and usage logging.
 - [x] Подключить compare-A-vs-B AI verdict на compare page: audience, custom question, winner, tradeoffs, citations and guardrails.
