@@ -19,6 +19,9 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert payload["metadata"]["infrastructure_counts"]["school_count"] >= 2
     assert payload["metadata"]["administrative_layer_count"] >= 3
     assert payload["metadata"]["administrative_counts"]["district_boundary_count"] >= 3
+    assert payload["metadata"]["planning_layer_count"] >= 4
+    assert payload["metadata"]["planning_counts"]["mpzp_plan_zone_count"] >= 2
+    assert payload["metadata"]["planning_counts"]["studium_policy_zone_count"] >= 2
     assert payload["metadata"]["risk_layer_count"] >= 4
     assert payload["metadata"]["risk_counts"]["major_road_noise_zone_count"] >= 2
     assert payload["metadata"]["risk_counts"]["industrial_risk_zone_count"] >= 1
@@ -36,6 +39,8 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
         "district_boundary",
         "municipality_boundary",
         "voivodeship_boundary",
+        "mpzp_plan_zone",
+        "studium_policy_zone",
         "industrial_risk_zone",
         "major_road_noise_zone",
         "rail_noise_review_zone",
@@ -74,6 +79,24 @@ def test_map_features_returns_listings_planned_investments_and_infrastructure() 
     assert route["properties"]["route_type"] == "tram"
     assert route["properties"]["status"] == "planned"
     assert route["properties"]["geometry_accuracy"] == "route_stop_proxy"
+
+    mpzp_zone = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "mpzp_plan_zone"
+        and feature["properties"].get("plan_code") == "MW/U"
+    )
+    assert mpzp_zone["geometry"]["type"] == "Polygon"
+    assert mpzp_zone["properties"]["legal_status"] == "review_required"
+    assert mpzp_zone["properties"]["geometry_accuracy"] == "planning_screening_proxy"
+
+    studium_zone = next(
+        feature
+        for feature in payload["features"]
+        if feature["properties"]["feature_type"] == "studium_policy_zone"
+    )
+    assert studium_zone["geometry"]["type"] == "Polygon"
+    assert studium_zone["properties"]["planning_status"] == "review_required"
 
     district_boundary = next(
         feature
@@ -192,6 +215,7 @@ def test_map_features_does_not_return_default_administrative_layer_for_unknown_c
 
     assert response.status_code == 200
     assert payload["metadata"]["administrative_layer_count"] == 0
+    assert payload["metadata"]["planning_layer_count"] == 0
     assert payload["metadata"]["risk_layer_count"] == 0
     assert payload["features"] == []
 

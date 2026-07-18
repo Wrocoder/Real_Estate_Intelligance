@@ -311,7 +311,7 @@
 - [x] Добавить granular UI-переключатели для infrastructure map layers: transport stops, schools, kindergartens, amenities, industrial zones.
 - [x] Добавить granular amenity sublayers на карте: parks, healthcare, retail, office/university/jobs, public services.
 - [x] Добавить слои industrial zones, noise/major roads/rail/airport, flood and pollution risk.
-- [ ] Добавить MPZP/Studium layer.
+- [x] Добавить MPZP/Studium layer.
 - [ ] Добавить future roads, tram lines and bus routes layers.
 - [x] Добавить radius analysis panel 500 м, 1 км, 2 км, 5 км, 10 км.
 
@@ -547,6 +547,7 @@
 - [x] Commit 101: Administrative map layers for districts, gminas and voivodeship.
 - [x] Commit 102: GIS risk map proxy layers for roads, industrial buffers, rail, airport, flood and pollution review.
 - [x] Commit 103: Transport route LineString map layers.
+- [x] Commit 104: MPZP and Studium planning map screening layers.
 
 ## Current Sprint
 
@@ -624,6 +625,7 @@
 - [x] Добавить administrative map layers: district/gmina/voivodeship boundaries, metadata counts и UI toggles.
 - [x] Добавить GIS risk map proxy layers: industrial buffers, major-road noise, rail/airport/flood/pollution review zones, metadata counts и UI toggles.
 - [x] Добавить transport route LineString map layer: active/planned tram/bus routes, source shape support, stop proxy fallback и UI toggle.
+- [x] Добавить MPZP/Studium planning map screening layers: plan/policy zones, legal review flags, metadata counts и UI toggles.
 - [x] Добавить source-grounded listing AI assistant API: data contract, question set, citations, guardrails, refusal rules and usage logging.
 - [x] Подключить listing AI assistant UI: audience, question set, custom question, citations, guardrails and saved usage id.
 - [x] Добавить agency CRM-light API: clients, notes, enriched shortlists and safe public sharing.

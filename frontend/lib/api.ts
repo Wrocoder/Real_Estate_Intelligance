@@ -2531,6 +2531,8 @@ export type MapFeatureType =
   | "district_boundary"
   | "municipality_boundary"
   | "voivodeship_boundary"
+  | "mpzp_plan_zone"
+  | "studium_policy_zone"
   | "industrial_risk_zone"
   | "major_road_noise_zone"
   | "rail_noise_review_zone"
@@ -2573,6 +2575,8 @@ export type MapFeatureCollection = {
     infrastructure_counts?: Record<string, number>;
     administrative_layer_count?: number;
     administrative_counts?: Record<string, number>;
+    planning_layer_count?: number;
+    planning_counts?: Record<string, number>;
     risk_layer_count?: number;
     risk_counts?: Record<string, number>;
     skipped_listings?: number;

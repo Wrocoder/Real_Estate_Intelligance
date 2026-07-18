@@ -33,6 +33,10 @@ ADMINISTRATIVE_FEATURE_TYPES = {
     "municipality_boundary",
     "voivodeship_boundary",
 }
+PLANNING_FEATURE_TYPES = {
+    "mpzp_plan_zone",
+    "studium_policy_zone",
+}
 RISK_FEATURE_TYPES = {
     "industrial_risk_zone",
     "major_road_noise_zone",
@@ -97,6 +101,72 @@ RISK_REVIEW_ZONES = (
         "review_reason": (
             "Air quality and industrial/traffic exposure need official/public data check."
         ),
+    },
+)
+PLANNING_REVIEW_ZONES = (
+    {
+        "feature_type": "mpzp_plan_zone",
+        "reference_id": "mpzp-wroclaw-fabryczna-mixed-use-review",
+        "name": "Fabryczna mixed-use intensification",
+        "city": "Wrocław",
+        "district": "Fabryczna",
+        "lat": 51.1125,
+        "lon": 16.9671,
+        "radius_km": 1.15,
+        "plan_code": "MW/U",
+        "planning_category": "mixed_residential_services",
+        "planning_status": "review_required",
+        "potential_impact": (
+            "higher density and more services; verify height, parking and road rules."
+        ),
+        "source_name": "MPZP/Studium screening sample",
+    },
+    {
+        "feature_type": "mpzp_plan_zone",
+        "reference_id": "mpzp-wroclaw-krzyki-residential-review",
+        "name": "Krzyki residential protection",
+        "city": "Wrocław",
+        "district": "Krzyki",
+        "lat": 51.0574,
+        "lon": 17.0619,
+        "radius_km": 1.25,
+        "plan_code": "MN/MW",
+        "planning_category": "residential",
+        "planning_status": "review_required",
+        "potential_impact": "residential continuity; verify exact plot parameters and services.",
+        "source_name": "MPZP/Studium screening sample",
+    },
+    {
+        "feature_type": "studium_policy_zone",
+        "reference_id": "studium-wroclaw-green-blue-review",
+        "name": "Green-blue structure review",
+        "city": "Wrocław",
+        "district": "Psie Pole",
+        "lat": 51.1308,
+        "lon": 17.0645,
+        "radius_km": 1.85,
+        "plan_code": "ZP/WS",
+        "planning_category": "green_blue_structure",
+        "planning_status": "review_required",
+        "potential_impact": "green/floodplain constraints may limit density and improve amenity.",
+        "source_name": "MPZP/Studium screening sample",
+    },
+    {
+        "feature_type": "studium_policy_zone",
+        "reference_id": "studium-wroclaw-transport-corridor-review",
+        "name": "Transport corridor reserve",
+        "city": "Wrocław",
+        "district": "Fabryczna",
+        "lat": 51.1055,
+        "lon": 16.944,
+        "radius_km": 1.45,
+        "plan_code": "KD/KT",
+        "planning_category": "transport_corridor",
+        "planning_status": "review_required",
+        "potential_impact": (
+            "possible future road/tram corridor; verify acquisition/noise exposure."
+        ),
+        "source_name": "MPZP/Studium screening sample",
     },
 )
 
@@ -204,6 +274,15 @@ def build_map_feature_collection(
         lon=lon,
         radius_km=radius_km,
     )
+    planning_features = _planning_features(
+        city=city,
+        district=district,
+        municipality=municipality,
+        bbox=bbox,
+        lat=lat,
+        lon=lon,
+        radius_km=radius_km,
+    )
     risk_features = _risk_features(
         repository,
         listings,
@@ -216,7 +295,11 @@ def build_map_feature_collection(
         radius_km=radius_km,
     )
 
-    features: list[MapFeature] = [*administrative_features, *risk_features]
+    features: list[MapFeature] = [
+        *administrative_features,
+        *planning_features,
+        *risk_features,
+    ]
     skipped_listings = 0
 
     for listing in listings:
@@ -290,6 +373,12 @@ def build_map_feature_collection(
         )
         for feature_type in sorted(ADMINISTRATIVE_FEATURE_TYPES)
     }
+    planning_counts = {
+        f"{feature_type}_count": sum(
+            1 for feature in features if feature.properties["feature_type"] == feature_type
+        )
+        for feature_type in sorted(PLANNING_FEATURE_TYPES)
+    }
     risk_counts = {
         f"{feature_type}_count": sum(
             1 for feature in features if feature.properties["feature_type"] == feature_type
@@ -307,6 +396,8 @@ def build_map_feature_collection(
             "infrastructure_counts": infrastructure_counts,
             "administrative_layer_count": sum(administrative_counts.values()),
             "administrative_counts": administrative_counts,
+            "planning_layer_count": sum(planning_counts.values()),
+            "planning_counts": planning_counts,
             "risk_layer_count": sum(risk_counts.values()),
             "risk_counts": risk_counts,
             "skipped_listings": skipped_listings,
@@ -526,6 +617,76 @@ def _risk_features(
         features.append(_risk_review_zone_to_feature(zone))
 
     return features
+
+
+def _planning_features(
+    *,
+    city: str | None,
+    district: str | None,
+    municipality: str | None,
+    bbox: BBox | None,
+    lat: float | None,
+    lon: float | None,
+    radius_km: float | None,
+) -> list[MapFeature]:
+    features: list[MapFeature] = []
+    for zone in PLANNING_REVIEW_ZONES:
+        if not _planning_zone_matches_filters(zone, city, district, municipality):
+            continue
+        if not _is_inside_spatial_window(
+            zone["lat"],
+            zone["lon"],
+            bbox,
+            lat,
+            lon,
+            radius_km,
+        ):
+            continue
+        features.append(_planning_zone_to_feature(zone))
+    return features
+
+
+def _planning_zone_matches_filters(
+    zone: dict[str, Any],
+    city: str | None,
+    district: str | None,
+    municipality: str | None,
+) -> bool:
+    if municipality and zone["city"].casefold() != municipality.casefold():
+        return False
+    if city and zone["city"].casefold() != city.casefold():
+        return False
+    if district and zone["district"].casefold() != district.casefold():
+        return False
+    return True
+
+
+def _planning_zone_to_feature(zone: dict[str, Any]) -> MapFeature:
+    return MapFeature(
+        id=str(zone["reference_id"]),
+        geometry=MapPolygonGeometry(
+            coordinates=_circle_polygon(zone["lon"], zone["lat"], zone["radius_km"]),
+        ),
+        properties={
+            "feature_type": zone["feature_type"],
+            "planning_layer": str(zone["feature_type"]).replace("_zone", ""),
+            "reference_id": zone["reference_id"],
+            "name": zone["name"],
+            "city": zone["city"],
+            "district": zone["district"],
+            "municipality": zone["city"],
+            "plan_code": zone["plan_code"],
+            "planning_category": zone["planning_category"],
+            "planning_status": zone["planning_status"],
+            "legal_status": "review_required",
+            "impact_radius_m": round(zone["radius_km"] * 1000),
+            "geometry_accuracy": "planning_screening_proxy",
+            "geometry_source": "MVP MPZP/Studium screening zone; replace with official GIS feed",
+            "source_name": zone["source_name"],
+            "potential_impact": zone["potential_impact"],
+            "review_reason": "Check exact parcel in official MPZP/Studium before decision.",
+        },
+    )
 
 
 def _industrial_risk_zone_to_feature(zone: Any) -> MapFeature:

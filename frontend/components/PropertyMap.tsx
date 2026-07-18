@@ -36,6 +36,9 @@ type VisibleMapLayers = {
   districts: boolean;
   municipalities: boolean;
   voivodeshipBoundary: boolean;
+  planning: boolean;
+  mpzpZones: boolean;
+  studiumZones: boolean;
   riskLayers: boolean;
   majorRoadNoise: boolean;
   industrialRisk: boolean;
@@ -77,6 +80,10 @@ type RiskLayerControlKey = keyof Pick<
   VisibleMapLayers,
   "majorRoadNoise" | "industrialRisk" | "railAirportRisk" | "floodPollutionRisk"
 >;
+type PlanningLayerControlKey = keyof Pick<
+  VisibleMapLayers,
+  "mpzpZones" | "studiumZones"
+>;
 
 type Props = {
   collection: MapFeatureCollection | null;
@@ -89,6 +96,7 @@ const LISTINGS_SOURCE_ID = "domarion-listings";
 const LISTING_HEATMAP_SOURCE_ID = "domarion-listing-heatmap";
 const INVESTMENTS_SOURCE_ID = "domarion-planned-investments";
 const ADMINISTRATIVE_SOURCE_ID = "domarion-administrative-boundaries";
+const PLANNING_SOURCE_ID = "domarion-planning-zones";
 const RISK_SOURCE_ID = "domarion-risk-zones";
 const TRANSPORT_ROUTES_SOURCE_ID = "domarion-transport-routes";
 const EMPTY_COLLECTION: GeoJsonData = { type: "FeatureCollection", features: [] };
@@ -110,6 +118,9 @@ const DEFAULT_VISIBLE_LAYERS: VisibleMapLayers = {
   districts: true,
   municipalities: true,
   voivodeshipBoundary: false,
+  planning: false,
+  mpzpZones: true,
+  studiumZones: true,
   riskLayers: false,
   majorRoadNoise: true,
   industrialRisk: true,
@@ -142,6 +153,20 @@ const ADMINISTRATIVE_LAYER_CONTROLS: Array<{
   { key: "districts", label: "Районы" },
   { key: "municipalities", label: "Гмины" },
   { key: "voivodeshipBoundary", label: "Воеводство" },
+];
+
+const PLANNING_LAYER_IDS = [
+  "planning-zone-fill",
+  "planning-zone-line",
+  "planning-zone-label",
+];
+
+const PLANNING_LAYER_CONTROLS: Array<{
+  key: PlanningLayerControlKey;
+  label: string;
+}> = [
+  { key: "mpzpZones", label: "MPZP" },
+  { key: "studiumZones", label: "Studium" },
 ];
 
 const RISK_LAYER_IDS = [
@@ -309,6 +334,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
   const plannedCount = collection?.metadata.planned_investment_count ?? 0;
   const infrastructureCount = collection?.metadata.infrastructure_count ?? 0;
   const administrativeCount = collection?.metadata.administrative_layer_count ?? 0;
+  const planningCount = collection?.metadata.planning_layer_count ?? 0;
   const riskLayerCount = collection?.metadata.risk_layer_count ?? 0;
   const radiusBuckets = buildRadiusBuckets(collection, visibleLayers, radiusCenter);
   const updateVisibleLayer = (key: keyof VisibleMapLayers, checked: boolean) => {
@@ -325,6 +351,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <span>{listingCount} объектов</span>
         <span>{plannedCount} planned investments</span>
         <span>{administrativeCount} адм. зон</span>
+        <span>{planningCount} planning</span>
         <span>{riskLayerCount} risk zones</span>
         <span>{infrastructureCount} infrastructure</span>
       </div>
@@ -394,6 +421,25 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         <label>
           <input
             type="checkbox"
+            checked={visibleLayers.planning}
+            onChange={(event) => updateVisibleLayer("planning", event.target.checked)}
+          />
+          <span>MPZP/Studium</span>
+        </label>
+        {PLANNING_LAYER_CONTROLS.map((control) => (
+          <label className="map-layer-subtoggle" key={control.key}>
+            <input
+              type="checkbox"
+              checked={visibleLayers[control.key]}
+              disabled={!visibleLayers.planning}
+              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+            />
+            <span>{control.label}</span>
+          </label>
+        ))}
+        <label>
+          <input
+            type="checkbox"
             checked={visibleLayers.riskLayers}
             onChange={(event) => updateVisibleLayer("riskLayers", event.target.checked)}
           />
@@ -450,6 +496,9 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         </span>
         <span>
           <i className="legend-dot boundary" /> границы
+        </span>
+        <span>
+          <i className="legend-dot planning" /> MPZP
         </span>
         <span>
           <i className="legend-dot risk-zone" /> risk zones
@@ -587,6 +636,94 @@ function ensureMapLayers(map: MaplibreMap) {
           13,
           11,
         ],
+        "text-allow-overlap": false,
+      },
+      paint: {
+        "text-color": "#344054",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1,
+      },
+    });
+  }
+
+  if (!map.getSource(PLANNING_SOURCE_ID)) {
+    map.addSource(PLANNING_SOURCE_ID, {
+      type: "geojson",
+      data: EMPTY_COLLECTION,
+    });
+  }
+
+  if (!map.getLayer("planning-zone-fill")) {
+    map.addLayer({
+      id: "planning-zone-fill",
+      type: "fill",
+      source: PLANNING_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "fill-color": [
+          "match",
+          ["get", "feature_type"],
+          "mpzp_plan_zone",
+          "#7a5af8",
+          "studium_policy_zone",
+          "#0e9384",
+          "#667085",
+        ],
+        "fill-opacity": [
+          "match",
+          ["get", "planning_category"],
+          "transport_corridor",
+          0.15,
+          "green_blue_structure",
+          0.13,
+          0.11,
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("planning-zone-line")) {
+    map.addLayer({
+      id: "planning-zone-line",
+      type: "line",
+      source: PLANNING_SOURCE_ID,
+      layout: {
+        visibility: "none",
+      },
+      paint: {
+        "line-color": [
+          "match",
+          ["get", "feature_type"],
+          "mpzp_plan_zone",
+          "#7a5af8",
+          "studium_policy_zone",
+          "#0e9384",
+          "#667085",
+        ],
+        "line-opacity": 0.72,
+        "line-width": 1.4,
+        "line-dasharray": [
+          "match",
+          ["get", "feature_type"],
+          "studium_policy_zone",
+          ["literal", [2, 1.3]],
+          ["literal", [1, 0]],
+        ],
+      },
+    });
+  }
+
+  if (!map.getLayer("planning-zone-label")) {
+    map.addLayer({
+      id: "planning-zone-label",
+      type: "symbol",
+      source: PLANNING_SOURCE_ID,
+      layout: {
+        visibility: "none",
+        "text-field": ["concat", ["get", "plan_code"], " ", ["get", "name"]],
+        "text-size": 11,
         "text-allow-overlap": false,
       },
       paint: {
@@ -972,6 +1109,7 @@ function syncMapData(
     ? splitCollection(collection, "planned_investment")
     : EMPTY_COLLECTION;
   const administrative = administrativeMapCollection(collection, visibleLayers);
+  const planningZones = planningMapCollection(collection, visibleLayers);
   const riskZones = riskMapCollection(collection, visibleLayers);
   const transportRoutes = visibleLayers.infrastructure && visibleLayers.transportRoutes
     ? splitCollection(collection, "transport_route")
@@ -982,6 +1120,7 @@ function syncMapData(
   const administrativeSource = map.getSource(ADMINISTRATIVE_SOURCE_ID) as
     | SourceWithData
     | undefined;
+  const planningSource = map.getSource(PLANNING_SOURCE_ID) as SourceWithData | undefined;
   const riskSource = map.getSource(RISK_SOURCE_ID) as SourceWithData | undefined;
   const transportRouteSource = map.getSource(TRANSPORT_ROUTES_SOURCE_ID) as
     | SourceWithData
@@ -991,11 +1130,15 @@ function syncMapData(
   heatmapSource?.setData(heatmapListings);
   investmentSource?.setData(investments);
   administrativeSource?.setData(administrative);
+  planningSource?.setData(planningZones);
   riskSource?.setData(riskZones);
   transportRouteSource?.setData(transportRoutes);
   setMapLayerVisibility(map, "listing-price-heatmap", visibleLayers.priceHeatmap);
   ADMINISTRATIVE_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.administrative);
+  });
+  PLANNING_LAYER_IDS.forEach((layerId) => {
+    setMapLayerVisibility(map, layerId, visibleLayers.planning);
   });
   RISK_LAYER_IDS.forEach((layerId) => {
     setMapLayerVisibility(map, layerId, visibleLayers.riskLayers);
@@ -1137,6 +1280,7 @@ function isFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) 
   if (isAdministrativeFeatureType(featureType)) {
     return isAdministrativeFeatureVisible(feature, visibleLayers);
   }
+  if (isPlanningFeatureType(featureType)) return isPlanningFeatureVisible(feature, visibleLayers);
   if (isRiskFeatureType(featureType)) return isRiskFeatureVisible(feature, visibleLayers);
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
@@ -1162,6 +1306,7 @@ function isMarkerFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLa
   if (featureType === "listing") return visibleLayers.listings;
   if (featureType === "planned_investment") return visibleLayers.planned;
   if (isAdministrativeFeatureType(featureType)) return false;
+  if (isPlanningFeatureType(featureType)) return false;
   if (isRiskFeatureType(featureType)) return false;
   return isInfrastructureFeatureVisible(feature, visibleLayers);
 }
@@ -1197,6 +1342,31 @@ function isAdministrativeFeatureType(featureType: MapFeatureType) {
     featureType === "municipality_boundary" ||
     featureType === "voivodeship_boundary"
   );
+}
+
+function planningMapCollection(
+  collection: MapFeatureCollection | null,
+  visibleLayers: VisibleMapLayers,
+): GeoJsonData {
+  return {
+    type: "FeatureCollection",
+    features:
+      collection?.features.filter((feature) =>
+        isPlanningFeatureVisible(feature, visibleLayers),
+      ) ?? [],
+  };
+}
+
+function isPlanningFeatureVisible(feature: MapFeature, visibleLayers: VisibleMapLayers) {
+  const featureType = feature.properties.feature_type;
+  if (!visibleLayers.planning) return false;
+  if (featureType === "mpzp_plan_zone") return visibleLayers.mpzpZones;
+  if (featureType === "studium_policy_zone") return visibleLayers.studiumZones;
+  return false;
+}
+
+function isPlanningFeatureType(featureType: MapFeatureType) {
+  return featureType === "mpzp_plan_zone" || featureType === "studium_policy_zone";
 }
 
 function riskMapCollection(
