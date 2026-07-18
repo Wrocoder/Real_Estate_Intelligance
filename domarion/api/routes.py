@@ -29,6 +29,8 @@ from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
 from domarion.core import get_settings
+from domarion.custom_dashboard_store.base import CustomDashboardStore
+from domarion.custom_dashboard_store.factory import get_custom_dashboard_store
 from domarion.db.models import (
     PropertyDeduplicationMatch as PropertyDeduplicationMatchRow,
 )
@@ -110,6 +112,10 @@ from domarion.schemas import (
     CheckoutSession,
     CompareRequest,
     CompareResponse,
+    CustomDashboardConfig,
+    CustomDashboardCreate,
+    CustomDashboardPreview,
+    CustomDashboardUpdate,
     DataDeletionRequest,
     DataDeletionRequestCreate,
     DataDeletionRequestProcess,
@@ -253,6 +259,7 @@ from domarion.services.area_ai_summary import (
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import build_scoring_backtest_report, run_scoring_backtest
+from domarion.services.custom_dashboards import build_custom_dashboard_preview
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.growth_analysis import build_listing_growth_analysis
@@ -318,6 +325,7 @@ AuthStoreDep = Annotated[AuthStore, Depends(get_auth_store)]
 AgencyStoreDep = Annotated[AgencyStore, Depends(get_agency_store)]
 PartnerReferralStoreDep = Annotated[PartnerReferralStore, Depends(get_partner_referral_store)]
 NewsStoreDep = Annotated[NewsStore, Depends(get_news_store)]
+CustomDashboardStoreDep = Annotated[CustomDashboardStore, Depends(get_custom_dashboard_store)]
 UserSubmittedListingStoreDep = Annotated[
     UserSubmittedListingStore,
     Depends(get_user_submitted_listing_store),
@@ -864,6 +872,99 @@ def evaluate_scoring_service_listing_endpoint(
         return evaluate_scoring_service_listing(repository, payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get(
+    "/enterprise/custom-dashboards",
+    response_model=list[CustomDashboardConfig],
+)
+def list_enterprise_custom_dashboards(
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+) -> list[CustomDashboardConfig]:
+    _ensure_enterprise_plan(account)
+    return dashboard_store.list_dashboards(account.user.id, limit=limit)
+
+
+@router.post(
+    "/enterprise/custom-dashboards",
+    response_model=CustomDashboardConfig,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_enterprise_custom_dashboard(
+    payload: CustomDashboardCreate,
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+) -> CustomDashboardConfig:
+    _ensure_enterprise_plan(account)
+    return dashboard_store.create_dashboard(account.user.id, payload)
+
+
+@router.get(
+    "/enterprise/custom-dashboards/{dashboard_id}",
+    response_model=CustomDashboardConfig,
+)
+def get_enterprise_custom_dashboard(
+    dashboard_id: str,
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+) -> CustomDashboardConfig:
+    _ensure_enterprise_plan(account)
+    dashboard = dashboard_store.get_dashboard(account.user.id, dashboard_id)
+    if dashboard is None:
+        raise HTTPException(status_code=404, detail="Custom dashboard not found")
+    return dashboard
+
+
+@router.patch(
+    "/enterprise/custom-dashboards/{dashboard_id}",
+    response_model=CustomDashboardConfig,
+)
+def update_enterprise_custom_dashboard(
+    dashboard_id: str,
+    payload: CustomDashboardUpdate,
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+) -> CustomDashboardConfig:
+    _ensure_enterprise_plan(account)
+    dashboard = dashboard_store.update_dashboard(account.user.id, dashboard_id, payload)
+    if dashboard is None:
+        raise HTTPException(status_code=404, detail="Custom dashboard not found")
+    return dashboard
+
+
+@router.delete(
+    "/enterprise/custom-dashboards/{dashboard_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_enterprise_custom_dashboard(
+    dashboard_id: str,
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_enterprise_plan(account)
+    deleted = dashboard_store.delete_dashboard(account.user.id, dashboard_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Custom dashboard not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.post(
+    "/enterprise/custom-dashboards/{dashboard_id}/preview",
+    response_model=CustomDashboardPreview,
+)
+def preview_enterprise_custom_dashboard(
+    dashboard_id: str,
+    repository: RepositoryDep,
+    dashboard_store: CustomDashboardStoreDep,
+    account: CurrentAccountDep,
+) -> CustomDashboardPreview:
+    _ensure_enterprise_plan(account)
+    dashboard = dashboard_store.get_dashboard(account.user.id, dashboard_id)
+    if dashboard is None:
+        raise HTTPException(status_code=404, detail="Custom dashboard not found")
+    return build_custom_dashboard_preview(repository, dashboard)
 
 
 @router.get("/api-lite/listings", response_model=ApiLiteListingSearchResponse)
@@ -4138,6 +4239,20 @@ def _ensure_agency_plan(account: CurrentAccount) -> None:
             "resource": "agency_accounts",
             "plan": account.subscription.plan,
             "required_plan": "agency",
+        },
+    )
+
+
+def _ensure_enterprise_plan(account: CurrentAccount) -> None:
+    if account.user.role == "admin" or account.subscription.plan == "enterprise":
+        return
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN,
+        detail={
+            "code": "plan_limit_reached",
+            "resource": "enterprise_dashboards",
+            "plan": account.subscription.plan,
+            "required_plan": "enterprise",
         },
     )
 

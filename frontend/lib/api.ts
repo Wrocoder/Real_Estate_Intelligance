@@ -293,6 +293,81 @@ export type MarketIntelligenceReport = {
   disclaimer: string;
 };
 
+export type CustomDashboardAudience =
+  | "executive"
+  | "acquisition"
+  | "underwriting"
+  | "sales"
+  | "portfolio";
+
+export type CustomDashboardWidgetCode =
+  | "market_kpis"
+  | "area_watchlist"
+  | "listing_pipeline"
+  | "risk_flags"
+  | "developer_ranking"
+  | "scoring_distribution"
+  | "lead_funnel"
+  | "api_usage"
+  | "saved_reports"
+  | "custom_notes";
+
+export type CustomDashboardWidgetStatus = "ready" | "needs_data" | "planned";
+
+export type CustomDashboardPayload = {
+  name: string;
+  description?: string | null;
+  audience?: CustomDashboardAudience;
+  city?: string | null;
+  district?: string | null;
+  widget_codes?: CustomDashboardWidgetCode[];
+  filters?: Record<string, unknown>;
+  refresh_interval_minutes?: number;
+  is_default?: boolean;
+  shared_with_agency_ids?: string[];
+  notes?: string | null;
+};
+
+export type CustomDashboardUpdatePayload = Partial<CustomDashboardPayload>;
+
+export type CustomDashboardConfig = {
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  audience: CustomDashboardAudience;
+  city: string | null;
+  district: string | null;
+  widget_codes: CustomDashboardWidgetCode[];
+  filters: Record<string, unknown>;
+  refresh_interval_minutes: number;
+  is_default: boolean;
+  shared_with_agency_ids: string[];
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomDashboardWidgetSnapshot = {
+  widget_code: CustomDashboardWidgetCode;
+  title: string;
+  status: CustomDashboardWidgetStatus;
+  summary: string;
+  metrics: Record<string, unknown>;
+  actions: string[];
+};
+
+export type CustomDashboardPreview = {
+  config: CustomDashboardConfig;
+  generated_at: string;
+  dashboard: MarketDashboard;
+  area_comparison: AreaComparison;
+  market_intelligence: MarketIntelligenceReport;
+  widgets: CustomDashboardWidgetSnapshot[];
+  source_notes: string[];
+  disclaimer: string;
+};
+
 export type PlannedInvestment = {
   id: string;
   name: string;
@@ -2514,6 +2589,50 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
+  listCustomDashboards: (params: { limit?: number } = {}) =>
+    request<CustomDashboardConfig[]>(
+      `/api/v1/enterprise/custom-dashboards${toQueryString(params)}`,
+    ),
+  createCustomDashboard: (payload: CustomDashboardPayload) =>
+    request<CustomDashboardConfig>("/api/v1/enterprise/custom-dashboards", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getCustomDashboard: (dashboardId: string) =>
+    request<CustomDashboardConfig>(
+      `/api/v1/enterprise/custom-dashboards/${encodeURIComponent(dashboardId)}`,
+    ),
+  updateCustomDashboard: (
+    dashboardId: string,
+    payload: CustomDashboardUpdatePayload,
+  ) =>
+    request<CustomDashboardConfig>(
+      `/api/v1/enterprise/custom-dashboards/${encodeURIComponent(dashboardId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteCustomDashboard: async (dashboardId: string) => {
+    const response = await fetch(
+      `${currentApiBaseUrl()}/api/v1/enterprise/custom-dashboards/${encodeURIComponent(
+        dashboardId,
+      )}`,
+      {
+        method: "DELETE",
+        cache: "no-store",
+      },
+    );
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
+  previewCustomDashboard: (dashboardId: string) =>
+    request<CustomDashboardPreview>(
+      `/api/v1/enterprise/custom-dashboards/${encodeURIComponent(dashboardId)}/preview`,
+      { method: "POST" },
+    ),
   getMe: () => request<AccountSummary>("/api/v1/me"),
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
   listAgencies: (params: { limit?: number } = {}) =>

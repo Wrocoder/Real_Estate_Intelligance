@@ -198,6 +198,26 @@ MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "hi
 MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
 MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]
 ScoringServiceAudience = Literal["buyer", "realtor", "investor", "underwriting", "developer"]
+CustomDashboardAudience = Literal[
+    "executive",
+    "acquisition",
+    "underwriting",
+    "sales",
+    "portfolio",
+]
+CustomDashboardWidgetCode = Literal[
+    "market_kpis",
+    "area_watchlist",
+    "listing_pipeline",
+    "risk_flags",
+    "developer_ranking",
+    "scoring_distribution",
+    "lead_funnel",
+    "api_usage",
+    "saved_reports",
+    "custom_notes",
+]
+CustomDashboardWidgetStatus = Literal["ready", "needs_data", "planned"]
 ListingSort = Literal[
     "price_asc",
     "price_desc",
@@ -1923,6 +1943,99 @@ class MarketIntelligenceReport(BaseModel):
     disclaimer: str
 
 
+class CustomDashboardCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=160)
+    description: str | None = Field(default=None, max_length=500)
+    audience: CustomDashboardAudience = "executive"
+    city: str | None = Field(default="Wrocław", max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    widget_codes: list[CustomDashboardWidgetCode] = Field(
+        default_factory=lambda: [
+            "market_kpis",
+            "area_watchlist",
+            "risk_flags",
+            "developer_ranking",
+        ],
+        min_length=1,
+        max_length=12,
+    )
+    filters: dict[str, Any] = Field(default_factory=dict)
+    refresh_interval_minutes: int = Field(default=60, ge=15, le=1440)
+    is_default: bool = False
+    shared_with_agency_ids: list[str] = Field(default_factory=list, max_length=20)
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def normalize_dashboard_create(self) -> "CustomDashboardCreate":
+        self.widget_codes = _deduplicate_strings(self.widget_codes)
+        self.shared_with_agency_ids = _deduplicate_strings(self.shared_with_agency_ids)
+        return self
+
+
+class CustomDashboardUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    description: str | None = Field(default=None, max_length=500)
+    audience: CustomDashboardAudience | None = None
+    city: str | None = Field(default=None, max_length=120)
+    district: str | None = Field(default=None, max_length=120)
+    widget_codes: list[CustomDashboardWidgetCode] | None = Field(
+        default=None,
+        min_length=1,
+        max_length=12,
+    )
+    filters: dict[str, Any] | None = None
+    refresh_interval_minutes: int | None = Field(default=None, ge=15, le=1440)
+    is_default: bool | None = None
+    shared_with_agency_ids: list[str] | None = Field(default=None, max_length=20)
+    notes: str | None = Field(default=None, max_length=1000)
+
+    @model_validator(mode="after")
+    def normalize_dashboard_update(self) -> "CustomDashboardUpdate":
+        if self.widget_codes is not None:
+            self.widget_codes = _deduplicate_strings(self.widget_codes)
+        if self.shared_with_agency_ids is not None:
+            self.shared_with_agency_ids = _deduplicate_strings(self.shared_with_agency_ids)
+        return self
+
+
+class CustomDashboardConfig(BaseModel):
+    id: str
+    owner_id: str
+    name: str
+    description: str | None = None
+    audience: CustomDashboardAudience
+    city: str | None = None
+    district: str | None = None
+    widget_codes: list[CustomDashboardWidgetCode]
+    filters: dict[str, Any] = Field(default_factory=dict)
+    refresh_interval_minutes: int = Field(ge=15, le=1440)
+    is_default: bool
+    shared_with_agency_ids: list[str] = Field(default_factory=list)
+    notes: str | None = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class CustomDashboardWidgetSnapshot(BaseModel):
+    widget_code: CustomDashboardWidgetCode
+    title: str
+    status: CustomDashboardWidgetStatus
+    summary: str
+    metrics: dict[str, Any] = Field(default_factory=dict)
+    actions: list[str] = Field(default_factory=list)
+
+
+class CustomDashboardPreview(BaseModel):
+    config: CustomDashboardConfig
+    generated_at: datetime
+    dashboard: MarketDashboard
+    area_comparison: AreaComparison
+    market_intelligence: MarketIntelligenceReport
+    widgets: list[CustomDashboardWidgetSnapshot] = Field(default_factory=list)
+    source_notes: list[str] = Field(default_factory=list)
+    disclaimer: str
+
+
 class MortgageCalculationRequest(BaseModel):
     property_price_pln: int = Field(gt=0)
     down_payment_pln: int = Field(ge=0)
@@ -2733,6 +2846,17 @@ def _validate_optional_http_url(field_name: str, value: str | None) -> None:
         return
     if not value.startswith(("https://", "http://")):
         raise ValueError(f"{field_name} must be an http(s) URL")
+
+
+def _deduplicate_strings(values: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        result.append(value)
+    return result
 
 
 class PlanLimits(BaseModel):

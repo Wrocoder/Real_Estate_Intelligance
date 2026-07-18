@@ -22,6 +22,18 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/api-lite/listings/{listing_id}", "get"): "ApiLiteListingDetail",
         ("/api/v1/api-lite/usage", "get"): "ApiLiteUsageSummary",
         ("/api/v1/compare", "post"): "CompareResponse",
+        (
+            "/api/v1/enterprise/custom-dashboards/{dashboard_id}",
+            "get",
+        ): "CustomDashboardConfig",
+        (
+            "/api/v1/enterprise/custom-dashboards/{dashboard_id}",
+            "patch",
+        ): "CustomDashboardConfig",
+        (
+            "/api/v1/enterprise/custom-dashboards/{dashboard_id}/preview",
+            "post",
+        ): "CustomDashboardPreview",
         ("/api/v1/realtor/client-shortlists/preview", "post"): "RealtorClientShortlist",
         ("/api/v1/developers", "get"): "DeveloperRankingResponse",
         ("/api/v1/developers/{developer_id}", "get"): "DeveloperReputation",
@@ -107,12 +119,20 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
     assert news_schema["type"] == "array"
     assert news_schema["items"]["$ref"] == "#/components/schemas/NewsArticleListItem"
 
+    dashboards_operation = openapi["paths"]["/api/v1/enterprise/custom-dashboards"]["get"]
+    dashboards_schema = dashboards_operation["responses"]["200"]["content"][
+        "application/json"
+    ]["schema"]
+    assert dashboards_schema["type"] == "array"
+    assert dashboards_schema["items"]["$ref"] == "#/components/schemas/CustomDashboardConfig"
+
     expected_created_refs = {
         ("/api/v1/admin/ingestion/source-checks", "post"): "SourceCheckJob",
         ("/api/v1/admin/ingestion/source-errors", "post"): "SourceError",
         ("/api/v1/admin/news/articles", "post"): "NewsArticle",
         ("/api/v1/agencies", "post"): "AgencyWorkspace",
         ("/api/v1/agencies/{agency_id}/members", "post"): "AgencyMembership",
+        ("/api/v1/enterprise/custom-dashboards", "post"): "CustomDashboardConfig",
     }
     for (path, method), schema_name in expected_created_refs.items():
         operation = openapi["paths"][path][method]
@@ -256,6 +276,11 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "CompareMortgageAssumptions",
         "CompareResponse",
         "CompareSummary",
+        "CustomDashboardConfig",
+        "CustomDashboardCreate",
+        "CustomDashboardPreview",
+        "CustomDashboardUpdate",
+        "CustomDashboardWidgetSnapshot",
         "DataDeletionRequest",
         "DataDeletionRequestCreate",
         "DataDeletionRequestProcess",

@@ -55,6 +55,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлен export datasets для investor/realtor plans: sanitized listing analytics CSV/JSON без source URLs/raw payload.
 - Добавлен market intelligence report API для banks/developers/funds на основе market dashboard и area comparison.
 - Добавлен scoring-as-a-service endpoint для agency/enterprise: оценка caller-submitted объекта без draft persistence.
+- Добавлен enterprise custom dashboard API: owner-scoped configs, widget selection и live preview.
 - Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
 - Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
 - Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
@@ -130,6 +131,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/datasets/listings/export
 - http://127.0.0.1:8000/api/v1/market/intelligence-report
 - http://127.0.0.1:8000/api/v1/scoring/evaluate
+- http://127.0.0.1:8000/api/v1/enterprise/custom-dashboards
 - http://127.0.0.1:8000/api/v1/report-products
 - http://127.0.0.1:8000/api/v1/report-orders
 - http://127.0.0.1:8000/api/v1/report-orders/{order_id}/events
@@ -910,6 +912,35 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/scoring/evaluate `
     "investment_name":"Nowy Dwór Residence",
     "audience":"underwriting"
   }'
+```
+
+## Enterprise custom dashboards
+
+План `enterprise` может сохранять owner-scoped конфигурации кастомных dashboard:
+аудитория, город/район, набор widget codes, фильтры, refresh cadence и shared
+agency ids. Preview endpoint собирает живую выжимку из market dashboard, area
+comparison, market intelligence, developer ranking и scoring distribution.
+Виджеты без подключенного enterprise data source помечаются как `planned` или
+`needs_data`, чтобы их можно было довести на onboarding.
+
+```powershell
+$dashboard = Invoke-RestMethod http://127.0.0.1:8000/api/v1/enterprise/custom-dashboards `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="enterprise-1";"X-Domarion-Plan"="enterprise"} `
+  -ContentType "application/json" `
+  -Body '{
+    "name":"Underwriting Wrocław",
+    "audience":"underwriting",
+    "city":"Wrocław",
+    "district":"Fabryczna",
+    "widget_codes":["market_kpis","risk_flags","developer_ranking","api_usage"],
+    "refresh_interval_minutes":120,
+    "is_default":true
+  }'
+
+Invoke-RestMethod "http://127.0.0.1:8000/api/v1/enterprise/custom-dashboards/$($dashboard.id)/preview" `
+  -Method Post `
+  -Headers @{"X-Domarion-User-Id"="enterprise-1";"X-Domarion-Plan"="enterprise"}
 ```
 
 ## Проверка квартиры по адресу/URL
