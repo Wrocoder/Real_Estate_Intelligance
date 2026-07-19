@@ -1,0 +1,235 @@
+previews:
+  generation: manual
+
+databases:
+  - name: domarion-postgres
+    databaseName: domarion
+    user: domarion
+    postgresMajorVersion: "18"
+    region: frankfurt
+    plan: basic-1gb
+    diskSizeGB: 15
+    storageAutoscalingEnabled: true
+    connectionPool: pgbouncer
+    ipAllowList: []
+
+services:
+  - type: keyvalue
+    name: domarion-redis
+    region: frankfurt
+    plan: starter
+    maxmemoryPolicy: noeviction
+    persistenceMode: off
+    ipAllowList: []
+
+  - type: web
+    name: domarion-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: starter
+    autoDeployTrigger: checksPass
+    healthCheckPath: /ready
+    maxShutdownDelaySeconds: 120
+    preDeployCommand: python -m alembic upgrade head && domarion production-preflight
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        fromDatabase:
+          name: domarion-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: domarion-redis
+          property: connectionString
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATA_REPOSITORY_BACKEND
+        value: postgres
+      - key: REPORT_STORE_BACKEND
+        value: postgres
+      - key: REPORT_ORDER_STORE_BACKEND
+        value: postgres
+      - key: USER_STORE_BACKEND
+        value: postgres
+      - key: AUTH_STORE_BACKEND
+        value: postgres
+      - key: AGENCY_STORE_BACKEND
+        value: postgres
+      - key: CRM_STORE_BACKEND
+        value: postgres
+      - key: INGESTION_ADMIN_STORE_BACKEND
+        value: postgres
+      - key: USER_SUBMITTED_LISTING_STORE_BACKEND
+        value: postgres
+      - key: PARTNER_REFERRAL_STORE_BACKEND
+        value: postgres
+      - key: AI_INSIGHT_STORE_BACKEND
+        value: postgres
+      - key: NEWS_STORE_BACKEND
+        value: postgres
+      - key: CUSTOM_DASHBOARD_STORE_BACKEND
+        value: postgres
+      - key: REPORT_ARTIFACT_STORAGE_BACKEND
+        value: s3
+      - key: REPORT_ARTIFACT_S3_ENDPOINT_URL
+        sync: false
+      - key: REPORT_ARTIFACT_S3_REGION
+        value: auto
+      - key: REPORT_ARTIFACT_S3_BUCKET
+        sync: false
+      - key: REPORT_ARTIFACT_S3_PREFIX
+        value: production/reports
+      - key: REPORT_ARTIFACT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: BACKUP_S3_BUCKET
+        sync: false
+      - key: BACKUP_S3_PREFIX
+        value: production/postgres
+      - key: BACKUP_S3_ENDPOINT_URL
+        sync: false
+      - key: BACKUP_S3_REGION
+        value: auto
+      - key: PAYMENT_PROVIDER
+        value: stripe
+      - key: PAYMENT_SUCCESS_URL
+        sync: false
+      - key: PAYMENT_CANCEL_URL
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: ALERT_EMAIL_ENABLED
+        value: "false"
+      - key: ALERT_TELEGRAM_ENABLED
+        value: "false"
+      - key: WORKER_TASKS
+        value: daily-email-alerts,area-market-snapshots,price-history-rebuild
+      - key: WORKER_APPLY
+        value: "true"
+      - key: ALERT_WORKER_SEND
+        value: "false"
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.1"
+      - key: UPTIME_MONITOR_URL
+        sync: false
+      - key: JOB_FAILURE_ALERT_TARGET
+        sync: false
+      - key: SOURCE_FRESHNESS_ALERT_TARGET
+        sync: false
+      - key: PAYMENT_WEBHOOK_ALERT_TARGET
+        sync: false
+      - key: COST_ALERTS_CONFIGURED
+        sync: false
+
+  - type: web
+    name: domarion-frontend
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: ./frontend
+    region: frankfurt
+    plan: starter
+    autoDeployTrigger: checksPass
+    healthCheckPath: /
+    envVars:
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SITE_URL
+        sync: false
+      - key: NEXT_PUBLIC_OWNER_ID
+        value: demo-user
+
+  - type: worker
+    name: domarion-worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    region: frankfurt
+    plan: starter
+    autoDeployTrigger: checksPass
+    maxShutdownDelaySeconds: 120
+    dockerCommand: domarion worker
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DATABASE_URL
+        fromDatabase:
+          name: domarion-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: domarion-redis
+          property: connectionString
+      - key: DATA_REPOSITORY_BACKEND
+        value: postgres
+      - key: REPORT_STORE_BACKEND
+        value: postgres
+      - key: REPORT_ORDER_STORE_BACKEND
+        value: postgres
+      - key: USER_STORE_BACKEND
+        value: postgres
+      - key: AUTH_STORE_BACKEND
+        value: postgres
+      - key: AGENCY_STORE_BACKEND
+        value: postgres
+      - key: CRM_STORE_BACKEND
+        value: postgres
+      - key: INGESTION_ADMIN_STORE_BACKEND
+        value: postgres
+      - key: USER_SUBMITTED_LISTING_STORE_BACKEND
+        value: postgres
+      - key: PARTNER_REFERRAL_STORE_BACKEND
+        value: postgres
+      - key: AI_INSIGHT_STORE_BACKEND
+        value: postgres
+      - key: NEWS_STORE_BACKEND
+        value: postgres
+      - key: CUSTOM_DASHBOARD_STORE_BACKEND
+        value: postgres
+      - key: REPORT_ARTIFACT_STORAGE_BACKEND
+        value: s3
+      - key: REPORT_ARTIFACT_S3_ENDPOINT_URL
+        sync: false
+      - key: REPORT_ARTIFACT_S3_REGION
+        value: auto
+      - key: REPORT_ARTIFACT_S3_BUCKET
+        sync: false
+      - key: REPORT_ARTIFACT_S3_PREFIX
+        value: production/reports
+      - key: REPORT_ARTIFACT_S3_ACCESS_KEY_ID
+        sync: false
+      - key: REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: WORKER_TASKS
+        value: daily-email-alerts,area-market-snapshots,price-history-rebuild
+      - key: WORKER_INTERVAL_SECONDS
+        value: "3600"
+      - key: WORKER_APPLY
+        value: "true"
+      - key: WORKER_FORCE
+        value: "false"
+      - key: ALERT_WORKER_SEND
+        value: "false"
+      - key: ALERT_WORKER_MAX_MATCHES
+        value: "10"
+      - key: ALERT_WORKER_LIMIT
+        value: "500"
+      - key: ALERT_EMAIL_ENABLED
+        value: "false"
+      - key: ALERT_TELEGRAM_ENABLED
+        value: "false"
+      - key: SENTRY_DSN
+        sync: false

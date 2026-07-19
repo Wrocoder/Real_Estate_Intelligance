@@ -1406,6 +1406,7 @@ python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-po
 ```
 
 Full production operations checklist: `docs/production_ops_runbook.md`.
+MVP hosting decision and Render Blueprint notes: `docs/mvp_hosting_decision.md`.
 
 ## Git workflow
 

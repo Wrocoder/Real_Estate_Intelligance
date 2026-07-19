@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 
 from alembic import command
 from domarion.ai_insight_store.postgres import PostgresAIInsightStore
-from domarion.core.config import get_settings
+from domarion.core.config import get_settings, normalize_sqlalchemy_database_url
 from domarion.ingestion.db_writer import import_partner_records_in_session
 from domarion.ingestion.developers import import_developer_feed
 from domarion.ingestion.partner_csv import PartnerListingRecord
@@ -64,7 +64,7 @@ def main() -> int:
         alembic_config = Config("alembic.ini")
         command.upgrade(alembic_config, "head")
 
-    engine = create_engine(args.database_url, pool_pre_ping=True)
+    engine = create_engine(normalize_sqlalchemy_database_url(args.database_url), pool_pre_ping=True)
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     with engine.connect() as connection:

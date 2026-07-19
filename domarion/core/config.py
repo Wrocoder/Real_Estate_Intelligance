@@ -74,6 +74,18 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        return normalize_sqlalchemy_database_url(self.database_url)
+
+
+def normalize_sqlalchemy_database_url(database_url: str) -> str:
+    if database_url.startswith("postgres://"):
+        return database_url.replace("postgres://", "postgresql+psycopg://", 1)
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return database_url
+
 
 @lru_cache
 def get_settings() -> Settings:

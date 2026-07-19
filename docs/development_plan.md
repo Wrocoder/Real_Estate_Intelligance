@@ -392,10 +392,12 @@
 
 ## 16. Deployment
 
-- [ ] Выбрать MVP hosting: VPS/Render/Railway/Fly.io/Cloud Run.
+- [x] Выбрать MVP hosting: Render Blueprint, managed Postgres/PostGIS, Render Key Value,
+  Cloudflare R2 for artifacts/backups.
 - [x] Добавить production Docker build.
 - [x] Добавить environment variable documentation.
-- [ ] Добавить managed Postgres/PostGIS.
+- [x] Добавить managed Postgres/PostGIS deployment spec в `render.yaml`.
+- [ ] Provision real managed Postgres/PostGIS resource in production account.
 - [x] Добавить Redis.
 - [x] Добавить backup strategy.
 - [x] Добавить staging environment.
@@ -554,6 +556,7 @@
 - [x] Commit 104: MPZP and Studium planning map screening layers.
 - [x] Commit 105: Future transport corridor map layers.
 - [x] Commit 106: Production readiness endpoint and preflight CLI.
+- [x] Commit 107: MVP hosting decision and Render Blueprint.
 
 ## Current Sprint
 
@@ -670,6 +673,8 @@
 - [x] Добавить partner referral lead scoring: admin priority queue, mortgage/broker fit, estimated deal value, routing tags and next actions.
 - [x] Добавить production readiness endpoint и CLI preflight для stores, Postgres/Redis,
   artifacts, payments, workers, backups, monitoring and cost guardrails.
+- [x] Выбрать MVP hosting stack и добавить `render.yaml` для API, frontend, worker,
+  managed Postgres/PostGIS и managed Redis-compatible store.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

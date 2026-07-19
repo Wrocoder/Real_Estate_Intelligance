@@ -4,6 +4,9 @@ Domarion is not deployed to production yet. This runbook defines the deploy-read
 operational baseline to use before a paid beta: managed Postgres/PostGIS, managed
 Redis, offsite backups, report artifact bucket and background workers.
 
+The selected MVP hosting target is documented in `docs/mvp_hosting_decision.md`.
+The first infrastructure-as-code artifact is `render.yaml`.
+
 ## Service Topology
 
 - API: Docker image from root `Dockerfile`, `uvicorn main:app`.
@@ -18,6 +21,9 @@ Use staging compose locally to verify the same process model:
 ```powershell
 docker compose -f compose.staging.yaml up --build
 ```
+
+For the first Render Blueprint sync, do not switch paid traffic until every
+`sync: false` value in `render.yaml` is populated and `/ready` is not `blocked`.
 
 ## Managed Postgres/PostGIS
 
