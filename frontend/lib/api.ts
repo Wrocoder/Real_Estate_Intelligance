@@ -2813,6 +2813,66 @@ export const api = {
     }
     return response.json() as Promise<DeveloperFeedImportResponse>;
   },
+  upsertAdminDeveloperProfile: (developerId: string, payload: DeveloperProfile) =>
+    request<DeveloperReputation>(
+      `/api/v1/admin/developers/profiles/${encodeURIComponent(developerId)}`,
+      {
+        method: "PUT",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAdminDeveloperProfile: (developerId: string) =>
+    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/profiles/${encodeURIComponent(developerId)}`, {
+      method: "DELETE",
+      headers: ADMIN_HEADERS,
+      cache: "no-store",
+    }),
+  upsertAdminDeveloperProject: (projectId: string, payload: DeveloperProject) =>
+    request<DeveloperProject>(
+      `/api/v1/admin/developers/projects/${encodeURIComponent(projectId)}`,
+      {
+        method: "PUT",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAdminDeveloperProject: (projectId: string) =>
+    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/projects/${encodeURIComponent(projectId)}`, {
+      method: "DELETE",
+      headers: ADMIN_HEADERS,
+      cache: "no-store",
+    }),
+  upsertAdminDeveloperAlias: (aliasId: string, payload: DeveloperAlias) =>
+    request<DeveloperAlias>(
+      `/api/v1/admin/developers/aliases/${encodeURIComponent(aliasId)}`,
+      {
+        method: "PUT",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAdminDeveloperAlias: (aliasId: string) =>
+    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/aliases/${encodeURIComponent(aliasId)}`, {
+      method: "DELETE",
+      headers: ADMIN_HEADERS,
+      cache: "no-store",
+    }),
+  upsertAdminDeveloperQualitySignal: (signalId: string, payload: DeveloperQualitySignal) =>
+    request<DeveloperQualitySignal>(
+      `/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}`,
+      {
+        method: "PUT",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
+  deleteAdminDeveloperQualitySignal: (signalId: string) =>
+    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}`, {
+      method: "DELETE",
+      headers: ADMIN_HEADERS,
+      cache: "no-store",
+    }),
   listMunicipalities: () =>
     request<MunicipalityReference[]>("/api/v1/locations/municipalities"),
   listDistrictReferences: (params: { municipality_id?: string; city?: string } = {}) =>

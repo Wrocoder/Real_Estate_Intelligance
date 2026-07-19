@@ -143,7 +143,11 @@ from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
+    DeveloperAlias,
     DeveloperFeedImportResponse,
+    DeveloperProfile,
+    DeveloperProject,
+    DeveloperQualitySignal,
     DeveloperRankingResponse,
     DeveloperReputation,
     DistrictReference,
@@ -850,6 +854,192 @@ async def import_admin_developer_feed(
     if finished_job is None:
         raise HTTPException(status_code=500, detail="Failed to finish ingestion job")
     return DeveloperFeedImportResponse(**result.as_dict(), job=finished_job)
+
+
+@router.put("/admin/developers/profiles/{developer_id}", response_model=DeveloperReputation)
+def upsert_admin_developer_profile(
+    developer_id: str,
+    payload: DeveloperProfile,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DeveloperReputation:
+    _ensure_admin(account)
+    _ensure_payload_id_matches_path(payload.id, developer_id, "developer profile")
+    reputation = repository.upsert_developer_profile(payload)
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_profile_upsert",
+        resource_type="developer_profile",
+        resource_id=developer_id,
+        message=f"Developer profile upserted: {payload.name}",
+        metadata={"source_names": payload.source_names, "updated_at": str(payload.updated_at)},
+    )
+    return reputation
+
+
+@router.delete("/admin/developers/profiles/{developer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_developer_profile(
+    developer_id: str,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_admin(account)
+    if not repository.delete_developer_profile(developer_id):
+        raise HTTPException(status_code=404, detail="Developer profile not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_profile_delete",
+        resource_type="developer_profile",
+        resource_id=developer_id,
+        message=f"Developer profile deleted: {developer_id}",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/admin/developers/projects/{project_id}", response_model=DeveloperProject)
+def upsert_admin_developer_project(
+    project_id: str,
+    payload: DeveloperProject,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DeveloperProject:
+    _ensure_admin(account)
+    _ensure_payload_id_matches_path(payload.id, project_id, "developer project")
+    project = repository.upsert_developer_project(payload)
+    if project is None:
+        raise HTTPException(status_code=404, detail="Developer profile not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_project_upsert",
+        resource_type="developer_project",
+        resource_id=project_id,
+        message=f"Developer project upserted: {payload.name}",
+        metadata={"developer_id": payload.developer_id, "status": payload.status},
+    )
+    return project
+
+
+@router.delete("/admin/developers/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_developer_project(
+    project_id: str,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_admin(account)
+    if not repository.delete_developer_project(project_id):
+        raise HTTPException(status_code=404, detail="Developer project not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_project_delete",
+        resource_type="developer_project",
+        resource_id=project_id,
+        message=f"Developer project deleted: {project_id}",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/admin/developers/aliases/{alias_id}", response_model=DeveloperAlias)
+def upsert_admin_developer_alias(
+    alias_id: str,
+    payload: DeveloperAlias,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DeveloperAlias:
+    _ensure_admin(account)
+    _ensure_payload_id_matches_path(payload.id, alias_id, "developer alias")
+    alias = repository.upsert_developer_alias(payload)
+    if alias is None:
+        raise HTTPException(status_code=404, detail="Developer profile not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_alias_upsert",
+        resource_type="developer_alias",
+        resource_id=alias_id,
+        message=f"Developer alias upserted: {payload.alias}",
+        metadata={"developer_id": payload.developer_id, "alias_type": payload.alias_type},
+    )
+    return alias
+
+
+@router.delete("/admin/developers/aliases/{alias_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_developer_alias(
+    alias_id: str,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_admin(account)
+    if not repository.delete_developer_alias(alias_id):
+        raise HTTPException(status_code=404, detail="Developer alias not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_alias_delete",
+        resource_type="developer_alias",
+        resource_id=alias_id,
+        message=f"Developer alias deleted: {alias_id}",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put("/admin/developers/signals/{signal_id}", response_model=DeveloperQualitySignal)
+def upsert_admin_developer_quality_signal(
+    signal_id: str,
+    payload: DeveloperQualitySignal,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DeveloperQualitySignal:
+    _ensure_admin(account)
+    _ensure_payload_id_matches_path(payload.id, signal_id, "developer quality signal")
+    signal = repository.upsert_developer_quality_signal(payload)
+    if signal is None:
+        raise HTTPException(status_code=404, detail="Developer profile not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_quality_signal_upsert",
+        resource_type="developer_quality_signal",
+        resource_id=signal_id,
+        message=f"Developer quality signal upserted: {payload.title}",
+        metadata={
+            "developer_id": payload.developer_id,
+            "signal_type": payload.signal_type,
+            "severity": payload.severity,
+        },
+    )
+    return signal
+
+
+@router.delete("/admin/developers/signals/{signal_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_admin_developer_quality_signal(
+    signal_id: str,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    _ensure_admin(account)
+    if not repository.delete_developer_quality_signal(signal_id):
+        raise HTTPException(status_code=404, detail="Developer quality signal not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_quality_signal_delete",
+        resource_type="developer_quality_signal",
+        resource_id=signal_id,
+        message=f"Developer quality signal deleted: {signal_id}",
+    )
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/locations/municipalities", response_model=list[MunicipalityReference])
@@ -4764,6 +4954,14 @@ def _build_compare_analyses(
 def _ensure_admin(account: CurrentAccount) -> None:
     if account.user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+
+def _ensure_payload_id_matches_path(payload_id: str, path_id: str, resource_label: str) -> None:
+    if payload_id != path_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"{resource_label} id in payload must match path id",
+        )
 
 
 def _ensure_agency_plan(account: CurrentAccount) -> None:

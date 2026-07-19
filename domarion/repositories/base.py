@@ -3,6 +3,10 @@ from typing import Protocol
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DeveloperAlias,
+    DeveloperProfile,
+    DeveloperProject,
+    DeveloperQualitySignal,
     DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
@@ -72,6 +76,33 @@ class RealEstateRepository(Protocol):
         self,
         listing_id: str,
     ) -> DeveloperReputation | None:
+        raise NotImplementedError
+
+    def upsert_developer_profile(self, payload: DeveloperProfile) -> DeveloperReputation:
+        raise NotImplementedError
+
+    def delete_developer_profile(self, developer_id: str) -> bool:
+        raise NotImplementedError
+
+    def upsert_developer_project(self, payload: DeveloperProject) -> DeveloperProject | None:
+        raise NotImplementedError
+
+    def delete_developer_project(self, project_id: str) -> bool:
+        raise NotImplementedError
+
+    def upsert_developer_alias(self, payload: DeveloperAlias) -> DeveloperAlias | None:
+        raise NotImplementedError
+
+    def delete_developer_alias(self, alias_id: str) -> bool:
+        raise NotImplementedError
+
+    def upsert_developer_quality_signal(
+        self,
+        payload: DeveloperQualitySignal,
+    ) -> DeveloperQualitySignal | None:
+        raise NotImplementedError
+
+    def delete_developer_quality_signal(self, signal_id: str) -> bool:
         raise NotImplementedError
 
     def list_municipalities(self) -> list[MunicipalityReference]:

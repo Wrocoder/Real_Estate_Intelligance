@@ -872,6 +872,81 @@ class InMemoryRealEstateRepository:
             return None
         return self._build_developer_reputation(developer_id)
 
+    def upsert_developer_profile(self, payload: DeveloperProfile) -> DeveloperReputation:
+        self._developer_profiles[payload.id] = payload
+        reputation = self._build_developer_reputation(payload.id)
+        if reputation is None:
+            raise RuntimeError("Developer profile was not persisted.")
+        return reputation
+
+    def delete_developer_profile(self, developer_id: str) -> bool:
+        if developer_id not in self._developer_profiles:
+            return False
+        del self._developer_profiles[developer_id]
+        self._developer_projects = [
+            item for item in self._developer_projects if item.developer_id != developer_id
+        ]
+        self._developer_aliases = [
+            item for item in self._developer_aliases if item.developer_id != developer_id
+        ]
+        self._developer_quality_signals = [
+            item
+            for item in self._developer_quality_signals
+            if item.developer_id != developer_id
+        ]
+        return True
+
+    def upsert_developer_project(self, payload: DeveloperProject) -> DeveloperProject | None:
+        if payload.developer_id not in self._developer_profiles:
+            return None
+        self._developer_projects = [
+            item for item in self._developer_projects if item.id != payload.id
+        ]
+        self._developer_projects.append(payload)
+        return payload
+
+    def delete_developer_project(self, project_id: str) -> bool:
+        before_count = len(self._developer_projects)
+        self._developer_projects = [
+            item for item in self._developer_projects if item.id != project_id
+        ]
+        return len(self._developer_projects) != before_count
+
+    def upsert_developer_alias(self, payload: DeveloperAlias) -> DeveloperAlias | None:
+        if payload.developer_id not in self._developer_profiles:
+            return None
+        self._developer_aliases = [
+            item for item in self._developer_aliases if item.id != payload.id
+        ]
+        self._developer_aliases.append(payload)
+        return payload
+
+    def delete_developer_alias(self, alias_id: str) -> bool:
+        before_count = len(self._developer_aliases)
+        self._developer_aliases = [
+            item for item in self._developer_aliases if item.id != alias_id
+        ]
+        return len(self._developer_aliases) != before_count
+
+    def upsert_developer_quality_signal(
+        self,
+        payload: DeveloperQualitySignal,
+    ) -> DeveloperQualitySignal | None:
+        if payload.developer_id not in self._developer_profiles:
+            return None
+        self._developer_quality_signals = [
+            item for item in self._developer_quality_signals if item.id != payload.id
+        ]
+        self._developer_quality_signals.append(payload)
+        return payload
+
+    def delete_developer_quality_signal(self, signal_id: str) -> bool:
+        before_count = len(self._developer_quality_signals)
+        self._developer_quality_signals = [
+            item for item in self._developer_quality_signals if item.id != signal_id
+        ]
+        return len(self._developer_quality_signals) != before_count
+
     def list_municipalities(self) -> list[MunicipalityReference]:
         municipalities = []
         cities = sorted(

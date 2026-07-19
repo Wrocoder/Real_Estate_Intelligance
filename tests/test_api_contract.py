@@ -11,6 +11,13 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
     expected_response_refs = {
         ("/api/v1/admin/listings/import-csv", "post"): "PartnerCsvImportResponse",
         ("/api/v1/admin/developers/import", "post"): "DeveloperFeedImportResponse",
+        ("/api/v1/admin/developers/profiles/{developer_id}", "put"): "DeveloperReputation",
+        ("/api/v1/admin/developers/projects/{project_id}", "put"): "DeveloperProject",
+        ("/api/v1/admin/developers/aliases/{alias_id}", "put"): "DeveloperAlias",
+        (
+            "/api/v1/admin/developers/signals/{signal_id}",
+            "put",
+        ): "DeveloperQualitySignal",
         ("/api/v1/admin/planned-investments/import", "post"): "PlannedInvestmentImportResponse",
         ("/api/v1/admin/scoring/backtest", "get"): "ScoringBacktestResult",
         ("/api/v1/admin/scoring/backtest-report", "get"): "ScoringBacktestReport",

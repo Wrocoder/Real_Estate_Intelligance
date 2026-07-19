@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BarChart3,
+  Building2,
   Database,
   Handshake,
   Mail,
@@ -22,7 +23,16 @@ import {
   type DataDeletionRequestStatus,
   type DataDeletionTargetType,
   type DataQualityLog,
+  type DeveloperAlias,
+  type DeveloperAliasType,
   type DeveloperFeedImportResponse,
+  type DeveloperProfile,
+  type DeveloperProject,
+  type DeveloperProjectStatus,
+  type DeveloperQualitySignal,
+  type DeveloperReputation,
+  type DeveloperSignalSeverity,
+  type DeveloperSignalType,
   type IngestionJob,
   type IngestionSourceHealth,
   type InfrastructureEnrichmentJobResult,
@@ -86,6 +96,57 @@ type DataDeletionRequestForm = {
   target_owner_id: string;
   source_name: string;
   reason: string;
+};
+
+type DeveloperProfileForm = {
+  id: string;
+  name: string;
+  legal_name: string;
+  brand_names: string;
+  krs: string;
+  nip: string;
+  regon: string;
+  website_url: string;
+  headquarters_city: string;
+  founded_year: string;
+  source_names: string;
+  updated_at: string;
+};
+
+type DeveloperProjectForm = {
+  id: string;
+  developer_id: string;
+  name: string;
+  city: string;
+  district: string;
+  status: DeveloperProjectStatus;
+  units_count: string;
+  completed_year: string;
+  source_url: string;
+};
+
+type DeveloperAliasForm = {
+  id: string;
+  developer_id: string;
+  alias: string;
+  alias_type: DeveloperAliasType;
+  source_name: string;
+  source_url: string;
+  confidence_score: string;
+  active: boolean;
+};
+
+type DeveloperSignalForm = {
+  id: string;
+  developer_id: string;
+  signal_type: DeveloperSignalType;
+  severity: DeveloperSignalSeverity;
+  title: string;
+  summary: string;
+  source_name: string;
+  source_url: string;
+  observed_at: string;
+  confidence_score: string;
 };
 
 type ListingCorrectionForm = {
@@ -177,6 +238,57 @@ const defaultDeletionRequestForm: DataDeletionRequestForm = {
   reason: "User requested deletion of private source reference.",
 };
 
+const defaultDeveloperProfileForm: DeveloperProfileForm = {
+  id: "manual-developer",
+  name: "Manual Developer",
+  legal_name: "",
+  brand_names: "Manual Developer",
+  krs: "",
+  nip: "",
+  regon: "",
+  website_url: "",
+  headquarters_city: "Wrocław",
+  founded_year: "",
+  source_names: "Admin QA",
+  updated_at: "2026-07-19",
+};
+
+const defaultDeveloperProjectForm: DeveloperProjectForm = {
+  id: "manual-developer-project",
+  developer_id: "manual-developer",
+  name: "Manual Project",
+  city: "Wrocław",
+  district: "Fabryczna",
+  status: "active",
+  units_count: "",
+  completed_year: "",
+  source_url: "",
+};
+
+const defaultDeveloperAliasForm: DeveloperAliasForm = {
+  id: "manual-developer-brand",
+  developer_id: "manual-developer",
+  alias: "Manual Developer",
+  alias_type: "brand",
+  source_name: "Admin QA",
+  source_url: "",
+  confidence_score: "80",
+  active: true,
+};
+
+const defaultDeveloperSignalForm: DeveloperSignalForm = {
+  id: "manual-developer-signal",
+  developer_id: "manual-developer",
+  signal_type: "technical_quality",
+  severity: "info",
+  title: "Manual QA note",
+  summary: "Admin-entered developer quality signal.",
+  source_name: "Admin QA",
+  source_url: "",
+  observed_at: "2026-07-19",
+  confidence_score: "70",
+};
+
 const defaultListingCorrectionForm: ListingCorrectionForm = {
   listingId: "wr-001",
   title: "",
@@ -209,6 +321,7 @@ export default function AdminPage() {
   const [sourceCheckJobs, setSourceCheckJobs] = useState<SourceCheckJob[]>([]);
   const [sourceErrors, setSourceErrors] = useState<SourceError[]>([]);
   const [sources, setSources] = useState<SourceRegistryEntry[]>([]);
+  const [developerReputations, setDeveloperReputations] = useState<DeveloperReputation[]>([]);
   const [scoringBacktest, setScoringBacktest] =
     useState<ScoringBacktestResult | null>(null);
   const [scoringBacktestReport, setScoringBacktestReport] =
@@ -244,6 +357,15 @@ export default function AdminPage() {
   const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
   const [deletionRequestForm, setDeletionRequestForm] =
     useState<DataDeletionRequestForm>(defaultDeletionRequestForm);
+  const [selectedDeveloperId, setSelectedDeveloperId] = useState("");
+  const [developerProfileForm, setDeveloperProfileForm] =
+    useState<DeveloperProfileForm>(defaultDeveloperProfileForm);
+  const [developerProjectForm, setDeveloperProjectForm] =
+    useState<DeveloperProjectForm>(defaultDeveloperProjectForm);
+  const [developerAliasForm, setDeveloperAliasForm] =
+    useState<DeveloperAliasForm>(defaultDeveloperAliasForm);
+  const [developerSignalForm, setDeveloperSignalForm] =
+    useState<DeveloperSignalForm>(defaultDeveloperSignalForm);
   const [listingCorrectionForm, setListingCorrectionForm] =
     useState<ListingCorrectionForm>(defaultListingCorrectionForm);
   const [listingCorrectionResult, setListingCorrectionResult] =
@@ -287,6 +409,7 @@ export default function AdminPage() {
         sourceCheckData,
         sourceErrorData,
         sourceData,
+        developerData,
         backtestData,
         backtestReportData,
         logData,
@@ -303,6 +426,7 @@ export default function AdminPage() {
           api.listAdminSourceCheckJobs({ limit: 50 }),
           api.listAdminSourceErrors({ limit: 50 }),
           api.listAdminIngestionSources(),
+          api.listDevelopers({ limit: 100 }),
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
           api.getAdminScoringBacktestReport({ city: "Wrocław", limit: 10 }),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
@@ -322,6 +446,7 @@ export default function AdminPage() {
       setSourceCheckJobs(sourceCheckData);
       setSourceErrors(sourceErrorData);
       setSources(sourceData);
+      setDeveloperReputations(developerData.items);
       setScoringBacktest(backtestData);
       setScoringBacktestReport(backtestReportData);
       setLogs(logData);
@@ -358,6 +483,9 @@ export default function AdminPage() {
     (investment) => investment.id === selectedInvestmentId,
   );
   const selectedSource = sources.find((source) => source.id === selectedSourceId);
+  const selectedDeveloper = developerReputations.find(
+    (reputation) => reputation.developer.id === selectedDeveloperId,
+  );
   const selectedDeletionRequest = dataDeletionRequests.find(
     (request) => request.id === selectedDeletionRequestId,
   );
@@ -441,6 +569,165 @@ export default function AdminPage() {
     setStatus(
       `Dedup match ${updated.id} помечен как ${updated.review_status}`,
     );
+  }
+
+  function selectDeveloperForEditing(reputation: DeveloperReputation) {
+    const developerId = reputation.developer.id;
+    setSelectedDeveloperId(developerId);
+    setDeveloperProfileForm(formFromDeveloperProfile(reputation.developer));
+    setDeveloperProjectForm(
+      reputation.projects[0]
+        ? formFromDeveloperProject(reputation.projects[0])
+        : defaultProjectFormForDeveloper(developerId),
+    );
+    setDeveloperAliasForm(
+      reputation.aliases[0]
+        ? formFromDeveloperAlias(reputation.aliases[0])
+        : defaultAliasFormForDeveloper(developerId, reputation.developer.name),
+    );
+    setDeveloperSignalForm(
+      reputation.quality_signals[0]
+        ? formFromDeveloperSignal(reputation.quality_signals[0])
+        : defaultSignalFormForDeveloper(developerId),
+    );
+  }
+
+  function resetDeveloperEditor() {
+    setSelectedDeveloperId("");
+    setDeveloperProfileForm(defaultDeveloperProfileForm);
+    setDeveloperProjectForm(defaultDeveloperProjectForm);
+    setDeveloperAliasForm(defaultDeveloperAliasForm);
+    setDeveloperSignalForm(defaultDeveloperSignalForm);
+  }
+
+  async function saveDeveloperProfile() {
+    const payload = developerProfilePayload(developerProfileForm);
+    setError("");
+    setStatus(`Developer profile save: ${payload.id}...`);
+    try {
+      const reputation = await api.upsertAdminDeveloperProfile(payload.id, payload);
+      setSelectedDeveloperId(reputation.developer.id);
+      setDeveloperProfileForm(formFromDeveloperProfile(reputation.developer));
+      await load(selectedJobId);
+      setStatus(`Developer profile сохранен: ${reputation.developer.name}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer profile error");
+      setStatus("Developer profile save failed");
+    }
+  }
+
+  async function deleteDeveloperProfile() {
+    const developerId = developerProfileForm.id.trim();
+    if (!developerId) {
+      setStatus("Укажи developer id");
+      return;
+    }
+    const response = await api.deleteAdminDeveloperProfile(developerId);
+    if (!response.ok) {
+      setStatus(`Developer profile delete failed: HTTP ${response.status}`);
+      return;
+    }
+    resetDeveloperEditor();
+    await load(selectedJobId);
+    setStatus(`Developer profile удален: ${developerId}`);
+  }
+
+  async function saveDeveloperProject() {
+    const payload = developerProjectPayload(developerProjectForm);
+    setError("");
+    setStatus(`Developer project save: ${payload.id}...`);
+    try {
+      const project = await api.upsertAdminDeveloperProject(payload.id, payload);
+      setDeveloperProjectForm(formFromDeveloperProject(project));
+      setSelectedDeveloperId(project.developer_id);
+      await load(selectedJobId);
+      setStatus(`Developer project сохранен: ${project.name}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer project error");
+      setStatus("Developer project save failed");
+    }
+  }
+
+  async function deleteDeveloperProject() {
+    const projectId = developerProjectForm.id.trim();
+    if (!projectId) {
+      setStatus("Укажи project id");
+      return;
+    }
+    const response = await api.deleteAdminDeveloperProject(projectId);
+    if (!response.ok) {
+      setStatus(`Developer project delete failed: HTTP ${response.status}`);
+      return;
+    }
+    setDeveloperProjectForm(defaultProjectFormForDeveloper(developerProjectForm.developer_id));
+    await load(selectedJobId);
+    setStatus(`Developer project удален: ${projectId}`);
+  }
+
+  async function saveDeveloperAlias() {
+    const payload = developerAliasPayload(developerAliasForm);
+    setError("");
+    setStatus(`Developer alias save: ${payload.id}...`);
+    try {
+      const alias = await api.upsertAdminDeveloperAlias(payload.id, payload);
+      setDeveloperAliasForm(formFromDeveloperAlias(alias));
+      setSelectedDeveloperId(alias.developer_id);
+      await load(selectedJobId);
+      setStatus(`Developer alias сохранен: ${alias.alias}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer alias error");
+      setStatus("Developer alias save failed");
+    }
+  }
+
+  async function deleteDeveloperAlias() {
+    const aliasId = developerAliasForm.id.trim();
+    if (!aliasId) {
+      setStatus("Укажи alias id");
+      return;
+    }
+    const response = await api.deleteAdminDeveloperAlias(aliasId);
+    if (!response.ok) {
+      setStatus(`Developer alias delete failed: HTTP ${response.status}`);
+      return;
+    }
+    setDeveloperAliasForm(
+      defaultAliasFormForDeveloper(developerAliasForm.developer_id, developerProfileForm.name),
+    );
+    await load(selectedJobId);
+    setStatus(`Developer alias удален: ${aliasId}`);
+  }
+
+  async function saveDeveloperSignal() {
+    const payload = developerSignalPayload(developerSignalForm);
+    setError("");
+    setStatus(`Developer signal save: ${payload.id}...`);
+    try {
+      const signal = await api.upsertAdminDeveloperQualitySignal(payload.id, payload);
+      setDeveloperSignalForm(formFromDeveloperSignal(signal));
+      setSelectedDeveloperId(signal.developer_id);
+      await load(selectedJobId);
+      setStatus(`Developer signal сохранен: ${signal.title}`);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer signal error");
+      setStatus("Developer signal save failed");
+    }
+  }
+
+  async function deleteDeveloperSignal() {
+    const signalId = developerSignalForm.id.trim();
+    if (!signalId) {
+      setStatus("Укажи signal id");
+      return;
+    }
+    const response = await api.deleteAdminDeveloperQualitySignal(signalId);
+    if (!response.ok) {
+      setStatus(`Developer signal delete failed: HTTP ${response.status}`);
+      return;
+    }
+    setDeveloperSignalForm(defaultSignalFormForDeveloper(developerSignalForm.developer_id));
+    await load(selectedJobId);
+    setStatus(`Developer signal удален: ${signalId}`);
   }
 
   async function correctNormalizedListing() {
@@ -2168,6 +2455,516 @@ export default function AdminPage() {
 
           <section className="panel admin-wide">
             <div className="panel-header">
+              <h2>Developer Record Editor</h2>
+              <Building2 size={18} />
+            </div>
+            <div className="panel-body planned-investment-grid">
+              <div className="table-scroll">
+                {developerReputations.length === 0 ? (
+                  <EmptyBlock label="Нет developer profiles." />
+                ) : (
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Developer</th>
+                        <th>Score</th>
+                        <th>Projects</th>
+                        <th>Signals</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {developerReputations.map((reputation) => (
+                        <tr
+                          key={reputation.developer.id}
+                          className={
+                            selectedDeveloperId === reputation.developer.id
+                              ? "selected-row"
+                              : undefined
+                          }
+                          onClick={() => selectDeveloperForEditing(reputation)}
+                        >
+                          <td>
+                            <strong>{reputation.developer.name}</strong>
+                            <small>{reputation.developer.id}</small>
+                          </td>
+                          <td>
+                            <span className={`status-pill ${developerLabelClass(reputation.label)}`}>
+                              {reputation.label}
+                            </span>
+                            <small>
+                              {reputation.reputation_score}/100 · confidence{" "}
+                              {reputation.confidence_score}/100
+                            </small>
+                          </td>
+                          <td>
+                            {numberValue(reputation.completed_projects_count)} completed
+                            <small>{numberValue(reputation.active_projects_count)} active</small>
+                          </td>
+                          <td>
+                            {numberValue(reputation.quality_signals.length)}
+                            <small>
+                              risks {numberValue(reputation.risk_signals.length)}
+                            </small>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="investment-form">
+                <div className="panel-header inline">
+                  <h3>{selectedDeveloper ? "Редактирование" : "Новый developer"}</h3>
+                  <button className="button" type="button" onClick={resetDeveloperEditor}>
+                    Сброс
+                  </button>
+                </div>
+                {selectedDeveloper ? (
+                  <div className="metric-grid compact" style={{ marginBottom: 12 }}>
+                    <div className="metric">
+                      <span>Score</span>
+                      <strong>{selectedDeveloper.reputation_score}/100</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Confidence</span>
+                      <strong>{selectedDeveloper.confidence_score}/100</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Projects</span>
+                      <strong>{numberValue(selectedDeveloper.projects.length)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Signals</span>
+                      <strong>{numberValue(selectedDeveloper.quality_signals.length)}</strong>
+                    </div>
+                  </div>
+                ) : null}
+
+                <h3>Profile</h3>
+                <div className="form-grid compact">
+                  <Field
+                    label="ID"
+                    value={developerProfileForm.id}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, id: value })
+                    }
+                  />
+                  <Field
+                    label="Name"
+                    value={developerProfileForm.name}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, name: value })
+                    }
+                  />
+                  <Field
+                    label="Legal name"
+                    value={developerProfileForm.legal_name}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, legal_name: value })
+                    }
+                  />
+                  <Field
+                    label="Brands"
+                    value={developerProfileForm.brand_names}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, brand_names: value })
+                    }
+                  />
+                  <Field
+                    label="KRS"
+                    value={developerProfileForm.krs}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, krs: value })
+                    }
+                  />
+                  <Field
+                    label="NIP"
+                    value={developerProfileForm.nip}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, nip: value })
+                    }
+                  />
+                  <Field
+                    label="REGON"
+                    value={developerProfileForm.regon}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, regon: value })
+                    }
+                  />
+                  <Field
+                    label="HQ city"
+                    value={developerProfileForm.headquarters_city}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({
+                        ...developerProfileForm,
+                        headquarters_city: value,
+                      })
+                    }
+                  />
+                  <Field
+                    label="Founded"
+                    value={developerProfileForm.founded_year}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, founded_year: value })
+                    }
+                  />
+                  <Field
+                    label="Sources"
+                    value={developerProfileForm.source_names}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, source_names: value })
+                    }
+                  />
+                  <Field
+                    label="Updated"
+                    value={developerProfileForm.updated_at}
+                    onChange={(value) =>
+                      setDeveloperProfileForm({ ...developerProfileForm, updated_at: value })
+                    }
+                  />
+                </div>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Website</span>
+                  <input
+                    className="input"
+                    value={developerProfileForm.website_url}
+                    onChange={(event) =>
+                      setDeveloperProfileForm({
+                        ...developerProfileForm,
+                        website_url: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button
+                    className="button primary"
+                    type="button"
+                    onClick={() => void saveDeveloperProfile()}
+                  >
+                    Save profile
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    disabled={!selectedDeveloper}
+                    onClick={() => void deleteDeveloperProfile()}
+                  >
+                    Delete profile
+                  </button>
+                </div>
+
+                <h3 style={{ marginTop: 18 }}>Project</h3>
+                <div className="form-grid compact">
+                  <Field
+                    label="Project ID"
+                    value={developerProjectForm.id}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, id: value })
+                    }
+                  />
+                  <Field
+                    label="Developer ID"
+                    value={developerProjectForm.developer_id}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, developer_id: value })
+                    }
+                  />
+                  <Field
+                    label="Name"
+                    value={developerProjectForm.name}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, name: value })
+                    }
+                  />
+                  <Field
+                    label="City"
+                    value={developerProjectForm.city}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, city: value })
+                    }
+                  />
+                  <Field
+                    label="District"
+                    value={developerProjectForm.district}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, district: value })
+                    }
+                  />
+                  <label className="field">
+                    <span>Status</span>
+                    <select
+                      className="select"
+                      value={developerProjectForm.status}
+                      onChange={(event) =>
+                        setDeveloperProjectForm({
+                          ...developerProjectForm,
+                          status: event.target.value as DeveloperProjectStatus,
+                        })
+                      }
+                    >
+                      <option value="active">active</option>
+                      <option value="completed">completed</option>
+                      <option value="planned">planned</option>
+                      <option value="unknown">unknown</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Units"
+                    value={developerProjectForm.units_count}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, units_count: value })
+                    }
+                  />
+                  <Field
+                    label="Completed"
+                    value={developerProjectForm.completed_year}
+                    onChange={(value) =>
+                      setDeveloperProjectForm({ ...developerProjectForm, completed_year: value })
+                    }
+                  />
+                </div>
+                <Field
+                  label="Project URL"
+                  value={developerProjectForm.source_url}
+                  onChange={(value) =>
+                    setDeveloperProjectForm({ ...developerProjectForm, source_url: value })
+                  }
+                />
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button className="button" type="button" onClick={() => void saveDeveloperProject()}>
+                    Save project
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    onClick={() => void deleteDeveloperProject()}
+                  >
+                    Delete project
+                  </button>
+                </div>
+
+                <h3 style={{ marginTop: 18 }}>Alias</h3>
+                <div className="form-grid compact">
+                  <Field
+                    label="Alias ID"
+                    value={developerAliasForm.id}
+                    onChange={(value) =>
+                      setDeveloperAliasForm({ ...developerAliasForm, id: value })
+                    }
+                  />
+                  <Field
+                    label="Developer ID"
+                    value={developerAliasForm.developer_id}
+                    onChange={(value) =>
+                      setDeveloperAliasForm({ ...developerAliasForm, developer_id: value })
+                    }
+                  />
+                  <Field
+                    label="Alias"
+                    value={developerAliasForm.alias}
+                    onChange={(value) =>
+                      setDeveloperAliasForm({ ...developerAliasForm, alias: value })
+                    }
+                  />
+                  <label className="field">
+                    <span>Type</span>
+                    <select
+                      className="select"
+                      value={developerAliasForm.alias_type}
+                      onChange={(event) =>
+                        setDeveloperAliasForm({
+                          ...developerAliasForm,
+                          alias_type: event.target.value as DeveloperAliasType,
+                        })
+                      }
+                    >
+                      <option value="brand">brand</option>
+                      <option value="legal_entity">legal_entity</option>
+                      <option value="spv">spv</option>
+                      <option value="project_company">project_company</option>
+                      <option value="parent_company">parent_company</option>
+                      <option value="source_name">source_name</option>
+                      <option value="other">other</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Source"
+                    value={developerAliasForm.source_name}
+                    onChange={(value) =>
+                      setDeveloperAliasForm({ ...developerAliasForm, source_name: value })
+                    }
+                  />
+                  <Field
+                    label="Confidence"
+                    value={developerAliasForm.confidence_score}
+                    onChange={(value) =>
+                      setDeveloperAliasForm({
+                        ...developerAliasForm,
+                        confidence_score: value,
+                      })
+                    }
+                  />
+                  <label className="field checkbox-field">
+                    <span>Active</span>
+                    <input
+                      type="checkbox"
+                      checked={developerAliasForm.active}
+                      onChange={(event) =>
+                        setDeveloperAliasForm({
+                          ...developerAliasForm,
+                          active: event.target.checked,
+                        })
+                      }
+                    />
+                  </label>
+                </div>
+                <Field
+                  label="Alias URL"
+                  value={developerAliasForm.source_url}
+                  onChange={(value) =>
+                    setDeveloperAliasForm({ ...developerAliasForm, source_url: value })
+                  }
+                />
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button className="button" type="button" onClick={() => void saveDeveloperAlias()}>
+                    Save alias
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    onClick={() => void deleteDeveloperAlias()}
+                  >
+                    Delete alias
+                  </button>
+                </div>
+
+                <h3 style={{ marginTop: 18 }}>Quality Signal</h3>
+                <div className="form-grid compact">
+                  <Field
+                    label="Signal ID"
+                    value={developerSignalForm.id}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, id: value })
+                    }
+                  />
+                  <Field
+                    label="Developer ID"
+                    value={developerSignalForm.developer_id}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, developer_id: value })
+                    }
+                  />
+                  <label className="field">
+                    <span>Type</span>
+                    <select
+                      className="select"
+                      value={developerSignalForm.signal_type}
+                      onChange={(event) =>
+                        setDeveloperSignalForm({
+                          ...developerSignalForm,
+                          signal_type: event.target.value as DeveloperSignalType,
+                        })
+                      }
+                    >
+                      <option value="track_record">track_record</option>
+                      <option value="delivery">delivery</option>
+                      <option value="technical_quality">technical_quality</option>
+                      <option value="legal">legal</option>
+                      <option value="financial">financial</option>
+                      <option value="transparency">transparency</option>
+                      <option value="local_market">local_market</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Severity</span>
+                    <select
+                      className="select"
+                      value={developerSignalForm.severity}
+                      onChange={(event) =>
+                        setDeveloperSignalForm({
+                          ...developerSignalForm,
+                          severity: event.target.value as DeveloperSignalSeverity,
+                        })
+                      }
+                    >
+                      <option value="positive">positive</option>
+                      <option value="info">info</option>
+                      <option value="warning">warning</option>
+                      <option value="risk">risk</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Title"
+                    value={developerSignalForm.title}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, title: value })
+                    }
+                  />
+                  <Field
+                    label="Source"
+                    value={developerSignalForm.source_name}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, source_name: value })
+                    }
+                  />
+                  <Field
+                    label="Observed"
+                    value={developerSignalForm.observed_at}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, observed_at: value })
+                    }
+                  />
+                  <Field
+                    label="Confidence"
+                    value={developerSignalForm.confidence_score}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({
+                        ...developerSignalForm,
+                        confidence_score: value,
+                      })
+                    }
+                  />
+                </div>
+                <Field
+                  label="Signal URL"
+                  value={developerSignalForm.source_url}
+                  onChange={(value) =>
+                    setDeveloperSignalForm({ ...developerSignalForm, source_url: value })
+                  }
+                />
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Summary</span>
+                  <textarea
+                    className="textarea"
+                    value={developerSignalForm.summary}
+                    onChange={(event) =>
+                      setDeveloperSignalForm({
+                        ...developerSignalForm,
+                        summary: event.target.value,
+                      })
+                    }
+                  />
+                </label>
+                <div className="toolbar" style={{ marginTop: 12 }}>
+                  <button className="button" type="button" onClick={() => void saveDeveloperSignal()}>
+                    Save signal
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    onClick={() => void deleteDeveloperSignal()}
+                  >
+                    Delete signal
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="panel admin-wide">
+            <div className="panel-header">
               <h2>Admin Audit Logs</h2>
               <span className="muted">
                 {numberValue(filteredAuditLogs.length)} shown · {numberValue(auditLogs.length)} total
@@ -3000,6 +3797,152 @@ function investmentPayload(form: InvestmentForm): PlannedInvestmentPayload {
   };
 }
 
+function developerProfilePayload(form: DeveloperProfileForm): DeveloperProfile {
+  return {
+    id: form.id.trim(),
+    name: form.name.trim(),
+    legal_name: blankToNull(form.legal_name),
+    brand_names: splitList(form.brand_names),
+    krs: blankToNull(form.krs),
+    nip: blankToNull(form.nip),
+    regon: blankToNull(form.regon),
+    website_url: blankToNull(form.website_url),
+    headquarters_city: blankToNull(form.headquarters_city),
+    founded_year: numberOrNull(form.founded_year),
+    source_names: splitList(form.source_names),
+    updated_at: form.updated_at.trim() || "2026-07-19",
+  };
+}
+
+function developerProjectPayload(form: DeveloperProjectForm): DeveloperProject {
+  return {
+    id: form.id.trim(),
+    developer_id: form.developer_id.trim(),
+    name: form.name.trim(),
+    city: form.city.trim(),
+    district: blankToNull(form.district),
+    status: form.status,
+    units_count: numberOrNull(form.units_count),
+    completed_year: numberOrNull(form.completed_year),
+    source_url: blankToNull(form.source_url),
+  };
+}
+
+function developerAliasPayload(form: DeveloperAliasForm): DeveloperAlias {
+  return {
+    id: form.id.trim(),
+    developer_id: form.developer_id.trim(),
+    alias: form.alias.trim(),
+    alias_type: form.alias_type,
+    source_name: form.source_name.trim(),
+    source_url: blankToNull(form.source_url),
+    confidence_score: Number(form.confidence_score || 50),
+    active: form.active,
+  };
+}
+
+function developerSignalPayload(form: DeveloperSignalForm): DeveloperQualitySignal {
+  return {
+    id: form.id.trim(),
+    developer_id: form.developer_id.trim(),
+    signal_type: form.signal_type,
+    severity: form.severity,
+    title: form.title.trim(),
+    summary: form.summary.trim(),
+    source_name: form.source_name.trim(),
+    source_url: blankToNull(form.source_url),
+    observed_at: blankToNull(form.observed_at),
+    confidence_score: Number(form.confidence_score || 50),
+  };
+}
+
+function formFromDeveloperProfile(profile: DeveloperProfile): DeveloperProfileForm {
+  return {
+    id: profile.id,
+    name: profile.name,
+    legal_name: profile.legal_name ?? "",
+    brand_names: profile.brand_names.join(", "),
+    krs: profile.krs ?? "",
+    nip: profile.nip ?? "",
+    regon: profile.regon ?? "",
+    website_url: profile.website_url ?? "",
+    headquarters_city: profile.headquarters_city ?? "",
+    founded_year: profile.founded_year === null ? "" : String(profile.founded_year),
+    source_names: profile.source_names.join(", "),
+    updated_at: profile.updated_at,
+  };
+}
+
+function formFromDeveloperProject(project: DeveloperProject): DeveloperProjectForm {
+  return {
+    id: project.id,
+    developer_id: project.developer_id,
+    name: project.name,
+    city: project.city,
+    district: project.district ?? "",
+    status: project.status,
+    units_count: project.units_count === null ? "" : String(project.units_count),
+    completed_year: project.completed_year === null ? "" : String(project.completed_year),
+    source_url: project.source_url ?? "",
+  };
+}
+
+function formFromDeveloperAlias(alias: DeveloperAlias): DeveloperAliasForm {
+  return {
+    id: alias.id,
+    developer_id: alias.developer_id,
+    alias: alias.alias,
+    alias_type: alias.alias_type,
+    source_name: alias.source_name,
+    source_url: alias.source_url ?? "",
+    confidence_score: String(alias.confidence_score),
+    active: alias.active,
+  };
+}
+
+function formFromDeveloperSignal(signal: DeveloperQualitySignal): DeveloperSignalForm {
+  return {
+    id: signal.id,
+    developer_id: signal.developer_id,
+    signal_type: signal.signal_type,
+    severity: signal.severity,
+    title: signal.title,
+    summary: signal.summary,
+    source_name: signal.source_name,
+    source_url: signal.source_url ?? "",
+    observed_at: signal.observed_at ?? "",
+    confidence_score: String(signal.confidence_score),
+  };
+}
+
+function defaultProjectFormForDeveloper(developerId: string): DeveloperProjectForm {
+  const baseId = slugForForm(developerId);
+  return {
+    ...defaultDeveloperProjectForm,
+    id: `${baseId}-project`,
+    developer_id: developerId,
+  };
+}
+
+function defaultAliasFormForDeveloper(developerId: string, developerName: string): DeveloperAliasForm {
+  const baseId = slugForForm(developerId);
+  return {
+    ...defaultDeveloperAliasForm,
+    id: `${baseId}-brand`,
+    developer_id: developerId,
+    alias: developerName,
+  };
+}
+
+function defaultSignalFormForDeveloper(developerId: string): DeveloperSignalForm {
+  const baseId = slugForForm(developerId);
+  return {
+    ...defaultDeveloperSignalForm,
+    id: `${baseId}-signal`,
+    developer_id: developerId,
+  };
+}
+
 function listingCorrectionPayload(form: ListingCorrectionForm): ListingCorrectionPayload {
   const payload: ListingCorrectionPayload = {
     correction_reason: form.correction_reason.trim(),
@@ -3113,9 +4056,26 @@ function blankToNull(value: string) {
   return trimmed ? trimmed : null;
 }
 
+function splitList(value: string) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function numberOrNull(value: string) {
   const trimmed = value.trim();
   return trimmed ? Number(trimmed) : null;
+}
+
+function slugForForm(value: string) {
+  return (
+    value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "developer"
+  );
 }
 
 function domainFromUrl(value: string | null) {
@@ -3148,6 +4108,12 @@ function auditStatusClass(status: AdminAuditLog["status"]) {
   if (status === "succeeded") return "healthy";
   if (status === "blocked") return "warning";
   return "failed";
+}
+
+function developerLabelClass(label: DeveloperReputation["label"]) {
+  if (label === "strong" || label === "good") return "healthy";
+  if (label === "risk_review") return "failed";
+  return "warning";
 }
 
 function auditMetadataPreview(metadata: Record<string, unknown>) {

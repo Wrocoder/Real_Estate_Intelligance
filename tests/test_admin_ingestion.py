@@ -109,6 +109,13 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert developer_import_response.status_code == 403
     assert developer_import_response.json()["detail"] == "Admin role required"
 
+    developer_profile_response = client.put(
+        "/api/v1/admin/developers/profiles/unauthorized-developer",
+        json=_developer_profile_payload("unauthorized-developer"),
+    )
+    assert developer_profile_response.status_code == 403
+    assert developer_profile_response.json()["detail"] == "Admin role required"
+
     dedup_response = client.get("/api/v1/admin/deduplication/matches")
     assert dedup_response.status_code == 403
     assert dedup_response.json()["detail"] == "Admin role required"
@@ -856,8 +863,146 @@ def test_developer_feed_import_requires_postgres_for_writes_in_memory_mode() -> 
     assert logs[0]["code"] == "developer_feed_import_requires_postgres"
 
 
+def test_admin_can_manually_edit_developer_records() -> None:
+    developer_id = "admin-dev-crud"
+    project_id = "admin-dev-crud-project"
+    alias_id = "admin-dev-crud-alias"
+    signal_id = "admin-dev-crud-signal"
+    client.delete(f"/api/v1/admin/developers/profiles/{developer_id}", headers=ADMIN_HEADERS)
+
+    profile_response = client.put(
+        f"/api/v1/admin/developers/profiles/{developer_id}",
+        headers=ADMIN_HEADERS,
+        json=_developer_profile_payload(developer_id),
+    )
+    profile = profile_response.json()
+
+    assert profile_response.status_code == 200
+    assert profile["developer"]["id"] == developer_id
+    assert profile["developer"]["name"] == "Admin Developer CRUD"
+
+    project_response = client.put(
+        f"/api/v1/admin/developers/projects/{project_id}",
+        headers=ADMIN_HEADERS,
+        json={
+            "id": project_id,
+            "developer_id": developer_id,
+            "name": "Admin Project",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "status": "active",
+            "units_count": 120,
+            "completed_year": None,
+            "source_url": "https://developer.example/project",
+        },
+    )
+    assert project_response.status_code == 200
+    assert project_response.json()["developer_id"] == developer_id
+
+    alias_response = client.put(
+        f"/api/v1/admin/developers/aliases/{alias_id}",
+        headers=ADMIN_HEADERS,
+        json={
+            "id": alias_id,
+            "developer_id": developer_id,
+            "alias": "Admin Dev Brand",
+            "alias_type": "brand",
+            "source_name": "Admin QA",
+            "source_url": None,
+            "confidence_score": 90,
+            "active": True,
+        },
+    )
+    assert alias_response.status_code == 200
+    assert alias_response.json()["alias"] == "Admin Dev Brand"
+
+    signal_response = client.put(
+        f"/api/v1/admin/developers/signals/{signal_id}",
+        headers=ADMIN_HEADERS,
+        json={
+            "id": signal_id,
+            "developer_id": developer_id,
+            "signal_type": "technical_quality",
+            "severity": "positive",
+            "title": "Independent QA passed",
+            "summary": "Partner inspection did not find blocker defects.",
+            "source_name": "Admin QA",
+            "source_url": None,
+            "observed_at": "2026-07-19",
+            "confidence_score": 85,
+        },
+    )
+    assert signal_response.status_code == 200
+    assert signal_response.json()["title"] == "Independent QA passed"
+
+    detail_response = client.get(f"/api/v1/developers/{developer_id}")
+    detail = detail_response.json()
+
+    assert detail_response.status_code == 200
+    assert detail["developer"]["id"] == developer_id
+    assert {project["id"] for project in detail["projects"]} == {project_id}
+    assert {alias["id"] for alias in detail["aliases"]} == {alias_id}
+    assert {signal["id"] for signal in detail["quality_signals"]} == {signal_id}
+    assert "Partner inspection did not find blocker defects." in detail["positive_signals"]
+    assert detail["active_projects_count"] == 1
+
+    mismatch_response = client.put(
+        f"/api/v1/admin/developers/profiles/{developer_id}",
+        headers=ADMIN_HEADERS,
+        json=_developer_profile_payload("different-id"),
+    )
+    assert mismatch_response.status_code == 400
+
+    assert (
+        client.delete(
+            f"/api/v1/admin/developers/signals/{signal_id}",
+            headers=ADMIN_HEADERS,
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/admin/developers/aliases/{alias_id}",
+            headers=ADMIN_HEADERS,
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/admin/developers/projects/{project_id}",
+            headers=ADMIN_HEADERS,
+        ).status_code
+        == 204
+    )
+    assert (
+        client.delete(
+            f"/api/v1/admin/developers/profiles/{developer_id}",
+            headers=ADMIN_HEADERS,
+        ).status_code
+        == 204
+    )
+    assert client.get(f"/api/v1/developers/{developer_id}").status_code == 404
+
+
 def _developer_feed_bytes() -> bytes:
     return Path("data/samples/developer_feed_wroclaw.json").read_bytes()
+
+
+def _developer_profile_payload(developer_id: str) -> dict:
+    return {
+        "id": developer_id,
+        "name": "Admin Developer CRUD",
+        "legal_name": "Admin Developer CRUD sp. z o.o.",
+        "brand_names": ["Admin Dev"],
+        "krs": "0000000001",
+        "nip": "8990000001",
+        "regon": "020000001",
+        "website_url": "https://developer.example",
+        "headquarters_city": "Wrocław",
+        "founded_year": 2015,
+        "source_names": ["Admin QA"],
+        "updated_at": "2026-07-19",
+    }
 
 
 def _partner_csv_bytes(source_listing_id: str = "api-partner-import") -> bytes:

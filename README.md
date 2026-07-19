@@ -55,6 +55,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлена ручная correction-панель normalized listings: admin PATCH обновляет report-facing поля и пересчитывает `price_per_m2`.
 - Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
 - Добавлен admin JSON import для developer reputation feed: profiles, aliases, projects и quality signals с dry-run/apply.
+- Добавлен admin manual editor для developer profiles, projects, aliases и quality signals с audit log.
 - Добавлен legal-first developer feed import: JSON-фид профилей, aliases, проектов, registry checks, UOKiK events, directories, partner inspections и quality signals с dry-run и Postgres upsert.
 - Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
 - Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
@@ -171,6 +172,10 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/listings/{listing_id}/normalized
 - http://127.0.0.1:8000/api/v1/admin/developers/import
+- http://127.0.0.1:8000/api/v1/admin/developers/profiles/{developer_id}
+- http://127.0.0.1:8000/api/v1/admin/developers/projects/{project_id}
+- http://127.0.0.1:8000/api/v1/admin/developers/aliases/{alias_id}
+- http://127.0.0.1:8000/api/v1/admin/developers/signals/{signal_id}
 - http://127.0.0.1:8000/api/v1/admin/planned-investments
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals/lead-scores

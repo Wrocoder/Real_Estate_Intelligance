@@ -1,9 +1,9 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from math import cos, radians
 from typing import Any
 
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from domarion.db.models import (
@@ -13,6 +13,7 @@ from domarion.db.models import (
     DeveloperProfileRow,
     DeveloperProjectRow,
     DeveloperQualitySignalRow,
+    DeveloperReputationSnapshotRow,
     District,
     IndustrialZone,
     Kindergarten,
@@ -423,6 +424,128 @@ class PostgresRealEstateRepository:
         if not scored:
             return None
         return max(scored, key=lambda item: item[0])[1]
+
+    def upsert_developer_profile(self, payload: DeveloperProfile) -> DeveloperReputation:
+        row = self.session.get(DeveloperProfileRow, payload.id)
+        if row is None:
+            row = DeveloperProfileRow(id=payload.id)
+            self.session.add(row)
+        row.name = payload.name
+        row.legal_name = payload.legal_name
+        row.brand_names_json = payload.brand_names
+        row.krs = payload.krs
+        row.nip = payload.nip
+        row.regon = payload.regon
+        row.website_url = payload.website_url
+        row.headquarters_city = payload.headquarters_city
+        row.founded_year = payload.founded_year
+        row.source_names_json = payload.source_names
+        row.updated_at = _date_to_datetime(payload.updated_at)
+        self.session.commit()
+        self.session.refresh(row)
+        reputation = self._developer_reputation_from_row(row)
+        if reputation is None:
+            raise RuntimeError("Developer profile was not persisted.")
+        return reputation
+
+    def delete_developer_profile(self, developer_id: str) -> bool:
+        row = self.session.get(DeveloperProfileRow, developer_id)
+        if row is None:
+            return False
+        for row_model in (
+            DeveloperReputationSnapshotRow,
+            DeveloperQualitySignalRow,
+            DeveloperAliasRow,
+            DeveloperProjectRow,
+        ):
+            self.session.execute(delete(row_model).where(row_model.developer_id == developer_id))
+        self.session.delete(row)
+        self.session.commit()
+        return True
+
+    def upsert_developer_project(self, payload: DeveloperProject) -> DeveloperProject | None:
+        if self.session.get(DeveloperProfileRow, payload.developer_id) is None:
+            return None
+        row = self.session.get(DeveloperProjectRow, payload.id)
+        if row is None:
+            row = DeveloperProjectRow(id=payload.id)
+            self.session.add(row)
+        row.developer_id = payload.developer_id
+        row.name = payload.name
+        row.city = payload.city
+        row.district = payload.district
+        row.status = payload.status
+        row.units_count = payload.units_count
+        row.completed_year = payload.completed_year
+        row.source_url = payload.source_url
+        self.session.commit()
+        self.session.refresh(row)
+        return self._developer_project_to_schema(row)
+
+    def delete_developer_project(self, project_id: str) -> bool:
+        row = self.session.get(DeveloperProjectRow, project_id)
+        if row is None:
+            return False
+        self.session.delete(row)
+        self.session.commit()
+        return True
+
+    def upsert_developer_alias(self, payload: DeveloperAlias) -> DeveloperAlias | None:
+        if self.session.get(DeveloperProfileRow, payload.developer_id) is None:
+            return None
+        row = self.session.get(DeveloperAliasRow, payload.id)
+        if row is None:
+            row = DeveloperAliasRow(id=payload.id)
+            self.session.add(row)
+        row.developer_id = payload.developer_id
+        row.alias = payload.alias
+        row.alias_type = payload.alias_type
+        row.source_name = payload.source_name
+        row.source_url = payload.source_url
+        row.confidence_score = payload.confidence_score
+        row.active = payload.active
+        self.session.commit()
+        self.session.refresh(row)
+        return self._developer_alias_to_schema(row)
+
+    def delete_developer_alias(self, alias_id: str) -> bool:
+        row = self.session.get(DeveloperAliasRow, alias_id)
+        if row is None:
+            return False
+        self.session.delete(row)
+        self.session.commit()
+        return True
+
+    def upsert_developer_quality_signal(
+        self,
+        payload: DeveloperQualitySignal,
+    ) -> DeveloperQualitySignal | None:
+        if self.session.get(DeveloperProfileRow, payload.developer_id) is None:
+            return None
+        row = self.session.get(DeveloperQualitySignalRow, payload.id)
+        if row is None:
+            row = DeveloperQualitySignalRow(id=payload.id)
+            self.session.add(row)
+        row.developer_id = payload.developer_id
+        row.signal_type = payload.signal_type
+        row.severity = payload.severity
+        row.title = payload.title
+        row.summary = payload.summary
+        row.source_name = payload.source_name
+        row.source_url = payload.source_url
+        row.observed_at = _date_to_datetime(payload.observed_at) if payload.observed_at else None
+        row.confidence_score = payload.confidence_score
+        self.session.commit()
+        self.session.refresh(row)
+        return self._developer_signal_to_schema(row)
+
+    def delete_developer_quality_signal(self, signal_id: str) -> bool:
+        row = self.session.get(DeveloperQualitySignalRow, signal_id)
+        if row is None:
+            return False
+        self.session.delete(row)
+        self.session.commit()
+        return True
 
     def list_municipalities(self) -> list[MunicipalityReference]:
         rows = self.session.scalars(select(Municipality).order_by(Municipality.name)).all()
@@ -1321,6 +1444,10 @@ def _optional_decimal_float(value: Decimal | None) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _date_to_datetime(value: date) -> datetime:
+    return datetime.combine(value, time.min)
 
 
 def _radius_degrees(radius_km: float, lat: float) -> float:
