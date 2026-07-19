@@ -367,48 +367,52 @@ export default function ListingDetailPage() {
               points={priceHistoryPoints}
               valueFormatter={money}
             />
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Цена</th>
-                  <th>Цена за m2</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.price_history.map((point) => (
-                  <tr key={point.observed_at}>
-                    <td>{point.observed_at}</td>
-                    <td>{money(point.price)}</td>
-                    <td>{money(point.price_per_m2)}/m2</td>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Дата</th>
+                    <th>Цена</th>
+                    <th>Цена за m2</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {analysis.price_history.map((point) => (
+                    <tr key={point.observed_at}>
+                      <td>{point.observed_at}</td>
+                      <td>{money(point.price)}</td>
+                      <td>{money(point.price_per_m2)}/m2</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
             <h2>Похожие объекты</h2>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Объект</th>
-                  <th>Район</th>
-                  <th>Цена</th>
-                  <th>m2</th>
-                </tr>
-              </thead>
-              <tbody>
-                {analysis.comparables.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <Link href={`/listings/${item.id}`}>{item.title}</Link>
-                    </td>
-                    <td>{item.district}</td>
-                    <td>{money(item.price)}</td>
-                    <td>{money(item.price_per_m2)}/m2</td>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Объект</th>
+                    <th>Район</th>
+                    <th>Цена</th>
+                    <th>m2</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {analysis.comparables.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <Link href={`/listings/${item.id}`}>{item.title}</Link>
+                      </td>
+                      <td>{item.district}</td>
+                      <td>{money(item.price)}</td>
+                      <td>{money(item.price_per_m2)}/m2</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
 

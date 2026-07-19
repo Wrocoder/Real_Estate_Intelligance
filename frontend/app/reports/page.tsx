@@ -215,70 +215,72 @@ export default function ReportsPage() {
           ) : reports.length === 0 ? (
             <EmptyBlock label="Пока нет сохраненных отчетов." />
           ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Отчет</th>
-                  <th>Объект</th>
-                  <th>Аудитория</th>
-                  <th>Insight</th>
-                  <th>Дата</th>
-                  <th>Content</th>
-                  <th>PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                {reports.map((report) => {
-                  const insight = insightForReport(insights, report.id);
-                  return (
-                    <tr key={report.id}>
-                      <td>{report.title}</td>
-                      <td>{report.listing_id}</td>
-                      <td>{report.audience}</td>
-                      <td>
-                        {insight ? (
-                          <>
-                            <strong>{insightLabel(insight)}</strong>
-                            <small>{insight.summary}</small>
-                          </>
-                        ) : (
-                          <span className="muted">Нет сохраненного summary</span>
-                        )}
-                      </td>
-                      <td>{new Date(report.created_at).toLocaleString("pl-PL")}</td>
-                      <td>
-                        <a
-                          className="button"
-                          href={reportContentUrl(report.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <ExternalLink size={16} /> Открыть
-                        </a>
-                        <button
-                          className="button"
-                          type="button"
-                          onClick={() => void emailReport(report.id)}
-                          style={{ marginLeft: 8 }}
-                        >
-                          <Mail size={16} /> Email
-                        </button>
-                      </td>
-                      <td>
-                        <a
-                          className="button"
-                          href={reportPdfUrl(report.id)}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <Download size={16} /> PDF
-                        </a>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Отчет</th>
+                    <th>Объект</th>
+                    <th>Аудитория</th>
+                    <th>Insight</th>
+                    <th>Дата</th>
+                    <th>Content</th>
+                    <th>PDF</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((report) => {
+                    const insight = insightForReport(insights, report.id);
+                    return (
+                      <tr key={report.id}>
+                        <td>{report.title}</td>
+                        <td>{report.listing_id}</td>
+                        <td>{report.audience}</td>
+                        <td>
+                          {insight ? (
+                            <>
+                              <strong>{insightLabel(insight)}</strong>
+                              <small>{insight.summary}</small>
+                            </>
+                          ) : (
+                            <span className="muted">Нет сохраненного summary</span>
+                          )}
+                        </td>
+                        <td>{new Date(report.created_at).toLocaleString("pl-PL")}</td>
+                        <td>
+                          <a
+                            className="button"
+                            href={reportContentUrl(report.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <ExternalLink size={16} /> Открыть
+                          </a>
+                          <button
+                            className="button"
+                            type="button"
+                            onClick={() => void emailReport(report.id)}
+                            style={{ marginLeft: 8 }}
+                          >
+                            <Mail size={16} /> Email
+                          </button>
+                        </td>
+                        <td>
+                          <a
+                            className="button"
+                            href={reportPdfUrl(report.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            <Download size={16} /> PDF
+                          </a>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </section>

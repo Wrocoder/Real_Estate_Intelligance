@@ -42,6 +42,7 @@ function expectMinSize(label, content, minBytes) {
 }
 
 const packageJson = JSON.parse(read("package.json"));
+const globalStyles = read("app/globals.css");
 const apiClient = read("lib/api.ts");
 const explorerPage = read("app/page.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
@@ -67,6 +68,15 @@ expectIncludes("package scripts", JSON.stringify(packageJson.scripts), [
   "\"lint\"",
   "\"smoke\"",
   "\"typecheck\"",
+]);
+
+expectIncludes("responsive guardrails", globalStyles, [
+  "overflow-x: hidden;",
+  "overflow-wrap: anywhere;",
+  ".panel-body > .table",
+  ".table-scroll .table",
+  ".map-layer-controls",
+  "max-height: 178px;",
 ]);
 
 expectIncludes("api client contracts", apiClient, [
@@ -166,6 +176,7 @@ expectIncludes("reports page", reportsPage, [
   "reportExportUrl(\"csv\")",
   "reportExportUrl(\"json\")",
 ]);
+expectRegex("reports mobile table wrapper", reportsPage, /table-scroll[\s\S]*reports\.map/);
 
 expectIncludes("admin page", adminPage, [
   "Leads & Partner Referrals",
@@ -293,6 +304,11 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "href={`/guides/${guide.slug}`}",
   "<BookOpen",
 ]);
+expectRegex(
+  "listing detail mobile table wrappers",
+  listingDetailPage,
+  /История цены[\s\S]*table-scroll[\s\S]*Похожие объекты[\s\S]*table-scroll/,
+);
 
 expectIncludes("primary navigation", layout, [
   "href=\"/beta\"",

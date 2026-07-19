@@ -25,6 +25,7 @@ body {
   color: var(--ink);
   font-family: Arial, Helvetica, sans-serif;
   letter-spacing: 0;
+  overflow-x: hidden;
 }
 
 a {
@@ -104,6 +105,7 @@ button {
 
 .main {
   min-width: 0;
+  overflow-x: hidden;
   padding: 22px;
 }
 
@@ -113,6 +115,15 @@ button {
   justify-content: space-between;
   gap: 18px;
   margin-bottom: 18px;
+}
+
+.page-header > *,
+.panel,
+.panel-body,
+.listing-card,
+.metric,
+.section-list li {
+  min-width: 0;
 }
 
 .page-header h1 {
@@ -139,12 +150,15 @@ button {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  max-width: 100%;
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
   background: var(--surface);
   color: var(--ink);
   padding: 0 12px;
+  text-align: center;
+  white-space: normal;
 }
 
 .button.primary {
@@ -180,6 +194,8 @@ button {
 .input,
 .select,
 .textarea {
+  width: 100%;
+  min-width: 0;
   min-height: 38px;
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -272,6 +288,22 @@ button {
 
 .muted {
   color: var(--muted);
+}
+
+.panel,
+.panel-header,
+.table th,
+.table td,
+.section-list li,
+.metric,
+.empty-state,
+.status-line,
+.status-pill,
+.ai-verdict-summary,
+.ai-citation,
+.map-feature-popup,
+.listing-card h3 {
+  overflow-wrap: anywhere;
 }
 
 .meta-row {
@@ -1248,6 +1280,8 @@ button {
 .table-scroll {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
 }
 
 .table th,
@@ -2090,6 +2124,38 @@ button {
     justify-content: flex-start;
   }
 
+  .panel-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .panel-header > .toolbar,
+  .page-header > .toolbar,
+  .toolbar {
+    width: 100%;
+  }
+
+  .toolbar .button,
+  .toolbar .field,
+  .button-row .button {
+    flex: 1 1 min(220px, 100%);
+  }
+
+  .panel-body > .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll .table,
+  .panel-body > .table {
+    min-width: 620px;
+  }
+
+  .section-list li {
+    line-height: 1.45;
+  }
+
   .form-grid.wide {
     grid-template-columns: 1fr;
   }
@@ -2104,6 +2170,35 @@ button {
 
   .listing-ai-controls {
     grid-template-columns: 1fr;
+  }
+
+  .map-shell {
+    min-height: 520px;
+  }
+
+  .map-summary {
+    right: 12px;
+  }
+
+  .map-layer-controls {
+    right: 12px;
+    left: 12px;
+    max-width: none;
+    max-height: 178px;
+    overflow: auto;
+  }
+
+  .map-layer-controls label {
+    white-space: normal;
+  }
+
+  .map-layer-subtoggle,
+  .map-layer-subtoggle.nested {
+    padding-left: 10px;
+  }
+
+  .map-legend {
+    bottom: 204px;
   }
 
   .landing-hero {

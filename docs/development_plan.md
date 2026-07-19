@@ -287,7 +287,7 @@
 - [x] Добавить developer block на compare page.
 - [x] Сделать news page.
 - [x] Сделать public demand-validation landing page для paid beta.
-- [ ] Сделать mobile-friendly QA pass для ключевых страниц.
+- [x] Сделать mobile-friendly QA pass для ключевых страниц.
 - [x] Добавить charting library и графики price history/market distributions.
 - [x] Добавить realtor подборки объектов для клиента.
 - [x] Добавить investor hidden gems view.
