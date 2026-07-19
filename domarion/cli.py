@@ -1,6 +1,8 @@
 import argparse
 import json
+import os
 import sys
+import time
 from contextlib import contextmanager
 
 from domarion.core import get_settings
@@ -161,6 +163,59 @@ def main() -> None:
         default=500,
         help="Maximum active daily email alerts to scan.",
     )
+    worker_parser = subparsers.add_parser(
+        "worker",
+        help="Run background worker tasks in a loop for deployment environments.",
+    )
+    worker_parser.add_argument(
+        "--task",
+        action="append",
+        choices=["daily-email-alerts", "area-market-snapshots", "price-history-rebuild"],
+        default=None,
+        help="Task to run. Can be repeated. Defaults to WORKER_TASKS or daily-email-alerts.",
+    )
+    worker_parser.add_argument(
+        "--run-once",
+        action="store_true",
+        default=_env_bool("WORKER_RUN_ONCE", False),
+        help="Run configured tasks once and exit.",
+    )
+    worker_parser.add_argument(
+        "--interval-seconds",
+        type=float,
+        default=float(os.getenv("WORKER_INTERVAL_SECONDS", "3600")),
+        help="Delay between worker loops.",
+    )
+    worker_parser.add_argument(
+        "--send",
+        action="store_true",
+        default=_env_bool("ALERT_WORKER_SEND", False),
+        help="Send daily email alerts instead of dry-run.",
+    )
+    worker_parser.add_argument(
+        "--apply",
+        action="store_true",
+        default=_env_bool("WORKER_APPLY", False),
+        help="Persist maintenance task writes instead of dry-run/skip behavior.",
+    )
+    worker_parser.add_argument(
+        "--force",
+        action="store_true",
+        default=_env_bool("WORKER_FORCE", False),
+        help="Ignore daily alert cooldowns for alert tasks.",
+    )
+    worker_parser.add_argument(
+        "--max-matches",
+        type=int,
+        default=int(os.getenv("ALERT_WORKER_MAX_MATCHES", "10")),
+        help="Maximum matches included in each alert delivery.",
+    )
+    worker_parser.add_argument(
+        "--limit",
+        type=int,
+        default=int(os.getenv("ALERT_WORKER_LIMIT", "500")),
+        help="Maximum active daily email alerts to scan.",
+    )
 
     args = parser.parse_args()
 
@@ -297,6 +352,8 @@ def main() -> None:
                     ),
                 )
         _print_json(result.model_dump_json(indent=2))
+    elif args.command == "worker":
+        _run_worker(args)
 
 
 def _print_json(payload: str) -> None:
@@ -305,6 +362,97 @@ def _print_json(payload: str) -> None:
     except UnicodeEncodeError:
         sys.stdout.buffer.write(payload.encode("utf-8"))
         sys.stdout.buffer.write(b"\n")
+
+
+def _run_worker(args: argparse.Namespace) -> None:
+    tasks = args.task or _env_list("WORKER_TASKS", ["daily-email-alerts"])
+    iteration = 0
+    while True:
+        iteration += 1
+        results = [_run_worker_task(task, args) for task in tasks]
+        _print_json(
+            json.dumps(
+                {
+                    "worker": "domarion",
+                    "iteration": iteration,
+                    "tasks": tasks,
+                    "results": results,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+        if args.run_once:
+            return
+        time.sleep(max(args.interval_seconds, 1.0))
+
+
+def _run_worker_task(task: str, args: argparse.Namespace) -> dict:
+    if task == "daily-email-alerts":
+        with contextmanager(get_repository)() as repository:
+            with contextmanager(get_user_store)() as user_store:
+                result = run_daily_email_alert_delivery(
+                    repository,
+                    user_store,
+                    AlertDeliveryBatchRequest(
+                        dry_run=not args.send,
+                        force=args.force,
+                        max_matches=args.max_matches,
+                        limit=args.limit,
+                    ),
+                )
+        return json.loads(result.model_dump_json())
+    if task == "area-market-snapshots":
+        with contextmanager(get_repository)() as repository:
+            if not args.apply:
+                result = run_area_market_snapshot_job(repository, dry_run=True)
+            else:
+                settings = get_settings()
+                if settings.data_repository_backend != "postgres":
+                    raise SystemExit(
+                        "area-market-snapshots worker writes require "
+                        "DATA_REPOSITORY_BACKEND=postgres."
+                    )
+                with SessionLocal() as session:
+                    result = run_area_market_snapshot_job(
+                        repository,
+                        session=session,
+                        dry_run=False,
+                    )
+                    session.commit()
+        return json.loads(result.model_dump_json())
+    if task == "price-history-rebuild":
+        if not args.apply:
+            return {
+                "task": task,
+                "dry_run": True,
+                "skipped": "price-history-rebuild writes only run with --apply.",
+            }
+        settings = get_settings()
+        if settings.data_repository_backend != "postgres":
+            raise SystemExit(
+                "price-history-rebuild worker writes require DATA_REPOSITORY_BACKEND=postgres."
+            )
+        with SessionLocal() as session:
+            result = rebuild_price_history_metrics_in_session(session)
+            session.commit()
+        return json.loads(result.model_dump_json())
+    raise SystemExit(f"Unknown worker task: {task}")
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().casefold() in {"1", "true", "yes", "y", "on"}
+
+
+def _env_list(name: str, default: list[str]) -> list[str]:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    items = [item.strip() for item in raw.split(",") if item.strip()]
+    return items or default
 
 
 if __name__ == "__main__":

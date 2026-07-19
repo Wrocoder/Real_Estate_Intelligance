@@ -36,6 +36,8 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
 - Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
 - Проверены Alembic migrations на живой PostgreSQL/PostGIS БД через staging verifier.
+- Добавлен production ops runbook: managed Postgres/PostGIS, Redis, S3 artifact bucket,
+  backup/restore helper и worker deployment для фоновых задач.
 - Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
 - Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
 - Добавлен `listing_events` pipeline из snapshots: first seen, price moves, parameter/status/description hash changes, removed/republished и relist events.
@@ -1379,6 +1381,23 @@ CLI для cron/background worker:
 ```powershell
 .\.venv\Scripts\domarion.exe deliver-daily-email-alerts --send --max-matches 10 --limit 500
 ```
+
+Production worker loop:
+
+```powershell
+$env:WORKER_TASKS="daily-email-alerts,area-market-snapshots"
+$env:WORKER_INTERVAL_SECONDS="3600"
+.\.venv\Scripts\domarion.exe worker
+```
+
+Postgres/PostGIS logical backup:
+
+```powershell
+python scripts/postgres_backup.py backup --database-url $env:DATABASE_URL
+python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-postgres-YYYYMMDDTHHMMSSZ.dump --database-url $env:RESTORE_DATABASE_URL --clean
+```
+
+Full production operations checklist: `docs/production_ops_runbook.md`.
 
 ## Git workflow
 

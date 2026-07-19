@@ -30,6 +30,14 @@ x-api-env: &api-env
   ALERT_TELEGRAM_BOT_NAME: ${ALERT_TELEGRAM_BOT_NAME:-DomarionBot}
   ALERT_TELEGRAM_BOT_TOKEN: ${ALERT_TELEGRAM_BOT_TOKEN:-}
   ALERT_TELEGRAM_API_BASE_URL: ${ALERT_TELEGRAM_API_BASE_URL:-https://api.telegram.org}
+  WORKER_TASKS: ${WORKER_TASKS:-daily-email-alerts}
+  WORKER_INTERVAL_SECONDS: ${WORKER_INTERVAL_SECONDS:-3600}
+  WORKER_RUN_ONCE: ${WORKER_RUN_ONCE:-false}
+  WORKER_APPLY: ${WORKER_APPLY:-false}
+  WORKER_FORCE: ${WORKER_FORCE:-false}
+  ALERT_WORKER_SEND: ${ALERT_WORKER_SEND:-false}
+  ALERT_WORKER_MAX_MATCHES: ${ALERT_WORKER_MAX_MATCHES:-10}
+  ALERT_WORKER_LIMIT: ${ALERT_WORKER_LIMIT:-500}
   DEMO_USER_ID: ${DEMO_USER_ID:-demo-user}
   DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@domarion.local}
 
@@ -132,6 +140,25 @@ services:
       interval: 15s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment: *api-env
+    command:
+      - domarion
+      - worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+      seed:
+        condition: service_completed_successfully
     restart: unless-stopped
 
 volumes:

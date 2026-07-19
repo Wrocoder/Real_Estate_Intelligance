@@ -396,12 +396,12 @@
 - [x] Добавить production Docker build.
 - [x] Добавить environment variable documentation.
 - [ ] Добавить managed Postgres/PostGIS.
-- [ ] Добавить Redis.
-- [ ] Добавить backup strategy.
+- [x] Добавить Redis.
+- [x] Добавить backup strategy.
 - [x] Добавить staging environment.
 - [ ] Добавить production deploy.
 - [ ] Добавить S3-compatible bucket для отчетов и generated artifacts.
-- [ ] Добавить background worker deployment для alerts, ingestion и report generation.
+- [x] Добавить background worker deployment для alerts, ingestion и report generation.
 - [ ] Добавить production monitoring: uptime, job failures, source freshness, payment webhooks.
 - [ ] Добавить cost controls для maps, AI и infrastructure.
 

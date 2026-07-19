@@ -7,7 +7,7 @@ endif
 NPM ?= npm
 FRONTEND_DIR ?= frontend
 
-.PHONY: install test lint backend-dev migrate frontend-install frontend-lint frontend-typecheck frontend-smoke frontend-dev pre-commit-install pre-commit check
+.PHONY: install test lint backend-dev migrate worker-once postgres-backup frontend-install frontend-lint frontend-typecheck frontend-smoke frontend-dev pre-commit-install pre-commit check
 
 install:
 	$(PYTHON) -m pip install -e ".[dev]"
@@ -23,6 +23,12 @@ backend-dev:
 
 migrate:
 	$(PYTHON) -m alembic upgrade head
+
+worker-once:
+	$(PYTHON) -m domarion.cli worker --run-once
+
+postgres-backup:
+	$(PYTHON) scripts/postgres_backup.py backup
 
 frontend-install:
 	cd $(FRONTEND_DIR) && $(NPM) install
