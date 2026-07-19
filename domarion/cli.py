@@ -22,6 +22,7 @@ from domarion.scripts.seed_demo import seed_demo_data
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import run_scoring_backtest
+from domarion.services.production_readiness import build_production_readiness_report
 from domarion.services.report_generation import write_object_report_html
 from domarion.user_store.factory import get_user_store
 
@@ -216,6 +217,15 @@ def main() -> None:
         default=int(os.getenv("ALERT_WORKER_LIMIT", "500")),
         help="Maximum active daily email alerts to scan.",
     )
+    preflight_parser = subparsers.add_parser(
+        "production-preflight",
+        help="Validate production readiness configuration and print a JSON report.",
+    )
+    preflight_parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit with code 1 when warnings are present, not only critical blockers.",
+    )
 
     args = parser.parse_args()
 
@@ -354,6 +364,8 @@ def main() -> None:
         _print_json(result.model_dump_json(indent=2))
     elif args.command == "worker":
         _run_worker(args)
+    elif args.command == "production-preflight":
+        _run_production_preflight(args)
 
 
 def _print_json(payload: str) -> None:
@@ -438,6 +450,13 @@ def _run_worker_task(task: str, args: argparse.Namespace) -> dict:
             session.commit()
         return json.loads(result.model_dump_json())
     raise SystemExit(f"Unknown worker task: {task}")
+
+
+def _run_production_preflight(args: argparse.Namespace) -> None:
+    report = build_production_readiness_report()
+    _print_json(report.model_dump_json(indent=2))
+    if report.status == "blocked" or (args.strict and report.status != "ready"):
+        raise SystemExit(1)
 
 
 def _env_bool(name: str, default: bool) -> bool:

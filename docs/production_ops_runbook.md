@@ -143,10 +143,45 @@ For paid beta, keep `ALERT_WORKER_SEND=false` until SMTP/Telegram credentials an
 deliverability are verified. Set `WORKER_APPLY=true` only after Postgres backups and
 restore drill are complete.
 
+## Readiness And Preflight
+
+The API exposes a deployment readiness report:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/ready
+```
+
+`/health` is only a process heartbeat. `/ready` validates production guardrails:
+Postgres-backed stores, managed Postgres/Redis URLs, production CORS, S3 report
+artifacts, real payment provider configuration, alert transports, worker flags,
+offsite backups, monitoring targets and cost-control marker.
+
+Run the same checks from CI/CD before switching traffic:
+
+```powershell
+.\.venv\Scripts\domarion.exe production-preflight
+.\.venv\Scripts\domarion.exe production-preflight --strict
+```
+
+Exit behavior:
+
+- `status=blocked`: command exits with code 1 and `/ready` returns HTTP 503.
+- `status=degraded`: command exits with code 0, or code 1 with `--strict`.
+- `status=ready`: no failed or warning checks.
+
+Monitoring/cost env markers used by preflight:
+
+```env
+UPTIME_MONITOR_URL=https://...
+JOB_FAILURE_ALERT_TARGET=ops@example.com
+SOURCE_FRESHNESS_ALERT_TARGET=ops@example.com
+PAYMENT_WEBHOOK_ALERT_TARGET=ops@example.com
+COST_ALERTS_CONFIGURED=true
+```
+
 ## Remaining Before Production Traffic
 
 - Pick the actual hosting provider and domain.
 - Configure production secrets outside git.
-- Run Alembic, staging verifier, deployment smoke and restore drill.
-- Enable uptime/error monitoring and payment webhook alerting.
-- Define cost alerts for maps, AI/API usage, S3 and database storage.
+- Run Alembic, staging verifier, production preflight, deployment smoke and restore drill.
+- Connect the listed monitoring and cost alert targets to the chosen hosting provider.

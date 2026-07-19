@@ -78,6 +78,9 @@ PaymentWebhookStatus = Literal["processed", "duplicate", "ignored", "rejected"]
 IngestionJobStatus = Literal["queued", "running", "succeeded", "failed"]
 DataQualitySeverity = Literal["info", "warning", "error"]
 IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
+ProductionReadinessStatus = Literal["ready", "degraded", "blocked"]
+ProductionReadinessCheckStatus = Literal["pass", "warn", "fail"]
+ProductionReadinessCheckSeverity = Literal["info", "warning", "critical"]
 SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 SourceCheckType = Literal[
     "robots_txt",
@@ -245,6 +248,23 @@ ListingSort = Literal[
     "newest",
     "oldest",
 ]
+
+
+class ProductionReadinessCheck(BaseModel):
+    name: str
+    status: ProductionReadinessCheckStatus
+    severity: ProductionReadinessCheckSeverity
+    message: str
+    remediation: str | None = None
+
+
+class ProductionReadinessReport(BaseModel):
+    status: ProductionReadinessStatus
+    environment: str
+    check_count: int
+    failed_count: int
+    warning_count: int
+    checks: list[ProductionReadinessCheck]
 
 
 class PriceHistoryPoint(BaseModel):

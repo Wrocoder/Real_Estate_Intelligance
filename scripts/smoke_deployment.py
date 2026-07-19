@@ -73,6 +73,11 @@ def main() -> int:
         lambda payload: assert_dict_value(payload, "status", "ok"),
     )
     _json_endpoint(
+        "api readiness",
+        f"{API_BASE_URL}/ready",
+        lambda payload: assert_readiness_response(payload),
+    )
+    _json_endpoint(
         "report products",
         f"{API_BASE_URL}/api/v1/report-products",
         lambda payload: assert_non_empty_list(payload),
@@ -135,6 +140,14 @@ def assert_search_response(payload: object) -> None:
     assert isinstance(payload.get("items"), list), "expected items list"
     assert payload["items"], "expected non-empty items"
     assert payload.get("total", 0) >= len(payload["items"]), "expected valid total"
+
+
+def assert_readiness_response(payload: object) -> None:
+    assert isinstance(payload, dict), "expected JSON object"
+    assert payload.get("status") in {"ready", "degraded"}, "expected non-blocked readiness"
+    assert isinstance(payload.get("checks"), list), "expected readiness checks"
+    assert payload["checks"], "expected at least one readiness check"
+    assert payload.get("failed_count") == 0, "expected zero failed readiness checks"
 
 
 def assert_openapi_path(payload: object, path: str) -> None:

@@ -402,8 +402,11 @@
 - [ ] Добавить production deploy.
 - [ ] Добавить S3-compatible bucket для отчетов и generated artifacts.
 - [x] Добавить background worker deployment для alerts, ingestion и report generation.
-- [ ] Добавить production monitoring: uptime, job failures, source freshness, payment webhooks.
-- [ ] Добавить cost controls для maps, AI и infrastructure.
+- [x] Добавить production readiness endpoint и preflight CLI: stores, Redis/Postgres, S3,
+  payments, workers, backups, monitoring and cost-control markers.
+- [ ] Подключить external production monitoring: uptime, job failures, source freshness,
+  payment webhooks.
+- [ ] Подключить реальные cost controls для maps, AI и infrastructure у выбранного hosting/provider.
 
 ## 17. Go-to-Market, Sales и Partnerships
 
@@ -550,6 +553,7 @@
 - [x] Commit 103: Transport route LineString map layers.
 - [x] Commit 104: MPZP and Studium planning map screening layers.
 - [x] Commit 105: Future transport corridor map layers.
+- [x] Commit 106: Production readiness endpoint and preflight CLI.
 
 ## Current Sprint
 
@@ -664,6 +668,8 @@
 - [x] Добавить scoring-as-a-service endpoint: API-only object evaluation, plan gating, no draft persistence, comparables, risk flags and recommended actions.
 - [x] Добавить enterprise custom dashboard API: owner-scoped configs, widget selection, preview snapshots and enterprise plan gating.
 - [x] Добавить partner referral lead scoring: admin priority queue, mortgage/broker fit, estimated deal value, routing tags and next actions.
+- [x] Добавить production readiness endpoint и CLI preflight для stores, Postgres/Redis,
+  artifacts, payments, workers, backups, monitoring and cost guardrails.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

@@ -134,6 +134,7 @@ Pre-commit hooks запускают `ruff check`, `npm run lint`, `npm run typec
 API будет доступен:
 
 - http://127.0.0.1:8000/health
+- http://127.0.0.1:8000/ready
 - http://127.0.0.1:8000/docs
 - http://127.0.0.1:8000/api/v1/me
 - http://127.0.0.1:8000/api/v1/plans
@@ -1388,6 +1389,13 @@ Production worker loop:
 $env:WORKER_TASKS="daily-email-alerts,area-market-snapshots"
 $env:WORKER_INTERVAL_SECONDS="3600"
 .\.venv\Scripts\domarion.exe worker
+```
+
+Production readiness preflight:
+
+```powershell
+.\.venv\Scripts\domarion.exe production-preflight
+.\.venv\Scripts\domarion.exe production-preflight --strict
 ```
 
 Postgres/PostGIS logical backup:
