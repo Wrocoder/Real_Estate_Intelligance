@@ -17,6 +17,14 @@ def build_developer_reputation(
     aliases: list[DeveloperAlias] | None = None,
 ) -> DeveloperReputation:
     aliases = aliases or []
+    visible_signals = [
+        signal for signal in signals if signal.moderation_status != "suppressed"
+    ]
+    scorable_signals = [
+        signal
+        for signal in visible_signals
+        if signal.moderation_status == "active" and signal.dispute_status in {"none", "rejected"}
+    ]
     completed_projects_count = sum(1 for project in projects if project.status == "completed")
     active_projects_count = sum(1 for project in projects if project.status == "active")
     local_projects_count = sum(
@@ -26,11 +34,15 @@ def build_developer_reputation(
     track_record_score = _clamp_score(
         45 + completed_projects_count * 13 + active_projects_count * 4
     )
-    delivery_score = _developer_factor_score(signals, "delivery", base=62)
-    technical_quality_score = _developer_factor_score(signals, "technical_quality", base=64)
-    legal_compliance_score = _developer_factor_score(signals, "legal", base=66)
-    financial_stability_score = _developer_factor_score(signals, "financial", base=62)
-    transparency_score = _developer_factor_score(signals, "transparency", base=58)
+    delivery_score = _developer_factor_score(scorable_signals, "delivery", base=62)
+    technical_quality_score = _developer_factor_score(
+        scorable_signals,
+        "technical_quality",
+        base=64,
+    )
+    legal_compliance_score = _developer_factor_score(scorable_signals, "legal", base=66)
+    financial_stability_score = _developer_factor_score(scorable_signals, "financial", base=62)
+    transparency_score = _developer_factor_score(scorable_signals, "transparency", base=58)
     local_experience_score = _clamp_score(42 + local_projects_count * 12)
 
     reputation_score = _clamp_score(
@@ -45,13 +57,17 @@ def build_developer_reputation(
     confidence_score = _clamp_score(
         34
         + len(set(profile.source_names)) * 8
-        + min(len(signals), 8) * 5
+        + min(len(scorable_signals), 8) * 5
         + min(len(projects), 10) * 4
     )
-    risk_signals = [signal.summary for signal in signals if signal.severity in {"warning", "risk"}]
-    positive_signals = [signal.summary for signal in signals if signal.severity == "positive"]
+    risk_signals = [
+        signal.summary for signal in scorable_signals if signal.severity in {"warning", "risk"}
+    ]
+    positive_signals = [
+        signal.summary for signal in scorable_signals if signal.severity == "positive"
+    ]
 
-    if any(signal.severity == "risk" for signal in signals):
+    if any(signal.severity == "risk" for signal in scorable_signals):
         label = "risk_review"
     elif reputation_score >= 75 and confidence_score >= 60:
         label = "strong"
@@ -84,10 +100,10 @@ def build_developer_reputation(
             risk_signals=risk_signals,
             active_projects_count=active_projects_count,
         ),
-        source_citations=_developer_source_citations(profile, signals, aliases),
+        source_citations=_developer_source_citations(profile, scorable_signals, aliases),
         aliases=aliases,
         projects=projects,
-        quality_signals=signals,
+        quality_signals=visible_signals,
     )
 
 

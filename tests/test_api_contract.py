@@ -18,6 +18,10 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "/api/v1/admin/developers/signals/{signal_id}",
             "put",
         ): "DeveloperQualitySignal",
+        (
+            "/api/v1/admin/developers/signals/{signal_id}/moderation",
+            "patch",
+        ): "DeveloperQualitySignal",
         ("/api/v1/admin/planned-investments/import", "post"): "PlannedInvestmentImportResponse",
         ("/api/v1/admin/scoring/backtest", "get"): "ScoringBacktestResult",
         ("/api/v1/admin/scoring/backtest-report", "get"): "ScoringBacktestReport",
@@ -341,6 +345,7 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "DeveloperProfile",
         "DeveloperProject",
         "DeveloperQualitySignal",
+        "DeveloperQualitySignalModerationUpdate",
         "DeveloperRankingResponse",
         "DeveloperReputation",
         "DeveloperSourceCitation",

@@ -188,6 +188,8 @@ DeveloperSignalType = Literal[
     "local_market",
 ]
 DeveloperSignalSeverity = Literal["positive", "info", "warning", "risk"]
+DeveloperSignalModerationStatus = Literal["active", "under_review", "suppressed"]
+DeveloperSignalDisputeStatus = Literal["none", "open", "resolved", "rejected"]
 DeveloperReputationLabel = Literal["strong", "good", "mixed", "limited_data", "risk_review"]
 DeveloperAliasType = Literal[
     "brand",
@@ -452,6 +454,33 @@ class DeveloperQualitySignal(BaseModel):
     source_url: str | None = None
     observed_at: date | None = None
     confidence_score: int = Field(ge=0, le=100)
+    moderation_status: DeveloperSignalModerationStatus = "active"
+    dispute_status: DeveloperSignalDisputeStatus = "none"
+    moderation_note: str | None = Field(default=None, max_length=1000)
+    disputed_by: str | None = Field(default=None, max_length=120)
+    disputed_at: date | None = None
+    resolved_at: date | None = None
+    reviewed_by: str | None = Field(default=None, max_length=120)
+
+
+class DeveloperQualitySignalModerationUpdate(BaseModel):
+    moderation_status: DeveloperSignalModerationStatus | None = None
+    dispute_status: DeveloperSignalDisputeStatus | None = None
+    moderation_note: str | None = Field(default=None, max_length=1000)
+    disputed_by: str | None = Field(default=None, max_length=120)
+    reviewed_by: str | None = Field(default=None, max_length=120)
+
+    @model_validator(mode="after")
+    def require_moderation_change(self) -> "DeveloperQualitySignalModerationUpdate":
+        if (
+            self.moderation_status is None
+            and self.dispute_status is None
+            and self.moderation_note is None
+            and self.disputed_by is None
+            and self.reviewed_by is None
+        ):
+            raise ValueError("At least one moderation field must be provided.")
+        return self
 
 
 class DeveloperAlias(BaseModel):

@@ -406,7 +406,9 @@ Aliases поддерживают типы `brand`, `legal_entity`, `spv`, `proje
 `parent_company`, `source_name`, `other`; они используются для сопоставления
 объектов и private `/check` отчетов с нормализованным developer profile.
 Evidence sections конвертируются в `DeveloperQualitySignal`, поэтому сразу
-попадают в ranking, developer profile и buyer report due diligence.
+попадают в ranking, developer profile и buyer report due diligence. Сигналы
+поддерживают moderation/dispute workflow: `under_review` и open dispute не
+влияют на score, а `suppressed` скрывается из публичной репутации и отчетов.
 Пример: `data/samples/developer_feed_wroclaw.json`.
 
 Проверить фид без записи:

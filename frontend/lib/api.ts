@@ -558,6 +558,10 @@ export type DeveloperSignalType =
 
 export type DeveloperSignalSeverity = "positive" | "info" | "warning" | "risk";
 
+export type DeveloperSignalModerationStatus = "active" | "under_review" | "suppressed";
+
+export type DeveloperSignalDisputeStatus = "none" | "open" | "resolved" | "rejected";
+
 export type DeveloperReputationLabel =
   | "strong"
   | "good"
@@ -612,6 +616,21 @@ export type DeveloperQualitySignal = {
   source_url: string | null;
   observed_at: string | null;
   confidence_score: number;
+  moderation_status: DeveloperSignalModerationStatus;
+  dispute_status: DeveloperSignalDisputeStatus;
+  moderation_note: string | null;
+  disputed_by: string | null;
+  disputed_at: string | null;
+  resolved_at: string | null;
+  reviewed_by: string | null;
+};
+
+export type DeveloperQualitySignalModerationPayload = {
+  moderation_status?: DeveloperSignalModerationStatus;
+  dispute_status?: DeveloperSignalDisputeStatus;
+  moderation_note?: string | null;
+  disputed_by?: string | null;
+  reviewed_by?: string | null;
 };
 
 export type DeveloperAlias = {
@@ -2863,6 +2882,18 @@ export const api = {
       `/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}`,
       {
         method: "PUT",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
+    ),
+  updateAdminDeveloperQualitySignalModeration: (
+    signalId: string,
+    payload: DeveloperQualitySignalModerationPayload,
+  ) =>
+    request<DeveloperQualitySignal>(
+      `/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}/moderation`,
+      {
+        method: "PATCH",
         headers: ADMIN_HEADERS,
         body: JSON.stringify(payload),
       },

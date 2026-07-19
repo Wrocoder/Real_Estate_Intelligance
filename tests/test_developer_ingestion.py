@@ -22,6 +22,8 @@ def test_developer_feed_sample_parses_profiles_projects_and_signals() -> None:
     signal_ids = {signal.id for signal in records.quality_signals}
     assert "Developer Demo" in demo.source_names
     assert demo.krs == "0000123456"
+    assert {signal.moderation_status for signal in records.quality_signals} == {"active"}
+    assert {signal.dispute_status for signal in records.quality_signals} == {"none"}
     assert any(alias.alias_type == "spv" for alias in demo_aliases)
     assert any(alias.alias == "Demo Development Jagodno sp. z o.o." for alias in demo_aliases)
     assert "demo-krs-active" in signal_ids
@@ -110,9 +112,14 @@ def test_developer_reputation_builder_scores_source_backed_profile() -> None:
 def test_developer_reputation_migration_declares_core_tables() -> None:
     migration = Path("alembic/versions/0026_developer_reputation_tables.py").read_text()
     alias_migration = Path("alembic/versions/0028_developer_aliases.py").read_text()
+    moderation_migration = Path(
+        "alembic/versions/0031_developer_signal_moderation.py"
+    ).read_text()
 
     assert "developer_profiles" in migration
     assert "developer_projects" in migration
     assert "developer_quality_signals" in migration
     assert "developer_reputation_snapshots" in migration
     assert "developer_aliases" in alias_migration
+    assert "moderation_status" in moderation_migration
+    assert "dispute_status" in moderation_migration

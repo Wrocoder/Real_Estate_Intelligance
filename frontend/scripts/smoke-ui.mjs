@@ -182,10 +182,13 @@ expectIncludes("admin page", adminPage, [
   "api.upsertAdminDeveloperProject(",
   "api.upsertAdminDeveloperAlias(",
   "api.upsertAdminDeveloperQualitySignal(",
+  "api.updateAdminDeveloperQualitySignalModeration(",
   "api.deliverAdminDailyEmailAlerts(",
   "Normalized Listing Correction",
   "Developer Record Editor",
   "Developer Feed Import",
+  "Open review",
+  "Reject dispute",
   "referralTypeLabel",
   "referralLeadContext",
 ]);

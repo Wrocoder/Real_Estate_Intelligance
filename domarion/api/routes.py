@@ -148,6 +148,7 @@ from domarion.schemas import (
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
+    DeveloperQualitySignalModerationUpdate,
     DeveloperRankingResponse,
     DeveloperReputation,
     DistrictReference,
@@ -1016,6 +1017,37 @@ def upsert_admin_developer_quality_signal(
             "developer_id": payload.developer_id,
             "signal_type": payload.signal_type,
             "severity": payload.severity,
+        },
+    )
+    return signal
+
+
+@router.patch(
+    "/admin/developers/signals/{signal_id}/moderation",
+    response_model=DeveloperQualitySignal,
+)
+def update_admin_developer_quality_signal_moderation(
+    signal_id: str,
+    payload: DeveloperQualitySignalModerationUpdate,
+    repository: RepositoryDep,
+    admin_store: IngestionAdminStoreDep,
+    account: CurrentAccountDep,
+) -> DeveloperQualitySignal:
+    _ensure_admin(account)
+    signal = repository.update_developer_quality_signal_moderation(signal_id, payload)
+    if signal is None:
+        raise HTTPException(status_code=404, detail="Developer quality signal not found")
+    _write_admin_audit_log(
+        admin_store,
+        account,
+        action_type="developer_quality_signal_moderation_update",
+        resource_type="developer_quality_signal",
+        resource_id=signal_id,
+        message=f"Developer quality signal moderation updated: {signal.title}",
+        metadata={
+            "developer_id": signal.developer_id,
+            "moderation_status": signal.moderation_status,
+            "dispute_status": signal.dispute_status,
         },
     )
     return signal

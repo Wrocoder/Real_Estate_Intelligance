@@ -20,6 +20,8 @@ from domarion.schemas import (
     DeveloperProject,
     DeveloperProjectStatus,
     DeveloperQualitySignal,
+    DeveloperSignalDisputeStatus,
+    DeveloperSignalModerationStatus,
     DeveloperSignalSeverity,
     DeveloperSignalType,
 )
@@ -35,6 +37,17 @@ SIGNAL_TYPES: set[DeveloperSignalType] = {
     "local_market",
 }
 SIGNAL_SEVERITIES: set[DeveloperSignalSeverity] = {"positive", "info", "warning", "risk"}
+SIGNAL_MODERATION_STATUSES: set[DeveloperSignalModerationStatus] = {
+    "active",
+    "under_review",
+    "suppressed",
+}
+SIGNAL_DISPUTE_STATUSES: set[DeveloperSignalDisputeStatus] = {
+    "none",
+    "open",
+    "resolved",
+    "rejected",
+}
 ALIAS_TYPES: set[DeveloperAliasType] = {
     "brand",
     "legal_entity",
@@ -370,6 +383,14 @@ def _quality_signal_from_row(
         raise DeveloperFeedError(f"Invalid developer signal severity: {severity}.")
     typed_signal_type = cast(DeveloperSignalType, signal_type)
     typed_severity = cast(DeveloperSignalSeverity, severity)
+    moderation_status = _optional_str(row.get("moderation_status")) or "active"
+    if moderation_status not in SIGNAL_MODERATION_STATUSES:
+        raise DeveloperFeedError(
+            f"Invalid developer signal moderation_status: {moderation_status}."
+        )
+    dispute_status = _optional_str(row.get("dispute_status")) or "none"
+    if dispute_status not in SIGNAL_DISPUTE_STATUSES:
+        raise DeveloperFeedError(f"Invalid developer signal dispute_status: {dispute_status}.")
     title = _required_str(row, "title")
     source_name = _optional_str(row.get("source_name")) or default_source_name
     if not source_name:
@@ -386,6 +407,13 @@ def _quality_signal_from_row(
         source_url=_optional_str(row.get("source_url")),
         observed_at=_optional_date(row.get("observed_at")),
         confidence_score=_optional_int(row.get("confidence_score")) or 50,
+        moderation_status=cast(DeveloperSignalModerationStatus, moderation_status),
+        dispute_status=cast(DeveloperSignalDisputeStatus, dispute_status),
+        moderation_note=_optional_str(row.get("moderation_note")),
+        disputed_by=_optional_str(row.get("disputed_by")),
+        disputed_at=_optional_date(row.get("disputed_at")),
+        resolved_at=_optional_date(row.get("resolved_at")),
+        reviewed_by=_optional_str(row.get("reviewed_by")),
     )
 
 
@@ -585,6 +613,13 @@ def _upsert_signal(session: Session, signal: DeveloperQualitySignal) -> bool:
     row.source_url = signal.source_url
     row.observed_at = _date_to_datetime(signal.observed_at) if signal.observed_at else None
     row.confidence_score = signal.confidence_score
+    row.moderation_status = signal.moderation_status
+    row.dispute_status = signal.dispute_status
+    row.moderation_note = signal.moderation_note
+    row.disputed_by = signal.disputed_by
+    row.disputed_at = _date_to_datetime(signal.disputed_at) if signal.disputed_at else None
+    row.resolved_at = _date_to_datetime(signal.resolved_at) if signal.resolved_at else None
+    row.reviewed_by = signal.reviewed_by
     return created
 
 

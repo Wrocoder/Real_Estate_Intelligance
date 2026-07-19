@@ -139,6 +139,7 @@ export default function DeveloperProfilePage() {
                   <small className="muted">
                     {signal.source_name} · confidence {signal.confidence_score}/100
                     {signal.observed_at ? ` · ${dateLabel(signal.observed_at)}` : ""}
+                    {signalStatusText(signal) ? ` · ${signalStatusText(signal)}` : ""}
                   </small>
                 </li>
               ))}
@@ -267,6 +268,17 @@ function SignalIcon({ signal }: { signal: DeveloperQualitySignal }) {
     return <AlertTriangle size={16} />;
   }
   return <ShieldCheck size={16} />;
+}
+
+function signalStatusText(signal: DeveloperQualitySignal) {
+  const parts: string[] = [];
+  if (signal.moderation_status !== "active") {
+    parts.push(signal.moderation_status);
+  }
+  if (signal.dispute_status !== "none") {
+    parts.push(`dispute ${signal.dispute_status}`);
+  }
+  return parts.join(", ");
 }
 
 function factorRows(reputation: DeveloperReputation) {

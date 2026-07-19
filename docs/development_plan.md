@@ -329,7 +329,7 @@
 - [x] Добавить admin review queue для mortgage/legal/renovation partner referrals.
 - [x] Добавить admin JSON import для developer profiles, projects, aliases и quality signals.
 - [x] Добавить admin ручной CRUD/editor для developer profiles, projects, aliases и quality signals.
-- [ ] Добавить moderation/dispute workflow для developer reputation signals.
+- [x] Добавить moderation/dispute workflow для developer reputation signals.
 - [ ] Добавить ручную загрузку/редактирование listing от риелтора.
 - [x] Добавить moderation workflow для data deletion requests.
 - [x] Добавить просмотр source errors и retry actions.

@@ -16,6 +16,7 @@ from domarion.schemas import (
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
+    DeveloperQualitySignalModerationUpdate,
     DeveloperReputation,
     DeveloperSourceCitation,
     DistrictReference,
@@ -939,6 +940,24 @@ class InMemoryRealEstateRepository:
         ]
         self._developer_quality_signals.append(payload)
         return payload
+
+    def update_developer_quality_signal_moderation(
+        self,
+        signal_id: str,
+        payload: DeveloperQualitySignalModerationUpdate,
+    ) -> DeveloperQualitySignal | None:
+        for index, signal in enumerate(self._developer_quality_signals):
+            if signal.id != signal_id:
+                continue
+            update = payload.model_dump(exclude_unset=True)
+            if update.get("dispute_status") == "open" and signal.disputed_at is None:
+                update["disputed_at"] = date.today()
+            if update.get("dispute_status") in {"resolved", "rejected"}:
+                update["resolved_at"] = date.today()
+            updated = signal.model_copy(update=update)
+            self._developer_quality_signals[index] = updated
+            return updated
+        return None
 
     def delete_developer_quality_signal(self, signal_id: str) -> bool:
         before_count = len(self._developer_quality_signals)

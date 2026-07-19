@@ -116,6 +116,13 @@ def test_admin_endpoints_require_admin_role() -> None:
     assert developer_profile_response.status_code == 403
     assert developer_profile_response.json()["detail"] == "Admin role required"
 
+    developer_signal_moderation_response = client.patch(
+        "/api/v1/admin/developers/signals/unauthorized-signal/moderation",
+        json={"moderation_status": "under_review", "dispute_status": "open"},
+    )
+    assert developer_signal_moderation_response.status_code == 403
+    assert developer_signal_moderation_response.json()["detail"] == "Admin role required"
+
     dedup_response = client.get("/api/v1/admin/deduplication/matches")
     assert dedup_response.status_code == 403
     assert dedup_response.json()["detail"] == "Admin role required"
@@ -933,7 +940,10 @@ def test_admin_can_manually_edit_developer_records() -> None:
         },
     )
     assert signal_response.status_code == 200
-    assert signal_response.json()["title"] == "Independent QA passed"
+    signal_payload = signal_response.json()
+    assert signal_payload["title"] == "Independent QA passed"
+    assert signal_payload["moderation_status"] == "active"
+    assert signal_payload["dispute_status"] == "none"
 
     detail_response = client.get(f"/api/v1/developers/{developer_id}")
     detail = detail_response.json()
@@ -945,6 +955,72 @@ def test_admin_can_manually_edit_developer_records() -> None:
     assert {signal["id"] for signal in detail["quality_signals"]} == {signal_id}
     assert "Partner inspection did not find blocker defects." in detail["positive_signals"]
     assert detail["active_projects_count"] == 1
+
+    review_response = client.patch(
+        f"/api/v1/admin/developers/signals/{signal_id}/moderation",
+        headers=ADMIN_HEADERS,
+        json={
+            "moderation_status": "under_review",
+            "dispute_status": "open",
+            "moderation_note": "Developer disputed the inspection result.",
+            "disputed_by": "developer@example.com",
+            "reviewed_by": "admin@example.com",
+        },
+    )
+    reviewed_signal = review_response.json()
+
+    assert review_response.status_code == 200
+    assert reviewed_signal["moderation_status"] == "under_review"
+    assert reviewed_signal["dispute_status"] == "open"
+    assert reviewed_signal["moderation_note"] == "Developer disputed the inspection result."
+    assert reviewed_signal["disputed_at"]
+
+    review_detail = client.get(f"/api/v1/developers/{developer_id}").json()
+    assert {signal["id"] for signal in review_detail["quality_signals"]} == {signal_id}
+    assert "Partner inspection did not find blocker defects." not in review_detail[
+        "positive_signals"
+    ]
+
+    suppress_response = client.patch(
+        f"/api/v1/admin/developers/signals/{signal_id}/moderation",
+        headers=ADMIN_HEADERS,
+        json={
+            "moderation_status": "suppressed",
+            "dispute_status": "resolved",
+            "reviewed_by": "admin@example.com",
+        },
+    )
+    suppressed_signal = suppress_response.json()
+
+    assert suppress_response.status_code == 200
+    assert suppressed_signal["moderation_status"] == "suppressed"
+    assert suppressed_signal["dispute_status"] == "resolved"
+    assert suppressed_signal["resolved_at"]
+
+    suppressed_detail = client.get(f"/api/v1/developers/{developer_id}").json()
+    assert suppressed_detail["quality_signals"] == []
+    assert "Partner inspection did not find blocker defects." not in suppressed_detail[
+        "positive_signals"
+    ]
+
+    reactivate_response = client.patch(
+        f"/api/v1/admin/developers/signals/{signal_id}/moderation",
+        headers=ADMIN_HEADERS,
+        json={
+            "moderation_status": "active",
+            "dispute_status": "rejected",
+            "reviewed_by": "admin@example.com",
+        },
+    )
+    reactivated_signal = reactivate_response.json()
+
+    assert reactivate_response.status_code == 200
+    assert reactivated_signal["moderation_status"] == "active"
+    assert reactivated_signal["dispute_status"] == "rejected"
+    reactivated_detail = client.get(f"/api/v1/developers/{developer_id}").json()
+    assert "Partner inspection did not find blocker defects." in reactivated_detail[
+        "positive_signals"
+    ]
 
     mismatch_response = client.put(
         f"/api/v1/admin/developers/profiles/{developer_id}",

@@ -7,6 +7,7 @@ from domarion.schemas import (
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
+    DeveloperQualitySignalModerationUpdate,
     DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
@@ -99,6 +100,13 @@ class RealEstateRepository(Protocol):
     def upsert_developer_quality_signal(
         self,
         payload: DeveloperQualitySignal,
+    ) -> DeveloperQualitySignal | None:
+        raise NotImplementedError
+
+    def update_developer_quality_signal_moderation(
+        self,
+        signal_id: str,
+        payload: DeveloperQualitySignalModerationUpdate,
     ) -> DeveloperQualitySignal | None:
         raise NotImplementedError
 

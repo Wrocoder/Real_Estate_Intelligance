@@ -30,6 +30,8 @@ import {
   type DeveloperProject,
   type DeveloperProjectStatus,
   type DeveloperQualitySignal,
+  type DeveloperSignalDisputeStatus,
+  type DeveloperSignalModerationStatus,
   type DeveloperReputation,
   type DeveloperSignalSeverity,
   type DeveloperSignalType,
@@ -147,6 +149,13 @@ type DeveloperSignalForm = {
   source_url: string;
   observed_at: string;
   confidence_score: string;
+  moderation_status: DeveloperSignalModerationStatus;
+  dispute_status: DeveloperSignalDisputeStatus;
+  moderation_note: string;
+  disputed_by: string;
+  disputed_at: string;
+  resolved_at: string;
+  reviewed_by: string;
 };
 
 type ListingCorrectionForm = {
@@ -287,6 +296,13 @@ const defaultDeveloperSignalForm: DeveloperSignalForm = {
   source_url: "",
   observed_at: "2026-07-19",
   confidence_score: "70",
+  moderation_status: "active",
+  dispute_status: "none",
+  moderation_note: "",
+  disputed_by: "",
+  disputed_at: "",
+  resolved_at: "",
+  reviewed_by: "",
 };
 
 const defaultListingCorrectionForm: ListingCorrectionForm = {
@@ -711,6 +727,37 @@ export default function AdminPage() {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown developer signal error");
       setStatus("Developer signal save failed");
+    }
+  }
+
+  async function moderateDeveloperSignal(
+    moderationStatus: DeveloperSignalModerationStatus,
+    disputeStatus: DeveloperSignalDisputeStatus,
+  ) {
+    const signalId = developerSignalForm.id.trim();
+    if (!signalId) {
+      setStatus("Укажи signal id");
+      return;
+    }
+    setError("");
+    setStatus(`Developer signal moderation: ${signalId}...`);
+    try {
+      const signal = await api.updateAdminDeveloperQualitySignalModeration(signalId, {
+        moderation_status: moderationStatus,
+        dispute_status: disputeStatus,
+        moderation_note: blankToNull(developerSignalForm.moderation_note),
+        disputed_by: blankToNull(developerSignalForm.disputed_by),
+        reviewed_by: blankToNull(developerSignalForm.reviewed_by),
+      });
+      setDeveloperSignalForm(formFromDeveloperSignal(signal));
+      setSelectedDeveloperId(signal.developer_id);
+      await load(selectedJobId);
+      setStatus(
+        `Developer signal moderation обновлен: ${signal.moderation_status}/${signal.dispute_status}`,
+      );
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "unknown developer signal moderation error");
+      setStatus("Developer signal moderation failed");
     }
   }
 
@@ -2926,6 +2973,69 @@ export default function AdminPage() {
                       })
                     }
                   />
+                  <label className="field">
+                    <span>Moderation</span>
+                    <select
+                      className="select"
+                      value={developerSignalForm.moderation_status}
+                      onChange={(event) =>
+                        setDeveloperSignalForm({
+                          ...developerSignalForm,
+                          moderation_status: event.target.value as DeveloperSignalModerationStatus,
+                        })
+                      }
+                    >
+                      <option value="active">active</option>
+                      <option value="under_review">under_review</option>
+                      <option value="suppressed">suppressed</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>Dispute</span>
+                    <select
+                      className="select"
+                      value={developerSignalForm.dispute_status}
+                      onChange={(event) =>
+                        setDeveloperSignalForm({
+                          ...developerSignalForm,
+                          dispute_status: event.target.value as DeveloperSignalDisputeStatus,
+                        })
+                      }
+                    >
+                      <option value="none">none</option>
+                      <option value="open">open</option>
+                      <option value="resolved">resolved</option>
+                      <option value="rejected">rejected</option>
+                    </select>
+                  </label>
+                  <Field
+                    label="Disputed by"
+                    value={developerSignalForm.disputed_by}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, disputed_by: value })
+                    }
+                  />
+                  <Field
+                    label="Reviewed by"
+                    value={developerSignalForm.reviewed_by}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, reviewed_by: value })
+                    }
+                  />
+                  <Field
+                    label="Disputed at"
+                    value={developerSignalForm.disputed_at}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, disputed_at: value })
+                    }
+                  />
+                  <Field
+                    label="Resolved at"
+                    value={developerSignalForm.resolved_at}
+                    onChange={(value) =>
+                      setDeveloperSignalForm({ ...developerSignalForm, resolved_at: value })
+                    }
+                  />
                 </div>
                 <Field
                   label="Signal URL"
@@ -2947,9 +3057,50 @@ export default function AdminPage() {
                     }
                   />
                 </label>
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>Moderation note</span>
+                  <textarea
+                    className="textarea"
+                    value={developerSignalForm.moderation_note}
+                    onChange={(event) =>
+                      setDeveloperSignalForm({
+                        ...developerSignalForm,
+                        moderation_note: event.target.value,
+                      })
+                    }
+                  />
+                </label>
                 <div className="toolbar" style={{ marginTop: 12 }}>
                   <button className="button" type="button" onClick={() => void saveDeveloperSignal()}>
                     Save signal
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => void moderateDeveloperSignal("under_review", "open")}
+                  >
+                    Open review
+                  </button>
+                  <button
+                    className="button danger"
+                    type="button"
+                    onClick={() => void moderateDeveloperSignal("suppressed", "resolved")}
+                  >
+                    Suppress
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => void moderateDeveloperSignal("active", "none")}
+                  >
+                    Reactivate
+                  </button>
+                  <button
+                    className="button"
+                    type="button"
+                    onClick={() => void moderateDeveloperSignal("active", "rejected")}
+                  >
+                    Reject dispute
                   </button>
                   <button
                     className="button danger"
@@ -3853,6 +4004,13 @@ function developerSignalPayload(form: DeveloperSignalForm): DeveloperQualitySign
     source_url: blankToNull(form.source_url),
     observed_at: blankToNull(form.observed_at),
     confidence_score: Number(form.confidence_score || 50),
+    moderation_status: form.moderation_status,
+    dispute_status: form.dispute_status,
+    moderation_note: blankToNull(form.moderation_note),
+    disputed_by: blankToNull(form.disputed_by),
+    disputed_at: blankToNull(form.disputed_at),
+    resolved_at: blankToNull(form.resolved_at),
+    reviewed_by: blankToNull(form.reviewed_by),
   };
 }
 
@@ -3912,6 +4070,13 @@ function formFromDeveloperSignal(signal: DeveloperQualitySignal): DeveloperSigna
     source_url: signal.source_url ?? "",
     observed_at: signal.observed_at ?? "",
     confidence_score: String(signal.confidence_score),
+    moderation_status: signal.moderation_status ?? "active",
+    dispute_status: signal.dispute_status ?? "none",
+    moderation_note: signal.moderation_note ?? "",
+    disputed_by: signal.disputed_by ?? "",
+    disputed_at: signal.disputed_at ?? "",
+    resolved_at: signal.resolved_at ?? "",
+    reviewed_by: signal.reviewed_by ?? "",
   };
 }
 

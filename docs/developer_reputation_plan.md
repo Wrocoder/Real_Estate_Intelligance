@@ -12,6 +12,8 @@
 - Добавлен legal-first JSON feed importer для source-backed developer data, aliases, registry checks, UOKiK events, directories и partner inspections без копирования персональных данных.
 - Public API уже отдает ranking, developer detail и lookup by listing для MVP/demo данных.
 - В object reports добавлена секция о застройщике, если для объекта есть сопоставление.
+- Добавлен admin CRUD/editor для developer profiles, projects, aliases и quality signals.
+- Добавлен moderation/dispute workflow для quality signals: disputed/under-review сигналы не участвуют в score, suppressed не показываются в публичной репутации и отчетах.
 
 ## Candidate Sources
 
@@ -65,5 +67,5 @@ Every object report should include a developer section when developer data exist
 8. [x] Dedicated developer profile page with source freshness and project timeline.
 9. [x] Developer aliases for brand, legal entity, SPV, project company and parent company matching.
 10. [x] Legal-first evidence sections for KRS/REGON checks, UOKiK events, directories and partner inspections.
-11. [ ] Add admin manual editor for developer profiles and quality signals.
-12. [ ] Add source citation and dispute-correction workflow.
+11. [x] Add admin manual editor for developer profiles and quality signals.
+12. [x] Add source citation and dispute-correction workflow.

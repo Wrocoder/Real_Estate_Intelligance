@@ -204,9 +204,7 @@ def build_api_lite_listing_detail(analysis: ListingAnalysis) -> ApiLiteListingDe
     developer_reputation = analysis.developer_reputation
     risk_signals_count = 0
     if developer_reputation is not None:
-        risk_signals_count = len(
-            [signal for signal in developer_reputation.quality_signals if signal.severity == "risk"]
-        )
+        risk_signals_count = len(developer_reputation.risk_signals)
     return ApiLiteListingDetail(
         **base.model_dump(),
         area_statistics=analysis.area_statistics,

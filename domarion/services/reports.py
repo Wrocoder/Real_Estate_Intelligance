@@ -1,4 +1,5 @@
 from domarion.schemas import (
+    DeveloperQualitySignal,
     DeveloperReputation,
     ListingAnalysis,
     ObjectReport,
@@ -180,10 +181,12 @@ def _developer_quality_signal_items(reputation: DeveloperReputation) -> list[str
     items: list[str] = []
     for signal in signals[:5]:
         observed = f", observed {signal.observed_at}" if signal.observed_at else ""
+        moderation = _developer_signal_moderation_text(signal)
         items.append(
             f"Source signal ({_developer_signal_severity_text(signal.severity)}): "
             f"{signal.title} - {signal.summary} "
-            f"Source: {signal.source_name}; confidence {signal.confidence_score}/100{observed}."
+            f"Source: {signal.source_name}; confidence {signal.confidence_score}/100"
+            f"{observed}{moderation}."
         )
     return items
 
@@ -235,6 +238,17 @@ def _developer_signal_severity_text(value: str) -> str:
         "warning": "warning",
         "risk": "risk",
     }.get(value, value)
+
+
+def _developer_signal_moderation_text(signal: DeveloperQualitySignal) -> str:
+    notes: list[str] = []
+    if signal.moderation_status != "active":
+        notes.append(f"moderation {signal.moderation_status}")
+    if signal.dispute_status != "none":
+        notes.append(f"dispute {signal.dispute_status}")
+    if not notes:
+        return ""
+    return f"; {'; '.join(notes)}"
 
 
 def _developer_label_text(value: str) -> str:

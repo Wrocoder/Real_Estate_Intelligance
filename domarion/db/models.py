@@ -394,6 +394,13 @@ class DeveloperQualitySignalRow(Base):
     source_url: Mapped[str | None] = mapped_column(String(500))
     observed_at: Mapped[datetime | None] = mapped_column(DateTime, index=True)
     confidence_score: Mapped[int] = mapped_column(Integer, default=50)
+    moderation_status: Mapped[str] = mapped_column(String(40), default="active", index=True)
+    dispute_status: Mapped[str] = mapped_column(String(40), default="none", index=True)
+    moderation_note: Mapped[str | None] = mapped_column(Text)
+    disputed_by: Mapped[str | None] = mapped_column(String(120))
+    disputed_at: Mapped[datetime | None] = mapped_column(DateTime)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
+    reviewed_by: Mapped[str | None] = mapped_column(String(120))
 
     developer: Mapped[DeveloperProfileRow] = relationship()
 

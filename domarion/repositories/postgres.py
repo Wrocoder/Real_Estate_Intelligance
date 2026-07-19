@@ -42,6 +42,7 @@ from domarion.schemas import (
     DeveloperProfile,
     DeveloperProject,
     DeveloperQualitySignal,
+    DeveloperQualitySignalModerationUpdate,
     DeveloperReputation,
     DistrictReference,
     IndustrialZoneReference,
@@ -535,6 +536,40 @@ class PostgresRealEstateRepository:
         row.source_url = payload.source_url
         row.observed_at = _date_to_datetime(payload.observed_at) if payload.observed_at else None
         row.confidence_score = payload.confidence_score
+        row.moderation_status = payload.moderation_status
+        row.dispute_status = payload.dispute_status
+        row.moderation_note = payload.moderation_note
+        row.disputed_by = payload.disputed_by
+        row.disputed_at = _date_to_datetime(payload.disputed_at) if payload.disputed_at else None
+        row.resolved_at = _date_to_datetime(payload.resolved_at) if payload.resolved_at else None
+        row.reviewed_by = payload.reviewed_by
+        self.session.commit()
+        self.session.refresh(row)
+        return self._developer_signal_to_schema(row)
+
+    def update_developer_quality_signal_moderation(
+        self,
+        signal_id: str,
+        payload: DeveloperQualitySignalModerationUpdate,
+    ) -> DeveloperQualitySignal | None:
+        row = self.session.get(DeveloperQualitySignalRow, signal_id)
+        if row is None:
+            return None
+        fields_set = payload.model_fields_set
+        if payload.moderation_status is not None:
+            row.moderation_status = payload.moderation_status
+        if payload.dispute_status is not None:
+            row.dispute_status = payload.dispute_status
+            if payload.dispute_status == "open" and row.disputed_at is None:
+                row.disputed_at = _date_to_datetime(date.today())
+            if payload.dispute_status in {"resolved", "rejected"}:
+                row.resolved_at = _date_to_datetime(date.today())
+        if "moderation_note" in fields_set:
+            row.moderation_note = payload.moderation_note
+        if "disputed_by" in fields_set:
+            row.disputed_by = payload.disputed_by
+        if "reviewed_by" in fields_set:
+            row.reviewed_by = payload.reviewed_by
         self.session.commit()
         self.session.refresh(row)
         return self._developer_signal_to_schema(row)
@@ -1171,6 +1206,13 @@ class PostgresRealEstateRepository:
             source_url=row.source_url,
             observed_at=row.observed_at.date() if row.observed_at is not None else None,
             confidence_score=row.confidence_score,
+            moderation_status=row.moderation_status or "active",
+            dispute_status=row.dispute_status or "none",
+            moderation_note=row.moderation_note,
+            disputed_by=row.disputed_by,
+            disputed_at=row.disputed_at.date() if row.disputed_at is not None else None,
+            resolved_at=row.resolved_at.date() if row.resolved_at is not None else None,
+            reviewed_by=row.reviewed_by,
         )
 
     @staticmethod

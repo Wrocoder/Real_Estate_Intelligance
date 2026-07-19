@@ -260,6 +260,9 @@ function DeveloperDetails({ reputation }: { reputation: DeveloperReputation }) {
         {reputation.quality_signals.map((signal) => (
           <li key={signal.id}>
             <SignalIcon signal={signal} /> {signal.title}: {signal.summary}
+            {signalStatusText(signal) ? (
+              <small className="muted"> · {signalStatusText(signal)}</small>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -290,6 +293,17 @@ function SignalIcon({ signal }: { signal: DeveloperQualitySignal }) {
     return <AlertTriangle size={16} />;
   }
   return <ShieldCheck size={16} />;
+}
+
+function signalStatusText(signal: DeveloperQualitySignal) {
+  const parts: string[] = [];
+  if (signal.moderation_status !== "active") {
+    parts.push(signal.moderation_status);
+  }
+  if (signal.dispute_status !== "none") {
+    parts.push(`dispute ${signal.dispute_status}`);
+  }
+  return parts.join(", ");
 }
 
 function buildMetrics(ranking: DeveloperRankingResponse | null) {
