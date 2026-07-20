@@ -437,10 +437,10 @@
 
 ## 19. Expansion Roadmap
 
-- [ ] Подготовить критерии масштабирования за пределы Wrocław/Dolnośląskie.
+- [x] Подготовить критерии масштабирования за пределы Wrocław/Dolnośląskie.
 - [ ] Добавить roadmap для аренды.
 - [ ] Добавить roadmap для домов, земли и commercial real estate.
-- [ ] Подготовить data-source checklist для других городов Польши.
+- [x] Подготовить data-source checklist для других городов Польши.
 - [ ] Подготовить country expansion checklist для Czechia, Germany, Spain and EU markets.
 
 ## 20. Git Commit Milestones
@@ -557,6 +557,7 @@
 - [x] Commit 105: Future transport corridor map layers.
 - [x] Commit 106: Production readiness endpoint and preflight CLI.
 - [x] Commit 107: MVP hosting decision and Render Blueprint.
+- [x] Commit 108: Poland city expansion criteria and source checklist.
 
 ## Current Sprint
 
@@ -675,6 +676,8 @@
   artifacts, payments, workers, backups, monitoring and cost guardrails.
 - [x] Выбрать MVP hosting stack и добавить `render.yaml` для API, frontend, worker,
   managed Postgres/PostGIS и managed Redis-compatible store.
+- [x] Подготовить Poland city expansion checklist: readiness gates, data-source
+  checklist, city scoring card and definition of done.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
