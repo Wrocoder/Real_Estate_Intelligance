@@ -307,10 +307,12 @@
   account/profile settings.
 - [x] Вынести sidebar/navigation labels и language switcher labels в translation
   dictionaries для English, Polski, Русский, Українська.
+- [x] Локализовать home/explorer page: header, metrics, filters, statuses,
+  pagination, listing cards, score labels и number/currency/percent formatting.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
-- [ ] Локализовать главные публичные страницы: home/explorer, check apartment,
-  listing detail, compare, reports, alerts, pricing, account, areas, news,
+- [ ] Локализовать главные публичные страницы: check apartment, listing detail,
+  compare, reports, alerts, pricing, account, areas, news,
   developers, CRM-light pages.
 - [ ] Локализовать backend/user-facing API messages там, где они отображаются в UI:
   validation errors, report warnings, scoring labels, source-quality warnings,
@@ -597,6 +599,7 @@
 - [x] Commit 108: Poland city expansion criteria and source checklist.
 - [x] Commit 109: Multilingual/i18n roadmap for English, Polish, Russian and Ukrainian.
 - [x] Commit 110: Frontend i18n foundation and language switcher.
+- [x] Commit 111: Explorer search flow, listing cards and score labels i18n.
 
 ## Current Sprint
 
@@ -721,6 +724,8 @@
   Українська, language switcher, localized UI, reports, SEO, alerts and AI templates.
 - [x] Добавить frontend i18n foundation: locale dictionaries, cookie/localStorage
   persistence, `html lang` sync, localized sidebar navigation and smoke coverage.
+- [x] Локализовать explorer/search flow: header, filters, statuses, pagination,
+  listing cards, score labels and locale-aware numeric formatting.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

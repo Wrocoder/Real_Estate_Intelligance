@@ -19,6 +19,8 @@ import {
   type MapQuery,
 } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
+import { EXPLORER_COPY } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type Filters = {
   mode: "standard" | "hidden_gems";
@@ -67,29 +69,19 @@ type Filters = {
 const WROCLAW_CENTER = { lat: 51.1079, lon: 17.0385 };
 const VOIVODESHIP_OPTIONS = [{ value: "dolnoslaskie", label: "Dolnośląskie" }];
 const BUILDING_TYPE_OPTIONS = [
-  { value: "apartment_block", label: "Блок / многоквартирный" },
-  { value: "low_rise_block", label: "Низкая застройка" },
-  { value: "tenement", label: "Kamienica" },
-  { value: "detached_house", label: "Дом" },
-];
+  "apartment_block",
+  "low_rise_block",
+  "tenement",
+  "detached_house",
+] as const;
 const RENOVATION_STATE_OPTIONS = [
-  { value: "developer_standard", label: "Developer standard" },
-  { value: "ready_to_move_in", label: "Готово к въезду" },
-  { value: "needs_refresh", label: "Требует освежения" },
-  { value: "needs_renovation", label: "Требует ремонта" },
-];
-const PARKING_TYPE_OPTIONS = [
-  { value: "underground", label: "Подземный" },
-  { value: "garage", label: "Гараж" },
-  { value: "surface", label: "Наземный" },
-  { value: "street", label: "Уличный" },
-];
-const HEATING_TYPE_OPTIONS = [
-  { value: "municipal", label: "Городское" },
-  { value: "gas", label: "Газовое" },
-  { value: "electric", label: "Электрическое" },
-  { value: "heat_pump", label: "Heat pump" },
-];
+  "developer_standard",
+  "ready_to_move_in",
+  "needs_refresh",
+  "needs_renovation",
+] as const;
+const PARKING_TYPE_OPTIONS = ["underground", "garage", "surface", "street"] as const;
+const HEATING_TYPE_OPTIONS = ["municipal", "gas", "electric", "heat_pump"] as const;
 
 const defaultFilters: Filters = {
   mode: "standard",
@@ -136,6 +128,8 @@ const defaultFilters: Filters = {
 };
 
 export default function ExplorerPage() {
+  const { locale } = useLocalePreference();
+  const copy = EXPLORER_COPY[locale];
   const [analyses, setAnalyses] = useState<ListingAnalysis[]>([]);
   const [hiddenGemItems, setHiddenGemItems] = useState<HiddenGemItem[]>([]);
   const [areas, setAreas] = useState<AreaStatistics[]>([]);
@@ -145,15 +139,17 @@ export default function ExplorerPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [status, setStatus] = useState("Загрузка аналитики...");
-  const [mapStatus, setMapStatus] = useState("Загрузка GIS-слоев...");
+  const [status, setStatus] = useState(EXPLORER_COPY.ru.status.loading);
+  const [mapStatus, setMapStatus] = useState(EXPLORER_COPY.ru.status.mapLoading);
+  const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState("");
   const [error, setError] = useState("");
   const appliedUrlFiltersRef = useRef(false);
 
   const load = useCallback(async (nextPage: number) => {
     setError("");
-    setStatus("Загрузка аналитики...");
+    setIsLoading(true);
+    setStatus(copy.status.loading);
     try {
       if (filters.mode === "hidden_gems") {
         const [search, areaStats] = await Promise.all([
@@ -166,7 +162,8 @@ export default function ExplorerPage() {
         setPage(search.page);
         setTotal(search.total);
         setTotalPages(search.total_pages);
-        setStatus(`Hidden gems ${search.total} · страница ${search.page} из ${search.total_pages || 1}`);
+        setStatus(copy.status.hiddenGems(search.total, search.page, search.total_pages));
+        setIsLoading(false);
         return;
       }
 
@@ -180,13 +177,15 @@ export default function ExplorerPage() {
       setPage(search.page);
       setTotal(search.total);
       setTotalPages(search.total_pages);
-      setStatus(`Найдено ${search.total} · страница ${search.page} из ${search.total_pages || 1}`);
+      setStatus(copy.status.found(search.total, search.page, search.total_pages));
+      setIsLoading(false);
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "unknown error";
       setError(message);
-      setStatus("Backend API недоступен");
+      setStatus(copy.status.backendUnavailable);
+      setIsLoading(false);
     }
-  }, [filters]);
+  }, [copy, filters]);
 
   useEffect(() => {
     if (!appliedUrlFiltersRef.current) {
@@ -253,20 +252,22 @@ export default function ExplorerPage() {
 
     async function loadMap() {
       setMapError("");
-      setMapStatus("Обновление GIS-слоев...");
+      setMapStatus(copy.status.mapLoading);
       try {
         const data = await api.getMapFeatures(mapQuery);
         if (cancelled) return;
         setMapData(data);
         setMapStatus(
-          `${data.metadata.listing_count ?? 0} объектов · ${
-            data.metadata.planned_investment_count ?? 0
-          } planned investments · ${data.metadata.infrastructure_count ?? 0} infrastructure`,
+          copy.status.mapLoaded(
+            data.metadata.listing_count ?? 0,
+            data.metadata.planned_investment_count ?? 0,
+            data.metadata.infrastructure_count ?? 0,
+          ),
         );
       } catch (caught) {
         if (cancelled) return;
         setMapError(caught instanceof Error ? caught.message : "unknown error");
-        setMapStatus("GIS API недоступен");
+        setMapStatus(copy.status.mapUnavailable);
       }
     }
 
@@ -274,7 +275,7 @@ export default function ExplorerPage() {
     return () => {
       cancelled = true;
     };
-  }, [mapQuery]);
+  }, [copy, mapQuery]);
 
   const municipalities = Array.from(new Set(areas.map((area) => area.city))).sort((left, right) => {
     if (left === "Wrocław") return -1;
@@ -309,7 +310,7 @@ export default function ExplorerPage() {
     setPage(1);
     setCompareIds([]);
     setHiddenGemItems([]);
-    setStatus("Фильтры сброшены");
+    setStatus(copy.status.filtersReset);
   }
 
   function enableHiddenGems() {
@@ -331,7 +332,7 @@ export default function ExplorerPage() {
         return current.filter((item) => item !== listingId);
       }
       if (current.length >= 5) {
-        setStatus("Для сравнения можно выбрать максимум 5 объектов");
+        setStatus(copy.status.compareLimit);
         return current;
       }
       return [...current, listingId];
@@ -339,18 +340,18 @@ export default function ExplorerPage() {
   }
 
   async function addFavorite(listingId: string) {
-    await api.addFavorite(listingId, "Dodane z panelu wyszukiwania");
-    setStatus("Добавлено в избранное");
+    await api.addFavorite(listingId, copy.favoriteNote);
+    setStatus(copy.status.favoriteAdded);
   }
 
   async function generateReport(listingId: string) {
     const report = await api.generateReport(listingId);
-    setStatus(`Отчет сохранен: ${report.id}`);
+    setStatus(copy.status.reportSaved(report.id));
   }
 
   async function createAlert() {
     await api.createAlert({
-      name: "Saved search from explorer",
+      name: copy.savedSearchName,
       filters: {
         voivodeship: filters.voivodeship || null,
         city: filters.municipality ? null : "Wrocław",
@@ -392,49 +393,53 @@ export default function ExplorerPage() {
         min_rental_potential_score: filters.minRental ? Number(filters.minRental) : null,
       },
     });
-    setStatus("Alert создан");
+    setStatus(copy.status.alertCreated);
   }
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Подбор недвижимости Wrocław</h1>
-          <p>Поиск, карта, скоринг, история цены и быстрые действия для MVP-аналитики.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <div className="toolbar">
           <button className="button" type="button" onClick={() => void load(page)}>
-            <RefreshCw size={16} /> Обновить
+            <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
           <button
             className={filters.mode === "hidden_gems" ? "button primary" : "button"}
             type="button"
             onClick={enableHiddenGems}
           >
-            <Gem size={16} /> Hidden gems
+            <Gem size={16} /> {copy.actions.hiddenGems}
           </button>
           {compareIds.length >= 2 ? (
             <Link className="button" href={compareHref}>
-              <BarChart3 size={16} /> Сравнить {compareIds.length}
+              <BarChart3 size={16} /> {copy.actions.compare(compareIds.length)}
             </Link>
           ) : (
             <button className="button" type="button" disabled>
-              <BarChart3 size={16} /> Сравнить {compareIds.length}
+              <BarChart3 size={16} /> {copy.actions.compare(compareIds.length)}
             </button>
           )}
           <button className="button primary" type="button" onClick={() => void createAlert()}>
-            <Bell size={16} /> Alert
+            <Bell size={16} /> {copy.actions.alert}
           </button>
         </div>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Объектов найдено</span>
-          <strong>{numberValue(total)}</strong>
+          <span>{copy.metrics.found}</span>
+          <strong>{numberValue(total, locale)}</strong>
         </div>
         <div className="metric">
-          <span>{filters.mode === "hidden_gems" ? "Лучший Gem Score" : "Лучший Investment"}</span>
+          <span>
+            {filters.mode === "hidden_gems"
+              ? copy.metrics.bestGem
+              : copy.metrics.bestInvestment}
+          </span>
           <strong>
             {filters.mode === "hidden_gems"
               ? bestGem
@@ -446,34 +451,36 @@ export default function ExplorerPage() {
           </strong>
         </div>
         <div className="metric">
-          <span>Медиана района</span>
+          <span>{copy.metrics.medianArea}</span>
           <strong>
-            {selectedArea ? `${money(selectedArea.median_price_per_m2)}/m2` : "-"}
+            {selectedArea ? `${money(selectedArea.median_price_per_m2, locale)}/m2` : "-"}
           </strong>
         </div>
         <div className="metric">
-          <span>Динамика цены 90 дней</span>
-          <strong>{selectedArea ? percent(selectedArea.price_change_90d_pct) : "-"}</strong>
+          <span>{copy.metrics.priceTrend90d}</span>
+          <strong>
+            {selectedArea ? percent(selectedArea.price_change_90d_pct, locale) : "-"}
+          </strong>
         </div>
       </section>
 
       <div className="panel" style={{ marginTop: 16, marginBottom: 16 }}>
         <div className="panel-header">
-          <h2>Фильтры и сортировка</h2>
+          <h2>{copy.filters.title}</h2>
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body form-grid wide">
           <label className="field">
-            <span>Поиск</span>
+            <span>{copy.filters.search}</span>
             <input
               className="input"
               value={filters.query}
-              placeholder="адрес, район, улица"
+              placeholder={copy.filters.searchPlaceholder}
               onChange={(event) => updateFilters({ query: event.target.value })}
             />
           </label>
           <label className="field">
-            <span>Gmina</span>
+            <span>{copy.filters.municipality}</span>
             <select
               className="select"
               value={filters.municipality}
@@ -481,7 +488,7 @@ export default function ExplorerPage() {
                 updateFilters({ municipality: event.target.value, district: "" })
               }
             >
-              <option value="">Wrocław city</option>
+              <option value="">{copy.filters.wroclawCity}</option>
               {municipalities
                 .filter((municipality) => municipality !== "Wrocław")
                 .map((municipality) => (
@@ -492,13 +499,13 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
-            <span>Województwo</span>
+            <span>{copy.filters.voivodeship}</span>
             <select
               className="select"
               value={filters.voivodeship}
               onChange={(event) => updateFilters({ voivodeship: event.target.value })}
             >
-              <option value="">Все</option>
+              <option value="">{copy.filters.all}</option>
               {VOIVODESHIP_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -507,13 +514,13 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
-            <span>Район</span>
+            <span>{copy.filters.district}</span>
             <select
               className="select"
               value={filters.district}
               onChange={(event) => updateFilters({ district: event.target.value })}
             >
-              <option value="">Все районы/местности</option>
+              <option value="">{copy.filters.allDistricts}</option>
               {districts.map((district) => (
                 <option key={district} value={district}>
                   {district}
@@ -522,20 +529,20 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
-            <span>Комнаты</span>
+            <span>{copy.filters.rooms}</span>
             <select
               className="select"
               value={filters.rooms}
               onChange={(event) => updateFilters({ rooms: event.target.value })}
             >
-              <option value="">Любое</option>
+              <option value="">{copy.filters.any}</option>
               <option value="2">2</option>
               <option value="3">3</option>
               <option value="4">4</option>
             </select>
           </label>
           <label className="field">
-            <span>Макс. цена</span>
+            <span>{copy.filters.maxPrice}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -545,31 +552,31 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Тип здания</span>
+            <span>{copy.filters.buildingType}</span>
             <select
               className="select"
               value={filters.buildingType}
               onChange={(event) => updateFilters({ buildingType: event.target.value })}
             >
-              <option value="">Любой</option>
+              <option value="">{copy.filters.anyMasculine}</option>
               {BUILDING_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {copy.optionLabels.buildingType[option]}
                 </option>
               ))}
             </select>
           </label>
           <label className="field">
-            <span>Состояние</span>
+            <span>{copy.filters.renovationState}</span>
             <select
               className="select"
               value={filters.renovationState}
               onChange={(event) => updateFilters({ renovationState: event.target.value })}
             >
-              <option value="">Любое</option>
+              <option value="">{copy.filters.any}</option>
               {RENOVATION_STATE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {copy.optionLabels.renovationState[option]}
                 </option>
               ))}
             </select>
@@ -580,7 +587,7 @@ export default function ExplorerPage() {
               checked={filters.hasBalcony}
               onChange={(event) => updateFilters({ hasBalcony: event.target.checked })}
             />
-            <span>Балкон</span>
+            <span>{copy.filters.balcony}</span>
           </label>
           <label className="field checkbox-field">
             <input
@@ -588,7 +595,7 @@ export default function ExplorerPage() {
               checked={filters.hasTerrace}
               onChange={(event) => updateFilters({ hasTerrace: event.target.checked })}
             />
-            <span>Терраса</span>
+            <span>{copy.filters.terrace}</span>
           </label>
           <label className="field checkbox-field">
             <input
@@ -596,7 +603,7 @@ export default function ExplorerPage() {
               checked={filters.hasGarden}
               onChange={(event) => updateFilters({ hasGarden: event.target.checked })}
             />
-            <span>Сад</span>
+            <span>{copy.filters.garden}</span>
           </label>
           <label className="field checkbox-field">
             <input
@@ -604,40 +611,40 @@ export default function ExplorerPage() {
               checked={filters.hasElevator}
               onChange={(event) => updateFilters({ hasElevator: event.target.checked })}
             />
-            <span>Лифт</span>
+            <span>{copy.filters.elevator}</span>
           </label>
           <label className="field">
-            <span>Parking</span>
+            <span>{copy.filters.parking}</span>
             <select
               className="select"
               value={filters.parkingType}
               onChange={(event) => updateFilters({ parkingType: event.target.value })}
             >
-              <option value="">Любой</option>
+              <option value="">{copy.filters.anyMasculine}</option>
               {PARKING_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {copy.optionLabels.parkingType[option]}
                 </option>
               ))}
             </select>
           </label>
           <label className="field">
-            <span>Отопление</span>
+            <span>{copy.filters.heating}</span>
             <select
               className="select"
               value={filters.heatingType}
               onChange={(event) => updateFilters({ heatingType: event.target.value })}
             >
-              <option value="">Любое</option>
+              <option value="">{copy.filters.any}</option>
               {HEATING_TYPE_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {copy.optionLabels.heatingType[option]}
                 </option>
               ))}
             </select>
           </label>
           <label className="field">
-            <span>Этаж от</span>
+            <span>{copy.filters.minFloor}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -647,7 +654,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Этаж до</span>
+            <span>{copy.filters.maxFloor}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -657,7 +664,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Этажность до</span>
+            <span>{copy.filters.maxBuildingFloors}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -667,7 +674,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Год дома от</span>
+            <span>{copy.filters.minBuildingYear}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -677,7 +684,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Год дома до</span>
+            <span>{copy.filters.maxBuildingYear}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -687,7 +694,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Макс. delta fair</span>
+            <span>{copy.filters.maxFairDelta}</span>
             <input
               className="input"
               inputMode="decimal"
@@ -697,7 +704,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. Investment</span>
+            <span>{copy.filters.minInvestment}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -707,7 +714,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Макс. Risk</span>
+            <span>{copy.filters.maxRisk}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -717,7 +724,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. Negotiation</span>
+            <span>{copy.filters.minNegotiation}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -727,7 +734,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. Liquidity</span>
+            <span>{copy.filters.minLiquidity}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -737,7 +744,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. Rental</span>
+            <span>{copy.filters.minRental}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -747,7 +754,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. Data quality</span>
+            <span>{copy.filters.minDataQuality}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -757,7 +764,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. рейтинг застройщика</span>
+            <span>{copy.filters.minDeveloperReputation}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -769,7 +776,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. confidence застройщика</span>
+            <span>{copy.filters.minDeveloperConfidence}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -781,7 +788,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Сданных проектов от</span>
+            <span>{copy.filters.minDeveloperCompleted}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -793,7 +800,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Активных проектов от</span>
+            <span>{copy.filters.minDeveloperActive}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -810,7 +817,7 @@ export default function ExplorerPage() {
               checked={filters.requireDeveloper}
               onChange={(event) => updateFilters({ requireDeveloper: event.target.checked })}
             />
-            <span>Только с застройщиком</span>
+            <span>{copy.filters.requireDeveloper}</span>
           </label>
           <label className="field checkbox-field">
             <input
@@ -820,16 +827,16 @@ export default function ExplorerPage() {
                 updateFilters({ excludeDeveloperRisk: event.target.checked })
               }
             />
-            <span>Без developer risk</span>
+            <span>{copy.filters.excludeDeveloperRisk}</span>
           </label>
           <label className="field">
-            <span>Радиус от центра</span>
+            <span>{copy.filters.radiusFromCenter}</span>
             <select
               className="select"
               value={filters.radiusKm}
               onChange={(event) => updateFilters({ radiusKm: event.target.value })}
             >
-              <option value="">Весь Wrocław MVP</option>
+              <option value="">{copy.filters.wholeWroclaw}</option>
               <option value="5">5 км</option>
               <option value="8">8 км</option>
               <option value="10">10 км</option>
@@ -837,7 +844,7 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
-            <span>Макс. до центра, км</span>
+            <span>{copy.filters.maxCenterKm}</span>
             <input
               className="input"
               inputMode="decimal"
@@ -847,7 +854,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Макс. до остановки, м</span>
+            <span>{copy.filters.maxStopM}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -857,7 +864,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Макс. до школы, м</span>
+            <span>{copy.filters.maxSchoolM}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -867,7 +874,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. от дороги, м</span>
+            <span>{copy.filters.minMajorRoadM}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -877,7 +884,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Мин. от промзоны, м</span>
+            <span>{copy.filters.minIndustrialZoneM}</span>
             <input
               className="input"
               inputMode="numeric"
@@ -887,7 +894,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>Режим</span>
+            <span>{copy.filters.mode}</span>
             <select
               className="select"
               value={filters.mode}
@@ -895,33 +902,49 @@ export default function ExplorerPage() {
                 updateFilters({ mode: event.target.value as Filters["mode"] })
               }
             >
-              <option value="standard">Обычный поиск</option>
-              <option value="hidden_gems">Hidden gems</option>
+              <option value="standard">{copy.filters.standardMode}</option>
+              <option value="hidden_gems">{copy.actions.hiddenGems}</option>
             </select>
           </label>
           <label className="field">
-            <span>Сортировка</span>
+            <span>{copy.filters.sort}</span>
             <select
               className="select"
               value={filters.sort}
               onChange={(event) => updateFilters({ sort: event.target.value as ListingSort })}
             >
-              <option value="investment_score_desc">Investment: выше</option>
-              <option value="price_asc">Цена: ниже</option>
-              <option value="price_desc">Цена: выше</option>
-              <option value="price_per_m2_asc">Цена/m2: ниже</option>
-              <option value="risk_score_asc">Risk: ниже</option>
-              <option value="negotiation_score_desc">Negotiation: выше</option>
-              <option value="developer_reputation_score_desc">Застройщик: рейтинг выше</option>
-              <option value="developer_reputation_score_asc">Застройщик: рейтинг ниже</option>
-              <option value="developer_confidence_score_desc">Застройщик: confidence выше</option>
-              <option value="developer_confidence_score_asc">Застройщик: confidence ниже</option>
-              <option value="days_on_market_desc">Дольше на рынке</option>
-              <option value="newest">Новые</option>
+              <option value="investment_score_desc">
+                {copy.optionLabels.sort.investment_score_desc}
+              </option>
+              <option value="price_asc">{copy.optionLabels.sort.price_asc}</option>
+              <option value="price_desc">{copy.optionLabels.sort.price_desc}</option>
+              <option value="price_per_m2_asc">
+                {copy.optionLabels.sort.price_per_m2_asc}
+              </option>
+              <option value="risk_score_asc">{copy.optionLabels.sort.risk_score_asc}</option>
+              <option value="negotiation_score_desc">
+                {copy.optionLabels.sort.negotiation_score_desc}
+              </option>
+              <option value="developer_reputation_score_desc">
+                {copy.optionLabels.sort.developer_reputation_score_desc}
+              </option>
+              <option value="developer_reputation_score_asc">
+                {copy.optionLabels.sort.developer_reputation_score_asc}
+              </option>
+              <option value="developer_confidence_score_desc">
+                {copy.optionLabels.sort.developer_confidence_score_desc}
+              </option>
+              <option value="developer_confidence_score_asc">
+                {copy.optionLabels.sort.developer_confidence_score_asc}
+              </option>
+              <option value="days_on_market_desc">
+                {copy.optionLabels.sort.days_on_market_desc}
+              </option>
+              <option value="newest">{copy.optionLabels.sort.newest}</option>
             </select>
           </label>
           <label className="field">
-            <span>На странице</span>
+            <span>{copy.filters.pageSize}</span>
             <select
               className="select"
               value={filters.pageSize}
@@ -933,29 +956,31 @@ export default function ExplorerPage() {
             </select>
           </label>
           <button className="button primary" type="button" onClick={() => setPage(1)}>
-            <Search size={16} /> Применить
+            <Search size={16} /> {copy.actions.apply}
           </button>
           <button className="button" type="button" onClick={enableHiddenGems}>
-            <Gem size={16} /> Hidden gems
+            <Gem size={16} /> {copy.actions.hiddenGems}
           </button>
           <button className="button" type="button" onClick={resetFilters}>
-            <Search size={16} /> Сброс
+            <Search size={16} /> {copy.actions.reset}
           </button>
         </div>
       </div>
 
       {error ? (
-        <ErrorBlock message={error} />
-      ) : analyses.length === 0 && status.startsWith("Загрузка") ? (
-        <LoadingBlock />
+        <ErrorBlock message={error} prefix={copy.state.errorPrefix} />
+      ) : analyses.length === 0 && isLoading ? (
+        <LoadingBlock label={copy.state.loadingData} />
       ) : (
         <div className="grid-2">
           <section className="listing-list">
             {filters.mode === "hidden_gems" && hiddenGemItems.length ? (
               <section className="panel">
                 <div className="panel-header">
-                  <h2>Hidden gems</h2>
-                  <span className="muted">{hiddenGemItems.length} на странице</span>
+                  <h2>{copy.actions.hiddenGems}</h2>
+                  <span className="muted">
+                    {copy.state.hiddenGemsOnPage(hiddenGemItems.length)}
+                  </span>
                 </div>
                 <div className="panel-body">
                   <ul className="section-list compact">
@@ -971,12 +996,13 @@ export default function ExplorerPage() {
               </section>
             ) : null}
             {analyses.length === 0 ? (
-              <EmptyBlock label="Нет объектов под выбранные фильтры." />
+              <EmptyBlock label={copy.state.emptyResults} />
             ) : (
               analyses.map((analysis) => (
                 <ListingCard
                   key={analysis.listing.id}
                   analysis={analysis}
+                  locale={locale}
                   isSelectedForCompare={compareIds.includes(analysis.listing.id)}
                   onToggleCompare={toggleCompare}
                   onFavorite={(listingId) => void addFavorite(listingId)}
@@ -991,25 +1017,23 @@ export default function ExplorerPage() {
                 disabled={page <= 1}
                 onClick={() => setPage(page - 1)}
               >
-                Назад
+                {copy.pagination.previous}
               </button>
-              <span>
-                Страница {page} из {totalPages || 1}
-              </span>
+              <span>{copy.pagination.page(page, totalPages)}</span>
               <button
                 className="button"
                 type="button"
                 disabled={totalPages === 0 || page >= totalPages}
                 onClick={() => setPage(page + 1)}
               >
-                Вперед
+                {copy.pagination.next}
               </button>
             </div>
           </section>
 
           <aside className="panel">
             <div className="panel-header">
-              <h2>Карта и GIS-слои</h2>
+              <h2>{copy.map.title}</h2>
               <span className="muted">{mapStatus}</span>
             </div>
             <PropertyMap
@@ -1020,13 +1044,13 @@ export default function ExplorerPage() {
             <div className="panel-body">
               <div className="toolbar">
                 <a className="button" href="/reports">
-                  <FileText size={16} /> Отчеты
+                  <FileText size={16} /> {copy.actions.reports}
                 </a>
                 <a className="button" href="/alerts">
-                  <Bell size={16} /> Alerts
+                  <Bell size={16} /> {copy.actions.alert}
                 </a>
                 <button className="button" type="button" onClick={() => void addFavorite("wr-001")}>
-                  <Heart size={16} /> Favorite
+                  <Heart size={16} /> {copy.actions.favorite}
                 </button>
               </div>
             </div>

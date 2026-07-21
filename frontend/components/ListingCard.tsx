@@ -5,6 +5,7 @@ import { BarChart3, FileText, Heart, MapPin } from "lucide-react";
 
 import type { ListingAnalysis } from "@/lib/api";
 import { money } from "@/lib/format";
+import { DEFAULT_LOCALE, LISTING_CARD_COPY, type Locale } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
   onReport: (listingId: string) => void;
   isSelectedForCompare?: boolean;
   onToggleCompare?: (listingId: string) => void;
+  locale?: Locale;
 };
 
 export function ListingCard({
@@ -21,20 +23,26 @@ export function ListingCard({
   onReport,
   isSelectedForCompare = false,
   onToggleCompare,
+  locale = DEFAULT_LOCALE,
 }: Props) {
   const { listing, scores } = analysis;
+  const copy = LISTING_CARD_COPY[locale];
   const verdictTone = decisionTone(scores);
   const attributeLabels = [
     listing.building_type,
     listing.renovation_state,
-    listing.has_balcony ? "balcony" : "",
-    listing.has_terrace ? "terrace" : "",
-    listing.has_garden ? "garden" : "",
-    listing.has_elevator ? "elevator" : "",
-    listing.parking_type ? `parking: ${listing.parking_type}` : "",
-    listing.heating_type ? `heating: ${listing.heating_type}` : "",
+    listing.has_balcony ? copy.attributes.balcony : "",
+    listing.has_terrace ? copy.attributes.terrace : "",
+    listing.has_garden ? copy.attributes.garden : "",
+    listing.has_elevator ? copy.attributes.elevator : "",
+    listing.parking_type
+      ? copy.parking(formatAttribute(listing.parking_type, copy.attributes))
+      : "",
+    listing.heating_type
+      ? copy.heating(formatAttribute(listing.heating_type, copy.attributes))
+      : "",
   ]
-    .map(formatAttribute)
+    .map((value) => formatAttribute(value, copy.attributes))
     .filter(Boolean);
 
   return (
@@ -47,11 +55,13 @@ export function ListingCard({
           <MapPin size={14} /> {listing.address}, {listing.district}
         </div>
         <div className="meta-row">
-          <span>{money(listing.price)}</span>
-          <span>{money(listing.price_per_m2)}/m2</span>
+          <span>{money(listing.price, locale)}</span>
+          <span>
+            {money(listing.price_per_m2, locale)}/{copy.pricePerM2}
+          </span>
           <span>{listing.area_m2.toFixed(1)} m2</span>
-          <span>{listing.rooms} pokoje</span>
-          <span>{listing.days_on_market} дней</span>
+          <span>{copy.rooms(listing.rooms)}</span>
+          <span>{copy.days(listing.days_on_market)}</span>
         </div>
         {attributeLabels.length ? (
           <div className="meta-row">
@@ -62,30 +72,35 @@ export function ListingCard({
         ) : null}
         <div className="meta-row">
           <span className={`status-pill ${verdictTone}`}>
-            {scoreLabel(scores.decision_label)}
+            {scoreLabel(scores.decision_label, locale)}
           </span>
           <span className="score-pill">
-            <BarChart3 size={14} /> I {scores.investment_score}
+            <BarChart3 size={14} /> {copy.scorePrefixes.investment}{" "}
+            {scores.investment_score}
           </span>
-          <span className="score-pill risk">R {scores.risk_score}</span>
-          <span className="score-pill">N {scores.negotiation_score}</span>
+          <span className="score-pill risk">
+            {copy.scorePrefixes.risk} {scores.risk_score}
+          </span>
+          <span className="score-pill">
+            {copy.scorePrefixes.negotiation} {scores.negotiation_score}
+          </span>
         </div>
       </div>
       <div className="toolbar">
         {onToggleCompare ? (
-          <label className="compare-toggle" title="Добавить в сравнение">
+          <label className="compare-toggle" title={copy.compareTitle}>
             <input
               type="checkbox"
               checked={isSelectedForCompare}
               onChange={() => onToggleCompare(listing.id)}
             />
-            <span>Сравнить</span>
+            <span>{copy.compare}</span>
           </label>
         ) : null}
         <button
           className="icon-button"
           type="button"
-          title="Добавить в избранное"
+          title={copy.favoriteTitle}
           onClick={() => onFavorite(listing.id)}
         >
           <Heart size={18} />
@@ -93,20 +108,20 @@ export function ListingCard({
         <button
           className="icon-button"
           type="button"
-          title="Сгенерировать отчет"
+          title={copy.reportTitle}
           onClick={() => onReport(listing.id)}
         >
           <FileText size={18} />
         </button>
         <Link className="button" href={`/listings/${listing.id}`}>
-          Открыть
+          {copy.open}
         </Link>
       </div>
     </article>
   );
 }
 
-function formatAttribute(value: string | null | undefined) {
+function formatAttribute(value: string | null | undefined, labels: Record<string, string>) {
   if (!value) return "";
-  return value.replaceAll("_", " ");
+  return labels[value] ?? value.replaceAll("_", " ");
 }

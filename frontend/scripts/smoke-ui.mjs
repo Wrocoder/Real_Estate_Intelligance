@@ -45,6 +45,7 @@ const packageJson = JSON.parse(read("package.json"));
 const globalStyles = read("app/globals.css");
 const apiClient = read("lib/api.ts");
 const explorerPage = read("app/page.tsx");
+const listingCard = read("components/ListingCard.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const adminPage = read("app/admin/page.tsx");
@@ -64,6 +65,8 @@ const layout = read("app/layout.tsx");
 const localizedNavigation = read("components/LocalizedNavigation.tsx");
 const languageSwitcher = read("components/LanguageSwitcher.tsx");
 const i18n = read("lib/i18n.ts");
+const scoreLabels = read("lib/scoreLabels.ts");
+const formatters = read("lib/format.ts");
 const useLocalePreference = read("lib/useLocalePreference.ts");
 const sitemap = read("app/sitemap.ts");
 
@@ -140,9 +143,22 @@ expectIncludes("search explorer page", explorerPage, [
   "createAlert",
   "generateReport",
   "toggleCompare",
+  "EXPLORER_COPY[locale]",
+  "useLocalePreference()",
+  "copy.filters.title",
+  "copy.status.found",
+  "locale={locale}",
 ]);
 expectRegex("search explorer filters", explorerPage, /type Filters = \{[\s\S]*maxBuildingFloors/);
 expectMinSize("search explorer page", explorerPage, 20_000);
+
+expectIncludes("listing card i18n", listingCard, [
+  "LISTING_CARD_COPY[locale]",
+  "scoreLabel(scores.decision_label, locale)",
+  "money(listing.price, locale)",
+  "copy.compareTitle",
+  "copy.reportTitle",
+]);
 
 expectIncludes("map component", mapComponent, [
   "DEFAULT_VISIBLE_LAYERS",
@@ -342,7 +358,20 @@ expectIncludes("i18n dictionaries", i18n, [
   "\"uk\"",
   "NAVIGATION_LABELS",
   "LANGUAGE_SWITCHER_LABELS",
+  "EXPLORER_COPY",
+  "LISTING_CARD_COPY",
   "normalizeLocale",
+]);
+expectIncludes("localized score labels", scoreLabels, [
+  "Record<Locale, Record<string, string>>",
+  "Strong candidate",
+  "Mocny kandydat",
+  "Сильний кандидат",
+]);
+expectIncludes("locale-aware formatters", formatters, [
+  "INTL_LOCALES",
+  "export function money(value: number, locale?: Locale)",
+  "new Intl.NumberFormat(intlLocale(locale))",
 ]);
 expectIncludes("locale preference persistence", useLocalePreference, [
   "LOCALE_STORAGE_KEY",

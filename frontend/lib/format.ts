@@ -1,13 +1,27 @@
-export function money(value: number) {
-  return `${new Intl.NumberFormat("pl-PL").format(value)} PLN`;
+import type { Locale } from "@/lib/i18n";
+
+const INTL_LOCALES: Record<Locale, string> = {
+  en: "en-US",
+  pl: "pl-PL",
+  ru: "ru-RU",
+  uk: "uk-UA",
+};
+
+export function money(value: number, locale?: Locale) {
+  return `${new Intl.NumberFormat(intlLocale(locale)).format(value)} PLN`;
 }
 
-export function numberValue(value: number) {
-  return new Intl.NumberFormat("pl-PL").format(value);
+export function numberValue(value: number, locale?: Locale) {
+  return new Intl.NumberFormat(intlLocale(locale)).format(value);
 }
 
-export function percent(value: number) {
-  return `${value > 0 ? "+" : ""}${value.toFixed(1)}%`;
+export function percent(value: number, locale?: Locale) {
+  const sign = value > 0 ? "+" : "";
+  const formatted = new Intl.NumberFormat(intlLocale(locale), {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  }).format(value);
+  return `${sign}${formatted}%`;
 }
 
 export function scoreTone(score: number) {
@@ -16,3 +30,6 @@ export function scoreTone(score: number) {
   return "weak";
 }
 
+function intlLocale(locale: Locale | undefined) {
+  return locale ? INTL_LOCALES[locale] : "pl-PL";
+}
