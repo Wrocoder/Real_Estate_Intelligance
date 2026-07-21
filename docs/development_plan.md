@@ -36,6 +36,8 @@
 - [x] Обновить 12-месячный roadmap по фактическому состоянию продукта.
 - [x] Описать минимальную команду запуска и зоны ответственности.
 - [x] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
+- [x] Подготовить экспертный review brief по текущему состоянию продукта,
+  архитектуре, рискам и соответствию плану.
 
 ## 1.1 Legal, Compliance и Data Governance
 
@@ -612,6 +614,7 @@
 - [x] Commit 113: Check draft history i18n.
 - [x] Commit 114: Listing detail page i18n.
 - [x] Commit 115: Compare page i18n.
+- [x] Commit 116: Expert review brief and plan progress audit.
 
 ## Current Sprint
 

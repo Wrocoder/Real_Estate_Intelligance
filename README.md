@@ -99,6 +99,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
 - Добавлены SEO guide pages: `/guides`, price-per-m2, district comparison, mortgage, purchase checklist и total cost.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
+- Экспертный обзор текущего состояния продукта и рисков: `docs/expert_review_brief_ru.md`.
 
 ## Backend локально
 
