@@ -315,9 +315,11 @@
   retention labels, report/payment/delete actions and date/currency formatting.
 - [x] Локализовать listing detail page: object metrics, AI assistant, price history,
   comparables, scoring, area/news/guides blocks and developer reputation summary.
+- [x] Локализовать compare page: selector, decision metrics, AI verdict,
+  realtor client shortlist, comparison matrix and locale-aware number/currency formatting.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
-- [ ] Локализовать главные публичные страницы: compare, reports, alerts,
+- [ ] Локализовать главные публичные страницы: reports, alerts,
   pricing, account, areas, news,
   developers, CRM-light pages.
 - [ ] Локализовать backend/user-facing API messages там, где они отображаются в UI:
@@ -609,6 +611,7 @@
 - [x] Commit 112: Check apartment URL-to-report flow i18n.
 - [x] Commit 113: Check draft history i18n.
 - [x] Commit 114: Listing detail page i18n.
+- [x] Commit 115: Compare page i18n.
 
 ## Current Sprint
 
@@ -741,6 +744,8 @@
   report/payment/delete actions and locale-aware dates/currency.
 - [x] Локализовать listing detail page: metrics, AI assistant, price history,
   comparables, scoring sidebar, developer summary and locale-aware score labels.
+- [x] Локализовать compare page: object selector, AI verdict, client shortlist,
+  comparison matrix, developer labels and locale-aware numeric formatting.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

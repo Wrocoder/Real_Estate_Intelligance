@@ -502,6 +502,132 @@ export type ListingDetailCopy = {
   errorPrefix: string;
 };
 
+export type ComparePageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    search: string;
+    refresh: string;
+    getVerdict: string;
+    buildShortlist: string;
+  };
+  sections: {
+    selector: string;
+    aiVerdict: string;
+    clientShortlist: string;
+    comparisonMatrix: string;
+    sourcesAndLimits: string;
+  };
+  metrics: {
+    bestChoice: string;
+    belowFairPrice: string;
+    cheaperMonthly: string;
+    rentalSignal: string;
+  };
+  fields: {
+    audience: string;
+    question: string;
+    client: string;
+    intro: string;
+  };
+  placeholders: {
+    aiQuestion: string;
+    clientName: string;
+    intro: string;
+  };
+  statuses: {
+    loadingListings: string;
+    listingsLoaded: string;
+    backendUnavailable: string;
+    comparing: string;
+    compareCount: (count: number) => string;
+    compareUnavailable: string;
+    compareLimit: string;
+    aiNotCreated: string;
+    aiReady: string;
+    aiBuilding: string;
+    aiRefused: string;
+    aiSaved: (id: string) => string;
+    aiUnavailable: string;
+    shortlistNotCreated: string;
+    shortlistReady: string;
+    shortlistBuilding: string;
+    shortlistCount: (count: number) => string;
+    shortlistUnavailable: string;
+  };
+  values: {
+    buyer: string;
+    realtor: string;
+    investor: string;
+    refused: string;
+    sourceGrounded: string;
+    winner: string;
+    sourceLinks: string;
+    rank: (rank: number) => string;
+    roomsShort: (count: number) => string;
+    monthly: string;
+    loan: string;
+    cash: string;
+    fair: string;
+    negotiation: string;
+    gross: string;
+    liquidity: string;
+    rent: string;
+    metersToStop: (meters: number) => string;
+    schoolsParks: (schools: number, parks: number) => string;
+    plannedInvestments: (count: number) => string;
+    mortgageAssumptions: (downPaymentPct: number, loanYears: number, interestPct: number) => string;
+  };
+  table: {
+    metric: string;
+    location: string;
+    price: string;
+    pricePerM2: string;
+    areaRooms: string;
+    daysOnMarket: string;
+    decisionScore: string;
+    verdict: string;
+    developer: string;
+    developerRisk: string;
+    developerCheck: string;
+    mortgagePayment: string;
+    cashNeeded: string;
+    rentalEstimate: string;
+    priceLabel: string;
+    investmentScore: string;
+    riskScore: string;
+    negotiationScore: string;
+    liquidity: string;
+    rentalPotential: string;
+    fairPrice: string;
+    fairPriceConfidence: string;
+    fairPriceDelta: string;
+    discountToFair: string;
+    transport: string;
+    infrastructure: string;
+    plannedInvestments: string;
+    negotiationArgument: string;
+    mainRisk: string;
+    recommendation: string;
+  };
+  empty: {
+    selectMin: string;
+    noAiAnswer: string;
+    noShortlist: string;
+    noData: string;
+    noWarnings: string;
+    noDeveloper: string;
+    noDeveloperRisk: string;
+    manualDeveloperCheck: string;
+    developerDueDiligence: string;
+  };
+  developerLabels: Record<string, string>;
+  assistantColumn: {
+    keyPoints: string;
+    tradeoffs: string;
+  };
+};
+
 export const LOCALE_OPTIONS: LocaleOption[] = [
   { code: "en", nativeName: "English", englishName: "English", shortLabel: "EN" },
   { code: "pl", nativeName: "Polski", englishName: "Polish", shortLabel: "PL" },
@@ -2160,6 +2286,551 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   },
 };
 
+export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
+  en: {
+    title: "Compare listings",
+    subtitle: "Price, liquidity, risks, negotiation room and investment potential in one view.",
+    actions: {
+      search: "Search",
+      refresh: "Refresh",
+      getVerdict: "Get verdict",
+      buildShortlist: "Build shortlist",
+    },
+    sections: {
+      selector: "Choose listings",
+      aiVerdict: "AI verdict",
+      clientShortlist: "Client shortlist",
+      comparisonMatrix: "Comparison matrix",
+      sourcesAndLimits: "Sources and limits",
+    },
+    metrics: {
+      bestChoice: "Best choice",
+      belowFairPrice: "Below fair price",
+      cheaperMonthly: "Cheaper monthly",
+      rentalSignal: "Rental signal",
+    },
+    fields: {
+      audience: "Audience",
+      question: "Question",
+      client: "Client",
+      intro: "Intro",
+    },
+    placeholders: {
+      aiQuestion: "For example: what is better for a family or rental?",
+      clientName: "Anna",
+      intro: "Context for the client email",
+    },
+    statuses: {
+      loadingListings: "Loading listings...",
+      listingsLoaded: "Listings loaded",
+      backendUnavailable: "Backend API unavailable",
+      comparing: "Comparing listings...",
+      compareCount: (count) => `Comparing listings: ${count}`,
+      compareUnavailable: "Comparison unavailable for the current set",
+      compareLimit: "You can compare up to 5 listings",
+      aiNotCreated: "AI verdict not created",
+      aiReady: "AI verdict ready to generate",
+      aiBuilding: "AI verdict is building...",
+      aiRefused: "AI verdict refused by guardrail rules",
+      aiSaved: (id) => `AI verdict saved: ${id}`,
+      aiUnavailable: "AI verdict unavailable",
+      shortlistNotCreated: "Client shortlist not created",
+      shortlistReady: "Client shortlist ready to generate",
+      shortlistBuilding: "Client shortlist is building...",
+      shortlistCount: (count) => `${count} listings in client shortlist`,
+      shortlistUnavailable: "Client shortlist unavailable",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      winner: "Winner",
+      sourceLinks: "Source links",
+      rank: (rank) => `#${rank}`,
+      roomsShort: (count) => `${count} room${count === 1 ? "" : "s"}`,
+      monthly: "mo.",
+      loan: "loan",
+      cash: "cash",
+      fair: "to fair",
+      negotiation: "negotiation",
+      gross: "gross",
+      liquidity: "liquidity",
+      rent: "rent",
+      metersToStop: (meters) => `${meters} m to stop`,
+      schoolsParks: (schools, parks) =>
+        `${schools} school${schools === 1 ? "" : "s"} · ${parks} park${parks === 1 ? "" : "s"}`,
+      plannedInvestments: (count) => `${count} within 2 km`,
+      mortgageAssumptions: (downPaymentPct, loanYears, interestPct) =>
+        `${downPaymentPct.toFixed(0)}% down / ${loanYears} years / ${interestPct.toFixed(1)}%`,
+    },
+    table: {
+      metric: "Metric",
+      location: "Location",
+      price: "Price",
+      pricePerM2: "Price/m2",
+      areaRooms: "Area and rooms",
+      daysOnMarket: "Days on market",
+      decisionScore: "Decision Score",
+      verdict: "Verdict",
+      developer: "Developer",
+      developerRisk: "Developer risk",
+      developerCheck: "Developer checks",
+      mortgagePayment: "Baseline mortgage",
+      cashNeeded: "Cash needed",
+      rentalEstimate: "Rental estimate",
+      priceLabel: "Price label",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      negotiationScore: "Negotiation Score",
+      liquidity: "Liquidity",
+      rentalPotential: "Rental Potential",
+      fairPrice: "Fair price",
+      fairPriceConfidence: "Fair price confidence",
+      fairPriceDelta: "Delta to fair mid",
+      discountToFair: "Discount to fair",
+      transport: "Transport",
+      infrastructure: "Infrastructure",
+      plannedInvestments: "Planned investments",
+      negotiationArgument: "Negotiation argument",
+      mainRisk: "Main risk",
+      recommendation: "Recommendation",
+    },
+    empty: {
+      selectMin: "Choose at least 2 listings to compare.",
+      noAiAnswer: "AI verdict will appear here after generation for selected listings.",
+      noShortlist: "Client shortlist will appear here after generation for selected listings.",
+      noData: "No data.",
+      noWarnings: "No critical warnings",
+      noDeveloper: "No matched developer",
+      noDeveloperRisk: "No developer risk data",
+      manualDeveloperCheck: "Check seller/developer manually",
+      developerDueDiligence: "Check KRS/REGON and project company.",
+    },
+    developerLabels: {
+      strong: "strong developer",
+      good: "good profile",
+      mixed: "mixed profile",
+      limited_data: "limited data",
+      risk_review: "needs review",
+    },
+    assistantColumn: {
+      keyPoints: "Key points",
+      tradeoffs: "Tradeoffs",
+    },
+  },
+  pl: {
+    title: "Porównanie ofert",
+    subtitle: "Cena, płynność, ryzyka, pole do negocjacji i potencjał inwestycyjny w jednym widoku.",
+    actions: {
+      search: "Szukaj",
+      refresh: "Odśwież",
+      getVerdict: "Pobierz verdict",
+      buildShortlist: "Zbuduj shortlistę",
+    },
+    sections: {
+      selector: "Wybór ofert",
+      aiVerdict: "AI verdict",
+      clientShortlist: "Client shortlist",
+      comparisonMatrix: "Macierz porównania",
+      sourcesAndLimits: "Źródła i ograniczenia",
+    },
+    metrics: {
+      bestChoice: "Najlepszy wybór",
+      belowFairPrice: "Poniżej fair price",
+      cheaperMonthly: "Tańsze miesięcznie",
+      rentalSignal: "Sygnał najmu",
+    },
+    fields: {
+      audience: "Odbiorca",
+      question: "Pytanie",
+      client: "Klient",
+      intro: "Intro",
+    },
+    placeholders: {
+      aiQuestion: "Na przykład: co wybrać dla rodziny albo pod wynajem?",
+      clientName: "Anna",
+      intro: "Kontekst do wiadomości dla klienta",
+    },
+    statuses: {
+      loadingListings: "Ładowanie ofert...",
+      listingsLoaded: "Oferty załadowane",
+      backendUnavailable: "Backend API niedostępne",
+      comparing: "Porównywanie ofert...",
+      compareCount: (count) => `Porównywane oferty: ${count}`,
+      compareUnavailable: "Porównanie niedostępne dla obecnego zestawu",
+      compareLimit: "Można porównać maksymalnie 5 ofert",
+      aiNotCreated: "AI verdict nieutworzony",
+      aiReady: "AI verdict gotowy do wygenerowania",
+      aiBuilding: "AI verdict jest generowany...",
+      aiRefused: "AI verdict odrzucony przez guardrail rules",
+      aiSaved: (id) => `AI verdict zapisany: ${id}`,
+      aiUnavailable: "AI verdict niedostępny",
+      shortlistNotCreated: "Client shortlist nieutworzona",
+      shortlistReady: "Client shortlist gotowa do wygenerowania",
+      shortlistBuilding: "Client shortlist jest generowana...",
+      shortlistCount: (count) => `${count} ofert w client shortlist`,
+      shortlistUnavailable: "Client shortlist niedostępna",
+    },
+    values: {
+      buyer: "Kupujący",
+      realtor: "Pośrednik",
+      investor: "Inwestor",
+      refused: "Odrzucono",
+      sourceGrounded: "Source-grounded",
+      winner: "Winner",
+      sourceLinks: "Source links",
+      rank: (rank) => `#${rank}`,
+      roomsShort: (count) => `${count} pok.`,
+      monthly: "mies.",
+      loan: "kredyt",
+      cash: "cash",
+      fair: "do fair",
+      negotiation: "negocjacja",
+      gross: "gross",
+      liquidity: "liquidity",
+      rent: "rent",
+      metersToStop: (meters) => `${meters} m do przystanku`,
+      schoolsParks: (schools, parks) =>
+        `${schools} szk. · ${parks} ${pluralPl(parks, "park", "parki", "parków")}`,
+      plannedInvestments: (count) => `${count} w promieniu 2 km`,
+      mortgageAssumptions: (downPaymentPct, loanYears, interestPct) =>
+        `${downPaymentPct.toFixed(0)}% wkładu / ${loanYears} lat / ${interestPct.toFixed(1)}%`,
+    },
+    table: {
+      metric: "Metryka",
+      location: "Lokalizacja",
+      price: "Cena",
+      pricePerM2: "Cena/m2",
+      areaRooms: "Powierzchnia i pokoje",
+      daysOnMarket: "Dni na rynku",
+      decisionScore: "Decision Score",
+      verdict: "Verdict",
+      developer: "Deweloper",
+      developerRisk: "Ryzyko dewelopera",
+      developerCheck: "Sprawdzenie dewelopera",
+      mortgagePayment: "Bazowa hipoteka",
+      cashNeeded: "Potrzebna gotówka",
+      rentalEstimate: "Szacunek najmu",
+      priceLabel: "Price label",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      negotiationScore: "Negotiation Score",
+      liquidity: "Liquidity",
+      rentalPotential: "Rental Potential",
+      fairPrice: "Fair price",
+      fairPriceConfidence: "Fair price confidence",
+      fairPriceDelta: "Delta do fair mid",
+      discountToFair: "Rabat do fair",
+      transport: "Transport",
+      infrastructure: "Infrastruktura",
+      plannedInvestments: "Planowane inwestycje",
+      negotiationArgument: "Argument do negocjacji",
+      mainRisk: "Główne ryzyko",
+      recommendation: "Rekomendacja",
+    },
+    empty: {
+      selectMin: "Wybierz co najmniej 2 oferty do porównania.",
+      noAiAnswer: "AI verdict pojawi się tutaj po wygenerowaniu dla wybranych ofert.",
+      noShortlist: "Client shortlist pojawi się tutaj po wygenerowaniu dla wybranych ofert.",
+      noData: "Brak danych.",
+      noWarnings: "Brak krytycznych ostrzeżeń",
+      noDeveloper: "Brak dopasowanego dewelopera",
+      noDeveloperRisk: "Brak danych o ryzyku dewelopera",
+      manualDeveloperCheck: "Sprawdź sprzedawcę/dewelopera ręcznie",
+      developerDueDiligence: "Sprawdź KRS/REGON i spółkę projektową.",
+    },
+    developerLabels: {
+      strong: "mocny deweloper",
+      good: "dobry profil",
+      mixed: "mieszany profil",
+      limited_data: "mało danych",
+      risk_review: "wymaga sprawdzenia",
+    },
+    assistantColumn: {
+      keyPoints: "Kluczowe wnioski",
+      tradeoffs: "Tradeoffs",
+    },
+  },
+  ru: {
+    title: "Сравнение объектов",
+    subtitle: "Сравнение цены, ликвидности, рисков, торга и инвестиционного потенциала.",
+    actions: {
+      search: "Подбор",
+      refresh: "Обновить",
+      getVerdict: "Получить verdict",
+      buildShortlist: "Собрать подборку",
+    },
+    sections: {
+      selector: "Выбор объектов",
+      aiVerdict: "AI verdict",
+      clientShortlist: "Client shortlist",
+      comparisonMatrix: "Матрица сравнения",
+      sourcesAndLimits: "Источники и ограничения",
+    },
+    metrics: {
+      bestChoice: "Лучший выбор",
+      belowFairPrice: "Ниже fair price",
+      cheaperMonthly: "Дешевле в месяц",
+      rentalSignal: "Арендный сигнал",
+    },
+    fields: {
+      audience: "Аудитория",
+      question: "Вопрос",
+      client: "Клиент",
+      intro: "Intro",
+    },
+    placeholders: {
+      aiQuestion: "Например: что выбрать для семьи или сдачи в аренду?",
+      clientName: "Anna",
+      intro: "Контекст для письма клиенту",
+    },
+    statuses: {
+      loadingListings: "Загрузка объектов...",
+      listingsLoaded: "Объекты загружены",
+      backendUnavailable: "Backend API недоступен",
+      comparing: "Сравнение объектов...",
+      compareCount: (count) => `Сравнивается объектов: ${count}`,
+      compareUnavailable: "Сравнение недоступно для текущего набора",
+      compareLimit: "Максимум 5 объектов в сравнении",
+      aiNotCreated: "AI verdict не создан",
+      aiReady: "AI verdict готов к генерации",
+      aiBuilding: "AI verdict строится...",
+      aiRefused: "AI verdict отклонен guardrail-правилом",
+      aiSaved: (id) => `AI verdict сохранен: ${id}`,
+      aiUnavailable: "AI verdict недоступен",
+      shortlistNotCreated: "Client shortlist не создан",
+      shortlistReady: "Client shortlist готов к генерации",
+      shortlistBuilding: "Client shortlist строится...",
+      shortlistCount: (count) => `${count} объектов в клиентской подборке`,
+      shortlistUnavailable: "Client shortlist недоступен",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      winner: "Winner",
+      sourceLinks: "Source links",
+      rank: (rank) => `#${rank}`,
+      roomsShort: (count) => `${count} pok.`,
+      monthly: "мес",
+      loan: "loan",
+      cash: "cash",
+      fair: "к fair",
+      negotiation: "торг",
+      gross: "gross",
+      liquidity: "liquidity",
+      rent: "rent",
+      metersToStop: (meters) => `${meters} м до остановки`,
+      schoolsParks: (schools, parks) =>
+        `${schools} ${pluralRu(schools, "школа", "школы", "школ")} · ${parks} ${pluralRu(
+          parks,
+          "парк",
+          "парка",
+          "парков",
+        )}`,
+      plannedInvestments: (count) => `${count} в радиусе 2 км`,
+      mortgageAssumptions: (downPaymentPct, loanYears, interestPct) =>
+        `${downPaymentPct.toFixed(0)}% / ${loanYears} лет / ${interestPct.toFixed(1)}%`,
+    },
+    table: {
+      metric: "Метрика",
+      location: "Локация",
+      price: "Цена",
+      pricePerM2: "Цена/m2",
+      areaRooms: "Площадь и комнаты",
+      daysOnMarket: "Дней на рынке",
+      decisionScore: "Decision Score",
+      verdict: "Вердикт",
+      developer: "Застройщик",
+      developerRisk: "Риск застройщика",
+      developerCheck: "Проверить по застройщику",
+      mortgagePayment: "Ипотека baseline",
+      cashNeeded: "Cash needed",
+      rentalEstimate: "Rental estimate",
+      priceLabel: "Оценка цены",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      negotiationScore: "Negotiation Score",
+      liquidity: "Liquidity",
+      rentalPotential: "Rental Potential",
+      fairPrice: "Fair price",
+      fairPriceConfidence: "Fair price confidence",
+      fairPriceDelta: "Delta до fair mid",
+      discountToFair: "Скидка до fair",
+      transport: "Транспорт",
+      infrastructure: "Инфраструктура",
+      plannedInvestments: "Planned investments",
+      negotiationArgument: "Аргумент для торга",
+      mainRisk: "Главный риск",
+      recommendation: "Рекомендация",
+    },
+    empty: {
+      selectMin: "Выбери минимум 2 объекта для сравнения.",
+      noAiAnswer: "AI verdict появится здесь после генерации для выбранных объектов.",
+      noShortlist: "Client shortlist появится здесь после генерации для выбранных объектов.",
+      noData: "Нет данных.",
+      noWarnings: "Критичных предупреждений нет",
+      noDeveloper: "Нет сопоставленного застройщика",
+      noDeveloperRisk: "Нет данных для developer risk",
+      manualDeveloperCheck: "Проверить продавца/застройщика вручную",
+      developerDueDiligence: "Проверить KRS/REGON и проектную компанию.",
+    },
+    developerLabels: {
+      strong: "сильный застройщик",
+      good: "хороший профиль",
+      mixed: "смешанный профиль",
+      limited_data: "мало данных",
+      risk_review: "нужна проверка",
+    },
+    assistantColumn: {
+      keyPoints: "Ключевые выводы",
+      tradeoffs: "Tradeoffs",
+    },
+  },
+  uk: {
+    title: "Порівняння об'єктів",
+    subtitle: "Порівняння ціни, ліквідності, ризиків, торгу та інвестиційного потенціалу.",
+    actions: {
+      search: "Підбір",
+      refresh: "Оновити",
+      getVerdict: "Отримати verdict",
+      buildShortlist: "Зібрати добірку",
+    },
+    sections: {
+      selector: "Вибір об'єктів",
+      aiVerdict: "AI verdict",
+      clientShortlist: "Client shortlist",
+      comparisonMatrix: "Матриця порівняння",
+      sourcesAndLimits: "Джерела та обмеження",
+    },
+    metrics: {
+      bestChoice: "Найкращий вибір",
+      belowFairPrice: "Нижче fair price",
+      cheaperMonthly: "Дешевше на місяць",
+      rentalSignal: "Орендний сигнал",
+    },
+    fields: {
+      audience: "Аудиторія",
+      question: "Питання",
+      client: "Клієнт",
+      intro: "Intro",
+    },
+    placeholders: {
+      aiQuestion: "Наприклад: що вибрати для сім'ї або здачі в оренду?",
+      clientName: "Anna",
+      intro: "Контекст для листа клієнту",
+    },
+    statuses: {
+      loadingListings: "Завантаження об'єктів...",
+      listingsLoaded: "Об'єкти завантажено",
+      backendUnavailable: "Backend API недоступний",
+      comparing: "Порівняння об'єктів...",
+      compareCount: (count) => `Порівнюється об'єктів: ${count}`,
+      compareUnavailable: "Порівняння недоступне для поточного набору",
+      compareLimit: "Максимум 5 об'єктів у порівнянні",
+      aiNotCreated: "AI verdict не створено",
+      aiReady: "AI verdict готовий до генерації",
+      aiBuilding: "AI verdict будується...",
+      aiRefused: "AI verdict відхилено guardrail-правилом",
+      aiSaved: (id) => `AI verdict збережено: ${id}`,
+      aiUnavailable: "AI verdict недоступний",
+      shortlistNotCreated: "Client shortlist не створено",
+      shortlistReady: "Client shortlist готовий до генерації",
+      shortlistBuilding: "Client shortlist будується...",
+      shortlistCount: (count) => `${count} об'єктів у клієнтській добірці`,
+      shortlistUnavailable: "Client shortlist недоступний",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      winner: "Winner",
+      sourceLinks: "Source links",
+      rank: (rank) => `#${rank}`,
+      roomsShort: (count) => `${count} кімн.`,
+      monthly: "міс.",
+      loan: "loan",
+      cash: "cash",
+      fair: "до fair",
+      negotiation: "торг",
+      gross: "gross",
+      liquidity: "liquidity",
+      rent: "rent",
+      metersToStop: (meters) => `${meters} м до зупинки`,
+      schoolsParks: (schools, parks) =>
+        `${schools} ${pluralUk(schools, "школа", "школи", "шкіл")} · ${parks} ${pluralUk(
+          parks,
+          "парк",
+          "парки",
+          "парків",
+        )}`,
+      plannedInvestments: (count) => `${count} у радіусі 2 км`,
+      mortgageAssumptions: (downPaymentPct, loanYears, interestPct) =>
+        `${downPaymentPct.toFixed(0)}% / ${loanYears} років / ${interestPct.toFixed(1)}%`,
+    },
+    table: {
+      metric: "Метрика",
+      location: "Локація",
+      price: "Ціна",
+      pricePerM2: "Ціна/m2",
+      areaRooms: "Площа і кімнати",
+      daysOnMarket: "Днів на ринку",
+      decisionScore: "Decision Score",
+      verdict: "Вердикт",
+      developer: "Забудовник",
+      developerRisk: "Ризик забудовника",
+      developerCheck: "Перевірити забудовника",
+      mortgagePayment: "Іпотека baseline",
+      cashNeeded: "Cash needed",
+      rentalEstimate: "Rental estimate",
+      priceLabel: "Оцінка ціни",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      negotiationScore: "Negotiation Score",
+      liquidity: "Liquidity",
+      rentalPotential: "Rental Potential",
+      fairPrice: "Fair price",
+      fairPriceConfidence: "Fair price confidence",
+      fairPriceDelta: "Delta до fair mid",
+      discountToFair: "Знижка до fair",
+      transport: "Транспорт",
+      infrastructure: "Інфраструктура",
+      plannedInvestments: "Planned investments",
+      negotiationArgument: "Аргумент для торгу",
+      mainRisk: "Головний ризик",
+      recommendation: "Рекомендація",
+    },
+    empty: {
+      selectMin: "Вибери мінімум 2 об'єкти для порівняння.",
+      noAiAnswer: "AI verdict з'явиться тут після генерації для вибраних об'єктів.",
+      noShortlist: "Client shortlist з'явиться тут після генерації для вибраних об'єктів.",
+      noData: "Немає даних.",
+      noWarnings: "Критичних попереджень немає",
+      noDeveloper: "Немає зіставленого забудовника",
+      noDeveloperRisk: "Немає даних для developer risk",
+      manualDeveloperCheck: "Перевірити продавця/забудовника вручну",
+      developerDueDiligence: "Перевірити KRS/REGON і проектну компанію.",
+    },
+    developerLabels: {
+      strong: "сильний забудовник",
+      good: "хороший профіль",
+      mixed: "змішаний профіль",
+      limited_data: "мало даних",
+      risk_review: "потрібна перевірка",
+    },
+    assistantColumn: {
+      keyPoints: "Ключові висновки",
+      tradeoffs: "Tradeoffs",
+    },
+  },
+};
+
 export const EXPLORER_COPY: Record<Locale, ExplorerCopy> = {
   en: buildExplorerCopy("en"),
   pl: buildExplorerCopy("pl"),
@@ -2696,6 +3367,15 @@ function pluralRu(count: number, one: string, few: string, many: string) {
   const mod10 = abs % 10;
   const mod100 = abs % 100;
   if (mod10 === 1 && mod100 !== 11) return one;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
+  return many;
+}
+
+function pluralPl(count: number, one: string, few: string, many: string) {
+  const abs = Math.abs(count);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (abs === 1) return one;
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
 }

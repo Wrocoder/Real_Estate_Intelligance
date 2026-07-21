@@ -47,6 +47,7 @@ const apiClient = read("lib/api.ts");
 const explorerPage = read("app/page.tsx");
 const checkPage = read("app/check/page.tsx");
 const checkDraftsPage = read("app/check/drafts/page.tsx");
+const comparePage = read("app/compare/page.tsx");
 const listingCard = read("components/ListingCard.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
@@ -184,6 +185,20 @@ expectIncludes("check drafts page i18n", checkDraftsPage, [
   "dateValue(draft.expires_at, locale)",
 ]);
 expectRegex("check drafts page no visible Russian literals", checkDraftsPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
+
+expectIncludes("compare page i18n", comparePage, [
+  "COMPARE_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "compareStatusText(copy, status)",
+  "copy.sections.selector",
+  "copy.actions.getVerdict",
+  "copy.actions.buildShortlist",
+  "comparisonRows(items, metricById, copy, locale)",
+  "key={row.id}",
+  "scoreLabel(metric.decision_label, locale)",
+  "money(metric.estimated_monthly_payment_pln, locale)",
+]);
+expectRegex("compare page no visible Russian literals", comparePage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("map component", mapComponent, [
   "DEFAULT_VISIBLE_LAYERS",
@@ -398,6 +413,7 @@ expectIncludes("i18n dictionaries", i18n, [
   "CHECK_PAGE_COPY",
   "CHECK_DRAFTS_COPY",
   "LISTING_DETAIL_COPY",
+  "COMPARE_PAGE_COPY",
   "normalizeLocale",
 ]);
 expectIncludes("localized score labels", scoreLabels, [
