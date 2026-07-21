@@ -103,6 +103,51 @@ button {
   background: rgba(255, 255, 255, 0.08);
 }
 
+.language-switcher {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 12px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.language-switcher-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  color: #a8b3bd;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.language-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.language-options button {
+  min-width: 0;
+  height: 34px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #dbe5ec;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.language-options button:hover,
+.language-options button.active {
+  border-color: var(--accent);
+  background: rgba(44, 123, 229, 0.18);
+  color: #ffffff;
+}
+
 .main {
   min-width: 0;
   overflow-x: hidden;

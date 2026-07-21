@@ -61,6 +61,10 @@ const landingScene = read("components/LandingMapScene.tsx");
 const betaLeadForm = read("components/BetaLeadForm.tsx");
 const seoGuides = read("lib/seoGuides.ts");
 const layout = read("app/layout.tsx");
+const localizedNavigation = read("components/LocalizedNavigation.tsx");
+const languageSwitcher = read("components/LanguageSwitcher.tsx");
+const i18n = read("lib/i18n.ts");
+const useLocalePreference = read("lib/useLocalePreference.ts");
 const sitemap = read("app/sitemap.ts");
 
 expectIncludes("package scripts", JSON.stringify(packageJson.scripts), [
@@ -311,12 +315,41 @@ expectRegex(
 );
 
 expectIncludes("primary navigation", layout, [
-  "href=\"/beta\"",
-  "href=\"/realtors\"",
-  "href=\"/guides\"",
-  "href=\"/reports\"",
-  "href=\"/pricing\"",
-  "href=\"/admin\"",
+  "LOCALE_COOKIE_NAME",
+  "normalizeLocale",
+  "<LocalizedNavigation",
+  "<LanguageSwitcher",
+]);
+expectIncludes("localized navigation", localizedNavigation, [
+  "href: \"/beta\"",
+  "href: \"/realtors\"",
+  "href: \"/guides\"",
+  "href: \"/reports\"",
+  "href: \"/pricing\"",
+  "href: \"/admin\"",
+  "NAVIGATION_LABELS[locale]",
+]);
+expectIncludes("language switcher", languageSwitcher, [
+  "LOCALE_OPTIONS.map",
+  "aria-pressed={option.code === locale}",
+  "setLocale(option.code)",
+]);
+expectIncludes("i18n dictionaries", i18n, [
+  "SUPPORTED_LOCALES",
+  "\"en\"",
+  "\"pl\"",
+  "\"ru\"",
+  "\"uk\"",
+  "NAVIGATION_LABELS",
+  "LANGUAGE_SWITCHER_LABELS",
+  "normalizeLocale",
+]);
+expectIncludes("locale preference persistence", useLocalePreference, [
+  "LOCALE_STORAGE_KEY",
+  "LOCALE_COOKIE_NAME",
+  "document.documentElement.lang = locale",
+  "window.localStorage.setItem",
+  "document.cookie",
 ]);
 expectIncludes("public sitemap", sitemap, [
   "\"/beta\"",

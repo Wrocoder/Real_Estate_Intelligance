@@ -13,6 +13,8 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены API endpoints, Dockerfile, `compose.yaml` с PostGIS и Redis.
 - Подготовлены тесты для API и скоринга.
 - Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
+- Добавлен frontend i18n foundation: EN/PL/RU/UK dictionaries, language switcher,
+  cookie/localStorage persistence и localized sidebar navigation.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлены административные map layers: районы, гмины и воеводство как переключаемые GeoJSON Polygon слои с metadata counts.
 - Добавлены MPZP/Studium planning screening layers: plan/policy zones с `review_required` legal flags и UI toggles.

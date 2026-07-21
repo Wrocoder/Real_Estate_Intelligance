@@ -298,12 +298,15 @@
 Русский и Українська без дублирования бизнес-логики и без смешивания языков в
 отчетах, SEO-страницах, email/Telegram alerts и AI summaries.
 
-- [ ] Выбрать i18n архитектуру для frontend: route-prefix или cookie/user preference,
+- [x] Выбрать i18n архитектуру для frontend: cookie/user preference,
   dictionary loading, fallback locale, форматирование дат/валют/чисел.
-- [ ] Добавить language switcher в основной layout/navigation: English, Polski,
+- [x] Добавить language switcher в основной layout/navigation: English, Polski,
   Русский, Українська.
-- [ ] Добавить сохранение выбранного языка: anonymous cookie/localStorage и
-  authenticated user preference в account/profile settings.
+- [x] Добавить сохранение выбранного языка для anonymous users: cookie/localStorage.
+- [ ] Добавить сохранение выбранного языка как authenticated user preference в
+  account/profile settings.
+- [x] Вынести sidebar/navigation labels и language switcher labels в translation
+  dictionaries для English, Polski, Русский, Українська.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
 - [ ] Локализовать главные публичные страницы: home/explorer, check apartment,
@@ -593,6 +596,7 @@
 - [x] Commit 107: MVP hosting decision and Render Blueprint.
 - [x] Commit 108: Poland city expansion criteria and source checklist.
 - [x] Commit 109: Multilingual/i18n roadmap for English, Polish, Russian and Ukrainian.
+- [x] Commit 110: Frontend i18n foundation and language switcher.
 
 ## Current Sprint
 
@@ -715,6 +719,8 @@
   checklist, city scoring card and definition of done.
 - [x] Добавить multilingual/i18n roadmap в план: English, Polski, Русский,
   Українська, language switcher, localized UI, reports, SEO, alerts and AI templates.
+- [x] Добавить frontend i18n foundation: locale dictionaries, cookie/localStorage
+  persistence, `html lang` sync, localized sidebar navigation and smoke coverage.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
