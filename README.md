@@ -17,6 +17,8 @@ FastAPI backend для поиска объектов, сравнения, ско
   cookie/localStorage persistence и localized sidebar navigation.
 - Локализована главная страница подбора: header, метрики, фильтры, статусы,
   pagination, карточки объектов, score labels и форматирование чисел/валют.
+- Локализован flow проверки квартиры `/check`: URL-import, форма параметров,
+  статусы private draft/report, AI controls, comparables и форматирование дат/валют.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлены административные map layers: районы, гмины и воеводство как переключаемые GeoJSON Polygon слои с metadata counts.
 - Добавлены MPZP/Studium planning screening layers: plan/policy zones с `review_required` legal flags и UI toggles.

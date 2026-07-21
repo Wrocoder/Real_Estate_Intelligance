@@ -309,9 +309,11 @@
   dictionaries для English, Polski, Русский, Українська.
 - [x] Локализовать home/explorer page: header, metrics, filters, statuses,
   pagination, listing cards, score labels и number/currency/percent formatting.
+- [x] Локализовать check apartment page: URL import, private draft statuses,
+  object form, result summary, AI assistant controls, comparables table and date/currency formatting.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
-- [ ] Локализовать главные публичные страницы: check apartment, listing detail,
+- [ ] Локализовать главные публичные страницы: check draft history, listing detail,
   compare, reports, alerts, pricing, account, areas, news,
   developers, CRM-light pages.
 - [ ] Локализовать backend/user-facing API messages там, где они отображаются в UI:
@@ -600,6 +602,7 @@
 - [x] Commit 109: Multilingual/i18n roadmap for English, Polish, Russian and Ukrainian.
 - [x] Commit 110: Frontend i18n foundation and language switcher.
 - [x] Commit 111: Explorer search flow, listing cards and score labels i18n.
+- [x] Commit 112: Check apartment URL-to-report flow i18n.
 
 ## Current Sprint
 
@@ -726,6 +729,8 @@
   persistence, `html lang` sync, localized sidebar navigation and smoke coverage.
 - [x] Локализовать explorer/search flow: header, filters, statuses, pagination,
   listing cards, score labels and locale-aware numeric formatting.
+- [x] Локализовать check apartment URL-to-report flow: import statuses, form labels,
+  result metrics, AI assistant controls, comparables and locale-aware dates/currency.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

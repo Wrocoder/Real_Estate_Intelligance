@@ -164,6 +164,175 @@ export type ListingCardCopy = {
   heating: (value: string) => string;
 };
 
+export type CheckPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    history: string;
+    getReport: string;
+    check: string;
+    acceptAndReport: string;
+    retryImport: string;
+    linkAndParamsReport: string;
+    refresh: string;
+    generateReport: string;
+    saveToHistory: string;
+    save: string;
+    answer: string;
+  };
+  sections: {
+    sourceLink: string;
+    objectParams: string;
+    result: string;
+    aiAssistant: string;
+    conclusions: string;
+    negotiation: string;
+    comparables: string;
+    buyerReport: string;
+  };
+  fields: {
+    title: string;
+    developer: string;
+    investment: string;
+    address: string;
+    city: string;
+    district: string;
+    market: string;
+    price: string;
+    area: string;
+    rooms: string;
+    floor: string;
+    buildingFloors: string;
+    buildingYear: string;
+    privateAnalysis: string;
+    audience: string;
+    topic: string;
+    question: string;
+  };
+  placeholders: {
+    sourceUrl: string;
+    optional: string;
+    customQuestion: string;
+  };
+  metrics: {
+    verdict: string;
+    investmentScore: string;
+    riskScore: string;
+    fairPriceMid: string;
+    confidence: string;
+    priceLabel: string;
+    provider: string;
+    domain: string;
+    reference: string;
+    requiredFields: string;
+    importStatus: string;
+    extracted: string;
+    http: string;
+    source: string;
+    objectPrice: string;
+    pricePerM2: string;
+    fairPriceRange: string;
+    comparableListings: string;
+    sourceDomain: string;
+    privateDraft: string;
+    expires: string;
+  };
+  statuses: {
+    ready: string;
+    noLink: string;
+    linkNotChecked: string;
+    importNotStarted: string;
+    reportNotCreated: string;
+    notSaved: string;
+    aiReadyAfterCheck: string;
+    aiQuestionsUnavailable: string;
+    calculating: string;
+    checkReady: string;
+    checkError: string;
+    loadingLink: string;
+    autoImporting: string;
+    linkAcceptedNoParams: string;
+    reportNoListingData: string;
+    linkAcceptedMissingFields: string;
+    missingFields: (fields: string) => string;
+    fieldsUpdated: string;
+    linkError: string;
+    importError: string;
+    fillRequiredForReport: string;
+    reportGenerating: string;
+    reportReady: string;
+    reportError: string;
+    saving: string;
+    saved: string;
+    saveError: string;
+    aiReady: string;
+    aiNeedsDraft: string;
+    aiDraftRequired: string;
+    aiBuilding: string;
+    aiRefused: string;
+    aiSaved: (id: string) => string;
+    aiUnavailable: string;
+    importExtracted: (count: number) => string;
+    importPartial: (count: number) => string;
+    importUnsupported: string;
+    importFailed: string;
+  };
+  requiredFieldLabels: {
+    address: string;
+    city: string;
+    district: string;
+    price: string;
+    area_m2: string;
+    rooms: string;
+  };
+  values: {
+    manual: string;
+    manualInput: string;
+    notSaved: string;
+    noDraft: string;
+    dash: string;
+    primary: string;
+    secondary: string;
+    buyer: string;
+    realtor: string;
+    investor: string;
+    refused: string;
+    sourceGrounded: string;
+    html: string;
+  };
+  table: {
+    object: string;
+    district: string;
+    price: string;
+    area: string;
+    rooms: string;
+    pricePerM2: string;
+  };
+  empty: {
+    noResult: string;
+    aiReady: string;
+    aiNeedsSavedDraft: string;
+    noData: string;
+  };
+  developer: {
+    title: string;
+    profile: string;
+    ratingLine: (rating: number, confidence: number) => string;
+    projectsLine: (completed: number, active: number) => string;
+    labels: Record<string, string>;
+  };
+  assistantColumn: {
+    keyPoints: string;
+    sources: string;
+    guardrails: string;
+  };
+  fallbackQuestion: {
+    label: string;
+    description: string;
+  };
+  errorPrefix: string;
+};
+
 export const LOCALE_OPTIONS: LocaleOption[] = [
   { code: "en", nativeName: "English", englishName: "English", shortLabel: "EN" },
   { code: "pl", nativeName: "Polski", englishName: "Polish", shortLabel: "PL" },
@@ -186,7 +355,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     market: "Market",
     mortgage: "Mortgage",
     pricing: "Pricing",
-    alerts: "Уведомления",
+    alerts: "Alerts",
     account: "Account",
     admin: "Admin",
     api: "API",
@@ -224,7 +393,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     market: "Рынок",
     mortgage: "Ипотека",
     pricing: "Оплата",
-    alerts: "Alerts",
+    alerts: "Уведомления",
     account: "Аккаунт",
     admin: "Admin",
     api: "API",
@@ -419,6 +588,711 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
   },
 };
 
+export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
+  en: {
+    title: "Check apartment",
+    subtitle: "Address, listing parameters, fair price, risks, negotiation and nearest comparables.",
+    actions: {
+      history: "History",
+      getReport: "Get report",
+      check: "Check",
+      acceptAndReport: "Accept and get report",
+      retryImport: "Retry import",
+      linkAndParamsReport: "Link + parameters -> report",
+      refresh: "Refresh",
+      generateReport: "Generate report",
+      saveToHistory: "Save to history",
+      save: "Save",
+      answer: "Answer",
+    },
+    sections: {
+      sourceLink: "Listing link",
+      objectParams: "Object parameters",
+      result: "Check result",
+      aiAssistant: "AI assistant for private draft",
+      conclusions: "Conclusions",
+      negotiation: "Negotiation",
+      comparables: "Comparison base",
+      buyerReport: "Buyer report",
+    },
+    fields: {
+      title: "Title",
+      developer: "Developer",
+      investment: "Investment / project",
+      address: "Address",
+      city: "City",
+      district: "District",
+      market: "Market",
+      price: "Price",
+      area: "Area m2",
+      rooms: "Rooms",
+      floor: "Floor",
+      buildingFloors: "Building floors",
+      buildingYear: "Building year",
+      privateAnalysis: "private analysis",
+      audience: "Audience",
+      topic: "Topic",
+      question: "Question",
+    },
+    placeholders: {
+      sourceUrl: "https://www.otodom.pl/...",
+      optional: "optional",
+      customQuestion: "Example: what risks should I check before zadatek?",
+    },
+    metrics: {
+      verdict: "Verdict",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      fairPriceMid: "Fair price mid",
+      confidence: "Confidence",
+      priceLabel: "Price label",
+      provider: "Provider",
+      domain: "Domain",
+      reference: "Reference",
+      requiredFields: "Required fields",
+      importStatus: "Import status",
+      extracted: "Extracted",
+      http: "HTTP",
+      source: "Source",
+      objectPrice: "Object price",
+      pricePerM2: "Price per m2",
+      fairPriceRange: "Fair price range",
+      comparableListings: "Comparable listings",
+      sourceDomain: "Source domain",
+      privateDraft: "Private draft",
+      expires: "Expires",
+    },
+    statuses: {
+      ready: "Ready to check",
+      noLink: "No link added",
+      linkNotChecked: "Link not checked",
+      importNotStarted: "Auto-import has not run",
+      reportNotCreated: "Report not created",
+      notSaved: "Not saved",
+      aiReadyAfterCheck: "AI assistant is ready after a check",
+      aiQuestionsUnavailable: "AI questions unavailable",
+      calculating: "Calculating...",
+      checkReady: "Check ready",
+      checkError: "Check error",
+      loadingLink: "Loading link...",
+      autoImporting: "Auto-import...",
+      linkAcceptedNoParams: "Link accepted, but the portal did not return parameters",
+      reportNoListingData: "Report not created: no listing data",
+      linkAcceptedMissingFields: "Link accepted, but required fields are missing",
+      missingFields: (fields) => `Missing: ${fields}`,
+      fieldsUpdated: "Fields updated from link",
+      linkError: "Link error",
+      importError: "Auto-import error",
+      fillRequiredForReport: "Fill required fields to create a report",
+      reportGenerating: "Generating...",
+      reportReady: "Report ready",
+      reportError: "Report error",
+      saving: "Saving...",
+      saved: "Saved",
+      saveError: "Save error",
+      aiReady: "AI assistant ready",
+      aiNeedsDraft: "AI assistant needs a saved draft",
+      aiDraftRequired: "Get a check with saved draft first",
+      aiBuilding: "AI answer is being built...",
+      aiRefused: "AI answer refused by guardrail rules",
+      aiSaved: (id) => `AI answer saved: ${id}`,
+      aiUnavailable: "AI answer unavailable",
+      importExtracted: (count) => `Auto-import: filled ${count} fields`,
+      importPartial: (count) => `Partial auto-import: filled ${count} fields`,
+      importUnsupported: "Auto-import is available only for Otodom/OLX",
+      importFailed: "Auto-import did not extract parameters, fill fields manually",
+    },
+    requiredFieldLabels: {
+      address: "address",
+      city: "city",
+      district: "district",
+      price: "price",
+      area_m2: "area",
+      rooms: "rooms",
+    },
+    values: {
+      manual: "manual",
+      manualInput: "manual input",
+      notSaved: "not saved",
+      noDraft: "no draft",
+      dash: "-",
+      primary: "primary",
+      secondary: "secondary",
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      html: "HTML",
+    },
+    table: {
+      object: "Object",
+      district: "District",
+      price: "Price",
+      area: "m2",
+      rooms: "Rooms",
+      pricePerM2: "Price/m2",
+    },
+    empty: {
+      noResult: "Enter parameters and run the check.",
+      aiReady: "AI answer will appear after a question for the saved private draft.",
+      aiNeedsSavedDraft: "AI assistant needs a saved draft: run the check or report again.",
+      noData: "No data.",
+    },
+    developer: {
+      title: "Developer",
+      profile: "Developer profile",
+      ratingLine: (rating, confidence) => `Rating ${rating}/100, confidence ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Completed projects: ${completed}; active: ${active}.`,
+      labels: {
+        strong: "strong",
+        good: "good",
+        mixed: "mixed",
+        limited_data: "limited data",
+        risk_review: "review",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Key points",
+      sources: "Sources",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Sprawdź mieszkanie",
+    subtitle: "Adres, parametry oferty, fair price, ryzyka, negocjacje i najbliższe porównania.",
+    actions: {
+      history: "Historia",
+      getReport: "Pobierz raport",
+      check: "Sprawdź",
+      acceptAndReport: "Akceptuj i pobierz raport",
+      retryImport: "Ponów import",
+      linkAndParamsReport: "Link + parametry -> raport",
+      refresh: "Odśwież",
+      generateReport: "Wygeneruj raport",
+      saveToHistory: "Zapisz w historii",
+      save: "Zapisz",
+      answer: "Odpowiedz",
+    },
+    sections: {
+      sourceLink: "Link do ogłoszenia",
+      objectParams: "Parametry obiektu",
+      result: "Wynik sprawdzenia",
+      aiAssistant: "AI assistant dla private draft",
+      conclusions: "Wnioski",
+      negotiation: "Negocjacje",
+      comparables: "Baza porównań",
+      buyerReport: "Raport kupującego",
+    },
+    fields: {
+      title: "Tytuł",
+      developer: "Deweloper",
+      investment: "Inwestycja / projekt",
+      address: "Adres",
+      city: "Miasto",
+      district: "Dzielnica",
+      market: "Rynek",
+      price: "Cena",
+      area: "Powierzchnia m2",
+      rooms: "Pokoje",
+      floor: "Piętro",
+      buildingFloors: "Pięter w budynku",
+      buildingYear: "Rok budynku",
+      privateAnalysis: "analiza prywatna",
+      audience: "Odbiorca",
+      topic: "Temat",
+      question: "Pytanie",
+    },
+    placeholders: {
+      sourceUrl: "https://www.otodom.pl/...",
+      optional: "opcjonalnie",
+      customQuestion: "Np.: jakie ryzyka sprawdzić przed zadatkiem?",
+    },
+    metrics: {
+      verdict: "Werdykt",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      fairPriceMid: "Fair price mid",
+      confidence: "Pewność",
+      priceLabel: "Ocena ceny",
+      provider: "Provider",
+      domain: "Domena",
+      reference: "Reference",
+      requiredFields: "Wymagane pola",
+      importStatus: "Status importu",
+      extracted: "Wyciągnięto",
+      http: "HTTP",
+      source: "Źródło",
+      objectPrice: "Cena obiektu",
+      pricePerM2: "Cena za m2",
+      fairPriceRange: "Fair price range",
+      comparableListings: "Oferty porównawcze",
+      sourceDomain: "Domena źródła",
+      privateDraft: "Private draft",
+      expires: "Wygasa",
+    },
+    statuses: {
+      ready: "Gotowe do sprawdzenia",
+      noLink: "Nie dodano linku",
+      linkNotChecked: "Link niesprawdzony",
+      importNotStarted: "Auto-import nie był uruchomiony",
+      reportNotCreated: "Raport nieutworzony",
+      notSaved: "Nie zapisano",
+      aiReadyAfterCheck: "AI assistant będzie gotowy po sprawdzeniu",
+      aiQuestionsUnavailable: "AI questions niedostępne",
+      calculating: "Liczenie...",
+      checkReady: "Sprawdzenie gotowe",
+      checkError: "Błąd sprawdzenia",
+      loadingLink: "Ładowanie linku...",
+      autoImporting: "Auto-import...",
+      linkAcceptedNoParams: "Link przyjęty, ale portal nie zwrócił parametrów",
+      reportNoListingData: "Raport nieutworzony: brak danych ogłoszenia",
+      linkAcceptedMissingFields: "Link przyjęty, ale brakuje wymaganych pól",
+      missingFields: (fields) => `Brakuje: ${fields}`,
+      fieldsUpdated: "Pola uzupełnione z linku",
+      linkError: "Błąd linku",
+      importError: "Błąd auto-importu",
+      fillRequiredForReport: "Uzupełnij wymagane pola, aby stworzyć raport",
+      reportGenerating: "Generowanie...",
+      reportReady: "Raport gotowy",
+      reportError: "Błąd raportu",
+      saving: "Zapisywanie...",
+      saved: "Zapisano",
+      saveError: "Błąd zapisu",
+      aiReady: "AI assistant gotowy",
+      aiNeedsDraft: "AI assistant wymaga saved draft",
+      aiDraftRequired: "Najpierw wykonaj sprawdzenie z saved draft",
+      aiBuilding: "AI answer jest generowany...",
+      aiRefused: "AI answer odrzucony przez guardrail rules",
+      aiSaved: (id) => `AI answer zapisany: ${id}`,
+      aiUnavailable: "AI answer niedostępny",
+      importExtracted: (count) => `Auto-import: uzupełniono ${count} pól`,
+      importPartial: (count) => `Częściowy auto-import: uzupełniono ${count} pól`,
+      importUnsupported: "Auto-import jest dostępny tylko dla Otodom/OLX",
+      importFailed: "Auto-import nie pobrał parametrów, uzupełnij pola ręcznie",
+    },
+    requiredFieldLabels: {
+      address: "adres",
+      city: "miasto",
+      district: "dzielnica",
+      price: "cena",
+      area_m2: "powierzchnia",
+      rooms: "pokoje",
+    },
+    values: {
+      manual: "ręcznie",
+      manualInput: "ręczne dane",
+      notSaved: "nie zapisano",
+      noDraft: "brak draftu",
+      dash: "-",
+      primary: "pierwotny",
+      secondary: "wtórny",
+      buyer: "Kupujący",
+      realtor: "Pośrednik",
+      investor: "Inwestor",
+      refused: "Odrzucono",
+      sourceGrounded: "Source-grounded",
+      html: "HTML",
+    },
+    table: {
+      object: "Obiekt",
+      district: "Dzielnica",
+      price: "Cena",
+      area: "m2",
+      rooms: "Pokoje",
+      pricePerM2: "Cena/m2",
+    },
+    empty: {
+      noResult: "Wprowadź parametry i uruchom sprawdzenie.",
+      aiReady: "AI answer pojawi się po pytaniu do zapisanego private draft.",
+      aiNeedsSavedDraft: "AI assistant wymaga saved draft: uruchom sprawdzenie lub raport ponownie.",
+      noData: "Brak danych.",
+    },
+    developer: {
+      title: "Deweloper",
+      profile: "Profil dewelopera",
+      ratingLine: (rating, confidence) => `Rating ${rating}/100, confidence ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Ukończone projekty: ${completed}; aktywne: ${active}.`,
+      labels: {
+        strong: "mocny",
+        good: "dobry",
+        mixed: "mieszany",
+        limited_data: "mało danych",
+        risk_review: "do sprawdzenia",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Kluczowe wnioski",
+      sources: "Źródła",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Podsumowanie obiektu",
+      description: "Krótki source-grounded summary decyzji.",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Проверить квартиру",
+    subtitle: "Адрес, параметры объекта, fair price, риски, торг и ближайшие аналоги.",
+    actions: {
+      history: "История",
+      getReport: "Получить отчет",
+      check: "Проверить",
+      acceptAndReport: "Принять и получить отчет",
+      retryImport: "Повторить импорт",
+      linkAndParamsReport: "Ссылка + параметры -> отчет",
+      refresh: "Обновить",
+      generateReport: "Сгенерировать отчет",
+      saveToHistory: "Сохранить в историю",
+      save: "Сохранить",
+      answer: "Ответить",
+    },
+    sections: {
+      sourceLink: "Ссылка объявления",
+      objectParams: "Параметры объекта",
+      result: "Итог проверки",
+      aiAssistant: "AI assistant по private draft",
+      conclusions: "Выводы",
+      negotiation: "Торг",
+      comparables: "База сравнения",
+      buyerReport: "Buyer report",
+    },
+    fields: {
+      title: "Название",
+      developer: "Застройщик",
+      investment: "Инвестиция / проект",
+      address: "Адрес",
+      city: "Город",
+      district: "Район",
+      market: "Рынок",
+      price: "Цена",
+      area: "Площадь m2",
+      rooms: "Комнаты",
+      floor: "Этаж",
+      buildingFloors: "Этажей в доме",
+      buildingYear: "Год дома",
+      privateAnalysis: "private analysis",
+      audience: "Аудитория",
+      topic: "Тема",
+      question: "Вопрос",
+    },
+    placeholders: {
+      sourceUrl: "https://www.otodom.pl/...",
+      optional: "optional",
+      customQuestion: "Например: какие риски проверить до zadatek?",
+    },
+    metrics: {
+      verdict: "Вердикт",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      fairPriceMid: "Fair price mid",
+      confidence: "Confidence",
+      priceLabel: "Price label",
+      provider: "Provider",
+      domain: "Domain",
+      reference: "Reference",
+      requiredFields: "Required fields",
+      importStatus: "Import status",
+      extracted: "Extracted",
+      http: "HTTP",
+      source: "Source",
+      objectPrice: "Цена объекта",
+      pricePerM2: "Цена за m2",
+      fairPriceRange: "Fair price range",
+      comparableListings: "Comparable listings",
+      sourceDomain: "Source domain",
+      privateDraft: "Private draft",
+      expires: "Expires",
+    },
+    statuses: {
+      ready: "Готово к проверке",
+      noLink: "Ссылка не добавлена",
+      linkNotChecked: "Ссылка не проверена",
+      importNotStarted: "Автоимпорт не запускался",
+      reportNotCreated: "Отчет не создан",
+      notSaved: "Не сохранен",
+      aiReadyAfterCheck: "AI assistant готов после проверки",
+      aiQuestionsUnavailable: "AI questions недоступны",
+      calculating: "Расчет...",
+      checkReady: "Проверка готова",
+      checkError: "Ошибка проверки",
+      loadingLink: "Загрузка ссылки...",
+      autoImporting: "Автоимпорт...",
+      linkAcceptedNoParams: "Ссылка принята, но портал не отдал параметры",
+      reportNoListingData: "Отчет не создан: нет данных объявления",
+      linkAcceptedMissingFields: "Ссылка принята, но нужны обязательные поля",
+      missingFields: (fields) => `Не хватает: ${fields}`,
+      fieldsUpdated: "Поля обновлены из ссылки",
+      linkError: "Ошибка ссылки",
+      importError: "Ошибка автоимпорта",
+      fillRequiredForReport: "Заполните обязательные поля для отчета",
+      reportGenerating: "Генерация...",
+      reportReady: "Отчет готов",
+      reportError: "Ошибка отчета",
+      saving: "Сохранение...",
+      saved: "Сохранен",
+      saveError: "Ошибка сохранения",
+      aiReady: "AI assistant готов",
+      aiNeedsDraft: "AI assistant требует saved draft",
+      aiDraftRequired: "Сначала нужно получить проверку с saved draft",
+      aiBuilding: "AI answer строится...",
+      aiRefused: "AI answer отклонен guardrail-правилом",
+      aiSaved: (id) => `AI answer сохранен: ${id}`,
+      aiUnavailable: "AI answer недоступен",
+      importExtracted: (count) => `Автоимпорт: заполнено ${count} полей`,
+      importPartial: (count) => `Автоимпорт частичный: заполнено ${count} полей`,
+      importUnsupported: "Автоимпорт доступен только для Otodom/OLX",
+      importFailed: "Автоимпорт не получил параметры, заполните поля вручную",
+    },
+    requiredFieldLabels: {
+      address: "адрес",
+      city: "город",
+      district: "район",
+      price: "цена",
+      area_m2: "площадь",
+      rooms: "комнаты",
+    },
+    values: {
+      manual: "manual",
+      manualInput: "manual input",
+      notSaved: "not saved",
+      noDraft: "no draft",
+      dash: "-",
+      primary: "primary",
+      secondary: "secondary",
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      html: "HTML",
+    },
+    table: {
+      object: "Объект",
+      district: "Район",
+      price: "Цена",
+      area: "m2",
+      rooms: "Комнаты",
+      pricePerM2: "Цена/m2",
+    },
+    empty: {
+      noResult: "Введите параметры и запустите проверку.",
+      aiReady: "AI answer появится после запроса по сохраненному private draft.",
+      aiNeedsSavedDraft: "Для AI assistant нужен saved draft: запусти проверку или отчет заново.",
+      noData: "Нет данных.",
+    },
+    developer: {
+      title: "Застройщик",
+      profile: "Профиль застройщика",
+      ratingLine: (rating, confidence) =>
+        `Рейтинг ${rating}/100, уверенность ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Сдано проектов: ${completed}; активных: ${active}.`,
+      labels: {
+        strong: "сильный",
+        good: "хороший",
+        mixed: "смешанный",
+        limited_data: "мало данных",
+        risk_review: "проверить",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Ключевые выводы",
+      sources: "Источники",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Перевірити квартиру",
+    subtitle: "Адреса, параметри об'єкта, fair price, ризики, торг і найближчі аналоги.",
+    actions: {
+      history: "Історія",
+      getReport: "Отримати звіт",
+      check: "Перевірити",
+      acceptAndReport: "Прийняти й отримати звіт",
+      retryImport: "Повторити імпорт",
+      linkAndParamsReport: "Посилання + параметри -> звіт",
+      refresh: "Оновити",
+      generateReport: "Згенерувати звіт",
+      saveToHistory: "Зберегти в історію",
+      save: "Зберегти",
+      answer: "Відповісти",
+    },
+    sections: {
+      sourceLink: "Посилання оголошення",
+      objectParams: "Параметри об'єкта",
+      result: "Підсумок перевірки",
+      aiAssistant: "AI assistant для private draft",
+      conclusions: "Висновки",
+      negotiation: "Торг",
+      comparables: "База порівняння",
+      buyerReport: "Buyer report",
+    },
+    fields: {
+      title: "Назва",
+      developer: "Забудовник",
+      investment: "Інвестиція / проект",
+      address: "Адреса",
+      city: "Місто",
+      district: "Район",
+      market: "Ринок",
+      price: "Ціна",
+      area: "Площа m2",
+      rooms: "Кімнати",
+      floor: "Поверх",
+      buildingFloors: "Поверхів у будинку",
+      buildingYear: "Рік будинку",
+      privateAnalysis: "private analysis",
+      audience: "Аудиторія",
+      topic: "Тема",
+      question: "Питання",
+    },
+    placeholders: {
+      sourceUrl: "https://www.otodom.pl/...",
+      optional: "optional",
+      customQuestion: "Наприклад: які ризики перевірити до zadatek?",
+    },
+    metrics: {
+      verdict: "Вердикт",
+      investmentScore: "Investment Score",
+      riskScore: "Risk Score",
+      fairPriceMid: "Fair price mid",
+      confidence: "Confidence",
+      priceLabel: "Price label",
+      provider: "Provider",
+      domain: "Domain",
+      reference: "Reference",
+      requiredFields: "Required fields",
+      importStatus: "Import status",
+      extracted: "Extracted",
+      http: "HTTP",
+      source: "Source",
+      objectPrice: "Ціна об'єкта",
+      pricePerM2: "Ціна за m2",
+      fairPriceRange: "Fair price range",
+      comparableListings: "Comparable listings",
+      sourceDomain: "Source domain",
+      privateDraft: "Private draft",
+      expires: "Expires",
+    },
+    statuses: {
+      ready: "Готово до перевірки",
+      noLink: "Посилання не додано",
+      linkNotChecked: "Посилання не перевірено",
+      importNotStarted: "Автоімпорт не запускався",
+      reportNotCreated: "Звіт не створено",
+      notSaved: "Не збережено",
+      aiReadyAfterCheck: "AI assistant готовий після перевірки",
+      aiQuestionsUnavailable: "AI questions недоступні",
+      calculating: "Розрахунок...",
+      checkReady: "Перевірка готова",
+      checkError: "Помилка перевірки",
+      loadingLink: "Завантаження посилання...",
+      autoImporting: "Автоімпорт...",
+      linkAcceptedNoParams: "Посилання прийнято, але портал не повернув параметри",
+      reportNoListingData: "Звіт не створено: немає даних оголошення",
+      linkAcceptedMissingFields: "Посилання прийнято, але потрібні обов'язкові поля",
+      missingFields: (fields) => `Не вистачає: ${fields}`,
+      fieldsUpdated: "Поля оновлено з посилання",
+      linkError: "Помилка посилання",
+      importError: "Помилка автоімпорту",
+      fillRequiredForReport: "Заповніть обов'язкові поля для звіту",
+      reportGenerating: "Генерація...",
+      reportReady: "Звіт готовий",
+      reportError: "Помилка звіту",
+      saving: "Збереження...",
+      saved: "Збережено",
+      saveError: "Помилка збереження",
+      aiReady: "AI assistant готовий",
+      aiNeedsDraft: "AI assistant потребує saved draft",
+      aiDraftRequired: "Спочатку потрібно отримати перевірку зі saved draft",
+      aiBuilding: "AI answer будується...",
+      aiRefused: "AI answer відхилено guardrail-правилом",
+      aiSaved: (id) => `AI answer збережено: ${id}`,
+      aiUnavailable: "AI answer недоступний",
+      importExtracted: (count) => `Автоімпорт: заповнено ${count} полів`,
+      importPartial: (count) => `Автоімпорт частковий: заповнено ${count} полів`,
+      importUnsupported: "Автоімпорт доступний тільки для Otodom/OLX",
+      importFailed: "Автоімпорт не отримав параметри, заповніть поля вручну",
+    },
+    requiredFieldLabels: {
+      address: "адреса",
+      city: "місто",
+      district: "район",
+      price: "ціна",
+      area_m2: "площа",
+      rooms: "кімнати",
+    },
+    values: {
+      manual: "manual",
+      manualInput: "manual input",
+      notSaved: "not saved",
+      noDraft: "no draft",
+      dash: "-",
+      primary: "primary",
+      secondary: "secondary",
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      html: "HTML",
+    },
+    table: {
+      object: "Об'єкт",
+      district: "Район",
+      price: "Ціна",
+      area: "m2",
+      rooms: "Кімнати",
+      pricePerM2: "Ціна/m2",
+    },
+    empty: {
+      noResult: "Введіть параметри й запустіть перевірку.",
+      aiReady: "AI answer з'явиться після запиту щодо збереженого private draft.",
+      aiNeedsSavedDraft: "Для AI assistant потрібен saved draft: запустіть перевірку або звіт знову.",
+      noData: "Немає даних.",
+    },
+    developer: {
+      title: "Забудовник",
+      profile: "Профіль забудовника",
+      ratingLine: (rating, confidence) =>
+        `Рейтинг ${rating}/100, впевненість ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Здано проектів: ${completed}; активних: ${active}.`,
+      labels: {
+        strong: "сильний",
+        good: "хороший",
+        mixed: "змішаний",
+        limited_data: "мало даних",
+        risk_review: "перевірити",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Ключові висновки",
+      sources: "Джерела",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
 export const EXPLORER_COPY: Record<Locale, ExplorerCopy> = {
   en: buildExplorerCopy("en"),
   pl: buildExplorerCopy("pl"),
@@ -445,11 +1319,11 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         refresh: "Refresh",
         hiddenGems: "Hidden gems",
         compare: (count) => `Compare ${count}`,
-        alert: "Уведомление",
+        alert: "Alert",
         apply: "Apply",
         reset: "Reset",
         reports: "Reports",
-        favorite: "Избранное",
+        favorite: "Favorite",
       },
       metrics: {
         found: "Listings found",
@@ -652,11 +1526,11 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         refresh: "Обновить",
         hiddenGems: "Hidden gems",
         compare: (count) => `Сравнить ${count}`,
-        alert: "Alert",
+        alert: "Уведомление",
         apply: "Применить",
         reset: "Сброс",
         reports: "Отчеты",
-        favorite: "Favorite",
+        favorite: "Избранное",
       },
       metrics: {
         found: "Объектов найдено",

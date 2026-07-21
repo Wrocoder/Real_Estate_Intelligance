@@ -24,6 +24,14 @@ export function percent(value: number, locale?: Locale) {
   return `${sign}${formatted}%`;
 }
 
+export function dateValue(value: string | Date, locale?: Locale) {
+  return new Intl.DateTimeFormat(intlLocale(locale), {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+  }).format(new Date(value));
+}
+
 export function scoreTone(score: number) {
   if (score >= 75) return "strong";
   if (score >= 50) return "medium";

@@ -32,8 +32,10 @@ import {
   type UserSubmittedListingReport,
   type UserSubmittedListingRequest,
 } from "@/lib/api";
-import { money, numberValue } from "@/lib/format";
+import { dateValue, money, numberValue } from "@/lib/format";
+import { CHECK_PAGE_COPY, type CheckPageCopy } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type CheckFormState = {
   title: string;
@@ -76,8 +78,11 @@ const DEFAULT_FORM: CheckFormState = {
 };
 
 const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
+type RequiredReportField = keyof CheckPageCopy["requiredFieldLabels"];
 
 export default function CheckListingPage() {
+  const { locale } = useLocalePreference();
+  const copy = CHECK_PAGE_COPY[locale];
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
   const [referencePreview, setReferencePreview] =
@@ -91,12 +96,12 @@ export default function CheckListingPage() {
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
   const [customAIQuestion, setCustomAIQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState<AIListingAnswer | null>(null);
-  const [status, setStatus] = useState("Готово к проверке");
-  const [referenceStatus, setReferenceStatus] = useState("Ссылка не добавлена");
-  const [urlImportStatus, setUrlImportStatus] = useState("Автоимпорт не запускался");
-  const [reportStatus, setReportStatus] = useState("Отчет не создан");
-  const [saveStatus, setSaveStatus] = useState("Не сохранен");
-  const [aiStatus, setAiStatus] = useState("AI assistant готов после проверки");
+  const [status, setStatus] = useState(copy.statuses.ready);
+  const [referenceStatus, setReferenceStatus] = useState(copy.statuses.noLink);
+  const [urlImportStatus, setUrlImportStatus] = useState(copy.statuses.importNotStarted);
+  const [reportStatus, setReportStatus] = useState(copy.statuses.reportNotCreated);
+  const [saveStatus, setSaveStatus] = useState(copy.statuses.notSaved);
+  const [aiStatus, setAiStatus] = useState(copy.statuses.aiReadyAfterCheck);
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
@@ -108,16 +113,16 @@ export default function CheckListingPage() {
         setAIQuestions(payload);
       } catch (caught) {
         setAiError(caught instanceof Error ? caught.message : "AI questions unavailable");
-        setAiStatus("AI questions недоступны");
+        setAiStatus(copy.statuses.aiQuestionsUnavailable);
       }
     }
 
     void loadAIQuestions();
-  }, []);
+  }, [copy.statuses.aiQuestionsUnavailable]);
 
   const availableAIQuestions = useMemo(
-    () => questionsForAudience(aiQuestions, aiAudience),
-    [aiQuestions, aiAudience],
+    () => questionsForAudience(aiQuestions, aiAudience, copy),
+    [aiQuestions, aiAudience, copy],
   );
 
   useEffect(() => {
@@ -129,7 +134,7 @@ export default function CheckListingPage() {
     }
   }, [availableAIQuestions, selectedAIQuestion]);
 
-  function resetAIAnswer(nextStatus = "AI assistant готов после проверки") {
+  function resetAIAnswer(nextStatus = copy.statuses.aiReadyAfterCheck) {
     setAiAnswer(null);
     setAiError("");
     setAiStatus(nextStatus);
@@ -138,19 +143,19 @@ export default function CheckListingPage() {
   async function analyze(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     setError("");
-    setStatus("Расчет...");
+    setStatus(copy.statuses.calculating);
     try {
       const payload = await api.analyzeUserSubmittedListing(buildListingPayload(form));
       setResult(payload);
       setReportResult(null);
       setSavedReport(null);
-      resetAIAnswer(payload.draft_id ? "AI assistant готов" : "AI assistant требует saved draft");
-      setStatus("Проверка готова");
-      setReportStatus("Отчет не создан");
-      setSaveStatus("Не сохранен");
+      resetAIAnswer(payload.draft_id ? copy.statuses.aiReady : copy.statuses.aiNeedsDraft);
+      setStatus(copy.statuses.checkReady);
+      setReportStatus(copy.statuses.reportNotCreated);
+      setSaveStatus(copy.statuses.notSaved);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Ошибка проверки");
+      setStatus(copy.statuses.checkError);
     }
   }
 
@@ -160,9 +165,9 @@ export default function CheckListingPage() {
 
   async function importFromUrl(options: { generateReport?: boolean } = {}) {
     setError("");
-    resetAIAnswer("AI assistant готов после проверки");
-    setReferenceStatus("Загрузка ссылки...");
-    setUrlImportStatus("Автоимпорт...");
+    resetAIAnswer(copy.statuses.aiReadyAfterCheck);
+    setReferenceStatus(copy.statuses.loadingLink);
+    setUrlImportStatus(copy.statuses.autoImporting);
     try {
       const payload = await api.importUserSubmittedListingFromUrl(form.source_url);
       const updatedForm = mergeImportedFields(form, payload.fields);
@@ -170,29 +175,29 @@ export default function CheckListingPage() {
       setReferencePreview(payload.reference_preview);
       setForm(updatedForm);
       setReferenceStatus(`${payload.reference_preview.provider_label}: private reference`);
-      setUrlImportStatus(urlImportStatusLabel(payload));
-      setReportStatus("Отчет не создан");
-      setSaveStatus("Не сохранен");
+      setUrlImportStatus(urlImportStatusLabel(payload, copy));
+      setReportStatus(copy.statuses.reportNotCreated);
+      setSaveStatus(copy.statuses.notSaved);
       if (options.generateReport) {
         if (payload.status === "failed" || payload.status === "unsupported") {
-          setStatus("Ссылка принята, но портал не отдал параметры");
-          setReportStatus("Отчет не создан: нет данных объявления");
+          setStatus(copy.statuses.linkAcceptedNoParams);
+          setReportStatus(copy.statuses.reportNoListingData);
           return;
         }
         const missingFields = missingRequiredReportFields(updatedForm);
         if (missingFields.length > 0) {
-          setStatus("Ссылка принята, но нужны обязательные поля");
-          setReportStatus(`Не хватает: ${missingFields.join(", ")}`);
+          setStatus(copy.statuses.linkAcceptedMissingFields);
+          setReportStatus(copy.statuses.missingFields(missingFieldLabels(missingFields, copy)));
           return;
         }
         await createReportFromForm(updatedForm);
       } else {
-        setStatus("Поля обновлены из ссылки");
+        setStatus(copy.statuses.fieldsUpdated);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
-      setReferenceStatus("Ошибка ссылки");
-      setUrlImportStatus("Ошибка автоимпорта");
+      setReferenceStatus(copy.statuses.linkError);
+      setUrlImportStatus(copy.statuses.importError);
     }
   }
 
@@ -204,11 +209,11 @@ export default function CheckListingPage() {
     setError("");
     const missingFields = missingRequiredReportFields(targetForm);
     if (missingFields.length > 0) {
-      setReportStatus(`Не хватает: ${missingFields.join(", ")}`);
-      setStatus("Заполните обязательные поля для отчета");
+      setReportStatus(copy.statuses.missingFields(missingFieldLabels(missingFields, copy)));
+      setStatus(copy.statuses.fillRequiredForReport);
       return;
     }
-    setReportStatus("Генерация...");
+    setReportStatus(copy.statuses.reportGenerating);
     try {
       const payload = await api.createUserSubmittedListingReport({
         ...buildListingPayload(targetForm),
@@ -217,42 +222,42 @@ export default function CheckListingPage() {
       setResult(payload.analysis);
       setReportResult(payload);
       setSavedReport(null);
-      resetAIAnswer(payload.analysis.draft_id ? "AI assistant готов" : "AI assistant требует saved draft");
-      setStatus("Проверка готова");
-      setReportStatus("Отчет готов");
-      setSaveStatus("Не сохранен");
+      resetAIAnswer(payload.analysis.draft_id ? copy.statuses.aiReady : copy.statuses.aiNeedsDraft);
+      setStatus(copy.statuses.checkReady);
+      setReportStatus(copy.statuses.reportReady);
+      setSaveStatus(copy.statuses.notSaved);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
-      setReportStatus("Ошибка отчета");
+      setReportStatus(copy.statuses.reportError);
     }
   }
 
   async function saveReportToHistory() {
     if (!result?.draft_id) return;
     setError("");
-    setSaveStatus("Сохранение...");
+    setSaveStatus(copy.statuses.saving);
     try {
       const payload = await api.generateUserSubmittedDraftReport(result.draft_id, {
         audience: "buyer",
         report_format: "html",
       });
       setSavedReport(payload);
-      setSaveStatus("Сохранен");
+      setSaveStatus(copy.statuses.saved);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "unknown error");
-      setSaveStatus("Ошибка сохранения");
+      setSaveStatus(copy.statuses.saveError);
     }
   }
 
   async function generateAIAnswer() {
     if (!result?.draft_id) {
-      setAiStatus("Сначала нужно получить проверку с saved draft");
+      setAiStatus(copy.statuses.aiDraftRequired);
       return;
     }
 
     setAiLoading(true);
     setAiError("");
-    setAiStatus("AI answer строится...");
+    setAiStatus(copy.statuses.aiBuilding);
     try {
       const answer = await api.answerUserSubmittedDraftAIQuestion(result.draft_id, {
         question_code: selectedAIQuestion,
@@ -262,13 +267,13 @@ export default function CheckListingPage() {
       setAiAnswer(answer);
       setAiStatus(
         answer.refused
-          ? "AI answer отклонен guardrail-правилом"
-          : `AI answer сохранен: ${answer.usage_log_id ?? answer.subject_id}`,
+          ? copy.statuses.aiRefused
+          : copy.statuses.aiSaved(answer.usage_log_id ?? answer.subject_id),
       );
     } catch (caught) {
       setAiAnswer(null);
       setAiError(caught instanceof Error ? caught.message : "unknown error");
-      setAiStatus("AI answer недоступен");
+      setAiStatus(copy.statuses.aiUnavailable);
     } finally {
       setAiLoading(false);
     }
@@ -285,12 +290,12 @@ export default function CheckListingPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Проверить квартиру</h1>
-          <p>Адрес, параметры объекта, fair price, риски, торг и ближайшие аналоги.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <div className="button-row">
           <Link className="button" href="/check/drafts">
-            <FileText size={16} /> История
+            <FileText size={16} /> {copy.actions.history}
           </Link>
           <button
             className="button"
@@ -298,7 +303,7 @@ export default function CheckListingPage() {
             type="button"
             onClick={() => void createReport()}
           >
-            <FileText size={16} /> Получить отчет
+            <FileText size={16} /> {copy.actions.getReport}
           </button>
           <button
             className="button primary"
@@ -306,16 +311,16 @@ export default function CheckListingPage() {
             type="button"
             onClick={() => void analyze()}
           >
-            <ClipboardCheck size={16} /> Проверить
+            <ClipboardCheck size={16} /> {copy.actions.check}
           </button>
         </div>
       </header>
 
-      {error ? <ErrorBlock message={error} /> : null}
+      {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
 
       <section className="panel">
         <div className="panel-header">
-          <h2>Ссылка объявления</h2>
+          <h2>{copy.sections.sourceLink}</h2>
           <span className="status-line">{referenceStatus}</span>
         </div>
         <div className="panel-body">
@@ -324,16 +329,16 @@ export default function CheckListingPage() {
               <span>Otodom / OLX URL</span>
               <input
                 className="input"
-                placeholder="https://www.otodom.pl/..."
+                placeholder={copy.placeholders.sourceUrl}
                 type="url"
                 value={form.source_url}
                 onChange={(event) => {
                   setForm((current) => clearObjectFieldsForNewUrl(current, event.target.value));
                   setReferencePreview(null);
                   setUrlImportResult(null);
-                  setReferenceStatus("Ссылка не проверена");
-                  setUrlImportStatus("Автоимпорт не запускался");
-                  resetAIAnswer("AI assistant готов после проверки");
+                  setReferenceStatus(copy.statuses.linkNotChecked);
+                  setUrlImportStatus(copy.statuses.importNotStarted);
+                  resetAIAnswer(copy.statuses.aiReadyAfterCheck);
                 }}
               />
             </label>
@@ -343,7 +348,7 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void previewReference()}
             >
-              <Link2 size={16} /> Принять и получить отчет
+              <Link2 size={16} /> {copy.actions.acceptAndReport}
             </button>
             <button
               className="button"
@@ -351,7 +356,7 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void importFromUrl()}
             >
-              <RefreshCw size={16} /> Повторить импорт
+              <RefreshCw size={16} /> {copy.actions.retryImport}
             </button>
             <button
               className="button primary"
@@ -359,26 +364,26 @@ export default function CheckListingPage() {
               type="button"
               onClick={() => void createReport()}
             >
-              <FileText size={16} /> Ссылка + параметры → отчет
+              <FileText size={16} /> {copy.actions.linkAndParamsReport}
             </button>
           </div>
           <p className="status-line" style={{ marginTop: 12 }}>{urlImportStatus}</p>
           {referencePreview ? (
             <div className="metric-grid compact" style={{ marginTop: 12 }}>
               <div className="metric">
-                <span>Provider</span>
+                <span>{copy.metrics.provider}</span>
                 <strong>{referencePreview.provider_label}</strong>
               </div>
               <div className="metric">
-                <span>Domain</span>
-                <strong>{referencePreview.source_domain ?? "manual"}</strong>
+                <span>{copy.metrics.domain}</span>
+                <strong>{referencePreview.source_domain ?? copy.values.manual}</strong>
               </div>
               <div className="metric">
-                <span>Reference</span>
-                <strong>{referencePreview.listing_reference_id ?? "—"}</strong>
+                <span>{copy.metrics.reference}</span>
+                <strong>{referencePreview.listing_reference_id ?? copy.values.dash}</strong>
               </div>
               <div className="metric">
-                <span>Required fields</span>
+                <span>{copy.metrics.requiredFields}</span>
                 <strong>{referencePreview.manual_fields_required.length}</strong>
               </div>
             </div>
@@ -386,20 +391,20 @@ export default function CheckListingPage() {
           {urlImportResult ? (
             <div className="metric-grid compact" style={{ marginTop: 12 }}>
               <div className="metric">
-                <span>Import status</span>
+                <span>{copy.metrics.importStatus}</span>
                 <strong>{urlImportResult.status}</strong>
               </div>
               <div className="metric">
-                <span>Extracted</span>
+                <span>{copy.metrics.extracted}</span>
                 <strong>{urlImportResult.fields_extracted.length}</strong>
               </div>
               <div className="metric">
-                <span>HTTP</span>
-                <strong>{urlImportResult.fetch_status_code ?? "—"}</strong>
+                <span>{copy.metrics.http}</span>
+                <strong>{urlImportResult.fetch_status_code ?? copy.values.dash}</strong>
               </div>
               <div className="metric">
-                <span>Source</span>
-                <strong>{urlImportResult.extraction_source ?? "—"}</strong>
+                <span>{copy.metrics.source}</span>
+                <strong>{urlImportResult.extraction_source ?? copy.values.dash}</strong>
               </div>
             </div>
           ) : null}
@@ -417,74 +422,80 @@ export default function CheckListingPage() {
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Вердикт</span>
-          <strong>{analysis ? scoreLabel(analysis.scores.decision_label) : "—"}</strong>
+          <span>{copy.metrics.verdict}</span>
+          <strong>
+            {analysis ? scoreLabel(analysis.scores.decision_label, locale) : copy.values.dash}
+          </strong>
         </div>
         <div className="metric">
-          <span>Investment Score</span>
-          <strong>{analysis ? analysis.scores.investment_score : "—"}</strong>
+          <span>{copy.metrics.investmentScore}</span>
+          <strong>{analysis ? analysis.scores.investment_score : copy.values.dash}</strong>
         </div>
         <div className="metric">
-          <span>Risk Score</span>
-          <strong>{analysis ? analysis.scores.risk_score : "—"}</strong>
+          <span>{copy.metrics.riskScore}</span>
+          <strong>{analysis ? analysis.scores.risk_score : copy.values.dash}</strong>
         </div>
         <div className="metric">
-          <span>Fair price mid</span>
-          <strong>{analysis ? money(analysis.scores.fair_price_mid) : "—"}</strong>
+          <span>{copy.metrics.fairPriceMid}</span>
+          <strong>
+            {analysis ? money(analysis.scores.fair_price_mid, locale) : copy.values.dash}
+          </strong>
         </div>
         <div className="metric">
-          <span>Confidence</span>
-          <strong>{result ? `${result.confidence_score}/100` : "—"}</strong>
+          <span>{copy.metrics.confidence}</span>
+          <strong>{result ? `${result.confidence_score}/100` : copy.values.dash}</strong>
         </div>
         <div className="metric">
-          <span>Price label</span>
-          <strong>{analysis ? scoreLabel(analysis.scores.price_label) : "—"}</strong>
+          <span>{copy.metrics.priceLabel}</span>
+          <strong>
+            {analysis ? scoreLabel(analysis.scores.price_label, locale) : copy.values.dash}
+          </strong>
         </div>
       </section>
 
       <section className="grid-2" style={{ marginTop: 16 }}>
         <form className="panel" onSubmit={(event) => void analyze(event)}>
           <div className="panel-header">
-            <h2>Параметры объекта</h2>
+            <h2>{copy.sections.objectParams}</h2>
             <button
               className="button"
               disabled={!form.confirm_private_analysis}
               type="submit"
             >
-              <RefreshCw size={16} /> Обновить
+              <RefreshCw size={16} /> {copy.actions.refresh}
             </button>
           </div>
           <div className="panel-body">
             <div className="form-grid">
               <label className="field">
-                <span>Название</span>
+                <span>{copy.fields.title}</span>
                 <input
                   className="input"
-                  placeholder="optional"
+                  placeholder={copy.placeholders.optional}
                   value={form.title}
                   onChange={(event) => updateField("title", event.target.value)}
                 />
               </label>
               <label className="field">
-                <span>Застройщик</span>
+                <span>{copy.fields.developer}</span>
                 <input
                   className="input"
-                  placeholder="optional"
+                  placeholder={copy.placeholders.optional}
                   value={form.developer_name}
                   onChange={(event) => updateField("developer_name", event.target.value)}
                 />
               </label>
               <label className="field">
-                <span>Инвестиция / проект</span>
+                <span>{copy.fields.investment}</span>
                 <input
                   className="input"
-                  placeholder="optional"
+                  placeholder={copy.placeholders.optional}
                   value={form.investment_name}
                   onChange={(event) => updateField("investment_name", event.target.value)}
                 />
               </label>
               <label className="field">
-                <span>Адрес</span>
+                <span>{copy.fields.address}</span>
                 <input
                   className="input"
                   required
@@ -493,7 +504,7 @@ export default function CheckListingPage() {
                 />
               </label>
               <label className="field">
-                <span>Город</span>
+                <span>{copy.fields.city}</span>
                 <input
                   className="input"
                   required
@@ -502,7 +513,7 @@ export default function CheckListingPage() {
                 />
               </label>
               <label className="field">
-                <span>Район</span>
+                <span>{copy.fields.district}</span>
                 <input
                   className="input"
                   list="district-options"
@@ -516,7 +527,7 @@ export default function CheckListingPage() {
                 </datalist>
               </label>
               <label className="field">
-                <span>Рынок</span>
+                <span>{copy.fields.market}</span>
                 <select
                   className="select"
                   value={form.market_type}
@@ -524,38 +535,38 @@ export default function CheckListingPage() {
                     updateField("market_type", event.target.value as CheckFormState["market_type"])
                   }
                 >
-                  <option value="secondary">secondary</option>
-                  <option value="primary">primary</option>
+                  <option value="secondary">{copy.values.secondary}</option>
+                  <option value="primary">{copy.values.primary}</option>
                 </select>
               </label>
               <NumberField
-                label="Цена"
+                label={copy.fields.price}
                 value={form.price}
                 onChange={(value) => updateField("price", value)}
               />
               <NumberField
-                label="Площадь m2"
+                label={copy.fields.area}
                 step="0.1"
                 value={form.area_m2}
                 onChange={(value) => updateField("area_m2", value)}
               />
               <NumberField
-                label="Комнаты"
+                label={copy.fields.rooms}
                 value={form.rooms}
                 onChange={(value) => updateField("rooms", value)}
               />
               <NumberField
-                label="Этаж"
+                label={copy.fields.floor}
                 value={form.floor}
                 onChange={(value) => updateField("floor", value)}
               />
               <NumberField
-                label="Этажей в доме"
+                label={copy.fields.buildingFloors}
                 value={form.building_floors}
                 onChange={(value) => updateField("building_floors", value)}
               />
               <NumberField
-                label="Год дома"
+                label={copy.fields.buildingYear}
                 value={form.building_year}
                 onChange={(value) => updateField("building_year", value)}
               />
@@ -570,7 +581,7 @@ export default function CheckListingPage() {
                 }
               />
               <ShieldCheck size={16} />
-              <span>private analysis</span>
+              <span>{copy.fields.privateAnalysis}</span>
             </label>
             <p className="status-line">{status}</p>
             <p className="status-line">{reportStatus}</p>
@@ -580,10 +591,10 @@ export default function CheckListingPage() {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Итог проверки</h2>
+            <h2>{copy.sections.result}</h2>
             {analysis ? (
               <span className={`status-pill ${verdictTone}`}>
-                {scoreLabel(analysis.scores.decision_label)}
+                {scoreLabel(analysis.scores.decision_label, locale)}
               </span>
             ) : null}
           </div>
@@ -592,39 +603,48 @@ export default function CheckListingPage() {
               <>
                 <ul className="section-list compact">
                   <li>
-                    <span>Цена объекта</span>
-                    <strong>{money(analysis.listing.price)}</strong>
+                    <span>{copy.metrics.objectPrice}</span>
+                    <strong>{money(analysis.listing.price, locale)}</strong>
                   </li>
                   <li>
-                    <span>Цена за m2</span>
-                    <strong>{money(analysis.listing.price_per_m2)}</strong>
+                    <span>{copy.metrics.pricePerM2}</span>
+                    <strong>{money(analysis.listing.price_per_m2, locale)}</strong>
                   </li>
                   <li>
-                    <span>Fair price range</span>
+                    <span>{copy.metrics.fairPriceRange}</span>
                     <strong>
-                      {money(analysis.scores.fair_price_low)} -{" "}
-                      {money(analysis.scores.fair_price_high)}
+                      {money(analysis.scores.fair_price_low, locale)} -{" "}
+                      {money(analysis.scores.fair_price_high, locale)}
                     </strong>
                   </li>
                   <li>
-                    <span>Comparable listings</span>
+                    <span>{copy.metrics.comparableListings}</span>
                     <strong>{analysis.comparables.length}</strong>
                   </li>
                   <li>
-                    <span>Source domain</span>
-                    <strong>{result.source_domain ?? "manual input"}</strong>
+                    <span>{copy.metrics.sourceDomain}</span>
+                    <strong>{result.source_domain ?? copy.values.manualInput}</strong>
                   </li>
                   <li>
-                    <span>Private draft</span>
-                    <strong>{result.draft_id ? shortId(result.draft_id) : "not saved"}</strong>
+                    <span>{copy.metrics.privateDraft}</span>
+                    <strong>
+                      {result.draft_id ? shortId(result.draft_id) : copy.values.notSaved}
+                    </strong>
                   </li>
                   <li>
-                    <span>Expires</span>
-                    <strong>{result.draft_expires_at ? dateLabel(result.draft_expires_at) : "—"}</strong>
+                    <span>{copy.metrics.expires}</span>
+                    <strong>
+                      {result.draft_expires_at
+                        ? dateValue(result.draft_expires_at, locale)
+                        : copy.values.dash}
+                    </strong>
                   </li>
                 </ul>
                 {analysis.developer_reputation ? (
-                  <DeveloperReputationBlock reputation={analysis.developer_reputation} />
+                  <DeveloperReputationBlock
+                    copy={copy.developer}
+                    reputation={analysis.developer_reputation}
+                  />
                 ) : null}
                 <div className="button-row" style={{ marginTop: 12 }}>
                   <button
@@ -633,7 +653,7 @@ export default function CheckListingPage() {
                     type="button"
                     onClick={() => void createReport()}
                   >
-                    <FileText size={16} /> Сгенерировать отчет
+                    <FileText size={16} /> {copy.actions.generateReport}
                   </button>
                   <button
                     className="button"
@@ -641,7 +661,7 @@ export default function CheckListingPage() {
                     type="button"
                     onClick={() => void saveReportToHistory()}
                   >
-                    <Save size={16} /> Сохранить в историю
+                    <Save size={16} /> {copy.actions.saveToHistory}
                   </button>
                 </div>
                 <ul className="section-list" style={{ marginTop: 12 }}>
@@ -654,7 +674,7 @@ export default function CheckListingPage() {
                 </p>
               </>
             ) : (
-              <div className="empty-state">Введите параметры и запустите проверку.</div>
+              <div className="empty-state">{copy.empty.noResult}</div>
             )}
           </div>
         </aside>
@@ -664,26 +684,26 @@ export default function CheckListingPage() {
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
             <h2 className="icon-title">
-              <Brain size={16} /> AI assistant по private draft
+              <Brain size={16} /> {copy.sections.aiAssistant}
             </h2>
             <span className="status-line">{aiStatus}</span>
           </div>
           <div className="panel-body ai-verdict-body">
             <div className="ai-verdict-controls listing-ai-controls">
               <div className="field">
-                <span>Аудитория</span>
+                <span>{copy.fields.audience}</span>
                 <select
                   className="select"
                   value={aiAudience}
                   onChange={(event) => setAiAudience(event.target.value as ReportAudience)}
                 >
-                  <option value="buyer">Buyer</option>
-                  <option value="realtor">Realtor</option>
-                  <option value="investor">Investor</option>
+                  <option value="buyer">{copy.values.buyer}</option>
+                  <option value="realtor">{copy.values.realtor}</option>
+                  <option value="investor">{copy.values.investor}</option>
                 </select>
               </div>
               <div className="field">
-                <span>Тема</span>
+                <span>{copy.fields.topic}</span>
                 <select
                   className="select"
                   value={selectedAIQuestion}
@@ -697,12 +717,12 @@ export default function CheckListingPage() {
                 </select>
               </div>
               <div className="field">
-                <span>Вопрос</span>
+                <span>{copy.fields.question}</span>
                 <input
                   className="input"
                   value={customAIQuestion}
                   onChange={(event) => setCustomAIQuestion(event.target.value)}
-                  placeholder="Например: какие риски проверить до zadatek?"
+                  placeholder={copy.placeholders.customQuestion}
                 />
               </div>
               <button
@@ -711,32 +731,36 @@ export default function CheckListingPage() {
                 type="button"
                 onClick={() => void generateAIAnswer()}
               >
-                <Brain size={16} /> Ответить
+                <Brain size={16} /> {copy.actions.answer}
               </button>
             </div>
 
-            {aiError ? <ErrorBlock message={aiError} /> : null}
+            {aiError ? <ErrorBlock message={aiError} prefix={copy.errorPrefix} /> : null}
 
             {aiAnswer ? (
               <div className="ai-verdict-result">
                 <div className="ai-verdict-summary">
                   <div>
                     <span className={`status-pill ${aiAnswer.refused ? "warning" : "healthy"}`}>
-                      {aiAnswer.refused ? "Refused" : "Source-grounded"}
+                      {aiAnswer.refused ? copy.values.refused : copy.values.sourceGrounded}
                     </span>
                     <span className="status-pill info">{aiAnswer.question_code}</span>
                     <span className="status-pill">
-                      {result?.draft_id ? shortId(result.draft_id) : "no draft"}
+                      {result?.draft_id ? shortId(result.draft_id) : copy.values.noDraft}
                     </span>
                   </div>
                   <p>{aiAnswer.refusal_reason ?? aiAnswer.answer}</p>
                 </div>
 
                 <div className="ai-verdict-grid">
-                  <AssistantColumn title="Ключевые выводы" items={aiAnswer.key_points} />
+                  <AssistantColumn
+                    emptyLabel={copy.empty.noData}
+                    items={aiAnswer.key_points}
+                    title={copy.assistantColumn.keyPoints}
+                  />
                   <div>
                     <h3 className="ai-verdict-heading">
-                      <ShieldCheck size={15} /> Источники
+                      <ShieldCheck size={15} /> {copy.assistantColumn.sources}
                     </h3>
                     <div className="ai-citation-list">
                       {aiAnswer.citations.slice(0, 5).map((citation, index) => (
@@ -750,7 +774,7 @@ export default function CheckListingPage() {
                     </div>
                   </div>
                   <div>
-                    <h3 className="ai-verdict-heading">Guardrails</h3>
+                    <h3 className="ai-verdict-heading">{copy.assistantColumn.guardrails}</h3>
                     <div className="meta-row">
                       {aiAnswer.guardrails.map((guardrail, index) => (
                         <span className="status-pill" key={`${guardrail.code}-${index}`}>
@@ -764,9 +788,7 @@ export default function CheckListingPage() {
               </div>
             ) : (
               <p className="empty-state">
-                {result?.draft_id
-                  ? "AI answer появится после запроса по сохраненному private draft."
-                  : "Для AI assistant нужен saved draft: запусти проверку или отчет заново."}
+                {result?.draft_id ? copy.empty.aiReady : copy.empty.aiNeedsSavedDraft}
               </p>
             )}
           </div>
@@ -777,7 +799,7 @@ export default function CheckListingPage() {
         <section className="grid-2" style={{ marginTop: 16 }}>
           <div className="panel">
             <div className="panel-header">
-              <h2>Выводы</h2>
+              <h2>{copy.sections.conclusions}</h2>
             </div>
             <div className="panel-body">
               <ul className="section-list">
@@ -790,7 +812,7 @@ export default function CheckListingPage() {
 
           <aside className="panel">
             <div className="panel-header">
-              <h2>Торг</h2>
+              <h2>{copy.sections.negotiation}</h2>
             </div>
             <div className="panel-body">
               <ul className="section-list">
@@ -806,7 +828,7 @@ export default function CheckListingPage() {
       {analysis ? (
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
-            <h2>База сравнения</h2>
+            <h2>{copy.sections.comparables}</h2>
             <span className="status-pill info">{result?.comparables_basis}</span>
           </div>
           <div className="panel-body">
@@ -814,12 +836,12 @@ export default function CheckListingPage() {
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Объект</th>
-                    <th>Район</th>
-                    <th>Цена</th>
-                    <th>m2</th>
-                    <th>Комнаты</th>
-                    <th>Цена/m2</th>
+                    <th>{copy.table.object}</th>
+                    <th>{copy.table.district}</th>
+                    <th>{copy.table.price}</th>
+                    <th>{copy.table.area}</th>
+                    <th>{copy.table.rooms}</th>
+                    <th>{copy.table.pricePerM2}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -827,10 +849,10 @@ export default function CheckListingPage() {
                     <tr key={listing.id}>
                       <td>{listing.title}</td>
                       <td>{listing.district}</td>
-                      <td>{money(listing.price)}</td>
-                      <td>{numberValue(listing.area_m2)}</td>
+                      <td>{money(listing.price, locale)}</td>
+                      <td>{numberValue(listing.area_m2, locale)}</td>
                       <td>{listing.rooms}</td>
-                      <td>{money(listing.price_per_m2)}</td>
+                      <td>{money(listing.price_per_m2, locale)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -844,7 +866,7 @@ export default function CheckListingPage() {
       {reportResult ? (
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
-            <h2>Buyer report</h2>
+            <h2>{copy.sections.buyerReport}</h2>
             <div className="button-row">
               {savedReport ? (
                 <a
@@ -853,7 +875,7 @@ export default function CheckListingPage() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  <ExternalLink size={16} /> HTML
+                  <ExternalLink size={16} /> {copy.values.html}
                 </a>
               ) : null}
               <button
@@ -862,7 +884,7 @@ export default function CheckListingPage() {
                 type="button"
                 onClick={() => void saveReportToHistory()}
               >
-                <Save size={16} /> Сохранить
+                <Save size={16} /> {copy.actions.save}
               </button>
               <span className="status-pill info">{reportResult.report.template_name}</span>
             </div>
@@ -891,12 +913,20 @@ export default function CheckListingPage() {
   );
 }
 
-function AssistantColumn({ title, items }: { title: string; items: string[] }) {
+function AssistantColumn({
+  emptyLabel,
+  title,
+  items,
+}: {
+  emptyLabel: string;
+  title: string;
+  items: string[];
+}) {
   return (
     <div>
       <h3 className="ai-verdict-heading">{title}</h3>
       {items.length === 0 ? (
-        <p className="muted">Нет данных.</p>
+        <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
           {items.map((item, index) => (
@@ -911,13 +941,14 @@ function AssistantColumn({ title, items }: { title: string; items: string[] }) {
 function questionsForAudience(
   questions: AIQuestionDescriptor[],
   audience: ReportAudience,
+  copy: CheckPageCopy,
 ): AIQuestionDescriptor[] {
   if (questions.length === 0) {
     return [
       {
         code: "summary",
-        label: "Object summary",
-        description: "Short grounded decision summary.",
+        label: copy.fallbackQuestion.label,
+        description: copy.fallbackQuestion.description,
         supported_audiences: ["buyer", "realtor", "investor"],
       },
     ];
@@ -928,13 +959,19 @@ function questionsForAudience(
   return supported.length > 0 ? supported : questions;
 }
 
-function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputation }) {
+function DeveloperReputationBlock({
+  copy,
+  reputation,
+}: {
+  copy: CheckPageCopy["developer"];
+  reputation: DeveloperReputation;
+}) {
   return (
     <>
       <div className="panel-header inline" style={{ marginTop: 14 }}>
-        <h3>Застройщик</h3>
+        <h3>{copy.title}</h3>
         <span className={`status-pill ${developerLabelTone(reputation.label)}`}>
-          {developerLabelText(reputation.label)}
+          {copy.labels[reputation.label] ?? reputation.label}
         </span>
       </div>
       <ul className="section-list compact">
@@ -943,17 +980,11 @@ function DeveloperReputationBlock({ reputation }: { reputation: DeveloperReputat
         </li>
         <li>
           <Link className="button" href={`/developers/${reputation.developer.id}`}>
-            Профиль застройщика
+            {copy.profile}
           </Link>
         </li>
-        <li>
-          Рейтинг {reputation.reputation_score}/100, уверенность{" "}
-          {reputation.confidence_score}/100.
-        </li>
-        <li>
-          Сдано проектов: {reputation.completed_projects_count}; активных:{" "}
-          {reputation.active_projects_count}.
-        </li>
+        <li>{copy.ratingLine(reputation.reputation_score, reputation.confidence_score)}</li>
+        <li>{copy.projectsLine(reputation.completed_projects_count, reputation.active_projects_count)}</li>
         {(reputation.risk_signals[0] ?? reputation.positive_signals[0]) ? (
           <li>{reputation.risk_signals[0] ?? reputation.positive_signals[0]}</li>
         ) : null}
@@ -984,16 +1015,6 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
     save_private_draft: true,
     retention_days: 30,
   };
-}
-
-function developerLabelText(label: string) {
-  return {
-    strong: "сильный",
-    good: "хороший",
-    mixed: "смешанный",
-    limited_data: "мало данных",
-    risk_review: "проверить",
-  }[label] ?? label;
 }
 
 function developerLabelTone(label: string) {
@@ -1034,8 +1055,8 @@ function clearObjectFieldsForNewUrl(current: CheckFormState, sourceUrl: string) 
   };
 }
 
-function missingRequiredReportFields(form: CheckFormState) {
-  const missing = [];
+function missingRequiredReportFields(form: CheckFormState): RequiredReportField[] {
+  const missing: RequiredReportField[] = [];
   if (!form.address.trim()) missing.push("address");
   if (!form.city.trim()) missing.push("city");
   if (!form.district.trim()) missing.push("district");
@@ -1043,6 +1064,10 @@ function missingRequiredReportFields(form: CheckFormState) {
   if (!isPositiveNumber(form.area_m2)) missing.push("area_m2");
   if (!isPositiveNumber(form.rooms)) missing.push("rooms");
   return missing;
+}
+
+function missingFieldLabels(fields: RequiredReportField[], copy: CheckPageCopy) {
+  return fields.map((field) => copy.requiredFieldLabels[field]).join(", ");
 }
 
 function isPositiveNumber(value: string) {
@@ -1088,14 +1113,6 @@ function shortId(value: string) {
   return value.slice(0, 8);
 }
 
-function dateLabel(value: string) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  }).format(new Date(value));
-}
-
 function normalizeDistrict(value: string | null) {
   if (!value) return null;
   const cleaned = value.trim();
@@ -1126,15 +1143,15 @@ function normalizedImportedAddress(fields: SourceUrlImportFields, currentAddress
   return `${fields.address}, ${fields.city}`;
 }
 
-function urlImportStatusLabel(result: SourceUrlImportResult) {
+function urlImportStatusLabel(result: SourceUrlImportResult, copy: CheckPageCopy) {
   if (result.status === "extracted") {
-    return `Автоимпорт: заполнено ${result.fields_extracted.length} полей`;
+    return copy.statuses.importExtracted(result.fields_extracted.length);
   }
   if (result.status === "partial") {
-    return `Автоимпорт частичный: заполнено ${result.fields_extracted.length} полей`;
+    return copy.statuses.importPartial(result.fields_extracted.length);
   }
   if (result.status === "unsupported") {
-    return "Автоимпорт доступен только для Otodom/OLX";
+    return copy.statuses.importUnsupported;
   }
-  return "Автоимпорт не получил параметры, заполните поля вручную";
+  return copy.statuses.importFailed;
 }

@@ -45,6 +45,7 @@ const packageJson = JSON.parse(read("package.json"));
 const globalStyles = read("app/globals.css");
 const apiClient = read("lib/api.ts");
 const explorerPage = read("app/page.tsx");
+const checkPage = read("app/check/page.tsx");
 const listingCard = read("components/ListingCard.tsx");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
@@ -159,6 +160,19 @@ expectIncludes("listing card i18n", listingCard, [
   "copy.compareTitle",
   "copy.reportTitle",
 ]);
+
+expectIncludes("check page i18n", checkPage, [
+  "CHECK_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "copy.sections.sourceLink",
+  "copy.actions.acceptAndReport",
+  "copy.statuses.importExtracted",
+  "missingFieldLabels(missingFields, copy)",
+  "scoreLabel(analysis.scores.decision_label, locale)",
+  "money(analysis.listing.price, locale)",
+  "dateValue(result.draft_expires_at, locale)",
+]);
+expectRegex("check page no visible Russian literals", checkPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("map component", mapComponent, [
   "DEFAULT_VISIBLE_LAYERS",
@@ -360,6 +374,7 @@ expectIncludes("i18n dictionaries", i18n, [
   "LANGUAGE_SWITCHER_LABELS",
   "EXPLORER_COPY",
   "LISTING_CARD_COPY",
+  "CHECK_PAGE_COPY",
   "normalizeLocale",
 ]);
 expectIncludes("localized score labels", scoreLabels, [
@@ -371,6 +386,7 @@ expectIncludes("localized score labels", scoreLabels, [
 expectIncludes("locale-aware formatters", formatters, [
   "INTL_LOCALES",
   "export function money(value: number, locale?: Locale)",
+  "export function dateValue(value: string | Date, locale?: Locale)",
   "new Intl.NumberFormat(intlLocale(locale))",
 ]);
 expectIncludes("locale preference persistence", useLocalePreference, [
