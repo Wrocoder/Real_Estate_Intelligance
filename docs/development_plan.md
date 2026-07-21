@@ -292,6 +292,40 @@
 - [x] Добавить realtor подборки объектов для клиента.
 - [x] Добавить investor hidden gems view.
 
+## 10.1 Multilingual / i18n
+
+Цель: сайт и пользовательский контент должны переключаться между English, Polski,
+Русский и Українська без дублирования бизнес-логики и без смешивания языков в
+отчетах, SEO-страницах, email/Telegram alerts и AI summaries.
+
+- [ ] Выбрать i18n архитектуру для frontend: route-prefix или cookie/user preference,
+  dictionary loading, fallback locale, форматирование дат/валют/чисел.
+- [ ] Добавить language switcher в основной layout/navigation: English, Polski,
+  Русский, Українська.
+- [ ] Добавить сохранение выбранного языка: anonymous cookie/localStorage и
+  authenticated user preference в account/profile settings.
+- [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
+  table headers, filters, map layer names и empty/error states в translation dictionaries.
+- [ ] Локализовать главные публичные страницы: home/explorer, check apartment,
+  listing detail, compare, reports, alerts, pricing, account, areas, news,
+  developers, CRM-light pages.
+- [ ] Локализовать backend/user-facing API messages там, где они отображаются в UI:
+  validation errors, report warnings, scoring labels, source-quality warnings,
+  payment/order statuses.
+- [ ] Добавить locale-aware report generation: JSON/HTML/PDF buyer, realtor,
+  investor и paid full-object reports должны генерироваться на выбранном языке.
+- [ ] Добавить locale-aware AI prompts/templates: answers, citations, disclaimers
+  and refusal messages должны соответствовать выбранному языку пользователя.
+- [ ] Добавить locale-aware SEO: hreflang, localized slugs/titles/descriptions,
+  sitemap entries per locale, canonical strategy и localized structured data.
+- [ ] Локализовать email/Telegram alerts, unsubscribe/preferences pages and report
+  delivery messages.
+- [ ] Добавить translation QA checklist: no hardcoded visible strings, no mixed
+  language report sections, pluralization, long-string layout fit, RTL not required
+  for MVP.
+- [ ] Добавить tests: dictionary coverage, missing-key detection, default fallback,
+  locale persistence, localized report snapshot smoke and frontend typecheck.
+
 ## 11. Map и GIS
 
 - [x] Подключить MapLibre.
@@ -558,6 +592,7 @@
 - [x] Commit 106: Production readiness endpoint and preflight CLI.
 - [x] Commit 107: MVP hosting decision and Render Blueprint.
 - [x] Commit 108: Poland city expansion criteria and source checklist.
+- [x] Commit 109: Multilingual/i18n roadmap for English, Polish, Russian and Ukrainian.
 
 ## Current Sprint
 
@@ -678,6 +713,8 @@
   managed Postgres/PostGIS и managed Redis-compatible store.
 - [x] Подготовить Poland city expansion checklist: readiness gates, data-source
   checklist, city scoring card and definition of done.
+- [x] Добавить multilingual/i18n roadmap в план: English, Polski, Русский,
+  Українська, language switcher, localized UI, reports, SEO, alerts and AI templates.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
