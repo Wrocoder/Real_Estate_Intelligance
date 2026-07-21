@@ -1,33 +1,40 @@
 import type { PropertyScores } from "@/lib/api";
+import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n";
 import { scoreLabel } from "@/lib/scoreLabels";
 
 type Props = {
   scores: PropertyScores;
+  locale?: Locale;
 };
 
-export function ScoreBars({ scores }: Props) {
+export function ScoreBars({ scores, locale = DEFAULT_LOCALE }: Props) {
   return (
     <div className="score-stack">
       <ScoreBar
         label="Investment"
         value={scores.investment_score}
-        helper={scoreLabel(scores.decision_label)}
+        helper={scoreLabel(scores.decision_label, locale)}
       />
-      <ScoreBar label="Risk" value={scores.risk_score} helper={scoreLabel(scores.risk_label)} risk />
+      <ScoreBar
+        label="Risk"
+        value={scores.risk_score}
+        helper={scoreLabel(scores.risk_label, locale)}
+        risk
+      />
       <ScoreBar
         label="Negotiation"
         value={scores.negotiation_score}
-        helper={scoreLabel(scores.negotiation_label)}
+        helper={scoreLabel(scores.negotiation_label, locale)}
       />
       <ScoreBar
         label="Liquidity"
         value={scores.liquidity_score}
-        helper={scoreLabel(scores.liquidity_label)}
+        helper={scoreLabel(scores.liquidity_label, locale)}
       />
       <ScoreBar
         label="Rental"
         value={scores.rental_potential_score}
-        helper={scoreLabel(scores.rental_potential_label)}
+        helper={scoreLabel(scores.rental_potential_label, locale)}
       />
     </div>
   );

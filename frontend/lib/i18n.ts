@@ -387,6 +387,121 @@ export type CheckDraftsPageCopy = {
   errorPrefix: string;
 };
 
+export type ListingDetailCopy = {
+  actions: {
+    back: string;
+    refresh: string;
+    favorite: string;
+    saveReport: string;
+    openReport: string;
+    answer: string;
+  };
+  sections: {
+    aiAssistant: string;
+    insights: string;
+    negotiation: string;
+    priceHistory: string;
+    comparables: string;
+    scoring: string;
+    area: string;
+    areaNews: string;
+    guides: string;
+    readyHtml: string;
+  };
+  metrics: {
+    verdict: string;
+    price: string;
+    pricePerM2: string;
+    fairPriceMid: string;
+    fairPriceConfidence: string;
+    fairDeviation: string;
+    priceLabel: string;
+    buildingType: string;
+    renovationState: string;
+    amenities: string;
+    parking: string;
+    heating: string;
+  };
+  fields: {
+    audience: string;
+    topic: string;
+    question: string;
+  };
+  placeholders: {
+    customQuestion: string;
+  };
+  statuses: {
+    loadingObject: string;
+    analyticsUpdated: string;
+    backendUnavailable: string;
+    favoriteAdded: string;
+    reportSaved: (reportId: string) => string;
+    aiReady: string;
+    aiQuestionsUnavailable: string;
+    aiBuilding: string;
+    aiRefused: string;
+    aiSaved: (id: string) => string;
+    aiUnavailable: string;
+  };
+  values: {
+    buyer: string;
+    realtor: string;
+    investor: string;
+    refused: string;
+    sourceGrounded: string;
+    dataQualityPrefix: string;
+    m2: string;
+  };
+  table: {
+    date: string;
+    price: string;
+    pricePerM2: string;
+    object: string;
+    district: string;
+    area: string;
+  };
+  area: {
+    median: (value: string) => string;
+    activeListings: (count: number) => string;
+    averageExposure: (days: number) => string;
+    supply90d: (value: string) => string;
+  };
+  empty: {
+    loadingAnalytics: string;
+    noAiAnswer: string;
+    noData: string;
+    noAreaNews: string;
+    noConfirmedAmenities: string;
+  };
+  developer: {
+    title: string;
+    profile: string;
+    ratingLine: (rating: number, confidence: number) => string;
+    projectsLine: (completed: number, active: number) => string;
+    labels: Record<string, string>;
+  };
+  assistantColumn: {
+    keyPoints: string;
+    sources: string;
+    guardrails: string;
+  };
+  fallbackQuestion: {
+    label: string;
+    description: string;
+  };
+  lifestyle: {
+    balcony: string;
+    terrace: string;
+    garden: string;
+    elevator: string;
+  };
+  chart: {
+    priceHistoryAria: (title: string) => string;
+  };
+  favoriteNote: string;
+  errorPrefix: string;
+};
+
 export const LOCALE_OPTIONS: LocaleOption[] = [
   { code: "en", nativeName: "English", englishName: "English", shortLabel: "EN" },
   { code: "pl", nativeName: "Polski", englishName: "Polish", shortLabel: "PL" },
@@ -1550,6 +1665,497 @@ export const CHECK_DRAFTS_COPY: Record<Locale, CheckDraftsPageCopy> = {
       noDrafts: "Поки немає збережених перевірок.",
       loading: "Завантаження даних",
     },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
+  en: {
+    actions: {
+      back: "Back",
+      refresh: "Refresh",
+      favorite: "Favorite",
+      saveReport: "Save report",
+      openReport: "Open report",
+      answer: "Answer",
+    },
+    sections: {
+      aiAssistant: "AI assistant",
+      insights: "Object insights",
+      negotiation: "Negotiation arguments",
+      priceHistory: "Price history",
+      comparables: "Similar listings",
+      scoring: "Scoring",
+      area: "Area",
+      areaNews: "Area news",
+      guides: "Guides",
+      readyHtml: "Ready HTML",
+    },
+    metrics: {
+      verdict: "Verdict",
+      price: "Price",
+      pricePerM2: "Price per m2",
+      fairPriceMid: "Fair price mid",
+      fairPriceConfidence: "Fair price confidence",
+      fairDeviation: "Deviation from fair mid",
+      priceLabel: "Price label",
+      buildingType: "Building type",
+      renovationState: "Condition",
+      amenities: "Amenities",
+      parking: "Parking",
+      heating: "Heating",
+    },
+    fields: {
+      audience: "Audience",
+      topic: "Topic",
+      question: "Question",
+    },
+    placeholders: {
+      customQuestion: "Example: what questions should I ask the seller?",
+    },
+    statuses: {
+      loadingObject: "Loading listing...",
+      analyticsUpdated: "Analytics updated",
+      backendUnavailable: "Backend API unavailable",
+      favoriteAdded: "Added to favorites",
+      reportSaved: (reportId) => `Report saved: ${reportId}`,
+      aiReady: "AI assistant ready",
+      aiQuestionsUnavailable: "AI questions unavailable",
+      aiBuilding: "AI answer is being built...",
+      aiRefused: "AI answer refused by guardrail rules",
+      aiSaved: (id) => `AI answer saved: ${id}`,
+      aiUnavailable: "AI answer unavailable",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      dataQualityPrefix: "DQ",
+      m2: "m2",
+    },
+    table: {
+      date: "Date",
+      price: "Price",
+      pricePerM2: "Price per m2",
+      object: "Object",
+      district: "District",
+      area: "m2",
+    },
+    area: {
+      median: (value) => `Median: ${value}/m2`,
+      activeListings: (count) => `Active listings: ${count}`,
+      averageExposure: (days) => `Average exposure: ${days} day${days === 1 ? "" : "s"}`,
+      supply90d: (value) => `90-day supply: ${value}`,
+    },
+    empty: {
+      loadingAnalytics: "Loading listing analytics",
+      noAiAnswer: "AI answer will appear after the request.",
+      noData: "No data.",
+      noAreaNews: "No linked news for this area yet.",
+      noConfirmedAmenities: "no confirmed data",
+    },
+    developer: {
+      title: "Developer",
+      profile: "Developer profile",
+      ratingLine: (rating, confidence) => `Rating ${rating}/100, confidence ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Completed projects: ${completed}; active: ${active}.`,
+      labels: {
+        strong: "strong",
+        good: "good",
+        mixed: "mixed",
+        limited_data: "limited data",
+        risk_review: "review",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Key points",
+      sources: "Sources",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    lifestyle: {
+      balcony: "balcony",
+      terrace: "terrace",
+      garden: "garden",
+      elevator: "elevator",
+    },
+    chart: {
+      priceHistoryAria: (title) => `Price history for ${title}`,
+    },
+    favoriteNote: "Added from detail page",
+    errorPrefix: "Error",
+  },
+  pl: {
+    actions: {
+      back: "Wstecz",
+      refresh: "Odśwież",
+      favorite: "Ulubione",
+      saveReport: "Zapisz raport",
+      openReport: "Otwórz raport",
+      answer: "Odpowiedz",
+    },
+    sections: {
+      aiAssistant: "AI assistant",
+      insights: "Wnioski o obiekcie",
+      negotiation: "Argumenty negocjacyjne",
+      priceHistory: "Historia ceny",
+      comparables: "Podobne obiekty",
+      scoring: "Scoring",
+      area: "Dzielnica",
+      areaNews: "Aktualności dzielnicy",
+      guides: "Poradniki",
+      readyHtml: "Gotowy HTML",
+    },
+    metrics: {
+      verdict: "Werdykt",
+      price: "Cena",
+      pricePerM2: "Cena za m2",
+      fairPriceMid: "Fair price mid",
+      fairPriceConfidence: "Fair price confidence",
+      fairDeviation: "Odchylenie od fair mid",
+      priceLabel: "Ocena ceny",
+      buildingType: "Typ budynku",
+      renovationState: "Stan",
+      amenities: "Udogodnienia",
+      parking: "Parking",
+      heating: "Ogrzewanie",
+    },
+    fields: {
+      audience: "Odbiorca",
+      topic: "Temat",
+      question: "Pytanie",
+    },
+    placeholders: {
+      customQuestion: "Np.: jakie pytania zadać sprzedającemu?",
+    },
+    statuses: {
+      loadingObject: "Ładowanie obiektu...",
+      analyticsUpdated: "Analityka odświeżona",
+      backendUnavailable: "Backend API niedostępne",
+      favoriteAdded: "Dodano do ulubionych",
+      reportSaved: (reportId) => `Raport zapisany: ${reportId}`,
+      aiReady: "AI assistant gotowy",
+      aiQuestionsUnavailable: "AI questions niedostępne",
+      aiBuilding: "AI answer jest generowany...",
+      aiRefused: "AI answer odrzucony przez guardrail rules",
+      aiSaved: (id) => `AI answer zapisany: ${id}`,
+      aiUnavailable: "AI answer niedostępny",
+    },
+    values: {
+      buyer: "Kupujący",
+      realtor: "Pośrednik",
+      investor: "Inwestor",
+      refused: "Odrzucono",
+      sourceGrounded: "Source-grounded",
+      dataQualityPrefix: "DQ",
+      m2: "m2",
+    },
+    table: {
+      date: "Data",
+      price: "Cena",
+      pricePerM2: "Cena za m2",
+      object: "Obiekt",
+      district: "Dzielnica",
+      area: "m2",
+    },
+    area: {
+      median: (value) => `Mediana: ${value}/m2`,
+      activeListings: (count) => `Aktywne ogłoszenia: ${count}`,
+      averageExposure: (days) => `Średnia ekspozycja: ${days} dni`,
+      supply90d: (value) => `Podaż 90 dni: ${value}`,
+    },
+    empty: {
+      loadingAnalytics: "Ładowanie analityki obiektu",
+      noAiAnswer: "AI answer pojawi się po zapytaniu.",
+      noData: "Brak danych.",
+      noAreaNews: "Brak powiązanych aktualności dla tej dzielnicy.",
+      noConfirmedAmenities: "brak potwierdzonych danych",
+    },
+    developer: {
+      title: "Deweloper",
+      profile: "Profil dewelopera",
+      ratingLine: (rating, confidence) => `Rating ${rating}/100, confidence ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Ukończone projekty: ${completed}; aktywne: ${active}.`,
+      labels: {
+        strong: "mocny",
+        good: "dobry",
+        mixed: "mieszany",
+        limited_data: "mało danych",
+        risk_review: "do sprawdzenia",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Kluczowe wnioski",
+      sources: "Źródła",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Podsumowanie obiektu",
+      description: "Krótki source-grounded summary decyzji.",
+    },
+    lifestyle: {
+      balcony: "balkon",
+      terrace: "taras",
+      garden: "ogród",
+      elevator: "winda",
+    },
+    chart: {
+      priceHistoryAria: (title) => `Historia ceny dla ${title}`,
+    },
+    favoriteNote: "Dodane ze strony obiektu",
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    actions: {
+      back: "Назад",
+      refresh: "Обновить",
+      favorite: "Избранное",
+      saveReport: "Сохранить отчет",
+      openReport: "Открыть отчет",
+      answer: "Ответить",
+    },
+    sections: {
+      aiAssistant: "AI assistant",
+      insights: "Выводы по объекту",
+      negotiation: "Аргументы для торга",
+      priceHistory: "История цены",
+      comparables: "Похожие объекты",
+      scoring: "Скоринг",
+      area: "Район",
+      areaNews: "Новости района",
+      guides: "Гайды",
+      readyHtml: "Готовый HTML",
+    },
+    metrics: {
+      verdict: "Вердикт",
+      price: "Цена",
+      pricePerM2: "Цена за m2",
+      fairPriceMid: "Fair price mid",
+      fairPriceConfidence: "Fair price confidence",
+      fairDeviation: "Отклонение от fair mid",
+      priceLabel: "Price label",
+      buildingType: "Тип здания",
+      renovationState: "Состояние",
+      amenities: "Удобства",
+      parking: "Parking",
+      heating: "Отопление",
+    },
+    fields: {
+      audience: "Аудитория",
+      topic: "Тема",
+      question: "Вопрос",
+    },
+    placeholders: {
+      customQuestion: "Например: какие вопросы задать продавцу?",
+    },
+    statuses: {
+      loadingObject: "Загрузка объекта...",
+      analyticsUpdated: "Аналитика обновлена",
+      backendUnavailable: "Backend API недоступен",
+      favoriteAdded: "Добавлено в избранное",
+      reportSaved: (reportId) => `Отчет сохранен: ${reportId}`,
+      aiReady: "AI assistant готов",
+      aiQuestionsUnavailable: "AI questions недоступны",
+      aiBuilding: "AI answer строится...",
+      aiRefused: "AI answer отклонен guardrail-правилом",
+      aiSaved: (id) => `AI answer сохранен: ${id}`,
+      aiUnavailable: "AI answer недоступен",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      dataQualityPrefix: "DQ",
+      m2: "m2",
+    },
+    table: {
+      date: "Дата",
+      price: "Цена",
+      pricePerM2: "Цена за m2",
+      object: "Объект",
+      district: "Район",
+      area: "m2",
+    },
+    area: {
+      median: (value) => `Медиана: ${value}/m2`,
+      activeListings: (count) => `Активных объявлений: ${count}`,
+      averageExposure: (days) =>
+        `Средняя экспозиция: ${days} ${pluralRu(days, "день", "дня", "дней")}`,
+      supply90d: (value) => `Предложение 90 дней: ${value}`,
+    },
+    empty: {
+      loadingAnalytics: "Загрузка аналитики объекта",
+      noAiAnswer: "AI answer появится после запроса.",
+      noData: "Нет данных.",
+      noAreaNews: "Для района пока нет привязанных новостей.",
+      noConfirmedAmenities: "нет подтвержденных данных",
+    },
+    developer: {
+      title: "Застройщик",
+      profile: "Профиль застройщика",
+      ratingLine: (rating, confidence) =>
+        `Рейтинг ${rating}/100, уверенность ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Сдано проектов: ${completed}; активных: ${active}.`,
+      labels: {
+        strong: "сильный",
+        good: "хороший",
+        mixed: "смешанный",
+        limited_data: "мало данных",
+        risk_review: "проверить",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Ключевые выводы",
+      sources: "Источники",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    lifestyle: {
+      balcony: "балкон",
+      terrace: "терраса",
+      garden: "сад",
+      elevator: "лифт",
+    },
+    chart: {
+      priceHistoryAria: (title) => `История цены для ${title}`,
+    },
+    favoriteNote: "Добавлено со страницы объекта",
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    actions: {
+      back: "Назад",
+      refresh: "Оновити",
+      favorite: "Обране",
+      saveReport: "Зберегти звіт",
+      openReport: "Відкрити звіт",
+      answer: "Відповісти",
+    },
+    sections: {
+      aiAssistant: "AI assistant",
+      insights: "Висновки щодо об'єкта",
+      negotiation: "Аргументи для торгу",
+      priceHistory: "Історія ціни",
+      comparables: "Схожі об'єкти",
+      scoring: "Скоринг",
+      area: "Район",
+      areaNews: "Новини району",
+      guides: "Гайди",
+      readyHtml: "Готовий HTML",
+    },
+    metrics: {
+      verdict: "Вердикт",
+      price: "Ціна",
+      pricePerM2: "Ціна за m2",
+      fairPriceMid: "Fair price mid",
+      fairPriceConfidence: "Fair price confidence",
+      fairDeviation: "Відхилення від fair mid",
+      priceLabel: "Price label",
+      buildingType: "Тип будівлі",
+      renovationState: "Стан",
+      amenities: "Зручності",
+      parking: "Parking",
+      heating: "Опалення",
+    },
+    fields: {
+      audience: "Аудиторія",
+      topic: "Тема",
+      question: "Питання",
+    },
+    placeholders: {
+      customQuestion: "Наприклад: які питання поставити продавцю?",
+    },
+    statuses: {
+      loadingObject: "Завантаження об'єкта...",
+      analyticsUpdated: "Аналітику оновлено",
+      backendUnavailable: "Backend API недоступний",
+      favoriteAdded: "Додано в обране",
+      reportSaved: (reportId) => `Звіт збережено: ${reportId}`,
+      aiReady: "AI assistant готовий",
+      aiQuestionsUnavailable: "AI questions недоступні",
+      aiBuilding: "AI answer будується...",
+      aiRefused: "AI answer відхилено guardrail-правилом",
+      aiSaved: (id) => `AI answer збережено: ${id}`,
+      aiUnavailable: "AI answer недоступний",
+    },
+    values: {
+      buyer: "Buyer",
+      realtor: "Realtor",
+      investor: "Investor",
+      refused: "Refused",
+      sourceGrounded: "Source-grounded",
+      dataQualityPrefix: "DQ",
+      m2: "m2",
+    },
+    table: {
+      date: "Дата",
+      price: "Ціна",
+      pricePerM2: "Ціна за m2",
+      object: "Об'єкт",
+      district: "Район",
+      area: "m2",
+    },
+    area: {
+      median: (value) => `Медіана: ${value}/m2`,
+      activeListings: (count) => `Активних оголошень: ${count}`,
+      averageExposure: (days) =>
+        `Середня експозиція: ${days} ${pluralUk(days, "день", "дні", "днів")}`,
+      supply90d: (value) => `Пропозиція 90 днів: ${value}`,
+    },
+    empty: {
+      loadingAnalytics: "Завантаження аналітики об'єкта",
+      noAiAnswer: "AI answer з'явиться після запиту.",
+      noData: "Немає даних.",
+      noAreaNews: "Для району поки немає прив'язаних новин.",
+      noConfirmedAmenities: "немає підтверджених даних",
+    },
+    developer: {
+      title: "Забудовник",
+      profile: "Профіль забудовника",
+      ratingLine: (rating, confidence) =>
+        `Рейтинг ${rating}/100, впевненість ${confidence}/100.`,
+      projectsLine: (completed, active) =>
+        `Здано проектів: ${completed}; активних: ${active}.`,
+      labels: {
+        strong: "сильний",
+        good: "хороший",
+        mixed: "змішаний",
+        limited_data: "мало даних",
+        risk_review: "перевірити",
+      },
+    },
+    assistantColumn: {
+      keyPoints: "Ключові висновки",
+      sources: "Джерела",
+      guardrails: "Guardrails",
+    },
+    fallbackQuestion: {
+      label: "Object summary",
+      description: "Short grounded decision summary.",
+    },
+    lifestyle: {
+      balcony: "балкон",
+      terrace: "тераса",
+      garden: "сад",
+      elevator: "ліфт",
+    },
+    chart: {
+      priceHistoryAria: (title) => `Історія ціни для ${title}`,
+    },
+    favoriteNote: "Додано зі сторінки об'єкта",
     errorPrefix: "Помилка",
   },
 };

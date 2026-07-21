@@ -345,6 +345,15 @@ expectIncludes("area detail guide internal links", areaDetailPage, [
 ]);
 
 expectIncludes("listing detail guide internal links", listingDetailPage, [
+  "LISTING_DETAIL_COPY[locale]",
+  "useLocalePreference()",
+  "copy.sections.priceHistory",
+  "copy.sections.comparables",
+  "copy.actions.openReport",
+  "scoreLabel(scores.decision_label, locale)",
+  "money(listing.price, locale)",
+  "dateValue(point.observed_at, locale)",
+  "<ScoreBars locale={locale}",
   "SEO_GUIDES.slice(0, 3)",
   "href={`/guides/${guide.slug}`}",
   "<BookOpen",
@@ -352,8 +361,9 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
 expectRegex(
   "listing detail mobile table wrappers",
   listingDetailPage,
-  /История цены[\s\S]*table-scroll[\s\S]*Похожие объекты[\s\S]*table-scroll/,
+  /copy\.sections\.priceHistory[\s\S]*table-scroll[\s\S]*copy\.sections\.comparables[\s\S]*table-scroll/,
 );
+expectRegex("listing detail no visible Russian literals", listingDetailPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("primary navigation", layout, [
   "LOCALE_COOKIE_NAME",
@@ -387,6 +397,7 @@ expectIncludes("i18n dictionaries", i18n, [
   "LISTING_CARD_COPY",
   "CHECK_PAGE_COPY",
   "CHECK_DRAFTS_COPY",
+  "LISTING_DETAIL_COPY",
   "normalizeLocale",
 ]);
 expectIncludes("localized score labels", scoreLabels, [
