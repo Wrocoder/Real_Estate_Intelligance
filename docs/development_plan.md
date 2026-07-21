@@ -311,10 +311,12 @@
   pagination, listing cards, score labels и number/currency/percent formatting.
 - [x] Локализовать check apartment page: URL import, private draft statuses,
   object form, result summary, AI assistant controls, comparables table and date/currency formatting.
+- [x] Локализовать check draft history page: saved private drafts table,
+  retention labels, report/payment/delete actions and date/currency formatting.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
-- [ ] Локализовать главные публичные страницы: check draft history, listing detail,
-  compare, reports, alerts, pricing, account, areas, news,
+- [ ] Локализовать главные публичные страницы: listing detail, compare,
+  reports, alerts, pricing, account, areas, news,
   developers, CRM-light pages.
 - [ ] Локализовать backend/user-facing API messages там, где они отображаются в UI:
   validation errors, report warnings, scoring labels, source-quality warnings,
@@ -603,6 +605,7 @@
 - [x] Commit 110: Frontend i18n foundation and language switcher.
 - [x] Commit 111: Explorer search flow, listing cards and score labels i18n.
 - [x] Commit 112: Check apartment URL-to-report flow i18n.
+- [x] Commit 113: Check draft history i18n.
 
 ## Current Sprint
 
@@ -731,6 +734,8 @@
   listing cards, score labels and locale-aware numeric formatting.
 - [x] Локализовать check apartment URL-to-report flow: import statuses, form labels,
   result metrics, AI assistant controls, comparables and locale-aware dates/currency.
+- [x] Локализовать check draft history: saved checks table, retention text,
+  report/payment/delete actions and locale-aware dates/currency.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

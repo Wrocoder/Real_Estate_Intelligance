@@ -333,6 +333,60 @@ export type CheckPageCopy = {
   errorPrefix: string;
 };
 
+export type CheckDraftsPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    newCheck: string;
+    refresh: string;
+    report: string;
+    mockPay: string;
+    delete: string;
+    html: string;
+  };
+  sections: {
+    history: string;
+  };
+  table: {
+    object: string;
+    parameters: string;
+    score: string;
+    privateRef: string;
+    retention: string;
+    actions: string;
+  };
+  statuses: {
+    loading: string;
+    loaded: (count: number) => string;
+    backendUnavailable: string;
+    deleting: string;
+    deleteError: string;
+    deleted: string;
+    reportGenerating: string;
+    reportSaved: (reportId: string) => string;
+    reportError: string;
+    orderCreating: string;
+    mockPayment: (orderId: string) => string;
+    paidReportReady: (orderId: string) => string;
+    paymentError: string;
+  };
+  values: {
+    manualInput: string;
+    rooms: (count: number) => string;
+    dataQualityPrefix: string;
+  };
+  retention: {
+    expired: string;
+    expiresToday: string;
+    daysLeft: (days: number) => string;
+  };
+  empty: {
+    noDrafts: string;
+    loading: string;
+  };
+  errorPrefix: string;
+};
+
 export const LOCALE_OPTIONS: LocaleOption[] = [
   { code: "en", nativeName: "English", englishName: "English", shortLabel: "EN" },
   { code: "pl", nativeName: "Polski", englishName: "Polish", shortLabel: "PL" },
@@ -1288,6 +1342,213 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
     fallbackQuestion: {
       label: "Object summary",
       description: "Short grounded decision summary.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const CHECK_DRAFTS_COPY: Record<Locale, CheckDraftsPageCopy> = {
+  en: {
+    title: "My checks",
+    subtitle: "Private drafts for apartments checked through the address-first flow.",
+    actions: {
+      newCheck: "New check",
+      refresh: "Refresh",
+      report: "Report",
+      mockPay: "Mock pay",
+      delete: "Delete",
+      html: "HTML",
+    },
+    sections: { history: "History" },
+    table: {
+      object: "Object",
+      parameters: "Parameters",
+      score: "Score",
+      privateRef: "Private ref",
+      retention: "Retention",
+      actions: "Actions",
+    },
+    statuses: {
+      loading: "Loading checks...",
+      loaded: (count) => `Checks: ${count}`,
+      backendUnavailable: "Backend API unavailable",
+      deleting: "Deleting...",
+      deleteError: "Delete error",
+      deleted: "Check deleted",
+      reportGenerating: "Generating report...",
+      reportSaved: (reportId) => `Report saved: ${reportId}`,
+      reportError: "Report generation error",
+      orderCreating: "Creating order...",
+      mockPayment: (orderId) => `Mock payment: ${orderId}`,
+      paidReportReady: (orderId) => `Paid report ready: ${orderId}`,
+      paymentError: "Payment error",
+    },
+    values: {
+      manualInput: "manual input",
+      rooms: (count) => `${count} room${count === 1 ? "" : "s"}`,
+      dataQualityPrefix: "DQ",
+    },
+    retention: {
+      expired: "expired",
+      expiresToday: "expires today",
+      daysLeft: (days) => `${days} day${days === 1 ? "" : "s"} left`,
+    },
+    empty: {
+      noDrafts: "No saved checks yet.",
+      loading: "Loading data",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Moje sprawdzenia",
+    subtitle: "Private drafts mieszkań sprawdzonych przez address-first flow.",
+    actions: {
+      newCheck: "Nowe sprawdzenie",
+      refresh: "Odśwież",
+      report: "Raport",
+      mockPay: "Mock pay",
+      delete: "Usuń",
+      html: "HTML",
+    },
+    sections: { history: "Historia" },
+    table: {
+      object: "Obiekt",
+      parameters: "Parametry",
+      score: "Score",
+      privateRef: "Private ref",
+      retention: "Retention",
+      actions: "Działania",
+    },
+    statuses: {
+      loading: "Ładowanie sprawdzeń...",
+      loaded: (count) => `Sprawdzeń: ${count}`,
+      backendUnavailable: "Backend API niedostępne",
+      deleting: "Usuwanie...",
+      deleteError: "Błąd usuwania",
+      deleted: "Sprawdzenie usunięte",
+      reportGenerating: "Generowanie raportu...",
+      reportSaved: (reportId) => `Raport zapisany: ${reportId}`,
+      reportError: "Błąd generowania raportu",
+      orderCreating: "Tworzenie zamówienia...",
+      mockPayment: (orderId) => `Mock payment: ${orderId}`,
+      paidReportReady: (orderId) => `Płatny raport gotowy: ${orderId}`,
+      paymentError: "Błąd płatności",
+    },
+    values: {
+      manualInput: "ręczne dane",
+      rooms: (count) => `${count} pok.`,
+      dataQualityPrefix: "DQ",
+    },
+    retention: {
+      expired: "wygasło",
+      expiresToday: "wygasa dziś",
+      daysLeft: (days) => `${days} dni`,
+    },
+    empty: {
+      noDrafts: "Nie ma jeszcze zapisanych sprawdzeń.",
+      loading: "Ładowanie danych",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Мои проверки",
+    subtitle: "Private drafts по квартирам, которые были проверены через address-first flow.",
+    actions: {
+      newCheck: "Новая проверка",
+      refresh: "Обновить",
+      report: "Отчет",
+      mockPay: "Mock pay",
+      delete: "Удалить",
+      html: "HTML",
+    },
+    sections: { history: "История" },
+    table: {
+      object: "Объект",
+      parameters: "Параметры",
+      score: "Score",
+      privateRef: "Private ref",
+      retention: "Retention",
+      actions: "Действия",
+    },
+    statuses: {
+      loading: "Загрузка проверок...",
+      loaded: (count) => `Проверок: ${count}`,
+      backendUnavailable: "Backend API недоступен",
+      deleting: "Удаление...",
+      deleteError: "Ошибка удаления",
+      deleted: "Проверка удалена",
+      reportGenerating: "Генерация отчета...",
+      reportSaved: (reportId) => `Отчет сохранен: ${reportId}`,
+      reportError: "Ошибка генерации отчета",
+      orderCreating: "Создание заказа...",
+      mockPayment: (orderId) => `Mock payment: ${orderId}`,
+      paidReportReady: (orderId) => `Paid report ready: ${orderId}`,
+      paymentError: "Ошибка оплаты",
+    },
+    values: {
+      manualInput: "manual input",
+      rooms: (count) => `${count} ${pluralRu(count, "комната", "комнаты", "комнат")}`,
+      dataQualityPrefix: "DQ",
+    },
+    retention: {
+      expired: "expired",
+      expiresToday: "expires today",
+      daysLeft: (days) => `${days} ${pluralRu(days, "день", "дня", "дней")} осталось`,
+    },
+    empty: {
+      noDrafts: "Пока нет сохраненных проверок.",
+      loading: "Загрузка данных",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Мої перевірки",
+    subtitle: "Private drafts квартир, перевірених через address-first flow.",
+    actions: {
+      newCheck: "Нова перевірка",
+      refresh: "Оновити",
+      report: "Звіт",
+      mockPay: "Mock pay",
+      delete: "Видалити",
+      html: "HTML",
+    },
+    sections: { history: "Історія" },
+    table: {
+      object: "Об'єкт",
+      parameters: "Параметри",
+      score: "Score",
+      privateRef: "Private ref",
+      retention: "Retention",
+      actions: "Дії",
+    },
+    statuses: {
+      loading: "Завантаження перевірок...",
+      loaded: (count) => `Перевірок: ${count}`,
+      backendUnavailable: "Backend API недоступний",
+      deleting: "Видалення...",
+      deleteError: "Помилка видалення",
+      deleted: "Перевірку видалено",
+      reportGenerating: "Генерація звіту...",
+      reportSaved: (reportId) => `Звіт збережено: ${reportId}`,
+      reportError: "Помилка генерації звіту",
+      orderCreating: "Створення замовлення...",
+      mockPayment: (orderId) => `Mock payment: ${orderId}`,
+      paidReportReady: (orderId) => `Paid report ready: ${orderId}`,
+      paymentError: "Помилка оплати",
+    },
+    values: {
+      manualInput: "manual input",
+      rooms: (count) => `${count} ${pluralUk(count, "кімната", "кімнати", "кімнат")}`,
+      dataQualityPrefix: "DQ",
+    },
+    retention: {
+      expired: "expired",
+      expiresToday: "expires today",
+      daysLeft: (days) => `${days} ${pluralUk(days, "день", "дні", "днів")} залишилось`,
+    },
+    empty: {
+      noDrafts: "Поки немає збережених перевірок.",
+      loading: "Завантаження даних",
     },
     errorPrefix: "Помилка",
   },
