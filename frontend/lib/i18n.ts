@@ -387,6 +387,494 @@ export type CheckDraftsPageCopy = {
   errorPrefix: string;
 };
 
+export type ReportsPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    generate: string;
+    open: string;
+    email: string;
+    csv: string;
+    json: string;
+    pdf: string;
+  };
+  sections: {
+    create: string;
+    history: string;
+  };
+  fields: {
+    listingId: string;
+    audience: string;
+    agency: string;
+    agent: string;
+    email: string;
+    phone: string;
+    website: string;
+    note: string;
+    logoUrl: string;
+    primaryColor: string;
+    accentColor: string;
+    footer: string;
+    disclaimer: string;
+    whiteLabel: string;
+  };
+  table: {
+    report: string;
+    object: string;
+    audience: string;
+    insight: string;
+    date: string;
+    content: string;
+    pdf: string;
+  };
+  statuses: {
+    loading: string;
+    loaded: (count: number) => string;
+    backendUnavailable: string;
+    generating: string;
+    reportSaved: (reportId: string) => string;
+  };
+  values: {
+    exportUnavailable: string;
+    whiteLabelHint: string;
+    items: (count: number) => string;
+    noInsight: string;
+    unknownError: string;
+    audienceLabels: Record<string, string>;
+    insightLabels: Record<string, string>;
+  };
+  empty: {
+    loading: string;
+    noReports: string;
+  };
+  errorPrefix: string;
+};
+
+export type PricingPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    mockPayGenerate: string;
+    open: string;
+    events: string;
+  };
+  metrics: {
+    currentPlan: string;
+    subscriptionReports: string;
+    oneTimeOrders: string;
+    status: string;
+  };
+  sections: {
+    oneTimeReport: string;
+    invoice: string;
+    orderHistory: string;
+    subscriptions: string;
+    auditTrail: string;
+  };
+  hints: {
+    mockCheckout: string;
+  };
+  fields: {
+    listingId: string;
+    areaId: string;
+    b2bInvoice: string;
+    company: string;
+    vat: string;
+    email: string;
+    address: string;
+    postalCode: string;
+    city: string;
+    country: string;
+  };
+  table: {
+    order: string;
+    object: string;
+    status: string;
+    invoice: string;
+    report: string;
+    audit: string;
+  };
+  statuses: {
+    loading: string;
+    ready: string;
+    backendUnavailable: string;
+    creatingOrder: (title: string) => string;
+    checkout: (provider: string, reference: string) => string;
+    paid: (orderId: string) => string;
+    reportReady: (reportId: string | null | undefined) => string;
+    auditEvents: (orderId: string) => string;
+  };
+  values: {
+    unknownError: string;
+    noValue: string;
+    eventFallback: string;
+    orders: (count: number) => string;
+    events: (count: number) => string;
+    auditEmpty: string;
+    whiteLabel: string;
+    standard: string;
+    planSummary: (monthlyReports: string, maxAlerts: string, branding: string) => string;
+  };
+  empty: {
+    loading: string;
+  };
+  errorPrefix: string;
+};
+
+export type AlertsPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    create: string;
+    preview: string;
+    dryRun: string;
+    checkSend: string;
+    clientDigest: string;
+    delete: string;
+  };
+  sections: {
+    newAlert: string;
+    alerts: string;
+    preview: string;
+    realtorDigest: string;
+    deliveryHistory: string;
+  };
+  fields: {
+    name: string;
+    municipality: string;
+    voivodeship: string;
+    district: string;
+    search: string;
+    maxPrice: string;
+    buildingType: string;
+    renovationState: string;
+    balcony: string;
+    terrace: string;
+    garden: string;
+    elevator: string;
+    parking: string;
+    heating: string;
+    minFloor: string;
+    maxFloor: string;
+    maxBuildingFloors: string;
+    minBuildingYear: string;
+    maxBuildingYear: string;
+    minInvestment: string;
+    maxFairDelta: string;
+    minNegotiation: string;
+    minLiquidity: string;
+    minRental: string;
+    minPriceReductions: string;
+    maxDaysOnMarket: string;
+    channel: string;
+    frequency: string;
+    deliveryTarget: string;
+    active: string;
+    client: string;
+    intro: string;
+    maxMatches: string;
+    includeSourceLinks: string;
+  };
+  placeholders: {
+    municipality: string;
+    voivodeship: string;
+    search: string;
+    telegramTarget: string;
+    emailTarget: string;
+    clientName: string;
+    digestIntro: string;
+  };
+  options: {
+    any: string;
+    anyFeminine: string;
+    buildingType: OptionLabelMap;
+    renovationState: OptionLabelMap;
+    parkingType: OptionLabelMap;
+    heatingType: OptionLabelMap;
+    channel: OptionLabelMap;
+    frequency: OptionLabelMap;
+  };
+  statuses: {
+    loading: string;
+    loaded: (count: number) => string;
+    backendUnavailable: string;
+    creating: string;
+    created: (alertId: string) => string;
+    previewLoaded: (count: number) => string;
+    deliveryPrepared: (status: string, message: string) => string;
+    updated: (name: string) => string;
+    updateError: string;
+    deleteConfirm: (name: string) => string;
+    deleted: (name: string) => string;
+    deleteError: string;
+    saving: string;
+    digestReady: (items: number, total: number) => string;
+    digestError: string;
+  };
+  values: {
+    unknownError: string;
+    unknownAlertUpdateError: string;
+    unknownAlertDeleteError: string;
+    unknownDigestError: string;
+    items: (count: number) => string;
+    matches: (count: number) => string;
+    digestMatches: (items: number, total: number) => string;
+    notGenerated: string;
+    defaultTarget: string;
+    active: string;
+    paused: string;
+    yes: string;
+    no: string;
+    alertNameDefault: string;
+    rooms: (count: number) => string;
+    priceDrops: (count: number) => string;
+    scoreLabels: {
+      investment: string;
+      risk: string;
+      fairDelta: string;
+      negotiation: string;
+      liquidity: string;
+      rental: string;
+    };
+    filterLabels: OptionLabelMap;
+  };
+  empty: {
+    loading: string;
+    noAlerts: string;
+    previewPrompt: string;
+    digestPrompt: string;
+    noDeliveryJobs: string;
+  };
+  table: {
+    channel: string;
+    status: string;
+    matches: string;
+    message: string;
+  };
+  errorPrefix: string;
+};
+
+export type AccountPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    refreshCrm: string;
+    create: string;
+    add: string;
+    delete: string;
+    select: string;
+    choose: string;
+    current: string;
+    createClient: string;
+    addNote: string;
+    build: string;
+    enableShare: string;
+    disableShare: string;
+    preview: string;
+    publicLink: string;
+    open: string;
+  };
+  sections: {
+    plans: string;
+    profile: string;
+    usage: string;
+    capabilities: string;
+    agencyWorkspace: string;
+    agencyCrm: string;
+    notes: string;
+    shortlist: string;
+    sharePreview: string;
+    oneTimePurchases: string;
+  };
+  metrics: {
+    plan: string;
+    role: string;
+    reports: string;
+    credits: string;
+    alerts: string;
+    owner: string;
+    city: string;
+    members: string;
+    status: string;
+    budget: string;
+    rooms: string;
+    location: string;
+    consent: string;
+  };
+  fields: {
+    name: string;
+    billingEmail: string;
+    website: string;
+    city: string;
+    action: string;
+    plan: string;
+    userId: string;
+    email: string;
+    displayName: string;
+    role: string;
+    status: string;
+    client: string;
+    phone: string;
+    district: string;
+    budgetMin: string;
+    budgetMax: string;
+    rooms: string;
+    tags: string;
+    profileNotes: string;
+    consent: string;
+    note: string;
+    visibility: string;
+    pinned: string;
+    title: string;
+    listingIds: string;
+    reportIds: string;
+    clientMessage: string;
+    shareLink: string;
+    id: string;
+    planId: string;
+  };
+  placeholders: {
+    agencyName: string;
+    billingEmail: string;
+    website: string;
+    userId: string;
+    memberEmail: string;
+    memberName: string;
+    clientName: string;
+    clientEmail: string;
+    phone: string;
+    district: string;
+    budgetMin: string;
+    budgetMax: string;
+    rooms: string;
+    tags: string;
+    profileNotes: string;
+    note: string;
+    shortlistTitle: string;
+    listingIds: string;
+    reportIds: string;
+    clientMessage: string;
+  };
+  labels: {
+    plan: OptionLabelMap;
+    userRole: OptionLabelMap;
+    subscriptionStatus: OptionLabelMap;
+    agencyRole: OptionLabelMap;
+    agencyStatus: OptionLabelMap;
+    crmClientStatus: OptionLabelMap;
+    noteVisibility: OptionLabelMap;
+    shortlistStatus: OptionLabelMap;
+    reportOrderStatus: OptionLabelMap;
+    capability: OptionLabelMap;
+  };
+  tables: {
+    member: string;
+    email: string;
+    role: string;
+    status: string;
+    action: string;
+    product: string;
+    object: string;
+    report: string;
+    price: string;
+    score: string;
+    fairDelta: string;
+    developer: string;
+  };
+  statuses: {
+    loadingAccount: string;
+    loadingAccountAndLimits: string;
+    accountUpdated: string;
+    backendUnavailable: string;
+    unknownError: string;
+    loadingCrmError: string;
+    switchingPlan: (plan: string) => string;
+    planChanged: (plan: string) => string;
+    loadingWorkspace: string;
+    workspaceSelected: string;
+    loadingWorkspaceError: string;
+    agencyNameRequired: string;
+    creatingAgency: string;
+    agencyCreated: string;
+    agencyCreateError: string;
+    memberUserIdRequired: string;
+    addingMember: string;
+    memberAdded: string;
+    addMemberError: string;
+    updatingRole: string;
+    roleUpdated: string;
+    roleUpdateError: string;
+    updatingStatus: string;
+    statusUpdated: string;
+    statusUpdateError: string;
+    removingMember: string;
+    memberRemoved: string;
+    removeMemberError: string;
+    loadingCrmClient: string;
+    crmClientSelected: string;
+    crmClientLoadError: string;
+    crmClientNameRequired: string;
+    creatingCrmClient: string;
+    crmClientCreated: string;
+    crmClientCreateError: string;
+    updatingCrmClientStatus: string;
+    crmClientStatusUpdated: string;
+    crmClientUpdateError: string;
+    noteBodyRequired: string;
+    addingNote: string;
+    noteAdded: string;
+    noteAddError: string;
+    shortlistRequired: string;
+    buildingShortlist: string;
+    shortlistCreated: string;
+    shortlistCreateError: string;
+    enablingShare: string;
+    disablingShare: string;
+    shareEnabled: string;
+    shareDisabled: string;
+    shareUpdateError: string;
+    generatingSharePreview: string;
+    sharePreviewReady: string;
+    sharePreviewError: string;
+  };
+  values: {
+    activeBadge: string;
+    favorites: (count: string) => string;
+    alerts: (count: string) => string;
+    monthlyReports: (count: string) => string;
+    whiteLabelReports: string;
+    noWhiteLabel: string;
+    workspaces: (count: number) => string;
+    clients: (count: number, agencyName: string) => string;
+    orders: (count: number) => string;
+    reportCredits: (count: string) => string;
+    agencyEnabled: string;
+    agencyPlanRequired: string;
+    yes: string;
+    no: string;
+    noValue: string;
+    pinnedPrefix: string;
+    listingsUpdated: (count: number, updatedAt: string) => string;
+    fairMid: (value: string) => string;
+    scoreDetails: (risk: number, liquidity: number) => string;
+    developerReputation: (score: number, label: string | null) => string;
+    noReputationData: string;
+    budgetTo: (value: string) => string;
+    budgetFrom: (value: string) => string;
+  };
+  empty: {
+    crmClients: string;
+    shortlists: string;
+    crmClientPrompt: string;
+    shortlistItems: string;
+  };
+  errorPrefix: string;
+};
+
 export type ListingDetailCopy = {
   actions: {
     back: string;
@@ -1790,6 +2278,1697 @@ export const CHECK_DRAFTS_COPY: Record<Locale, CheckDraftsPageCopy> = {
     empty: {
       noDrafts: "Поки немає збережених перевірок.",
       loading: "Завантаження даних",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const REPORTS_PAGE_COPY: Record<Locale, ReportsPageCopy> = {
+  en: {
+    title: "Reports",
+    subtitle: "Saved HTML/JSON reports for buyers, realtors and investors.",
+    actions: {
+      refresh: "Refresh",
+      generate: "Generate",
+      open: "Open",
+      email: "Email",
+      csv: "CSV",
+      json: "JSON",
+      pdf: "PDF",
+    },
+    sections: {
+      create: "Create report",
+      history: "History",
+    },
+    fields: {
+      listingId: "Listing ID",
+      audience: "Audience",
+      agency: "Agency",
+      agent: "Agent",
+      email: "Email",
+      phone: "Phone",
+      website: "Website",
+      note: "Note",
+      logoUrl: "Logo URL",
+      primaryColor: "Primary",
+      accentColor: "Accent",
+      footer: "Footer",
+      disclaimer: "Nota prawna",
+      whiteLabel: "Branding",
+    },
+    table: {
+      report: "Report",
+      object: "Object",
+      audience: "Audience",
+      insight: "Insight",
+      date: "Date",
+      content: "Content",
+      pdf: "PDF",
+    },
+    statuses: {
+      loading: "Loading reports...",
+      loaded: (count) => `Reports: ${count}`,
+      backendUnavailable: "Backend API unavailable",
+      generating: "Generating report...",
+      reportSaved: (reportId) => `Report saved: ${reportId}`,
+    },
+    values: {
+      exportUnavailable: "Export is available on Realtor/Agency plans",
+      whiteLabelHint: "Logo, colors and custom footer require Realtor/Agency.",
+      items: (count) => `${count} item${count === 1 ? "" : "s"}`,
+      noInsight: "No saved summary",
+      unknownError: "unknown error",
+      audienceLabels: {
+        buyer: "Buyer",
+        realtor: "Realtor",
+        investor: "Investor",
+      },
+      insightLabels: {
+        object_explanation: "Object explanation",
+        area_summary: "Area summary",
+        report_summary: "Report summary",
+      },
+    },
+    empty: {
+      loading: "Loading reports",
+      noReports: "No saved reports yet.",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Raporty",
+    subtitle: "Zapisane raporty HTML/JSON dla kupującego, pośrednika i inwestora.",
+    actions: {
+      refresh: "Odśwież",
+      generate: "Generuj",
+      open: "Otwórz",
+      email: "Email",
+      csv: "CSV",
+      json: "JSON",
+      pdf: "PDF",
+    },
+    sections: {
+      create: "Utwórz raport",
+      history: "Historia",
+    },
+    fields: {
+      listingId: "Listing ID",
+      audience: "Odbiorca",
+      agency: "Agencja",
+      agent: "Agent",
+      email: "Email",
+      phone: "Telefon",
+      website: "Strona",
+      note: "Notatka",
+      logoUrl: "Logo URL",
+      primaryColor: "Kolor główny",
+      accentColor: "Akcent",
+      footer: "Stopka",
+      disclaimer: "Disclaimer",
+      whiteLabel: "White-label",
+    },
+    table: {
+      report: "Raport",
+      object: "Obiekt",
+      audience: "Odbiorca",
+      insight: "Wniosek",
+      date: "Data",
+      content: "Treść",
+      pdf: "PDF",
+    },
+    statuses: {
+      loading: "Ładowanie raportów...",
+      loaded: (count) => `Raportów: ${count}`,
+      backendUnavailable: "Backend API niedostępne",
+      generating: "Generowanie raportu...",
+      reportSaved: (reportId) => `Raport zapisany: ${reportId}`,
+    },
+    values: {
+      exportUnavailable: "Eksport jest dostępny w planach Realtor/Agency",
+      whiteLabelHint: "Logo, kolory i własna stopka wymagają planu Realtor/Agency.",
+      items: (count) => `${count} ${pluralPl(count, "element", "elementy", "elementów")}`,
+      noInsight: "Brak zapisanego podsumowania",
+      unknownError: "nieznany błąd",
+      audienceLabels: {
+        buyer: "Kupujący",
+        realtor: "Pośrednik",
+        investor: "Inwestor",
+      },
+      insightLabels: {
+        object_explanation: "Opis obiektu",
+        area_summary: "Podsumowanie obszaru",
+        report_summary: "Podsumowanie raportu",
+      },
+    },
+    empty: {
+      loading: "Ładowanie raportów",
+      noReports: "Nie ma jeszcze zapisanych raportów.",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Отчеты",
+    subtitle: "Сохраненные HTML/JSON отчеты по объектам для покупателя, риелтора и инвестора.",
+    actions: {
+      refresh: "Обновить",
+      generate: "Сгенерировать",
+      open: "Открыть",
+      email: "Email",
+      csv: "CSV",
+      json: "JSON",
+      pdf: "PDF",
+    },
+    sections: {
+      create: "Создать отчет",
+      history: "История",
+    },
+    fields: {
+      listingId: "Listing ID",
+      audience: "Аудитория",
+      agency: "Агентство",
+      agent: "Агент",
+      email: "Email",
+      phone: "Телефон",
+      website: "Сайт",
+      note: "Заметка",
+      logoUrl: "URL логотипа",
+      primaryColor: "Основной цвет",
+      accentColor: "Акцент",
+      footer: "Футер",
+      disclaimer: "Дисклеймер",
+      whiteLabel: "Брендинг",
+    },
+    table: {
+      report: "Отчет",
+      object: "Объект",
+      audience: "Аудитория",
+      insight: "Инсайт",
+      date: "Дата",
+      content: "Контент",
+      pdf: "PDF",
+    },
+    statuses: {
+      loading: "Загрузка отчетов...",
+      loaded: (count) => `Отчетов: ${count}`,
+      backendUnavailable: "Backend API недоступен",
+      generating: "Генерация отчета...",
+      reportSaved: (reportId) => `Отчет сохранен: ${reportId}`,
+    },
+    values: {
+      exportUnavailable: "Экспорт доступен на тарифах Realtor/Agency",
+      whiteLabelHint: "Логотип, цвета и кастомный футер доступны на Realtor/Agency.",
+      items: (count) => `${count} ${pluralRu(count, "элемент", "элемента", "элементов")}`,
+      noInsight: "Нет сохраненного резюме",
+      unknownError: "неизвестная ошибка",
+      audienceLabels: {
+        buyer: "Покупатель",
+        realtor: "Риелтор",
+        investor: "Инвестор",
+      },
+      insightLabels: {
+        object_explanation: "Пояснение по объекту",
+        area_summary: "Резюме района",
+        report_summary: "Резюме отчета",
+      },
+    },
+    empty: {
+      loading: "Загрузка отчетов",
+      noReports: "Пока нет сохраненных отчетов.",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Звіти",
+    subtitle: "Збережені HTML/JSON звіти за об'єктами для покупця, ріелтора й інвестора.",
+    actions: {
+      refresh: "Оновити",
+      generate: "Згенерувати",
+      open: "Відкрити",
+      email: "Email",
+      csv: "CSV",
+      json: "JSON",
+      pdf: "PDF",
+    },
+    sections: {
+      create: "Створити звіт",
+      history: "Історія",
+    },
+    fields: {
+      listingId: "Listing ID",
+      audience: "Аудиторія",
+      agency: "Агентство",
+      agent: "Агент",
+      email: "Email",
+      phone: "Телефон",
+      website: "Сайт",
+      note: "Нотатка",
+      logoUrl: "URL логотипа",
+      primaryColor: "Основний колір",
+      accentColor: "Акцент",
+      footer: "Футер",
+      disclaimer: "Дисклеймер",
+      whiteLabel: "Брендинг",
+    },
+    table: {
+      report: "Звіт",
+      object: "Об'єкт",
+      audience: "Аудиторія",
+      insight: "Інсайт",
+      date: "Дата",
+      content: "Контент",
+      pdf: "PDF",
+    },
+    statuses: {
+      loading: "Завантаження звітів...",
+      loaded: (count) => `Звітів: ${count}`,
+      backendUnavailable: "Backend API недоступний",
+      generating: "Генерація звіту...",
+      reportSaved: (reportId) => `Звіт збережено: ${reportId}`,
+    },
+    values: {
+      exportUnavailable: "Експорт доступний на планах Realtor/Agency",
+      whiteLabelHint: "Логотип, кольори й кастомний футер доступні на Realtor/Agency.",
+      items: (count) => `${count} ${pluralUk(count, "елемент", "елементи", "елементів")}`,
+      noInsight: "Немає збереженого резюме",
+      unknownError: "невідома помилка",
+      audienceLabels: {
+        buyer: "Покупець",
+        realtor: "Ріелтор",
+        investor: "Інвестор",
+      },
+      insightLabels: {
+        object_explanation: "Пояснення щодо об'єкта",
+        area_summary: "Резюме району",
+        report_summary: "Резюме звіту",
+      },
+    },
+    empty: {
+      loading: "Завантаження звітів",
+      noReports: "Поки немає збережених звітів.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
+  en: {
+    title: "Payments and reports",
+    subtitle: "One-time reports, mock checkout and paid MVP plan limits.",
+    actions: {
+      refresh: "Refresh",
+      mockPayGenerate: "Mock pay + generate",
+      open: "Open",
+      events: "Events",
+    },
+    metrics: {
+      currentPlan: "Current plan",
+      subscriptionReports: "Subscription reports",
+      oneTimeOrders: "One-time orders",
+      status: "Status",
+    },
+    sections: {
+      oneTimeReport: "One-time report",
+      invoice: "Invoice",
+      orderHistory: "Order history",
+      subscriptions: "Subscriptions",
+      auditTrail: "Audit trail",
+    },
+    hints: {
+      mockCheckout: "mock checkout without a real PSP",
+    },
+    fields: {
+      listingId: "Listing ID",
+      areaId: "Area ID",
+      b2bInvoice: "B2B invoice",
+      company: "Company",
+      vat: "VAT/NIP",
+      email: "Email",
+      address: "Address",
+      postalCode: "Postal code",
+      city: "City",
+      country: "Country",
+    },
+    table: {
+      order: "Order",
+      object: "Object",
+      status: "Status",
+      invoice: "Invoice",
+      report: "Report",
+      audit: "Audit",
+    },
+    statuses: {
+      loading: "Loading pricing...",
+      ready: "Ready",
+      backendUnavailable: "Backend API unavailable",
+      creatingOrder: (title) => `Creating order: ${title}...`,
+      checkout: (provider, reference) => `Checkout ${provider}: ${reference}`,
+      paid: (orderId) => `Paid: ${orderId}`,
+      reportReady: (reportId) => `Report ready: ${reportId ?? "-"}`,
+      auditEvents: (orderId) => `Audit events: ${orderId}`,
+    },
+    values: {
+      unknownError: "unknown error",
+      noValue: "-",
+      eventFallback: "event",
+      orders: (count) => `${count} order${count === 1 ? "" : "s"}`,
+      events: (count) => `${count} event${count === 1 ? "" : "s"}`,
+      auditEmpty: "Select an order to see checkout, payment and generation history.",
+      whiteLabel: "white-label",
+      standard: "standard",
+      planSummary: (monthlyReports, maxAlerts, branding) =>
+        `${monthlyReports} reports/month, ${maxAlerts} alerts, ${branding}`,
+    },
+    empty: {
+      loading: "Loading pricing",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Płatności i raporty",
+    subtitle: "Raporty jednorazowe, mock checkout i limity planów paid MVP.",
+    actions: {
+      refresh: "Odśwież",
+      mockPayGenerate: "Mock pay + generuj",
+      open: "Otwórz",
+      events: "Zdarzenia",
+    },
+    metrics: {
+      currentPlan: "Aktualny plan",
+      subscriptionReports: "Raporty w abonamencie",
+      oneTimeOrders: "Zamówienia jednorazowe",
+      status: "Status",
+    },
+    sections: {
+      oneTimeReport: "Raport jednorazowy",
+      invoice: "Faktura",
+      orderHistory: "Historia zamówień",
+      subscriptions: "Subskrypcje",
+      auditTrail: "Audyt",
+    },
+    hints: {
+      mockCheckout: "mock checkout bez realnego PSP",
+    },
+    fields: {
+      listingId: "Listing ID",
+      areaId: "Area ID",
+      b2bInvoice: "Faktura B2B",
+      company: "Firma",
+      vat: "VAT/NIP",
+      email: "Email",
+      address: "Adres",
+      postalCode: "Kod pocztowy",
+      city: "Miasto",
+      country: "Kraj",
+    },
+    table: {
+      order: "Zamówienie",
+      object: "Obiekt",
+      status: "Status",
+      invoice: "Faktura",
+      report: "Raport",
+      audit: "Audyt",
+    },
+    statuses: {
+      loading: "Ładowanie cennika...",
+      ready: "Gotowe",
+      backendUnavailable: "Backend API niedostępne",
+      creatingOrder: (title) => `Tworzenie zamówienia: ${title}...`,
+      checkout: (provider, reference) => `Checkout ${provider}: ${reference}`,
+      paid: (orderId) => `Opłacono: ${orderId}`,
+      reportReady: (reportId) => `Raport gotowy: ${reportId ?? "-"}`,
+      auditEvents: (orderId) => `Zdarzenia audytu: ${orderId}`,
+    },
+    values: {
+      unknownError: "nieznany błąd",
+      noValue: "-",
+      eventFallback: "zdarzenie",
+      orders: (count) => `${count} ${pluralPl(count, "zamówienie", "zamówienia", "zamówień")}`,
+      events: (count) => `${count} ${pluralPl(count, "zdarzenie", "zdarzenia", "zdarzeń")}`,
+      auditEmpty: "Wybierz zamówienie, aby zobaczyć historię checkout, płatności i generowania.",
+      whiteLabel: "white-label",
+      standard: "standard",
+      planSummary: (monthlyReports, maxAlerts, branding) =>
+        `${monthlyReports} raportów/mies., ${maxAlerts} alerts, ${branding}`,
+    },
+    empty: {
+      loading: "Ładowanie cennika",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Оплата и отчеты",
+    subtitle: "Разовые отчеты, mock checkout и тарифные ограничения для paid MVP.",
+    actions: {
+      refresh: "Обновить",
+      mockPayGenerate: "Mock pay + generate",
+      open: "Открыть",
+      events: "События",
+    },
+    metrics: {
+      currentPlan: "Текущий тариф",
+      subscriptionReports: "Отчеты по подписке",
+      oneTimeOrders: "Разовые заказы",
+      status: "Статус",
+    },
+    sections: {
+      oneTimeReport: "Разовый отчет",
+      invoice: "Счет",
+      orderHistory: "История заказов",
+      subscriptions: "Подписки",
+      auditTrail: "Аудит",
+    },
+    hints: {
+      mockCheckout: "mock checkout без реального PSP",
+    },
+    fields: {
+      listingId: "Listing ID",
+      areaId: "Area ID",
+      b2bInvoice: "B2B-счет",
+      company: "Компания",
+      vat: "VAT/NIP",
+      email: "Email",
+      address: "Адрес",
+      postalCode: "Почтовый код",
+      city: "Город",
+      country: "Страна",
+    },
+    table: {
+      order: "Заказ",
+      object: "Объект",
+      status: "Статус",
+      invoice: "Счет",
+      report: "Отчет",
+      audit: "Аудит",
+    },
+    statuses: {
+      loading: "Загрузка тарифов...",
+      ready: "Готово",
+      backendUnavailable: "Backend API недоступен",
+      creatingOrder: (title) => `Создание заказа: ${title}...`,
+      checkout: (provider, reference) => `Checkout ${provider}: ${reference}`,
+      paid: (orderId) => `Оплачено: ${orderId}`,
+      reportReady: (reportId) => `Отчет готов: ${reportId ?? "-"}`,
+      auditEvents: (orderId) => `События аудита: ${orderId}`,
+    },
+    values: {
+      unknownError: "неизвестная ошибка",
+      noValue: "-",
+      eventFallback: "событие",
+      orders: (count) => `${count} ${pluralRu(count, "заказ", "заказа", "заказов")}`,
+      events: (count) => `${count} ${pluralRu(count, "событие", "события", "событий")}`,
+      auditEmpty: "Выберите заказ, чтобы увидеть историю checkout, оплаты и генерации.",
+      whiteLabel: "white-label",
+      standard: "стандарт",
+      planSummary: (monthlyReports, maxAlerts, branding) =>
+        `${monthlyReports} отчетов/мес, ${maxAlerts} уведомлений, ${branding}`,
+    },
+    empty: {
+      loading: "Загрузка тарифов",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Оплата і звіти",
+    subtitle: "Разові звіти, mock checkout і тарифні обмеження для paid MVP.",
+    actions: {
+      refresh: "Оновити",
+      mockPayGenerate: "Mock pay + generate",
+      open: "Відкрити",
+      events: "Події",
+    },
+    metrics: {
+      currentPlan: "Поточний тариф",
+      subscriptionReports: "Звіти за підпискою",
+      oneTimeOrders: "Разові замовлення",
+      status: "Статус",
+    },
+    sections: {
+      oneTimeReport: "Разовий звіт",
+      invoice: "Рахунок",
+      orderHistory: "Історія замовлень",
+      subscriptions: "Підписки",
+      auditTrail: "Аудит",
+    },
+    hints: {
+      mockCheckout: "mock checkout без реального PSP",
+    },
+    fields: {
+      listingId: "Listing ID",
+      areaId: "Area ID",
+      b2bInvoice: "B2B-рахунок",
+      company: "Компанія",
+      vat: "VAT/NIP",
+      email: "Email",
+      address: "Адреса",
+      postalCode: "Поштовий код",
+      city: "Місто",
+      country: "Країна",
+    },
+    table: {
+      order: "Замовлення",
+      object: "Об'єкт",
+      status: "Статус",
+      invoice: "Рахунок",
+      report: "Звіт",
+      audit: "Аудит",
+    },
+    statuses: {
+      loading: "Завантаження тарифів...",
+      ready: "Готово",
+      backendUnavailable: "Backend API недоступний",
+      creatingOrder: (title) => `Створення замовлення: ${title}...`,
+      checkout: (provider, reference) => `Checkout ${provider}: ${reference}`,
+      paid: (orderId) => `Оплачено: ${orderId}`,
+      reportReady: (reportId) => `Звіт готовий: ${reportId ?? "-"}`,
+      auditEvents: (orderId) => `Події аудиту: ${orderId}`,
+    },
+    values: {
+      unknownError: "невідома помилка",
+      noValue: "-",
+      eventFallback: "подія",
+      orders: (count) => `${count} ${pluralUk(count, "замовлення", "замовлення", "замовлень")}`,
+      events: (count) => `${count} ${pluralUk(count, "подія", "події", "подій")}`,
+      auditEmpty: "Виберіть замовлення, щоб побачити історію checkout, оплати й генерації.",
+      whiteLabel: "white-label",
+      standard: "стандарт",
+      planSummary: (monthlyReports, maxAlerts, branding) =>
+        `${monthlyReports} звітів/міс., ${maxAlerts} сповіщень, ${branding}`,
+    },
+    empty: {
+      loading: "Завантаження тарифів",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const ALERTS_PAGE_COPY: Record<Locale, AlertsPageCopy> = {
+  en: {
+    title: "Saved search alerts",
+    subtitle: "Filter and scoring alerts with dry-run delivery through email or Telegram.",
+    actions: {
+      refresh: "Refresh",
+      create: "Create",
+      preview: "Preview",
+      dryRun: "Dry run",
+      checkSend: "Check send",
+      clientDigest: "Client digest",
+      delete: "Delete",
+    },
+    sections: {
+      newAlert: "New alert",
+      alerts: "Alerts",
+      preview: "Preview",
+      realtorDigest: "Realtor client digest",
+      deliveryHistory: "Delivery history",
+    },
+    fields: {
+      name: "Name",
+      municipality: "Gmina",
+      voivodeship: "Voivodeship",
+      district: "District",
+      search: "Search",
+      maxPrice: "Max price",
+      buildingType: "Building type",
+      renovationState: "Condition",
+      balcony: "Balcony",
+      terrace: "Terrace",
+      garden: "Garden",
+      elevator: "Elevator",
+      parking: "Parking",
+      heating: "Heating",
+      minFloor: "Floor from",
+      maxFloor: "Floor to",
+      maxBuildingFloors: "Building floors to",
+      minBuildingYear: "Building year from",
+      maxBuildingYear: "Building year to",
+      minInvestment: "Min. Investment",
+      maxFairDelta: "Max fair delta %",
+      minNegotiation: "Min. Negotiation",
+      minLiquidity: "Min. Liquidity",
+      minRental: "Min. Rental",
+      minPriceReductions: "Price drops from",
+      maxDaysOnMarket: "Days on market to",
+      channel: "Channel",
+      frequency: "Frequency",
+      deliveryTarget: "Delivery target",
+      active: "Active",
+      client: "Client",
+      intro: "Intro",
+      maxMatches: "Objects",
+      includeSourceLinks: "Add source links",
+    },
+    placeholders: {
+      municipality: "Wrocław / Kobierzyce",
+      voivodeship: "dolnoslaskie",
+      search: "address, district, street",
+      telegramTarget: "Telegram chat id",
+      emailTarget: "email optional",
+      clientName: "Anna",
+      digestIntro: "Short context for the client",
+    },
+    options: alertOptions("en"),
+    statuses: {
+      loading: "Loading alerts...",
+      loaded: (count) => `Alerts: ${count}`,
+      backendUnavailable: "Backend API unavailable",
+      creating: "Creating alert...",
+      created: (alertId) => `Alert created: ${alertId}`,
+      previewLoaded: (count) => `Matches: ${count}`,
+      deliveryPrepared: (status, message) => `${status}: ${message}`,
+      updated: (name) => `Alert updated: ${name}`,
+      updateError: "Could not update alert",
+      deleteConfirm: (name) => `Delete alert "${name}"?`,
+      deleted: (name) => `Alert deleted: ${name}`,
+      deleteError: "Could not delete alert",
+      saving: "Saving preferences...",
+      digestReady: (items, total) => `Client digest: ${items}/${total} matches`,
+      digestError: "Could not build client digest",
+    },
+    values: {
+      unknownError: "unknown error",
+      unknownAlertUpdateError: "unknown alert update error",
+      unknownAlertDeleteError: "unknown alert delete error",
+      unknownDigestError: "unknown digest error",
+      items: (count) => `${count} item${count === 1 ? "" : "s"}`,
+      matches: (count) => `${count} match${count === 1 ? "" : "es"}`,
+      digestMatches: (items, total) => `${items}/${total} matches`,
+      notGenerated: "not generated",
+      defaultTarget: "default target",
+      active: "active",
+      paused: "paused",
+      yes: "yes",
+      no: "no",
+      alertNameDefault: "Fabryczna under 700k",
+      rooms: (count) => `${count} room${count === 1 ? "" : "s"}`,
+      priceDrops: (count) => `${count} drop${count === 1 ? "" : "s"}`,
+      scoreLabels: {
+        investment: "I",
+        risk: "R",
+        fairDelta: "Fair delta",
+        negotiation: "N",
+        liquidity: "L",
+        rental: "Rent",
+      },
+      filterLabels: alertFilterLabels("en"),
+    },
+    empty: {
+      loading: "Loading alerts",
+      noAlerts: "No alerts yet.",
+      previewPrompt: "Choose an alert to see matching listings.",
+      digestPrompt: "Fill in the parameters and click Client digest on the relevant alert.",
+      noDeliveryJobs: "Delivery jobs have not run yet.",
+    },
+    table: {
+      channel: "Channel",
+      status: "Status",
+      matches: "Matches",
+      message: "Message",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Alerty zapisanych wyszukiwań",
+    subtitle: "Alerty filtrów i scoringu z dry-run oraz dostawą przez email lub Telegram.",
+    actions: {
+      refresh: "Odśwież",
+      create: "Utwórz",
+      preview: "Podgląd",
+      dryRun: "Dry run",
+      checkSend: "Wyślij test",
+      clientDigest: "Digest klienta",
+      delete: "Usuń",
+    },
+    sections: {
+      newAlert: "Nowy alert",
+      alerts: "Alerty",
+      preview: "Podgląd",
+      realtorDigest: "Digest dla klienta pośrednika",
+      deliveryHistory: "Historia dostaw",
+    },
+    fields: {
+      name: "Nazwa",
+      municipality: "Gmina",
+      voivodeship: "Województwo",
+      district: "Dzielnica",
+      search: "Wyszukiwanie",
+      maxPrice: "Maks. cena",
+      buildingType: "Typ budynku",
+      renovationState: "Stan",
+      balcony: "Balkon",
+      terrace: "Taras",
+      garden: "Ogród",
+      elevator: "Winda",
+      parking: "Parking",
+      heating: "Ogrzewanie",
+      minFloor: "Piętro od",
+      maxFloor: "Piętro do",
+      maxBuildingFloors: "Pięter w budynku do",
+      minBuildingYear: "Rok budynku od",
+      maxBuildingYear: "Rok budynku do",
+      minInvestment: "Min. Investment",
+      maxFairDelta: "Maks. fair delta %",
+      minNegotiation: "Min. Negotiation",
+      minLiquidity: "Min. Liquidity",
+      minRental: "Min. Rental",
+      minPriceReductions: "Obniżek ceny od",
+      maxDaysOnMarket: "Dni na rynku do",
+      channel: "Kanał",
+      frequency: "Częstotliwość",
+      deliveryTarget: "Cel dostawy",
+      active: "Aktywny",
+      client: "Klient",
+      intro: "Intro",
+      maxMatches: "Obiekty",
+      includeSourceLinks: "Dodaj linki źródłowe",
+    },
+    placeholders: {
+      municipality: "Wrocław / Kobierzyce",
+      voivodeship: "dolnoslaskie",
+      search: "adres, dzielnica, ulica",
+      telegramTarget: "Telegram chat id",
+      emailTarget: "email opcjonalny",
+      clientName: "Anna",
+      digestIntro: "Krótki kontekst dla klienta",
+    },
+    options: alertOptions("pl"),
+    statuses: {
+      loading: "Ładowanie alertów...",
+      loaded: (count) => `Alertów: ${count}`,
+      backendUnavailable: "Backend API niedostępne",
+      creating: "Tworzenie alertu...",
+      created: (alertId) => `Alert utworzony: ${alertId}`,
+      previewLoaded: (count) => `Dopasowań: ${count}`,
+      deliveryPrepared: (status, message) => `${status}: ${message}`,
+      updated: (name) => `Alert zaktualizowany: ${name}`,
+      updateError: "Nie udało się zaktualizować alertu",
+      deleteConfirm: (name) => `Usunąć alert "${name}"?`,
+      deleted: (name) => `Alert usunięty: ${name}`,
+      deleteError: "Nie udało się usunąć alertu",
+      saving: "Zapisywanie ustawień...",
+      digestReady: (items, total) => `Digest klienta: ${items}/${total} dopasowań`,
+      digestError: "Nie udało się zbudować digestu klienta",
+    },
+    values: {
+      unknownError: "nieznany błąd",
+      unknownAlertUpdateError: "nieznany błąd aktualizacji alertu",
+      unknownAlertDeleteError: "nieznany błąd usuwania alertu",
+      unknownDigestError: "nieznany błąd digestu",
+      items: (count) => `${count} ${pluralPl(count, "element", "elementy", "elementów")}`,
+      matches: (count) => `${count} ${pluralPl(count, "dopasowanie", "dopasowania", "dopasowań")}`,
+      digestMatches: (items, total) => `${items}/${total} dopasowań`,
+      notGenerated: "nie wygenerowano",
+      defaultTarget: "domyślny cel",
+      active: "aktywny",
+      paused: "pauza",
+      yes: "tak",
+      no: "nie",
+      alertNameDefault: "Fabryczna do 700k",
+      rooms: (count) => `${count} pok.`,
+      priceDrops: (count) => `${count} ${pluralPl(count, "obniżka", "obniżki", "obniżek")}`,
+      scoreLabels: {
+        investment: "I",
+        risk: "R",
+        fairDelta: "Fair delta",
+        negotiation: "N",
+        liquidity: "L",
+        rental: "Najem",
+      },
+      filterLabels: alertFilterLabels("pl"),
+    },
+    empty: {
+      loading: "Ładowanie alertów",
+      noAlerts: "Nie ma jeszcze alertów.",
+      previewPrompt: "Wybierz alert, aby zobaczyć pasujące obiekty.",
+      digestPrompt: "Uzupełnij parametry i kliknij Digest klienta przy odpowiednim alercie.",
+      noDeliveryJobs: "Delivery jobs nie były jeszcze uruchamiane.",
+    },
+    table: {
+      channel: "Kanał",
+      status: "Status",
+      matches: "Dopasowania",
+      message: "Komunikat",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Уведомления поиска",
+    subtitle: "Уведомления по фильтрам и скорингу с dry-run и доставкой через email или Telegram.",
+    actions: {
+      refresh: "Обновить",
+      create: "Создать",
+      preview: "Preview",
+      dryRun: "Dry run",
+      checkSend: "Проверить отправку",
+      clientDigest: "Дайджест клиенту",
+      delete: "Удалить",
+    },
+    sections: {
+      newAlert: "Новый alert",
+      alerts: "Alerts",
+      preview: "Preview",
+      realtorDigest: "Клиентский дайджест риелтора",
+      deliveryHistory: "История доставок",
+    },
+    fields: {
+      name: "Название",
+      municipality: "Gmina",
+      voivodeship: "Województwo",
+      district: "Район",
+      search: "Поиск",
+      maxPrice: "Макс. цена",
+      buildingType: "Тип здания",
+      renovationState: "Состояние",
+      balcony: "Балкон",
+      terrace: "Терраса",
+      garden: "Сад",
+      elevator: "Лифт",
+      parking: "Паркинг",
+      heating: "Отопление",
+      minFloor: "Этаж от",
+      maxFloor: "Этаж до",
+      maxBuildingFloors: "Этажность до",
+      minBuildingYear: "Год дома от",
+      maxBuildingYear: "Год дома до",
+      minInvestment: "Мин. Investment",
+      maxFairDelta: "Макс. fair delta %",
+      minNegotiation: "Мин. Negotiation",
+      minLiquidity: "Мин. Liquidity",
+      minRental: "Мин. Rental",
+      minPriceReductions: "Снижений цены от",
+      maxDaysOnMarket: "Дней на рынке до",
+      channel: "Канал",
+      frequency: "Частота",
+      deliveryTarget: "Адрес доставки",
+      active: "Активность",
+      client: "Клиент",
+      intro: "Вступление",
+      maxMatches: "Объектов",
+      includeSourceLinks: "Добавить source links",
+    },
+    placeholders: {
+      municipality: "Wrocław / Kobierzyce",
+      voivodeship: "dolnoslaskie",
+      search: "адрес, район, улица",
+      telegramTarget: "Telegram chat id",
+      emailTarget: "email optional",
+      clientName: "Anna",
+      digestIntro: "Короткий контекст для клиента",
+    },
+    options: alertOptions("ru"),
+    statuses: {
+      loading: "Загрузка alerts...",
+      loaded: (count) => `Alerts: ${count}`,
+      backendUnavailable: "Backend API недоступен",
+      creating: "Создание alert...",
+      created: (alertId) => `Alert создан: ${alertId}`,
+      previewLoaded: (count) => `Совпадений: ${count}`,
+      deliveryPrepared: (status, message) => `${status}: ${message}`,
+      updated: (name) => `Alert обновлен: ${name}`,
+      updateError: "Не удалось обновить alert",
+      deleteConfirm: (name) => `Удалить alert "${name}"?`,
+      deleted: (name) => `Alert удален: ${name}`,
+      deleteError: "Не удалось удалить alert",
+      saving: "Сохранение настроек...",
+      digestReady: (items, total) => `Client digest: ${items}/${total} matches`,
+      digestError: "Не удалось собрать client digest",
+    },
+    values: {
+      unknownError: "неизвестная ошибка",
+      unknownAlertUpdateError: "неизвестная ошибка обновления alert",
+      unknownAlertDeleteError: "неизвестная ошибка удаления alert",
+      unknownDigestError: "неизвестная ошибка дайджеста",
+      items: (count) => `${count} ${pluralRu(count, "элемент", "элемента", "элементов")}`,
+      matches: (count) => `${count} ${pluralRu(count, "совпадение", "совпадения", "совпадений")}`,
+      digestMatches: (items, total) => `${items}/${total} совпадений`,
+      notGenerated: "не сгенерировано",
+      defaultTarget: "канал по умолчанию",
+      active: "активен",
+      paused: "на паузе",
+      yes: "да",
+      no: "нет",
+      alertNameDefault: "Fabryczna до 700k",
+      rooms: (count) => `${count} ${pluralRu(count, "комната", "комнаты", "комнат")}`,
+      priceDrops: (count) => `${count} ${pluralRu(count, "снижение", "снижения", "снижений")}`,
+      scoreLabels: {
+        investment: "I",
+        risk: "R",
+        fairDelta: "Fair delta",
+        negotiation: "N",
+        liquidity: "L",
+        rental: "Rent",
+      },
+      filterLabels: alertFilterLabels("ru"),
+    },
+    empty: {
+      loading: "Загрузка alerts",
+      noAlerts: "Пока нет alerts.",
+      previewPrompt: "Выберите alert, чтобы увидеть подходящие объекты.",
+      digestPrompt: "Заполните параметры и нажмите Дайджест клиенту у нужного alert.",
+      noDeliveryJobs: "Delivery jobs еще не запускались.",
+    },
+    table: {
+      channel: "Канал",
+      status: "Статус",
+      matches: "Совпадения",
+      message: "Сообщение",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Сповіщення пошуку",
+    subtitle: "Сповіщення за фільтрами й скорингом з dry-run і доставкою через email або Telegram.",
+    actions: {
+      refresh: "Оновити",
+      create: "Створити",
+      preview: "Preview",
+      dryRun: "Dry run",
+      checkSend: "Перевірити відправку",
+      clientDigest: "Дайджест клієнту",
+      delete: "Видалити",
+    },
+    sections: {
+      newAlert: "Новий alert",
+      alerts: "Alerts",
+      preview: "Preview",
+      realtorDigest: "Клієнтський дайджест ріелтора",
+      deliveryHistory: "Історія доставок",
+    },
+    fields: {
+      name: "Назва",
+      municipality: "Gmina",
+      voivodeship: "Województwo",
+      district: "Район",
+      search: "Пошук",
+      maxPrice: "Макс. ціна",
+      buildingType: "Тип будівлі",
+      renovationState: "Стан",
+      balcony: "Балкон",
+      terrace: "Тераса",
+      garden: "Сад",
+      elevator: "Ліфт",
+      parking: "Паркінг",
+      heating: "Опалення",
+      minFloor: "Поверх від",
+      maxFloor: "Поверх до",
+      maxBuildingFloors: "Поверховість до",
+      minBuildingYear: "Рік будинку від",
+      maxBuildingYear: "Рік будинку до",
+      minInvestment: "Мін. Investment",
+      maxFairDelta: "Макс. fair delta %",
+      minNegotiation: "Мін. Negotiation",
+      minLiquidity: "Мін. Liquidity",
+      minRental: "Мін. Rental",
+      minPriceReductions: "Знижень ціни від",
+      maxDaysOnMarket: "Днів на ринку до",
+      channel: "Канал",
+      frequency: "Частота",
+      deliveryTarget: "Адреса доставки",
+      active: "Активність",
+      client: "Клієнт",
+      intro: "Вступ",
+      maxMatches: "Об'єктів",
+      includeSourceLinks: "Додати source links",
+    },
+    placeholders: {
+      municipality: "Wrocław / Kobierzyce",
+      voivodeship: "dolnoslaskie",
+      search: "адреса, район, вулиця",
+      telegramTarget: "Telegram chat id",
+      emailTarget: "email optional",
+      clientName: "Anna",
+      digestIntro: "Короткий контекст для клієнта",
+    },
+    options: alertOptions("uk"),
+    statuses: {
+      loading: "Завантаження alerts...",
+      loaded: (count) => `Alerts: ${count}`,
+      backendUnavailable: "Backend API недоступний",
+      creating: "Створення alert...",
+      created: (alertId) => `Alert створено: ${alertId}`,
+      previewLoaded: (count) => `Збігів: ${count}`,
+      deliveryPrepared: (status, message) => `${status}: ${message}`,
+      updated: (name) => `Alert оновлено: ${name}`,
+      updateError: "Не вдалося оновити alert",
+      deleteConfirm: (name) => `Видалити alert "${name}"?`,
+      deleted: (name) => `Alert видалено: ${name}`,
+      deleteError: "Не вдалося видалити alert",
+      saving: "Збереження налаштувань...",
+      digestReady: (items, total) => `Client digest: ${items}/${total} matches`,
+      digestError: "Не вдалося зібрати client digest",
+    },
+    values: {
+      unknownError: "невідома помилка",
+      unknownAlertUpdateError: "невідома помилка оновлення alert",
+      unknownAlertDeleteError: "невідома помилка видалення alert",
+      unknownDigestError: "невідома помилка дайджесту",
+      items: (count) => `${count} ${pluralUk(count, "елемент", "елементи", "елементів")}`,
+      matches: (count) => `${count} ${pluralUk(count, "збіг", "збіги", "збігів")}`,
+      digestMatches: (items, total) => `${items}/${total} збігів`,
+      notGenerated: "не згенеровано",
+      defaultTarget: "канал за замовчуванням",
+      active: "активний",
+      paused: "на паузі",
+      yes: "так",
+      no: "ні",
+      alertNameDefault: "Fabryczna до 700k",
+      rooms: (count) => `${count} ${pluralUk(count, "кімната", "кімнати", "кімнат")}`,
+      priceDrops: (count) => `${count} ${pluralUk(count, "зниження", "зниження", "знижень")}`,
+      scoreLabels: {
+        investment: "I",
+        risk: "R",
+        fairDelta: "Fair delta",
+        negotiation: "N",
+        liquidity: "L",
+        rental: "Rent",
+      },
+      filterLabels: alertFilterLabels("uk"),
+    },
+    empty: {
+      loading: "Завантаження alerts",
+      noAlerts: "Поки немає alerts.",
+      previewPrompt: "Виберіть alert, щоб побачити відповідні об'єкти.",
+      digestPrompt: "Заповніть параметри й натисніть Дайджест клієнту у потрібного alert.",
+      noDeliveryJobs: "Delivery jobs ще не запускалися.",
+    },
+    table: {
+      channel: "Канал",
+      status: "Статус",
+      matches: "Збіги",
+      message: "Повідомлення",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
+  en: {
+    title: "Account and subscription",
+    subtitle: "Current user, plan limits and usage for MVP monetization.",
+    actions: {
+      refresh: "Refresh",
+      refreshCrm: "Refresh CRM",
+      create: "Create",
+      add: "Add",
+      delete: "Delete",
+      select: "Select",
+      choose: "Choose",
+      current: "Current",
+      createClient: "Create client",
+      addNote: "Add note",
+      build: "Build",
+      enableShare: "Enable share",
+      disableShare: "Disable share",
+      preview: "Preview",
+      publicLink: "Public link",
+      open: "Open",
+    },
+    sections: {
+      plans: "Plans",
+      profile: "Profile",
+      usage: "Usage",
+      capabilities: "Capabilities",
+      agencyWorkspace: "Agency workspace",
+      agencyCrm: "Agency CRM",
+      notes: "Notes",
+      shortlist: "Shortlist",
+      sharePreview: "Share preview",
+      oneTimePurchases: "One-time purchases",
+    },
+    metrics: {
+      plan: "Plan",
+      role: "Role",
+      reports: "Reports",
+      credits: "Credits",
+      alerts: "Alerts",
+      owner: "Owner",
+      city: "City",
+      members: "Members",
+      status: "Status",
+      budget: "Budget",
+      rooms: "Rooms",
+      location: "Location",
+      consent: "Consent",
+    },
+    fields: {
+      name: "Name",
+      billingEmail: "Billing email",
+      website: "Website",
+      city: "City",
+      action: "Action",
+      plan: "Plan",
+      userId: "User ID",
+      email: "Email",
+      displayName: "Name",
+      role: "Role",
+      status: "Status",
+      client: "Client",
+      phone: "Phone",
+      district: "District",
+      budgetMin: "Budget min",
+      budgetMax: "Budget max",
+      rooms: "Rooms",
+      tags: "Tags",
+      profileNotes: "Profile notes",
+      consent: "Consent",
+      note: "Note",
+      visibility: "Visibility",
+      pinned: "Pinned",
+      title: "Title",
+      listingIds: "Listing IDs",
+      reportIds: "Report IDs",
+      clientMessage: "Client message",
+      shareLink: "Share link",
+      id: "ID",
+      planId: "Plan ID",
+    },
+    placeholders: {
+      agencyName: "Example Realty",
+      billingEmail: "billing@example.com",
+      website: "https://example.com",
+      userId: "agent-1",
+      memberEmail: "agent@example.com",
+      memberName: "Agent One",
+      clientName: "Anna Buyer",
+      clientEmail: "anna@example.com",
+      phone: "+48...",
+      district: "Fabryczna",
+      budgetMin: "650000",
+      budgetMax: "900000",
+      rooms: "2, 3",
+      tags: "family, investor",
+      profileNotes: "Quiet building, tram access",
+      note: "What matters for the client or object check",
+      shortlistTitle: "Top options for Anna",
+      listingIds: "wr-001, wr-002",
+      reportIds: "optional saved reports",
+      clientMessage: "These options are worth discussing before viewings.",
+    },
+    labels: accountLabels("en"),
+    tables: {
+      member: "Member",
+      email: "Email",
+      role: "Role",
+      status: "Status",
+      action: "Action",
+      product: "Product",
+      object: "Object",
+      report: "Report",
+      price: "Price",
+      score: "Score",
+      fairDelta: "Fair delta",
+      developer: "Developer",
+    },
+    statuses: accountStatuses("en"),
+    values: {
+      activeBadge: "active",
+      favorites: (count) => `${count} favorites`,
+      alerts: (count) => `${count} alerts`,
+      monthlyReports: (count) => `${count} reports / month`,
+      whiteLabelReports: "White-label reports",
+      noWhiteLabel: "No white-label",
+      workspaces: (count) => `${count} workspace${count === 1 ? "" : "s"}`,
+      clients: (count, agencyName) => `${count} client${count === 1 ? "" : "s"} · ${agencyName}`,
+      orders: (count) => `${count} order${count === 1 ? "" : "s"}`,
+      reportCredits: (count) => `Report credits: ${count}`,
+      agencyEnabled: "Agency enabled",
+      agencyPlanRequired: "Agency plan required",
+      yes: "Yes",
+      no: "No",
+      noValue: "-",
+      pinnedPrefix: "Pinned · ",
+      listingsUpdated: (count, updatedAt) =>
+        `${count} listing${count === 1 ? "" : "s"} · ${updatedAt}`,
+      fairMid: (value) => `Fair mid ${value}`,
+      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
+      noReputationData: "no reputation data",
+      budgetTo: (value) => `to ${value}`,
+      budgetFrom: (value) => `from ${value}`,
+    },
+    empty: {
+      crmClients: "CRM clients will appear here after creation.",
+      shortlists: "Shortlists will appear after building them from listing IDs.",
+      crmClientPrompt: "Choose or create a CRM client for notes and shortlists.",
+      shortlistItems: "The shortlist has no valid database listings yet.",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Konto i subskrypcja",
+    subtitle: "Aktualny użytkownik, limity planu i usage dla monetyzacji MVP.",
+    actions: {
+      refresh: "Odśwież",
+      refreshCrm: "Odśwież CRM",
+      create: "Utwórz",
+      add: "Dodaj",
+      delete: "Usuń",
+      select: "Wybierz",
+      choose: "Wybierz",
+      current: "Aktualny",
+      createClient: "Utwórz klienta",
+      addNote: "Dodaj notatkę",
+      build: "Zbuduj",
+      enableShare: "Włącz share",
+      disableShare: "Wyłącz share",
+      preview: "Podgląd",
+      publicLink: "Publiczny link",
+      open: "Otwórz",
+    },
+    sections: {
+      plans: "Plany",
+      profile: "Profil",
+      usage: "Usage",
+      capabilities: "Możliwości",
+      agencyWorkspace: "Agency workspace",
+      agencyCrm: "Agency CRM",
+      notes: "Notatki",
+      shortlist: "Shortlist",
+      sharePreview: "Podgląd share",
+      oneTimePurchases: "Zakupy jednorazowe",
+    },
+    metrics: {
+      plan: "Plan",
+      role: "Rola",
+      reports: "Raporty",
+      credits: "Kredyty",
+      alerts: "Alerty",
+      owner: "Owner",
+      city: "Miasto",
+      members: "Członkowie",
+      status: "Status",
+      budget: "Budżet",
+      rooms: "Pokoje",
+      location: "Lokalizacja",
+      consent: "Zgoda",
+    },
+    fields: {
+      name: "Nazwa",
+      billingEmail: "Email do rozliczeń",
+      website: "Strona",
+      city: "Miasto",
+      action: "Akcja",
+      plan: "Plan",
+      userId: "User ID",
+      email: "Email",
+      displayName: "Nazwa",
+      role: "Rola",
+      status: "Status",
+      client: "Klient",
+      phone: "Telefon",
+      district: "Dzielnica",
+      budgetMin: "Budżet min",
+      budgetMax: "Budżet max",
+      rooms: "Pokoje",
+      tags: "Tagi",
+      profileNotes: "Notatki profilu",
+      consent: "Zgoda",
+      note: "Notatka",
+      visibility: "Widoczność",
+      pinned: "Przypięte",
+      title: "Tytuł",
+      listingIds: "Listing IDs",
+      reportIds: "Report IDs",
+      clientMessage: "Wiadomość dla klienta",
+      shareLink: "Link share",
+      id: "ID",
+      planId: "Plan ID",
+    },
+    placeholders: {
+      agencyName: "Example Realty",
+      billingEmail: "billing@example.com",
+      website: "https://example.com",
+      userId: "agent-1",
+      memberEmail: "agent@example.com",
+      memberName: "Agent One",
+      clientName: "Anna Buyer",
+      clientEmail: "anna@example.com",
+      phone: "+48...",
+      district: "Fabryczna",
+      budgetMin: "650000",
+      budgetMax: "900000",
+      rooms: "2, 3",
+      tags: "family, investor",
+      profileNotes: "Cichy budynek, dostęp do tramwaju",
+      note: "Co jest ważne dla klienta lub sprawdzenia obiektu",
+      shortlistTitle: "Najlepsze opcje dla Anny",
+      listingIds: "wr-001, wr-002",
+      reportIds: "opcjonalne zapisane raporty",
+      clientMessage: "Te opcje warto omówić przed oglądaniem.",
+    },
+    labels: accountLabels("pl"),
+    tables: {
+      member: "Członek",
+      email: "Email",
+      role: "Rola",
+      status: "Status",
+      action: "Akcja",
+      product: "Produkt",
+      object: "Obiekt",
+      report: "Raport",
+      price: "Cena",
+      score: "Score",
+      fairDelta: "Fair delta",
+      developer: "Deweloper",
+    },
+    statuses: accountStatuses("pl"),
+    values: {
+      activeBadge: "aktywny",
+      favorites: (count) => `${count} ulubionych`,
+      alerts: (count) => `${count} alertów`,
+      monthlyReports: (count) => `${count} raportów / miesiąc`,
+      whiteLabelReports: "Raporty white-label",
+      noWhiteLabel: "Bez white-label",
+      workspaces: (count) => `${count} ${pluralPl(count, "workspace", "workspace'y", "workspace'ów")}`,
+      clients: (count, agencyName) =>
+        `${count} ${pluralPl(count, "klient", "klientów", "klientów")} · ${agencyName}`,
+      orders: (count) => `${count} ${pluralPl(count, "zamówienie", "zamówienia", "zamówień")}`,
+      reportCredits: (count) => `Kredyty raportów: ${count}`,
+      agencyEnabled: "Agency włączone",
+      agencyPlanRequired: "Wymagany plan Agency",
+      yes: "Tak",
+      no: "Nie",
+      noValue: "-",
+      pinnedPrefix: "Przypięte · ",
+      listingsUpdated: (count, updatedAt) =>
+        `${count} ${pluralPl(count, "listing", "listingi", "listingów")} · ${updatedAt}`,
+      fairMid: (value) => `Fair mid ${value}`,
+      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
+      noReputationData: "brak danych reputacji",
+      budgetTo: (value) => `do ${value}`,
+      budgetFrom: (value) => `od ${value}`,
+    },
+    empty: {
+      crmClients: "Klienci CRM pojawią się tutaj po utworzeniu.",
+      shortlists: "Shortlisty pojawią się po zbudowaniu ich z listing IDs.",
+      crmClientPrompt: "Wybierz lub utwórz klienta CRM dla notatek i shortlist.",
+      shortlistItems: "Shortlist nie ma jeszcze poprawnych obiektów z bazy.",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Аккаунт и подписка",
+    subtitle: "Текущий пользователь, тарифные лимиты и usage для MVP-монетизации.",
+    actions: {
+      refresh: "Обновить",
+      refreshCrm: "Обновить CRM",
+      create: "Создать",
+      add: "Добавить",
+      delete: "Удалить",
+      select: "Выбрать",
+      choose: "Выбрать",
+      current: "Текущий",
+      createClient: "Создать клиента",
+      addNote: "Добавить заметку",
+      build: "Собрать",
+      enableShare: "Включить share",
+      disableShare: "Отключить share",
+      preview: "Preview",
+      publicLink: "Public link",
+      open: "Открыть",
+    },
+    sections: {
+      plans: "Планы",
+      profile: "Профиль",
+      usage: "Usage",
+      capabilities: "Capabilities",
+      agencyWorkspace: "Agency workspace",
+      agencyCrm: "Agency CRM",
+      notes: "Заметки",
+      shortlist: "Shortlist",
+      sharePreview: "Share preview",
+      oneTimePurchases: "Разовые покупки",
+    },
+    metrics: {
+      plan: "Тариф",
+      role: "Роль",
+      reports: "Отчеты",
+      credits: "Credits",
+      alerts: "Alerts",
+      owner: "Owner",
+      city: "Город",
+      members: "Участники",
+      status: "Статус",
+      budget: "Бюджет",
+      rooms: "Комнаты",
+      location: "Локация",
+      consent: "Согласие",
+    },
+    fields: {
+      name: "Название",
+      billingEmail: "Billing email",
+      website: "Website",
+      city: "City",
+      action: "Action",
+      plan: "Plan",
+      userId: "User ID",
+      email: "Email",
+      displayName: "Name",
+      role: "Role",
+      status: "Status",
+      client: "Клиент",
+      phone: "Phone",
+      district: "District",
+      budgetMin: "Budget min",
+      budgetMax: "Budget max",
+      rooms: "Rooms",
+      tags: "Tags",
+      profileNotes: "Profile notes",
+      consent: "Consent",
+      note: "Заметка",
+      visibility: "Visibility",
+      pinned: "Pinned",
+      title: "Title",
+      listingIds: "Listing IDs",
+      reportIds: "Report IDs",
+      clientMessage: "Client message",
+      shareLink: "Share link",
+      id: "ID",
+      planId: "Plan ID",
+    },
+    placeholders: {
+      agencyName: "Example Realty",
+      billingEmail: "billing@example.com",
+      website: "https://example.com",
+      userId: "agent-1",
+      memberEmail: "agent@example.com",
+      memberName: "Agent One",
+      clientName: "Anna Buyer",
+      clientEmail: "anna@example.com",
+      phone: "+48...",
+      district: "Fabryczna",
+      budgetMin: "650000",
+      budgetMax: "900000",
+      rooms: "2, 3",
+      tags: "family, investor",
+      profileNotes: "Тихий дом, доступ к трамваю",
+      note: "Что важно для клиента или проверки объекта",
+      shortlistTitle: "Top options for Anna",
+      listingIds: "wr-001, wr-002",
+      reportIds: "optional saved reports",
+      clientMessage: "Эти варианты стоит обсудить до просмотров.",
+    },
+    labels: accountLabels("ru"),
+    tables: {
+      member: "Участник",
+      email: "Email",
+      role: "Роль",
+      status: "Статус",
+      action: "Действие",
+      product: "Продукт",
+      object: "Объект",
+      report: "Отчет",
+      price: "Цена",
+      score: "Score",
+      fairDelta: "Fair delta",
+      developer: "Developer",
+    },
+    statuses: accountStatuses("ru"),
+    values: {
+      activeBadge: "active",
+      favorites: (count) => `${count} избранных`,
+      alerts: (count) => `${count} alerts`,
+      monthlyReports: (count) => `${count} отчетов / месяц`,
+      whiteLabelReports: "White-label reports",
+      noWhiteLabel: "Без white-label",
+      workspaces: (count) => `${count} ${pluralRu(count, "workspace", "workspace", "workspaces")}`,
+      clients: (count, agencyName) =>
+        `${count} ${pluralRu(count, "клиент", "клиента", "клиентов")} · ${agencyName}`,
+      orders: (count) => `${count} ${pluralRu(count, "заказ", "заказа", "заказов")}`,
+      reportCredits: (count) => `Report credits: ${count}`,
+      agencyEnabled: "Agency enabled",
+      agencyPlanRequired: "Нужен тариф Agency",
+      yes: "Да",
+      no: "Нет",
+      noValue: "-",
+      pinnedPrefix: "Pinned · ",
+      listingsUpdated: (count, updatedAt) =>
+        `${count} ${pluralRu(count, "объект", "объекта", "объектов")} · ${updatedAt}`,
+      fairMid: (value) => `Fair mid ${value}`,
+      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
+      noReputationData: "нет данных репутации",
+      budgetTo: (value) => `до ${value}`,
+      budgetFrom: (value) => `от ${value}`,
+    },
+    empty: {
+      crmClients: "CRM clients появятся здесь после создания.",
+      shortlists: "Shortlists появятся после сборки по listing ids.",
+      crmClientPrompt: "Выбери или создай CRM клиента для заметок и shortlist.",
+      shortlistItems: "В shortlist пока нет валидных объектов из базы.",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Акаунт і підписка",
+    subtitle: "Поточний користувач, тарифні ліміти й usage для MVP-монетизації.",
+    actions: {
+      refresh: "Оновити",
+      refreshCrm: "Оновити CRM",
+      create: "Створити",
+      add: "Додати",
+      delete: "Видалити",
+      select: "Вибрати",
+      choose: "Вибрати",
+      current: "Поточний",
+      createClient: "Створити клієнта",
+      addNote: "Додати нотатку",
+      build: "Зібрати",
+      enableShare: "Увімкнути share",
+      disableShare: "Вимкнути share",
+      preview: "Preview",
+      publicLink: "Public link",
+      open: "Відкрити",
+    },
+    sections: {
+      plans: "Плани",
+      profile: "Профіль",
+      usage: "Usage",
+      capabilities: "Capabilities",
+      agencyWorkspace: "Agency workspace",
+      agencyCrm: "Agency CRM",
+      notes: "Нотатки",
+      shortlist: "Shortlist",
+      sharePreview: "Share preview",
+      oneTimePurchases: "Разові покупки",
+    },
+    metrics: {
+      plan: "Тариф",
+      role: "Роль",
+      reports: "Звіти",
+      credits: "Credits",
+      alerts: "Alerts",
+      owner: "Owner",
+      city: "Місто",
+      members: "Учасники",
+      status: "Статус",
+      budget: "Бюджет",
+      rooms: "Кімнати",
+      location: "Локація",
+      consent: "Згода",
+    },
+    fields: {
+      name: "Назва",
+      billingEmail: "Billing email",
+      website: "Website",
+      city: "City",
+      action: "Action",
+      plan: "Plan",
+      userId: "User ID",
+      email: "Email",
+      displayName: "Name",
+      role: "Role",
+      status: "Status",
+      client: "Клієнт",
+      phone: "Phone",
+      district: "District",
+      budgetMin: "Budget min",
+      budgetMax: "Budget max",
+      rooms: "Rooms",
+      tags: "Tags",
+      profileNotes: "Profile notes",
+      consent: "Consent",
+      note: "Нотатка",
+      visibility: "Visibility",
+      pinned: "Pinned",
+      title: "Title",
+      listingIds: "Listing IDs",
+      reportIds: "Report IDs",
+      clientMessage: "Client message",
+      shareLink: "Share link",
+      id: "ID",
+      planId: "Plan ID",
+    },
+    placeholders: {
+      agencyName: "Example Realty",
+      billingEmail: "billing@example.com",
+      website: "https://example.com",
+      userId: "agent-1",
+      memberEmail: "agent@example.com",
+      memberName: "Agent One",
+      clientName: "Anna Buyer",
+      clientEmail: "anna@example.com",
+      phone: "+48...",
+      district: "Fabryczna",
+      budgetMin: "650000",
+      budgetMax: "900000",
+      rooms: "2, 3",
+      tags: "family, investor",
+      profileNotes: "Тихий будинок, доступ до трамвая",
+      note: "Що важливо для клієнта або перевірки об'єкта",
+      shortlistTitle: "Top options for Anna",
+      listingIds: "wr-001, wr-002",
+      reportIds: "optional saved reports",
+      clientMessage: "Ці варіанти варто обговорити перед переглядами.",
+    },
+    labels: accountLabels("uk"),
+    tables: {
+      member: "Учасник",
+      email: "Email",
+      role: "Роль",
+      status: "Статус",
+      action: "Дія",
+      product: "Продукт",
+      object: "Об'єкт",
+      report: "Звіт",
+      price: "Ціна",
+      score: "Score",
+      fairDelta: "Fair delta",
+      developer: "Developer",
+    },
+    statuses: accountStatuses("uk"),
+    values: {
+      activeBadge: "active",
+      favorites: (count) => `${count} обраних`,
+      alerts: (count) => `${count} alerts`,
+      monthlyReports: (count) => `${count} звітів / місяць`,
+      whiteLabelReports: "White-label reports",
+      noWhiteLabel: "Без white-label",
+      workspaces: (count) => `${count} ${pluralUk(count, "workspace", "workspace", "workspaces")}`,
+      clients: (count, agencyName) =>
+        `${count} ${pluralUk(count, "клієнт", "клієнти", "клієнтів")} · ${agencyName}`,
+      orders: (count) => `${count} ${pluralUk(count, "замовлення", "замовлення", "замовлень")}`,
+      reportCredits: (count) => `Report credits: ${count}`,
+      agencyEnabled: "Agency enabled",
+      agencyPlanRequired: "Потрібен тариф Agency",
+      yes: "Так",
+      no: "Ні",
+      noValue: "-",
+      pinnedPrefix: "Pinned · ",
+      listingsUpdated: (count, updatedAt) =>
+        `${count} ${pluralUk(count, "об'єкт", "об'єкти", "об'єктів")} · ${updatedAt}`,
+      fairMid: (value) => `Fair mid ${value}`,
+      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
+      noReputationData: "немає даних репутації",
+      budgetTo: (value) => `до ${value}`,
+      budgetFrom: (value) => `від ${value}`,
+    },
+    empty: {
+      crmClients: "CRM clients з'являться тут після створення.",
+      shortlists: "Shortlists з'являться після збірки за listing ids.",
+      crmClientPrompt: "Вибери або створи CRM клієнта для нотаток і shortlist.",
+      shortlistItems: "У shortlist поки немає валідних об'єктів з бази.",
     },
     errorPrefix: "Помилка",
   },
@@ -3270,6 +5449,621 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
     ...content[locale],
     optionLabels: optionLabels(locale),
   };
+}
+
+function accountLabels(locale: Locale): AccountPageCopy["labels"] {
+  const labels: Record<Locale, AccountPageCopy["labels"]> = {
+    en: {
+      plan: {
+        free: "Free",
+        buyer_pro: "Buyer Pro",
+        investor: "Investor",
+        realtor: "Realtor",
+        agency: "Agency",
+        enterprise: "Enterprise",
+      },
+      userRole: {
+        buyer: "Buyer",
+        realtor: "Realtor",
+        agency_admin: "Agency admin",
+        admin: "Admin",
+      },
+      subscriptionStatus: {
+        trialing: "Trialing",
+        active: "Active",
+        past_due: "Past due",
+        canceled: "Canceled",
+      },
+      agencyRole: { owner: "Owner", admin: "Admin", agent: "Agent" },
+      agencyStatus: { active: "Active", invited: "Invited", disabled: "Disabled" },
+      crmClientStatus: {
+        active: "Active",
+        paused: "Paused",
+        won: "Won",
+        lost: "Lost",
+        archived: "Archived",
+      },
+      noteVisibility: {
+        internal: "Internal",
+        client_shareable: "Client shareable",
+      },
+      shortlistStatus: {
+        draft: "Draft",
+        shared: "Shared",
+        accepted: "Accepted",
+        rejected: "Rejected",
+        archived: "Archived",
+      },
+      reportOrderStatus: {
+        unpaid: "Unpaid",
+        paid: "Paid",
+        fulfilled: "Fulfilled",
+        canceled: "Canceled",
+      },
+      capability: {
+        favorites: "Favorites",
+        export: "Export",
+        api: "API",
+        white_label: "White-label",
+      },
+    },
+    pl: {
+      plan: {
+        free: "Free",
+        buyer_pro: "Buyer Pro",
+        investor: "Investor",
+        realtor: "Realtor",
+        agency: "Agency",
+        enterprise: "Enterprise",
+      },
+      userRole: {
+        buyer: "Kupujący",
+        realtor: "Pośrednik",
+        agency_admin: "Admin agencji",
+        admin: "Admin",
+      },
+      subscriptionStatus: {
+        trialing: "Trial",
+        active: "Aktywna",
+        past_due: "Po terminie",
+        canceled: "Anulowana",
+      },
+      agencyRole: { owner: "Owner", admin: "Admin", agent: "Agent" },
+      agencyStatus: { active: "Aktywny", invited: "Zaproszony", disabled: "Wyłączony" },
+      crmClientStatus: {
+        active: "Aktywny",
+        paused: "Pauza",
+        won: "Wygrany",
+        lost: "Utracony",
+        archived: "Archiwum",
+      },
+      noteVisibility: {
+        internal: "Wewnętrzna",
+        client_shareable: "Do pokazania klientowi",
+      },
+      shortlistStatus: {
+        draft: "Draft",
+        shared: "Udostępniony",
+        accepted: "Zaakceptowany",
+        rejected: "Odrzucony",
+        archived: "Archiwum",
+      },
+      reportOrderStatus: {
+        unpaid: "Nieopłacone",
+        paid: "Opłacone",
+        fulfilled: "Zrealizowane",
+        canceled: "Anulowane",
+      },
+      capability: {
+        favorites: "Ulubione",
+        export: "Eksport",
+        api: "API",
+        white_label: "White-label",
+      },
+    },
+    ru: {
+      plan: {
+        free: "Free",
+        buyer_pro: "Buyer Pro",
+        investor: "Investor",
+        realtor: "Realtor",
+        agency: "Agency",
+        enterprise: "Enterprise",
+      },
+      userRole: {
+        buyer: "Покупатель",
+        realtor: "Риелтор",
+        agency_admin: "Админ агентства",
+        admin: "Админ",
+      },
+      subscriptionStatus: {
+        trialing: "Trial",
+        active: "Активна",
+        past_due: "Просрочена",
+        canceled: "Отменена",
+      },
+      agencyRole: { owner: "Owner", admin: "Admin", agent: "Agent" },
+      agencyStatus: { active: "Активен", invited: "Приглашен", disabled: "Отключен" },
+      crmClientStatus: {
+        active: "Активен",
+        paused: "Пауза",
+        won: "Won",
+        lost: "Lost",
+        archived: "Архив",
+      },
+      noteVisibility: {
+        internal: "Внутренняя",
+        client_shareable: "Можно показать клиенту",
+      },
+      shortlistStatus: {
+        draft: "Draft",
+        shared: "Shared",
+        accepted: "Accepted",
+        rejected: "Rejected",
+        archived: "Архив",
+      },
+      reportOrderStatus: {
+        unpaid: "Не оплачен",
+        paid: "Оплачен",
+        fulfilled: "Готов",
+        canceled: "Отменен",
+      },
+      capability: {
+        favorites: "Избранное",
+        export: "Export",
+        api: "API",
+        white_label: "White-label",
+      },
+    },
+    uk: {
+      plan: {
+        free: "Free",
+        buyer_pro: "Buyer Pro",
+        investor: "Investor",
+        realtor: "Realtor",
+        agency: "Agency",
+        enterprise: "Enterprise",
+      },
+      userRole: {
+        buyer: "Покупець",
+        realtor: "Ріелтор",
+        agency_admin: "Адмін агентства",
+        admin: "Адмін",
+      },
+      subscriptionStatus: {
+        trialing: "Trial",
+        active: "Активна",
+        past_due: "Прострочена",
+        canceled: "Скасована",
+      },
+      agencyRole: { owner: "Owner", admin: "Admin", agent: "Agent" },
+      agencyStatus: { active: "Активний", invited: "Запрошений", disabled: "Вимкнений" },
+      crmClientStatus: {
+        active: "Активний",
+        paused: "Пауза",
+        won: "Won",
+        lost: "Lost",
+        archived: "Архів",
+      },
+      noteVisibility: {
+        internal: "Внутрішня",
+        client_shareable: "Можна показати клієнту",
+      },
+      shortlistStatus: {
+        draft: "Draft",
+        shared: "Shared",
+        accepted: "Accepted",
+        rejected: "Rejected",
+        archived: "Архів",
+      },
+      reportOrderStatus: {
+        unpaid: "Не оплачено",
+        paid: "Оплачено",
+        fulfilled: "Готово",
+        canceled: "Скасовано",
+      },
+      capability: {
+        favorites: "Обране",
+        export: "Export",
+        api: "API",
+        white_label: "White-label",
+      },
+    },
+  };
+  return labels[locale];
+}
+
+function accountStatuses(locale: Locale): AccountPageCopy["statuses"] {
+  const statuses: Record<Locale, AccountPageCopy["statuses"]> = {
+    en: {
+      loadingAccount: "Loading account...",
+      loadingAccountAndLimits: "Loading account and limits",
+      accountUpdated: "Account updated",
+      backendUnavailable: "Backend API unavailable",
+      unknownError: "unknown error",
+      loadingCrmError: "CRM loading error",
+      switchingPlan: (plan) => `Switching to ${plan}...`,
+      planChanged: (plan) => `Plan: ${plan}`,
+      loadingWorkspace: "Loading workspace...",
+      workspaceSelected: "Workspace selected",
+      loadingWorkspaceError: "Workspace loading error",
+      agencyNameRequired: "Agency name is required",
+      creatingAgency: "Creating agency workspace...",
+      agencyCreated: "Agency workspace created",
+      agencyCreateError: "Agency workspace creation error",
+      memberUserIdRequired: "Member User ID is required",
+      addingMember: "Adding member...",
+      memberAdded: "Member added",
+      addMemberError: "Member add error",
+      updatingRole: "Updating role...",
+      roleUpdated: "Role updated",
+      roleUpdateError: "Role update error",
+      updatingStatus: "Updating status...",
+      statusUpdated: "Status updated",
+      statusUpdateError: "Status update error",
+      removingMember: "Removing member...",
+      memberRemoved: "Member removed",
+      removeMemberError: "Member remove error",
+      loadingCrmClient: "Loading CRM client...",
+      crmClientSelected: "CRM client selected",
+      crmClientLoadError: "CRM client loading error",
+      crmClientNameRequired: "CRM client name is required",
+      creatingCrmClient: "Creating CRM client...",
+      crmClientCreated: "CRM client created",
+      crmClientCreateError: "CRM client creation error",
+      updatingCrmClientStatus: "Updating client status...",
+      crmClientStatusUpdated: "CRM client status updated",
+      crmClientUpdateError: "CRM client update error",
+      noteBodyRequired: "Note text is required",
+      addingNote: "Adding note...",
+      noteAdded: "CRM note added",
+      noteAddError: "Note add error",
+      shortlistRequired: "Shortlist title and at least one listing ID are required",
+      buildingShortlist: "Building CRM shortlist...",
+      shortlistCreated: "CRM shortlist created",
+      shortlistCreateError: "CRM shortlist creation error",
+      enablingShare: "Enabling share...",
+      disablingShare: "Disabling share...",
+      shareEnabled: "Share enabled",
+      shareDisabled: "Share disabled",
+      shareUpdateError: "Share update error",
+      generatingSharePreview: "Generating share preview...",
+      sharePreviewReady: "Share preview ready",
+      sharePreviewError: "Share preview error",
+    },
+    pl: {
+      loadingAccount: "Ładowanie konta...",
+      loadingAccountAndLimits: "Ładowanie konta i limitów",
+      accountUpdated: "Konto odświeżone",
+      backendUnavailable: "Backend API niedostępne",
+      unknownError: "nieznany błąd",
+      loadingCrmError: "Błąd ładowania CRM",
+      switchingPlan: (plan) => `Przełączanie na ${plan}...`,
+      planChanged: (plan) => `Plan: ${plan}`,
+      loadingWorkspace: "Ładowanie workspace...",
+      workspaceSelected: "Workspace wybrany",
+      loadingWorkspaceError: "Błąd ładowania workspace",
+      agencyNameRequired: "Nazwa agencji jest wymagana",
+      creatingAgency: "Tworzenie agency workspace...",
+      agencyCreated: "Agency workspace utworzony",
+      agencyCreateError: "Błąd tworzenia agency workspace",
+      memberUserIdRequired: "User ID członka jest wymagany",
+      addingMember: "Dodawanie członka...",
+      memberAdded: "Członek dodany",
+      addMemberError: "Błąd dodawania członka",
+      updatingRole: "Aktualizacja roli...",
+      roleUpdated: "Rola zaktualizowana",
+      roleUpdateError: "Błąd aktualizacji roli",
+      updatingStatus: "Aktualizacja statusu...",
+      statusUpdated: "Status zaktualizowany",
+      statusUpdateError: "Błąd aktualizacji statusu",
+      removingMember: "Usuwanie członka...",
+      memberRemoved: "Członek usunięty",
+      removeMemberError: "Błąd usuwania członka",
+      loadingCrmClient: "Ładowanie klienta CRM...",
+      crmClientSelected: "Klient CRM wybrany",
+      crmClientLoadError: "Błąd ładowania klienta CRM",
+      crmClientNameRequired: "Imię klienta CRM jest wymagane",
+      creatingCrmClient: "Tworzenie klienta CRM...",
+      crmClientCreated: "Klient CRM utworzony",
+      crmClientCreateError: "Błąd tworzenia klienta CRM",
+      updatingCrmClientStatus: "Aktualizacja statusu klienta...",
+      crmClientStatusUpdated: "Status klienta CRM zaktualizowany",
+      crmClientUpdateError: "Błąd aktualizacji klienta CRM",
+      noteBodyRequired: "Treść notatki jest wymagana",
+      addingNote: "Dodawanie notatki...",
+      noteAdded: "Notatka CRM dodana",
+      noteAddError: "Błąd dodawania notatki",
+      shortlistRequired: "Tytuł shortlist i co najmniej jeden listing ID są wymagane",
+      buildingShortlist: "Budowanie CRM shortlist...",
+      shortlistCreated: "CRM shortlist utworzony",
+      shortlistCreateError: "Błąd budowania CRM shortlist",
+      enablingShare: "Włączanie share...",
+      disablingShare: "Wyłączanie share...",
+      shareEnabled: "Share włączony",
+      shareDisabled: "Share wyłączony",
+      shareUpdateError: "Błąd aktualizacji share",
+      generatingSharePreview: "Generowanie podglądu share...",
+      sharePreviewReady: "Podgląd share gotowy",
+      sharePreviewError: "Błąd podglądu share",
+    },
+    ru: {
+      loadingAccount: "Загрузка аккаунта...",
+      loadingAccountAndLimits: "Загрузка аккаунта и лимитов",
+      accountUpdated: "Аккаунт обновлен",
+      backendUnavailable: "Backend API недоступен",
+      unknownError: "unknown error",
+      loadingCrmError: "Ошибка загрузки CRM",
+      switchingPlan: (plan) => `Переключение на ${plan}...`,
+      planChanged: (plan) => `Тариф: ${plan}`,
+      loadingWorkspace: "Загрузка workspace...",
+      workspaceSelected: "Workspace выбран",
+      loadingWorkspaceError: "Ошибка загрузки workspace",
+      agencyNameRequired: "Название agency обязательно",
+      creatingAgency: "Создание agency workspace...",
+      agencyCreated: "Agency workspace создан",
+      agencyCreateError: "Ошибка создания agency workspace",
+      memberUserIdRequired: "User ID участника обязателен",
+      addingMember: "Добавление участника...",
+      memberAdded: "Участник добавлен",
+      addMemberError: "Ошибка добавления участника",
+      updatingRole: "Обновление роли...",
+      roleUpdated: "Роль обновлена",
+      roleUpdateError: "Ошибка обновления роли",
+      updatingStatus: "Обновление статуса...",
+      statusUpdated: "Статус обновлен",
+      statusUpdateError: "Ошибка обновления статуса",
+      removingMember: "Удаление участника...",
+      memberRemoved: "Участник удален",
+      removeMemberError: "Ошибка удаления участника",
+      loadingCrmClient: "Загрузка CRM клиента...",
+      crmClientSelected: "CRM клиент выбран",
+      crmClientLoadError: "Ошибка загрузки CRM клиента",
+      crmClientNameRequired: "Имя CRM клиента обязательно",
+      creatingCrmClient: "Создание CRM клиента...",
+      crmClientCreated: "CRM клиент создан",
+      crmClientCreateError: "Ошибка создания CRM клиента",
+      updatingCrmClientStatus: "Обновление статуса клиента...",
+      crmClientStatusUpdated: "Статус CRM клиента обновлен",
+      crmClientUpdateError: "Ошибка обновления CRM клиента",
+      noteBodyRequired: "Текст заметки обязателен",
+      addingNote: "Добавление заметки...",
+      noteAdded: "CRM заметка добавлена",
+      noteAddError: "Ошибка добавления заметки",
+      shortlistRequired: "Название shortlist и хотя бы один listing id обязательны",
+      buildingShortlist: "Сборка CRM shortlist...",
+      shortlistCreated: "CRM shortlist создан",
+      shortlistCreateError: "Ошибка сборки CRM shortlist",
+      enablingShare: "Включение шаринга...",
+      disablingShare: "Отключение шаринга...",
+      shareEnabled: "Шаринг включен",
+      shareDisabled: "Шаринг отключен",
+      shareUpdateError: "Ошибка обновления шаринга",
+      generatingSharePreview: "Генерация share preview...",
+      sharePreviewReady: "Share preview готов",
+      sharePreviewError: "Ошибка share preview",
+    },
+    uk: {
+      loadingAccount: "Завантаження акаунта...",
+      loadingAccountAndLimits: "Завантаження акаунта і лімітів",
+      accountUpdated: "Акаунт оновлено",
+      backendUnavailable: "Backend API недоступний",
+      unknownError: "unknown error",
+      loadingCrmError: "Помилка завантаження CRM",
+      switchingPlan: (plan) => `Перемикання на ${plan}...`,
+      planChanged: (plan) => `Тариф: ${plan}`,
+      loadingWorkspace: "Завантаження workspace...",
+      workspaceSelected: "Workspace вибрано",
+      loadingWorkspaceError: "Помилка завантаження workspace",
+      agencyNameRequired: "Назва agency обов'язкова",
+      creatingAgency: "Створення agency workspace...",
+      agencyCreated: "Agency workspace створено",
+      agencyCreateError: "Помилка створення agency workspace",
+      memberUserIdRequired: "User ID учасника обов'язковий",
+      addingMember: "Додавання учасника...",
+      memberAdded: "Учасника додано",
+      addMemberError: "Помилка додавання учасника",
+      updatingRole: "Оновлення ролі...",
+      roleUpdated: "Роль оновлено",
+      roleUpdateError: "Помилка оновлення ролі",
+      updatingStatus: "Оновлення статусу...",
+      statusUpdated: "Статус оновлено",
+      statusUpdateError: "Помилка оновлення статусу",
+      removingMember: "Видалення учасника...",
+      memberRemoved: "Учасника видалено",
+      removeMemberError: "Помилка видалення учасника",
+      loadingCrmClient: "Завантаження CRM клієнта...",
+      crmClientSelected: "CRM клієнта вибрано",
+      crmClientLoadError: "Помилка завантаження CRM клієнта",
+      crmClientNameRequired: "Ім'я CRM клієнта обов'язкове",
+      creatingCrmClient: "Створення CRM клієнта...",
+      crmClientCreated: "CRM клієнта створено",
+      crmClientCreateError: "Помилка створення CRM клієнта",
+      updatingCrmClientStatus: "Оновлення статусу клієнта...",
+      crmClientStatusUpdated: "Статус CRM клієнта оновлено",
+      crmClientUpdateError: "Помилка оновлення CRM клієнта",
+      noteBodyRequired: "Текст нотатки обов'язковий",
+      addingNote: "Додавання нотатки...",
+      noteAdded: "CRM нотатку додано",
+      noteAddError: "Помилка додавання нотатки",
+      shortlistRequired: "Назва shortlist і хоча б один listing id обов'язкові",
+      buildingShortlist: "Збірка CRM shortlist...",
+      shortlistCreated: "CRM shortlist створено",
+      shortlistCreateError: "Помилка збірки CRM shortlist",
+      enablingShare: "Увімкнення шарингу...",
+      disablingShare: "Вимкнення шарингу...",
+      shareEnabled: "Шаринг увімкнено",
+      shareDisabled: "Шаринг вимкнено",
+      shareUpdateError: "Помилка оновлення шарингу",
+      generatingSharePreview: "Генерація share preview...",
+      sharePreviewReady: "Share preview готовий",
+      sharePreviewError: "Помилка share preview",
+    },
+  };
+  return statuses[locale];
+}
+
+function alertOptions(locale: Locale): AlertsPageCopy["options"] {
+  const sharedLabels = optionLabels(locale);
+  const channel: Record<Locale, OptionLabelMap> = {
+    en: { email: "email", telegram: "telegram" },
+    pl: { email: "email", telegram: "telegram" },
+    ru: { email: "email", telegram: "telegram" },
+    uk: { email: "email", telegram: "telegram" },
+  };
+  const frequency: Record<Locale, OptionLabelMap> = {
+    en: { instant: "instant", daily: "daily", weekly: "weekly" },
+    pl: { instant: "instant", daily: "daily", weekly: "weekly" },
+    ru: { instant: "instant", daily: "daily", weekly: "weekly" },
+    uk: { instant: "instant", daily: "daily", weekly: "weekly" },
+  };
+  const any: Record<Locale, { any: string; anyFeminine: string }> = {
+    en: { any: "Any", anyFeminine: "Any" },
+    pl: { any: "Dowolny", anyFeminine: "Dowolna" },
+    ru: { any: "Любой", anyFeminine: "Любое" },
+    uk: { any: "Будь-який", anyFeminine: "Будь-яке" },
+  };
+
+  return {
+    any: any[locale].any,
+    anyFeminine: any[locale].anyFeminine,
+    buildingType: sharedLabels.buildingType,
+    renovationState: sharedLabels.renovationState,
+    parkingType: sharedLabels.parkingType,
+    heatingType: sharedLabels.heatingType,
+    channel: channel[locale],
+    frequency: frequency[locale],
+  };
+}
+
+function alertFilterLabels(locale: Locale): OptionLabelMap {
+  const labels: Record<Locale, OptionLabelMap> = {
+    en: {
+      voivodeship: "Voivodeship",
+      city: "City",
+      municipality: "Gmina",
+      district: "District",
+      query: "Search",
+      building_type: "Building type",
+      renovation_state: "Condition",
+      has_balcony: "Balcony",
+      has_terrace: "Terrace",
+      has_garden: "Garden",
+      has_elevator: "Elevator",
+      parking_type: "Parking",
+      heating_type: "Heating",
+      rooms: "Rooms",
+      max_price: "Max price",
+      min_area_m2: "Min area",
+      min_floor: "Floor from",
+      max_floor: "Floor to",
+      max_building_floors: "Building floors to",
+      min_building_year: "Building year from",
+      max_building_year: "Building year to",
+      min_investment_score: "Min Investment",
+      max_risk_score: "Max Risk",
+      max_price_delta_to_fair_mid_pct: "Max fair delta",
+      min_negotiation_score: "Min Negotiation",
+      min_liquidity_score: "Min Liquidity",
+      min_rental_potential_score: "Min Rental",
+      min_price_reductions: "Price drops from",
+      max_days_on_market: "Days on market to",
+    },
+    pl: {
+      voivodeship: "Województwo",
+      city: "Miasto",
+      municipality: "Gmina",
+      district: "Dzielnica",
+      query: "Wyszukiwanie",
+      building_type: "Typ budynku",
+      renovation_state: "Stan",
+      has_balcony: "Balkon",
+      has_terrace: "Taras",
+      has_garden: "Ogród",
+      has_elevator: "Winda",
+      parking_type: "Parking",
+      heating_type: "Ogrzewanie",
+      rooms: "Pokoje",
+      max_price: "Maks. cena",
+      min_area_m2: "Min. powierzchnia",
+      min_floor: "Piętro od",
+      max_floor: "Piętro do",
+      max_building_floors: "Pięter w budynku do",
+      min_building_year: "Rok budynku od",
+      max_building_year: "Rok budynku do",
+      min_investment_score: "Min Investment",
+      max_risk_score: "Max Risk",
+      max_price_delta_to_fair_mid_pct: "Maks. fair delta",
+      min_negotiation_score: "Min Negotiation",
+      min_liquidity_score: "Min Liquidity",
+      min_rental_potential_score: "Min Rental",
+      min_price_reductions: "Obniżek ceny od",
+      max_days_on_market: "Dni na rynku do",
+    },
+    ru: {
+      voivodeship: "Воеводство",
+      city: "Город",
+      municipality: "Гмина",
+      district: "Район",
+      query: "Поиск",
+      building_type: "Тип здания",
+      renovation_state: "Состояние",
+      has_balcony: "Балкон",
+      has_terrace: "Терраса",
+      has_garden: "Сад",
+      has_elevator: "Лифт",
+      parking_type: "Паркинг",
+      heating_type: "Отопление",
+      rooms: "Комнаты",
+      max_price: "Макс. цена",
+      min_area_m2: "Мин. площадь",
+      min_floor: "Этаж от",
+      max_floor: "Этаж до",
+      max_building_floors: "Этажность до",
+      min_building_year: "Год дома от",
+      max_building_year: "Год дома до",
+      min_investment_score: "Мин. Investment",
+      max_risk_score: "Макс. Risk",
+      max_price_delta_to_fair_mid_pct: "Макс. fair delta",
+      min_negotiation_score: "Мин. Negotiation",
+      min_liquidity_score: "Мин. Liquidity",
+      min_rental_potential_score: "Мин. Rental",
+      min_price_reductions: "Снижений цены от",
+      max_days_on_market: "Дней на рынке до",
+    },
+    uk: {
+      voivodeship: "Воєводство",
+      city: "Місто",
+      municipality: "Гміна",
+      district: "Район",
+      query: "Пошук",
+      building_type: "Тип будівлі",
+      renovation_state: "Стан",
+      has_balcony: "Балкон",
+      has_terrace: "Тераса",
+      has_garden: "Сад",
+      has_elevator: "Ліфт",
+      parking_type: "Паркінг",
+      heating_type: "Опалення",
+      rooms: "Кімнати",
+      max_price: "Макс. ціна",
+      min_area_m2: "Мін. площа",
+      min_floor: "Поверх від",
+      max_floor: "Поверх до",
+      max_building_floors: "Поверховість до",
+      min_building_year: "Рік будинку від",
+      max_building_year: "Рік будинку до",
+      min_investment_score: "Мін. Investment",
+      max_risk_score: "Макс. Risk",
+      max_price_delta_to_fair_mid_pct: "Макс. fair delta",
+      min_negotiation_score: "Мін. Negotiation",
+      min_liquidity_score: "Мін. Liquidity",
+      min_rental_potential_score: "Мін. Rental",
+      min_price_reductions: "Знижень ціни від",
+      max_days_on_market: "Днів на ринку до",
+    },
+  };
+  return labels[locale];
 }
 
 function optionLabels(locale: Locale): ExplorerCopy["optionLabels"] {

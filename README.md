@@ -25,6 +25,12 @@ FastAPI backend для поиска объектов, сравнения, ско
   история цены, похожие объекты, скоринг, районные блоки и developer summary.
 - Локализована страница сравнения `/compare`: выбор объектов, decision metrics,
   AI verdict, client shortlist, матрица сравнения и форматирование чисел/валют.
+- Локализована страница отчетов `/reports`: генерация/history, export gating,
+  white-label controls, AI insight labels и форматирование дат.
+- Локализована страница оплаты `/pricing`: payment/report shell, checkout statuses,
+  invoice form, order history, subscription summary и форматирование цен.
+- Локализована страница уведомлений `/alerts`: форма saved-search, preference
+  controls, preview metrics, realtor digest shell, delivery history и filter labels.
 - Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
 - Добавлены административные map layers: районы, гмины и воеводство как переключаемые GeoJSON Polygon слои с metadata counts.
 - Добавлены MPZP/Studium planning screening layers: plan/policy zones с `review_required` legal flags и UI toggles.

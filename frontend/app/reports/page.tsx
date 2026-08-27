@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Download, ExternalLink, FileText, Mail, RefreshCw } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
@@ -12,15 +12,21 @@ import {
   type AccountSummary,
   type AIInsightListItem,
   type GeneratedReportListItem,
+  type ReportAudience,
   type ReportBranding,
 } from "@/lib/api";
+import { dateValue } from "@/lib/format";
+import { REPORTS_PAGE_COPY, type ReportsPageCopy } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 export default function ReportsPage() {
+  const { locale } = useLocalePreference();
+  const copy = REPORTS_PAGE_COPY[locale];
   const [reports, setReports] = useState<GeneratedReportListItem[]>([]);
   const [insights, setInsights] = useState<AIInsightListItem[]>([]);
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [listingId, setListingId] = useState("wr-001");
-  const [audience, setAudience] = useState<"buyer" | "realtor" | "investor">("buyer");
+  const [audience, setAudience] = useState<ReportAudience>("buyer");
   const [branding, setBranding] = useState<ReportBranding>({
     agency_name: "Domarion Realty",
     agent_name: "Anna Kowalska",
@@ -34,11 +40,14 @@ export default function ReportsPage() {
     footer_text: "Prepared by Domarion Realty for client review.",
     agency_disclaimer: "Agency materials are informational and require independent diligence.",
   });
-  const [status, setStatus] = useState("Загрузка отчетов...");
+  const [status, setStatus] = useState(copy.statuses.loading);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setError("");
+    setIsLoading(true);
+    setStatus(copy.statuses.loading);
     try {
       const [accountData, data, insightData] = await Promise.all([
         api.getMe(),
@@ -48,30 +57,38 @@ export default function ReportsPage() {
       setAccount(accountData);
       setReports(data);
       setInsights(insightData);
-      setStatus(`Отчетов: ${data.length}`);
+      setStatus(copy.statuses.loaded(data.length));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Backend API недоступен");
+      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+      setStatus(copy.statuses.backendUnavailable);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  }, [copy]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   async function generateReport() {
-    setStatus("Генерация отчета...");
-    const report = await api.generateReport(
-      listingId,
-      audience,
-      audience === "realtor"
-        ? cleanBranding(branding, account?.limits.can_white_label ?? false)
-        : undefined,
-    );
-    const insightData = await api.listAIInsights({ limit: 200 });
-    setReports([report, ...reports]);
-    setInsights(insightData);
-    setStatus(`Отчет сохранен: ${report.id}`);
+    setError("");
+    setStatus(copy.statuses.generating);
+    try {
+      const report = await api.generateReport(
+        listingId,
+        audience,
+        audience === "realtor"
+          ? cleanBranding(branding, account?.limits.can_white_label ?? false)
+          : undefined,
+      );
+      const insightData = await api.listAIInsights({ limit: 200 });
+      setReports((current) => [report, ...current]);
+      setInsights(insightData);
+      setStatus(copy.statuses.reportSaved(report.id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+      setStatus(copy.statuses.backendUnavailable);
+    }
   }
 
   const canWhiteLabel = account?.limits.can_white_label ?? false;
@@ -80,36 +97,36 @@ export default function ReportsPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Отчеты</h1>
-          <p>Сохраненные HTML/JSON отчеты по объектам для клиента, риелтора и инвестора.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <div className="button-row">
           {account?.limits.can_export ? (
             <>
               <a className="button" href={reportExportUrl("csv")}>
-                <Download size={16} /> CSV
+                <Download size={16} /> {copy.actions.csv}
               </a>
               <a className="button" href={reportExportUrl("json")}>
-                <Download size={16} /> JSON
+                <Download size={16} /> {copy.actions.json}
               </a>
             </>
           ) : (
-            <span className="muted">Export доступен на Realtor/Agency планах</span>
+            <span className="muted">{copy.values.exportUnavailable}</span>
           )}
           <button className="button" type="button" onClick={() => void load()}>
-            <RefreshCw size={16} /> Обновить
+            <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
         </div>
       </header>
 
       <section className="panel">
         <div className="panel-header">
-          <h2>Создать отчет</h2>
+          <h2>{copy.sections.create}</h2>
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body form-grid">
           <label className="field">
-            <span>Listing ID</span>
+            <span>{copy.fields.listingId}</span>
             <input
               className="input"
               value={listingId}
@@ -117,84 +134,84 @@ export default function ReportsPage() {
             />
           </label>
           <label className="field">
-            <span>Аудитория</span>
+            <span>{copy.fields.audience}</span>
             <select
               className="select"
               value={audience}
-              onChange={(event) => setAudience(event.target.value as typeof audience)}
+              onChange={(event) => setAudience(event.target.value as ReportAudience)}
             >
-              <option value="buyer">Buyer</option>
-              <option value="realtor">Realtor</option>
-              <option value="investor">Investor</option>
+              <option value="buyer">{copy.values.audienceLabels.buyer}</option>
+              <option value="realtor">{copy.values.audienceLabels.realtor}</option>
+              <option value="investor">{copy.values.audienceLabels.investor}</option>
             </select>
           </label>
           <button className="button primary" type="button" onClick={() => void generateReport()}>
-            <FileText size={16} /> Сгенерировать
+            <FileText size={16} /> {copy.actions.generate}
           </button>
           {audience === "realtor" ? (
             <>
               <BrandingField
-                label="Agency"
+                label={copy.fields.agency}
                 value={branding.agency_name ?? ""}
                 onChange={(value) => setBranding({ ...branding, agency_name: value })}
               />
               <BrandingField
-                label="Agent"
+                label={copy.fields.agent}
                 value={branding.agent_name ?? ""}
                 onChange={(value) => setBranding({ ...branding, agent_name: value })}
               />
               <BrandingField
-                label="Email"
+                label={copy.fields.email}
                 value={branding.agent_email ?? ""}
                 onChange={(value) => setBranding({ ...branding, agent_email: value })}
               />
               <BrandingField
-                label="Phone"
+                label={copy.fields.phone}
                 value={branding.agent_phone ?? ""}
                 onChange={(value) => setBranding({ ...branding, agent_phone: value })}
               />
               <BrandingField
-                label="Website"
+                label={copy.fields.website}
                 value={branding.website_url ?? ""}
                 onChange={(value) => setBranding({ ...branding, website_url: value })}
               />
               <BrandingField
-                label="Note"
+                label={copy.fields.note}
                 value={branding.note ?? ""}
                 onChange={(value) => setBranding({ ...branding, note: value })}
               />
               {canWhiteLabel ? (
                 <>
                   <BrandingField
-                    label="Logo URL"
+                    label={copy.fields.logoUrl}
                     value={branding.logo_url ?? ""}
                     onChange={(value) => setBranding({ ...branding, logo_url: value })}
                   />
                   <ColorField
-                    label="Primary"
+                    label={copy.fields.primaryColor}
                     value={branding.primary_color ?? "#0F766E"}
                     onChange={(value) => setBranding({ ...branding, primary_color: value })}
                   />
                   <ColorField
-                    label="Accent"
+                    label={copy.fields.accentColor}
                     value={branding.accent_color ?? "#B42318"}
                     onChange={(value) => setBranding({ ...branding, accent_color: value })}
                   />
                   <BrandingField
-                    label="Footer"
+                    label={copy.fields.footer}
                     value={branding.footer_text ?? ""}
                     onChange={(value) => setBranding({ ...branding, footer_text: value })}
                   />
                   <BrandingField
-                    label="Disclaimer"
+                    label={copy.fields.disclaimer}
                     value={branding.agency_disclaimer ?? ""}
                     onChange={(value) => setBranding({ ...branding, agency_disclaimer: value })}
                   />
                 </>
               ) : (
                 <div className="field">
-                  <span>White-label</span>
-                  <small className="muted">Logo, colors and custom footer need Realtor/Agency.</small>
+                  <span>{copy.fields.whiteLabel}</span>
+                  <small className="muted">{copy.values.whiteLabelHint}</small>
                 </div>
               )}
             </>
@@ -204,28 +221,28 @@ export default function ReportsPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>История</h2>
-          <span className="muted">{reports.length} items</span>
+          <h2>{copy.sections.history}</h2>
+          <span className="muted">{copy.values.items(reports.length)}</span>
         </div>
         <div className="panel-body">
           {error ? (
-            <ErrorBlock message={error} />
-          ) : reports.length === 0 && status.startsWith("Загрузка") ? (
-            <LoadingBlock />
+            <ErrorBlock message={error} prefix={copy.errorPrefix} />
+          ) : reports.length === 0 && isLoading ? (
+            <LoadingBlock label={copy.empty.loading} />
           ) : reports.length === 0 ? (
-            <EmptyBlock label="Пока нет сохраненных отчетов." />
+            <EmptyBlock label={copy.empty.noReports} />
           ) : (
             <div className="table-scroll">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Отчет</th>
-                    <th>Объект</th>
-                    <th>Аудитория</th>
-                    <th>Insight</th>
-                    <th>Дата</th>
-                    <th>Content</th>
-                    <th>PDF</th>
+                    <th>{copy.table.report}</th>
+                    <th>{copy.table.object}</th>
+                    <th>{copy.table.audience}</th>
+                    <th>{copy.table.insight}</th>
+                    <th>{copy.table.date}</th>
+                    <th>{copy.table.content}</th>
+                    <th>{copy.table.pdf}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -235,18 +252,18 @@ export default function ReportsPage() {
                       <tr key={report.id}>
                         <td>{report.title}</td>
                         <td>{report.listing_id}</td>
-                        <td>{report.audience}</td>
+                        <td>{copy.values.audienceLabels[report.audience] ?? report.audience}</td>
                         <td>
                           {insight ? (
                             <>
-                              <strong>{insightLabel(insight)}</strong>
+                              <strong>{insightLabel(insight, copy)}</strong>
                               <small>{insight.summary}</small>
                             </>
                           ) : (
-                            <span className="muted">Нет сохраненного summary</span>
+                            <span className="muted">{copy.values.noInsight}</span>
                           )}
                         </td>
-                        <td>{new Date(report.created_at).toLocaleString("pl-PL")}</td>
+                        <td>{dateValue(report.created_at, locale)}</td>
                         <td>
                           <a
                             className="button"
@@ -254,7 +271,7 @@ export default function ReportsPage() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            <ExternalLink size={16} /> Открыть
+                            <ExternalLink size={16} /> {copy.actions.open}
                           </a>
                           <button
                             className="button"
@@ -262,7 +279,7 @@ export default function ReportsPage() {
                             onClick={() => void emailReport(report.id)}
                             style={{ marginLeft: 8 }}
                           >
-                            <Mail size={16} /> Email
+                            <Mail size={16} /> {copy.actions.email}
                           </button>
                         </td>
                         <td>
@@ -272,7 +289,7 @@ export default function ReportsPage() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            <Download size={16} /> PDF
+                            <Download size={16} /> {copy.actions.pdf}
                           </a>
                         </td>
                       </tr>
@@ -302,14 +319,8 @@ function insightForReport(insights: AIInsightListItem[], reportId: string) {
   );
 }
 
-function insightLabel(insight: AIInsightListItem) {
-  if (insight.insight_type === "object_explanation") {
-    return "Object explanation";
-  }
-  if (insight.insight_type === "area_summary") {
-    return "Area summary";
-  }
-  return "Report summary";
+function insightLabel(insight: AIInsightListItem, copy: ReportsPageCopy) {
+  return copy.values.insightLabels[insight.insight_type] ?? copy.values.insightLabels.report_summary;
 }
 
 function BrandingField({

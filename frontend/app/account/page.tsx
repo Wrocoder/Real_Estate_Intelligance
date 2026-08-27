@@ -37,26 +37,11 @@ import {
   type SubscriptionPlan,
 } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
+import { ACCOUNT_PAGE_COPY, type AccountPageCopy, type Locale } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
-const PLAN_LABELS: Record<SubscriptionPlan, string> = {
-  free: "Free",
-  buyer_pro: "Buyer Pro",
-  investor: "Investor",
-  realtor: "Realtor",
-  agency: "Agency",
-  enterprise: "Enterprise",
-};
 const AGENCY_ROLE_OPTIONS: AgencyMemberRole[] = ["agent", "admin", "owner"];
-const AGENCY_ROLE_LABELS: Record<AgencyMemberRole, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  agent: "Agent",
-};
-const AGENCY_STATUS_LABELS: Record<AgencyMembershipStatus, string> = {
-  active: "Active",
-  invited: "Invited",
-  disabled: "Disabled",
-};
+const AGENCY_STATUS_OPTIONS: AgencyMembershipStatus[] = ["active", "invited", "disabled"];
 const CRM_CLIENT_STATUS_OPTIONS: CrmClientStatus[] = [
   "active",
   "paused",
@@ -64,19 +49,17 @@ const CRM_CLIENT_STATUS_OPTIONS: CrmClientStatus[] = [
   "lost",
   "archived",
 ];
-const CRM_CLIENT_STATUS_LABELS: Record<CrmClientStatus, string> = {
-  active: "Active",
-  paused: "Paused",
-  won: "Won",
-  lost: "Lost",
-  archived: "Archived",
-};
-const CRM_NOTE_VISIBILITY_LABELS: Record<CrmNoteVisibility, string> = {
-  internal: "Internal",
-  client_shareable: "Client shareable",
+const CRM_NOTE_VISIBILITY_OPTIONS: CrmNoteVisibility[] = ["internal", "client_shareable"];
+const ACCOUNT_INTL_LOCALES: Record<Locale, string> = {
+  en: "en-US",
+  pl: "pl-PL",
+  ru: "ru-RU",
+  uk: "uk-UA",
 };
 
 export default function AccountPage() {
+  const { locale } = useLocalePreference();
+  const copy = ACCOUNT_PAGE_COPY[locale];
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [plans, setPlans] = useState<PlanLimits[]>([]);
   const [orders, setOrders] = useState<ReportOrder[]>([]);
@@ -124,7 +107,7 @@ export default function AccountPage() {
     client_message: "",
     share_enabled: true,
   });
-  const [status, setStatus] = useState("Загрузка аккаунта...");
+  const [status, setStatus] = useState(copy.statuses.loadingAccount);
   const [error, setError] = useState("");
 
   const loadCrmForAgency = useCallback(
@@ -144,17 +127,17 @@ export default function AccountPage() {
           setSelectedCrmClient(null);
         }
       } catch (caught) {
-        setStatus(caught instanceof Error ? caught.message : "Ошибка загрузки CRM");
+        setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingCrmError);
       } finally {
         setCrmBusy(false);
       }
     },
-    [],
+    [copy],
   );
 
   const load = useCallback(async (preferredAgencyId?: string | null) => {
     setError("");
-    setStatus("Загрузка аккаунта...");
+    setStatus(copy.statuses.loadingAccount);
     try {
       const [accountData, planData, orderData, agencyData] = await Promise.all([
         api.getMe(),
@@ -175,12 +158,12 @@ export default function AccountPage() {
       } else {
         setSelectedAgency(null);
       }
-      setStatus("Аккаунт обновлен");
+      setStatus(copy.statuses.accountUpdated);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Backend API недоступен");
+      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+      setStatus(copy.statuses.backendUnavailable);
     }
-  }, []);
+  }, [copy]);
 
   useEffect(() => {
     void load();
@@ -199,10 +182,10 @@ export default function AccountPage() {
   }, [loadCrmForAgency, selectedAgencyId]);
 
   async function switchPlan(plan: SubscriptionPlan) {
-    setStatus(`Переключение на ${PLAN_LABELS[plan]}...`);
+    setStatus(copy.statuses.switchingPlan(copy.labels.plan[plan] ?? plan));
     const updated = await api.updateSubscription(plan);
     setAccount(updated);
-    setStatus(`Тариф: ${PLAN_LABELS[updated.subscription.plan]}`);
+    setStatus(copy.statuses.planChanged(copy.labels.plan[updated.subscription.plan] ?? updated.subscription.plan));
   }
 
   async function refreshAgency(agencyId = selectedAgency?.id) {
@@ -217,12 +200,12 @@ export default function AccountPage() {
 
   async function selectAgency(agencyId: string) {
     setAgencyBusy(true);
-    setStatus("Загрузка workspace...");
+    setStatus(copy.statuses.loadingWorkspace);
     try {
       setSelectedAgency(await api.getAgency(agencyId));
-      setStatus("Workspace выбран");
+      setStatus(copy.statuses.workspaceSelected);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка загрузки workspace");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingWorkspaceError);
     } finally {
       setAgencyBusy(false);
     }
@@ -231,11 +214,11 @@ export default function AccountPage() {
   async function createAgency(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!agencyForm.name.trim()) {
-      setStatus("Название agency обязательно");
+      setStatus(copy.statuses.agencyNameRequired);
       return;
     }
     setAgencyBusy(true);
-    setStatus("Создание agency workspace...");
+    setStatus(copy.statuses.creatingAgency);
     try {
       const created = await api.createAgency({
         name: agencyForm.name,
@@ -246,9 +229,9 @@ export default function AccountPage() {
       setSelectedAgency(created);
       setAgencies(await api.listAgencies());
       setAgencyForm({ name: "", billing_email: "", website_url: "", city: "Wrocław" });
-      setStatus("Agency workspace создан");
+      setStatus(copy.statuses.agencyCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка создания agency workspace");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.agencyCreateError);
     } finally {
       setAgencyBusy(false);
     }
@@ -257,11 +240,11 @@ export default function AccountPage() {
   async function addMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedAgency || !memberForm.user_id.trim()) {
-      setStatus("User ID участника обязателен");
+      setStatus(copy.statuses.memberUserIdRequired);
       return;
     }
     setAgencyBusy(true);
-    setStatus("Добавление участника...");
+    setStatus(copy.statuses.addingMember);
     try {
       await api.addAgencyMember(selectedAgency.id, {
         user_id: memberForm.user_id,
@@ -272,9 +255,9 @@ export default function AccountPage() {
       });
       setMemberForm({ user_id: "", email: "", display_name: "", role: "agent" });
       await refreshAgency(selectedAgency.id);
-      setStatus("Участник добавлен");
+      setStatus(copy.statuses.memberAdded);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка добавления участника");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.addMemberError);
     } finally {
       setAgencyBusy(false);
     }
@@ -283,13 +266,13 @@ export default function AccountPage() {
   async function updateMemberRole(membershipId: string, role: AgencyMemberRole) {
     if (!selectedAgency) return;
     setAgencyBusy(true);
-    setStatus("Обновление роли...");
+    setStatus(copy.statuses.updatingRole);
     try {
       await api.updateAgencyMember(selectedAgency.id, membershipId, { role });
       await refreshAgency(selectedAgency.id);
-      setStatus("Роль обновлена");
+      setStatus(copy.statuses.roleUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления роли");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.roleUpdateError);
     } finally {
       setAgencyBusy(false);
     }
@@ -301,13 +284,13 @@ export default function AccountPage() {
   ) {
     if (!selectedAgency) return;
     setAgencyBusy(true);
-    setStatus("Обновление статуса...");
+    setStatus(copy.statuses.updatingStatus);
     try {
       await api.updateAgencyMember(selectedAgency.id, membershipId, { status: memberStatus });
       await refreshAgency(selectedAgency.id);
-      setStatus("Статус обновлен");
+      setStatus(copy.statuses.statusUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления статуса");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.statusUpdateError);
     } finally {
       setAgencyBusy(false);
     }
@@ -316,13 +299,13 @@ export default function AccountPage() {
   async function removeMember(membershipId: string) {
     if (!selectedAgency) return;
     setAgencyBusy(true);
-    setStatus("Удаление участника...");
+    setStatus(copy.statuses.removingMember);
     try {
       await api.removeAgencyMember(selectedAgency.id, membershipId);
       await refreshAgency(selectedAgency.id);
-      setStatus("Участник удален");
+      setStatus(copy.statuses.memberRemoved);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка удаления участника");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.removeMemberError);
     } finally {
       setAgencyBusy(false);
     }
@@ -332,12 +315,12 @@ export default function AccountPage() {
     if (!selectedAgency) return;
     setCrmBusy(true);
     setCrmSharePreview(null);
-    setStatus("Загрузка CRM клиента...");
+    setStatus(copy.statuses.loadingCrmClient);
     try {
       setSelectedCrmClient(await api.getAgencyCrmClient(selectedAgency.id, clientId));
-      setStatus("CRM клиент выбран");
+      setStatus(copy.statuses.crmClientSelected);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка загрузки CRM клиента");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientLoadError);
     } finally {
       setCrmBusy(false);
     }
@@ -346,11 +329,11 @@ export default function AccountPage() {
   async function createCrmClient(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedAgency || !crmClientForm.display_name.trim()) {
-      setStatus("Имя CRM клиента обязательно");
+      setStatus(copy.statuses.crmClientNameRequired);
       return;
     }
     setCrmBusy(true);
-    setStatus("Создание CRM клиента...");
+    setStatus(copy.statuses.creatingCrmClient);
     try {
       const created = await api.createAgencyCrmClient(selectedAgency.id, {
         display_name: crmClientForm.display_name,
@@ -379,9 +362,9 @@ export default function AccountPage() {
         profile_notes: "",
       });
       await loadCrmForAgency(selectedAgency.id, created.id);
-      setStatus("CRM клиент создан");
+      setStatus(copy.statuses.crmClientCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка создания CRM клиента");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientCreateError);
     } finally {
       setCrmBusy(false);
     }
@@ -390,15 +373,15 @@ export default function AccountPage() {
   async function updateCrmClientStatus(clientStatus: CrmClientStatus) {
     if (!selectedAgency || !selectedCrmClient) return;
     setCrmBusy(true);
-    setStatus("Обновление статуса клиента...");
+    setStatus(copy.statuses.updatingCrmClientStatus);
     try {
       await api.updateAgencyCrmClient(selectedAgency.id, selectedCrmClient.id, {
         status: clientStatus,
       });
       await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
-      setStatus("Статус CRM клиента обновлен");
+      setStatus(copy.statuses.crmClientStatusUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления CRM клиента");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientUpdateError);
     } finally {
       setCrmBusy(false);
     }
@@ -407,11 +390,11 @@ export default function AccountPage() {
   async function createCrmNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedAgency || !selectedCrmClient || !crmNoteForm.body.trim()) {
-      setStatus("Текст заметки обязателен");
+      setStatus(copy.statuses.noteBodyRequired);
       return;
     }
     setCrmBusy(true);
-    setStatus("Добавление заметки...");
+    setStatus(copy.statuses.addingNote);
     try {
       await api.createAgencyCrmNote(selectedAgency.id, selectedCrmClient.id, {
         body: crmNoteForm.body,
@@ -420,9 +403,9 @@ export default function AccountPage() {
       });
       setCrmNoteForm({ body: "", visibility: "internal", pinned: false });
       await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
-      setStatus("CRM заметка добавлена");
+      setStatus(copy.statuses.noteAdded);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка добавления заметки");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.noteAddError);
     } finally {
       setCrmBusy(false);
     }
@@ -433,12 +416,12 @@ export default function AccountPage() {
     if (!selectedAgency || !selectedCrmClient) return;
     const listingIds = parseTokenList(crmShortlistForm.listing_ids);
     if (!crmShortlistForm.title.trim() || listingIds.length === 0) {
-      setStatus("Название shortlist и хотя бы один listing id обязательны");
+      setStatus(copy.statuses.shortlistRequired);
       return;
     }
     setCrmBusy(true);
     setCrmSharePreview(null);
-    setStatus("Сборка CRM shortlist...");
+    setStatus(copy.statuses.buildingShortlist);
     try {
       const created = await api.createAgencyCrmShortlist(selectedAgency.id, selectedCrmClient.id, {
         title: crmShortlistForm.title,
@@ -464,9 +447,9 @@ export default function AccountPage() {
           ),
         );
       }
-      setStatus("CRM shortlist создан");
+      setStatus(copy.statuses.shortlistCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка сборки CRM shortlist");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.shortlistCreateError);
     } finally {
       setCrmBusy(false);
     }
@@ -477,7 +460,7 @@ export default function AccountPage() {
     const nextShareEnabled = !shortlist.share_enabled;
     setCrmBusy(true);
     setCrmSharePreview(null);
-    setStatus(nextShareEnabled ? "Включение шаринга..." : "Отключение шаринга...");
+    setStatus(nextShareEnabled ? copy.statuses.enablingShare : copy.statuses.disablingShare);
     try {
       const updated = await api.updateAgencyCrmShortlist(
         selectedAgency.id,
@@ -498,9 +481,9 @@ export default function AccountPage() {
           ),
         );
       }
-      setStatus(nextShareEnabled ? "Шаринг включен" : "Шаринг отключен");
+      setStatus(nextShareEnabled ? copy.statuses.shareEnabled : copy.statuses.shareDisabled);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка обновления шаринга");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.shareUpdateError);
     } finally {
       setCrmBusy(false);
     }
@@ -509,7 +492,7 @@ export default function AccountPage() {
   async function previewCrmShare(shortlist: CrmShortlist) {
     if (!selectedAgency || !selectedCrmClient) return;
     setCrmBusy(true);
-    setStatus("Генерация share preview...");
+    setStatus(copy.statuses.generatingSharePreview);
     try {
       setCrmSharePreview(
         await api.previewAgencyCrmShortlistShare(
@@ -518,9 +501,9 @@ export default function AccountPage() {
           shortlist.id,
         ),
       );
-      setStatus("Share preview готов");
+      setStatus(copy.statuses.sharePreviewReady);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : "Ошибка share preview");
+      setStatus(caught instanceof Error ? caught.message : copy.statuses.sharePreviewError);
     } finally {
       setCrmBusy(false);
     }
@@ -539,44 +522,46 @@ export default function AccountPage() {
     [plans],
   );
 
-  if (error) return <ErrorBlock message={error} />;
-  if (!account) return <LoadingBlock label="Загрузка аккаунта и лимитов" />;
+  if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
+  if (!account) return <LoadingBlock label={copy.statuses.loadingAccountAndLimits} />;
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Аккаунт и подписка</h1>
-          <p>Текущий пользователь, тарифные лимиты и usage для MVP-монетизации.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <button className="button" type="button" onClick={() => void load(selectedAgency?.id)}>
-          <RefreshCw size={16} /> Обновить
+          <RefreshCw size={16} /> {copy.actions.refresh}
         </button>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Тариф</span>
-          <strong>{PLAN_LABELS[currentPlan]}</strong>
+          <span>{copy.metrics.plan}</span>
+          <strong>{copy.labels.plan[currentPlan]}</strong>
         </div>
         <div className="metric">
-          <span>Роль</span>
-          <strong>{account.user.role}</strong>
+          <span>{copy.metrics.role}</span>
+          <strong>{copy.labels.userRole[account.user.role] ?? account.user.role}</strong>
         </div>
         <div className="metric">
-          <span>Отчеты</span>
+          <span>{copy.metrics.reports}</span>
           <strong>
-            {account.usage.reports_this_month}/{account.limits.monthly_reports}
+            {numberValue(account.usage.reports_this_month, locale)}/
+            {numberValue(account.limits.monthly_reports, locale)}
           </strong>
         </div>
         <div className="metric">
-          <span>Credits</span>
-          <strong>{numberValue(account.usage.report_credits_available)}</strong>
+          <span>{copy.metrics.credits}</span>
+          <strong>{numberValue(account.usage.report_credits_available, locale)}</strong>
         </div>
         <div className="metric">
-          <span>Alerts</span>
+          <span>{copy.metrics.alerts}</span>
           <strong>
-            {account.usage.alerts}/{account.limits.max_alerts}
+            {numberValue(account.usage.alerts, locale)}/
+            {numberValue(account.limits.max_alerts, locale)}
           </strong>
         </div>
       </section>
@@ -584,7 +569,7 @@ export default function AccountPage() {
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>Планы</h2>
+            <h2>{copy.sections.plans}</h2>
             <span className="status-line">{status}</span>
           </div>
           <div className="panel-body plan-grid">
@@ -594,14 +579,20 @@ export default function AccountPage() {
                 className={plan.plan === currentPlan ? "plan-card active" : "plan-card"}
               >
                 <div className="plan-card-header">
-                  <strong>{PLAN_LABELS[plan.plan]}</strong>
-                  {plan.plan === currentPlan ? <span className="score-pill">active</span> : null}
+                  <strong>{copy.labels.plan[plan.plan]}</strong>
+                  {plan.plan === currentPlan ? (
+                    <span className="score-pill">{copy.values.activeBadge}</span>
+                  ) : null}
                 </div>
                 <ul className="section-list compact">
-                  <li>{numberValue(plan.max_favorites)} избранных</li>
-                  <li>{numberValue(plan.max_alerts)} alerts</li>
-                  <li>{numberValue(plan.monthly_reports)} отчетов / месяц</li>
-                  <li>{plan.can_white_label ? "White-label reports" : "Без white-label"}</li>
+                  <li>{copy.values.favorites(numberValue(plan.max_favorites, locale))}</li>
+                  <li>{copy.values.alerts(numberValue(plan.max_alerts, locale))}</li>
+                  <li>{copy.values.monthlyReports(numberValue(plan.monthly_reports, locale))}</li>
+                  <li>
+                    {plan.can_white_label
+                      ? copy.values.whiteLabelReports
+                      : copy.values.noWhiteLabel}
+                  </li>
                 </ul>
                 <button
                   className={plan.plan === currentPlan ? "button" : "button primary"}
@@ -610,7 +601,7 @@ export default function AccountPage() {
                   onClick={() => void switchPlan(plan.plan)}
                 >
                   <CreditCard size={16} />
-                  {plan.plan === currentPlan ? "Текущий" : "Выбрать"}
+                  {plan.plan === currentPlan ? copy.actions.current : copy.actions.choose}
                 </button>
               </article>
             ))}
@@ -619,34 +610,60 @@ export default function AccountPage() {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Профиль</h2>
+            <h2>{copy.sections.profile}</h2>
             <UserCircle size={18} />
           </div>
           <div className="panel-body">
             <ul className="section-list">
-              <li>ID: {account.user.id}</li>
-              <li>Email: {account.user.email ?? "-"}</li>
-              <li>Status: {account.subscription.status}</li>
-              <li>Plan ID: {account.subscription.id}</li>
+              <li>
+                {copy.fields.id}: {account.user.id}
+              </li>
+              <li>
+                {copy.fields.email}: {account.user.email ?? copy.values.noValue}
+              </li>
+              <li>
+                {copy.metrics.status}:{" "}
+                {copy.labels.subscriptionStatus[account.subscription.status] ??
+                  account.subscription.status}
+              </li>
+              <li>
+                {copy.fields.planId}: {account.subscription.id}
+              </li>
             </ul>
 
-            <h2>Usage</h2>
-            <UsageBar label="Favorites" value={account.usage.favorites} limit={account.limits.max_favorites} />
-            <UsageBar label="Alerts" value={account.usage.alerts} limit={account.limits.max_alerts} />
+            <h2>{copy.sections.usage}</h2>
             <UsageBar
-              label="Reports"
+              label={copy.labels.capability.favorites}
+              value={account.usage.favorites}
+              limit={account.limits.max_favorites}
+              locale={locale}
+            />
+            <UsageBar
+              label={copy.metrics.alerts}
+              value={account.usage.alerts}
+              limit={account.limits.max_alerts}
+              locale={locale}
+            />
+            <UsageBar
+              label={copy.metrics.reports}
               value={account.usage.reports_this_month}
               limit={account.limits.monthly_reports}
+              locale={locale}
             />
             <p className="muted">
-              Report credits: {numberValue(account.usage.report_credits_available)}
+              {copy.values.reportCredits(
+                numberValue(account.usage.report_credits_available, locale),
+              )}
             </p>
 
-            <h2>Capabilities</h2>
+            <h2>{copy.sections.capabilities}</h2>
             <div className="capability-list">
-              <Capability label="Export" enabled={account.limits.can_export} />
-              <Capability label="API" enabled={account.limits.can_use_api} />
-              <Capability label="White-label" enabled={account.limits.can_white_label} />
+              <Capability label={copy.labels.capability.export} enabled={account.limits.can_export} />
+              <Capability label={copy.labels.capability.api} enabled={account.limits.can_use_api} />
+              <Capability
+                label={copy.labels.capability.white_label}
+                enabled={account.limits.can_white_label}
+              />
             </div>
           </div>
         </aside>
@@ -654,24 +671,24 @@ export default function AccountPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Agency workspace</h2>
-          <span className="muted">{agencies.length} workspaces</span>
+            <h2>{copy.sections.agencyWorkspace}</h2>
+            <span className="muted">{copy.values.workspaces(agencies.length)}</span>
         </div>
         <div className="panel-body">
           <form className="form-grid compact" onSubmit={(event) => void createAgency(event)}>
             <label className="field">
-              <span>Название</span>
+              <span>{copy.fields.name}</span>
               <input
                 className="input"
                 value={agencyForm.name}
                 onChange={(event) =>
                   setAgencyForm((current) => ({ ...current, name: event.target.value }))
                 }
-                placeholder="Example Realty"
+                placeholder={copy.placeholders.agencyName}
               />
             </label>
             <label className="field">
-              <span>Billing email</span>
+              <span>{copy.fields.billingEmail}</span>
               <input
                 className="input"
                 value={agencyForm.billing_email}
@@ -681,11 +698,11 @@ export default function AccountPage() {
                     billing_email: event.target.value,
                   }))
                 }
-                placeholder="billing@example.com"
+                placeholder={copy.placeholders.billingEmail}
               />
             </label>
             <label className="field">
-              <span>Website</span>
+              <span>{copy.fields.website}</span>
               <input
                 className="input"
                 value={agencyForm.website_url}
@@ -695,11 +712,11 @@ export default function AccountPage() {
                     website_url: event.target.value,
                   }))
                 }
-                placeholder="https://example.com"
+                placeholder={copy.placeholders.website}
               />
             </label>
             <label className="field">
-              <span>City</span>
+              <span>{copy.fields.city}</span>
               <input
                 className="input"
                 value={agencyForm.city}
@@ -709,20 +726,20 @@ export default function AccountPage() {
               />
             </label>
             <div className="field">
-              <span>Action</span>
+              <span>{copy.fields.action}</span>
               <button
                 className="button primary"
                 type="submit"
                 disabled={!canCreateAgency || agencyBusy}
               >
                 <Building2 size={16} />
-                Создать
+                {copy.actions.create}
               </button>
             </div>
             <div className="field">
-              <span>Plan</span>
+              <span>{copy.fields.plan}</span>
               <span className={canCreateAgency ? "status-pill healthy" : "status-pill warning"}>
-                {canCreateAgency ? "Agency enabled" : "Agency plan required"}
+                {canCreateAgency ? copy.values.agencyEnabled : copy.values.agencyPlanRequired}
               </span>
             </div>
           </form>
@@ -750,31 +767,35 @@ export default function AccountPage() {
               <div className="panel-header inline">
                 <h3>{selectedAgency.name}</h3>
                 <span className="status-pill info">
-                  {AGENCY_ROLE_LABELS[selectedAgency.current_user_role]}
+                  {copy.labels.agencyRole[selectedAgency.current_user_role] ??
+                    selectedAgency.current_user_role}
                 </span>
               </div>
               <div className="metric-grid" style={{ marginBottom: 14 }}>
                 <div className="metric">
-                  <span>Owner</span>
+                  <span>{copy.metrics.owner}</span>
                   <strong>{selectedAgency.owner_id}</strong>
                 </div>
                 <div className="metric">
-                  <span>City</span>
-                  <strong>{selectedAgency.city ?? "-"}</strong>
+                  <span>{copy.metrics.city}</span>
+                  <strong>{selectedAgency.city ?? copy.values.noValue}</strong>
                 </div>
                 <div className="metric">
-                  <span>Members</span>
-                  <strong>{selectedAgency.members_count}</strong>
+                  <span>{copy.metrics.members}</span>
+                  <strong>{numberValue(selectedAgency.members_count, locale)}</strong>
                 </div>
                 <div className="metric">
-                  <span>Status</span>
-                  <strong>{AGENCY_STATUS_LABELS[selectedAgency.current_user_status]}</strong>
+                  <span>{copy.metrics.status}</span>
+                  <strong>
+                    {copy.labels.agencyStatus[selectedAgency.current_user_status] ??
+                      selectedAgency.current_user_status}
+                  </strong>
                 </div>
               </div>
 
               <form className="form-grid compact" onSubmit={(event) => void addMember(event)}>
                 <label className="field">
-                  <span>User ID</span>
+                  <span>{copy.fields.userId}</span>
                   <input
                     className="input"
                     value={memberForm.user_id}
@@ -785,11 +806,11 @@ export default function AccountPage() {
                         user_id: event.target.value,
                       }))
                     }
-                    placeholder="agent-1"
+                    placeholder={copy.placeholders.userId}
                   />
                 </label>
                 <label className="field">
-                  <span>Email</span>
+                  <span>{copy.fields.email}</span>
                   <input
                     className="input"
                     value={memberForm.email}
@@ -797,11 +818,11 @@ export default function AccountPage() {
                     onChange={(event) =>
                       setMemberForm((current) => ({ ...current, email: event.target.value }))
                     }
-                    placeholder="agent@example.com"
+                    placeholder={copy.placeholders.memberEmail}
                   />
                 </label>
                 <label className="field">
-                  <span>Name</span>
+                  <span>{copy.fields.displayName}</span>
                   <input
                     className="input"
                     value={memberForm.display_name}
@@ -812,11 +833,11 @@ export default function AccountPage() {
                         display_name: event.target.value,
                       }))
                     }
-                    placeholder="Agent One"
+                    placeholder={copy.placeholders.memberName}
                   />
                 </label>
                 <label className="field">
-                  <span>Role</span>
+                  <span>{copy.fields.role}</span>
                   <select
                     className="select"
                     value={memberForm.role}
@@ -830,20 +851,20 @@ export default function AccountPage() {
                   >
                     {AGENCY_ROLE_OPTIONS.map((role) => (
                       <option key={role} value={role}>
-                        {AGENCY_ROLE_LABELS[role]}
+                        {copy.labels.agencyRole[role] ?? role}
                       </option>
                     ))}
                   </select>
                 </label>
                 <div className="field">
-                  <span>Action</span>
+                  <span>{copy.fields.action}</span>
                   <button
                     className="button"
                     type="submit"
                     disabled={!selectedCanManage || agencyBusy}
                   >
                     <UserPlus size={16} />
-                    Добавить
+                    {copy.actions.add}
                   </button>
                 </div>
               </form>
@@ -852,11 +873,11 @@ export default function AccountPage() {
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Участник</th>
-                      <th>Email</th>
-                      <th>Роль</th>
-                      <th>Статус</th>
-                      <th>Действие</th>
+                      <th>{copy.tables.member}</th>
+                      <th>{copy.tables.email}</th>
+                      <th>{copy.tables.role}</th>
+                      <th>{copy.tables.status}</th>
+                      <th>{copy.tables.action}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -866,7 +887,7 @@ export default function AccountPage() {
                           <strong>{memberDisplayName(member)}</strong>
                           <small>{member.user_id}</small>
                         </td>
-                        <td>{member.email ?? "-"}</td>
+                        <td>{member.email ?? copy.values.noValue}</td>
                         <td>
                           <select
                             className="select"
@@ -881,7 +902,7 @@ export default function AccountPage() {
                           >
                             {AGENCY_ROLE_OPTIONS.map((role) => (
                               <option key={role} value={role}>
-                                {AGENCY_ROLE_LABELS[role]}
+                                {copy.labels.agencyRole[role] ?? role}
                               </option>
                             ))}
                           </select>
@@ -898,9 +919,9 @@ export default function AccountPage() {
                               )
                             }
                           >
-                            {Object.entries(AGENCY_STATUS_LABELS).map(([value, label]) => (
+                            {AGENCY_STATUS_OPTIONS.map((value) => (
                               <option key={value} value={value}>
-                                {label}
+                                {copy.labels.agencyStatus[value] ?? value}
                               </option>
                             ))}
                           </select>
@@ -917,7 +938,7 @@ export default function AccountPage() {
                             onClick={() => void removeMember(member.id)}
                           >
                             <Trash2 size={16} />
-                            Удалить
+                            {copy.actions.delete}
                           </button>
                         </td>
                       </tr>
@@ -935,11 +956,11 @@ export default function AccountPage() {
           <div className="panel-header">
             <h2 className="icon-title">
               <MessageSquare size={17} />
-              Agency CRM
+              {copy.sections.agencyCrm}
             </h2>
             <div className="toolbar">
               <span className="muted">
-                {crmClients.length} clients · {selectedAgency.name}
+                {copy.values.clients(crmClients.length, selectedAgency.name)}
               </span>
               <button
                 className="button"
@@ -948,14 +969,14 @@ export default function AccountPage() {
                 onClick={() => void loadCrmForAgency(selectedAgency.id, selectedCrmClient?.id)}
               >
                 <RefreshCw size={16} />
-                Обновить CRM
+                {copy.actions.refreshCrm}
               </button>
             </div>
           </div>
           <div className="panel-body">
             <form className="form-grid wide" onSubmit={(event) => void createCrmClient(event)}>
               <label className="field">
-                <span>Клиент</span>
+                <span>{copy.fields.client}</span>
                 <input
                   className="input"
                   value={crmClientForm.display_name}
@@ -965,22 +986,22 @@ export default function AccountPage() {
                       display_name: event.target.value,
                     }))
                   }
-                  placeholder="Anna Buyer"
+                  placeholder={copy.placeholders.clientName}
                 />
               </label>
               <label className="field">
-                <span>Email</span>
+                <span>{copy.fields.email}</span>
                 <input
                   className="input"
                   value={crmClientForm.email}
                   onChange={(event) =>
                     setCrmClientForm((current) => ({ ...current, email: event.target.value }))
                   }
-                  placeholder="anna@example.com"
+                  placeholder={copy.placeholders.clientEmail}
                 />
               </label>
               <label className="field">
-                <span>Phone</span>
+                <span>{copy.fields.phone}</span>
                 <input
                   className="input"
                   value={crmClientForm.phone}
@@ -991,7 +1012,7 @@ export default function AccountPage() {
                 />
               </label>
               <label className="field">
-                <span>City</span>
+                <span>{copy.fields.city}</span>
                 <input
                   className="input"
                   value={crmClientForm.city}
@@ -1001,7 +1022,7 @@ export default function AccountPage() {
                 />
               </label>
               <label className="field">
-                <span>District</span>
+                <span>{copy.fields.district}</span>
                 <input
                   className="input"
                   value={crmClientForm.district}
@@ -1011,11 +1032,11 @@ export default function AccountPage() {
                       district: event.target.value,
                     }))
                   }
-                  placeholder="Fabryczna"
+                  placeholder={copy.placeholders.district}
                 />
               </label>
               <label className="field">
-                <span>Budget min</span>
+                <span>{copy.fields.budgetMin}</span>
                 <input
                   className="input"
                   inputMode="numeric"
@@ -1026,11 +1047,11 @@ export default function AccountPage() {
                       budget_min: event.target.value,
                     }))
                   }
-                  placeholder="650000"
+                  placeholder={copy.placeholders.budgetMin}
                 />
               </label>
               <label className="field">
-                <span>Budget max</span>
+                <span>{copy.fields.budgetMax}</span>
                 <input
                   className="input"
                   inputMode="numeric"
@@ -1041,11 +1062,11 @@ export default function AccountPage() {
                       budget_max: event.target.value,
                     }))
                   }
-                  placeholder="900000"
+                  placeholder={copy.placeholders.budgetMax}
                 />
               </label>
               <label className="field">
-                <span>Rooms</span>
+                <span>{copy.fields.rooms}</span>
                 <input
                   className="input"
                   value={crmClientForm.preferred_rooms}
@@ -1055,22 +1076,22 @@ export default function AccountPage() {
                       preferred_rooms: event.target.value,
                     }))
                   }
-                  placeholder="2, 3"
+                  placeholder={copy.placeholders.rooms}
                 />
               </label>
               <label className="field">
-                <span>Tags</span>
+                <span>{copy.fields.tags}</span>
                 <input
                   className="input"
                   value={crmClientForm.tags}
                   onChange={(event) =>
                     setCrmClientForm((current) => ({ ...current, tags: event.target.value }))
                   }
-                  placeholder="family, investor"
+                  placeholder={copy.placeholders.tags}
                 />
               </label>
               <label className="field">
-                <span>Profile notes</span>
+                <span>{copy.fields.profileNotes}</span>
                 <input
                   className="input"
                   value={crmClientForm.profile_notes}
@@ -1080,7 +1101,7 @@ export default function AccountPage() {
                       profile_notes: event.target.value,
                     }))
                   }
-                  placeholder="Quiet building, tram access"
+                  placeholder={copy.placeholders.profileNotes}
                 />
               </label>
               <label className="field inline-field">
@@ -1094,13 +1115,13 @@ export default function AccountPage() {
                     }))
                   }
                 />
-                <span>Consent</span>
+                <span>{copy.fields.consent}</span>
               </label>
               <div className="field">
-                <span>Action</span>
+                <span>{copy.fields.action}</span>
                 <button className="button primary" type="submit" disabled={crmBusy}>
                   <UserPlus size={16} />
-                  Создать клиента
+                  {copy.actions.createClient}
                 </button>
               </div>
             </form>
@@ -1122,13 +1143,14 @@ export default function AccountPage() {
                     >
                       <strong>{client.display_name}</strong>
                       <small>
-                        {CRM_CLIENT_STATUS_LABELS[client.status]} · {client.city ?? "-"}
+                        {copy.labels.crmClientStatus[client.status] ?? client.status} ·{" "}
+                        {client.city ?? copy.values.noValue}
                       </small>
-                      <span>{formatBudget(client.budget_min, client.budget_max)}</span>
+                      <span>{formatBudget(client.budget_min, client.budget_max, locale, copy)}</span>
                     </button>
                   ))
                 ) : (
-                  <p className="empty-state">CRM clients появятся здесь после создания.</p>
+                  <p className="empty-state">{copy.empty.crmClients}</p>
                 )}
               </aside>
 
@@ -1138,7 +1160,8 @@ export default function AccountPage() {
                     <h3>{selectedCrmClient.display_name}</h3>
                     <div className="toolbar">
                       <span className={`status-pill ${crmClientStatusTone(selectedCrmClient.status)}`}>
-                        {CRM_CLIENT_STATUS_LABELS[selectedCrmClient.status]}
+                        {copy.labels.crmClientStatus[selectedCrmClient.status] ??
+                          selectedCrmClient.status}
                       </span>
                       <select
                         className="select"
@@ -1150,7 +1173,7 @@ export default function AccountPage() {
                       >
                         {CRM_CLIENT_STATUS_OPTIONS.map((clientStatus) => (
                           <option key={clientStatus} value={clientStatus}>
-                            {CRM_CLIENT_STATUS_LABELS[clientStatus]}
+                            {copy.labels.crmClientStatus[clientStatus] ?? clientStatus}
                           </option>
                         ))}
                       </select>
@@ -1159,26 +1182,33 @@ export default function AccountPage() {
 
                   <div className="metric-grid">
                     <div className="metric">
-                      <span>Budget</span>
+                      <span>{copy.metrics.budget}</span>
                       <strong>
-                        {formatBudget(selectedCrmClient.budget_min, selectedCrmClient.budget_max)}
+                        {formatBudget(
+                          selectedCrmClient.budget_min,
+                          selectedCrmClient.budget_max,
+                          locale,
+                          copy,
+                        )}
                       </strong>
                     </div>
                     <div className="metric">
-                      <span>Rooms</span>
-                      <strong>{formatRooms(selectedCrmClient.preferred_rooms)}</strong>
+                      <span>{copy.metrics.rooms}</span>
+                      <strong>{formatRooms(selectedCrmClient.preferred_rooms, copy)}</strong>
                     </div>
                     <div className="metric">
-                      <span>Location</span>
+                      <span>{copy.metrics.location}</span>
                       <strong>
                         {[selectedCrmClient.city, selectedCrmClient.district]
                           .filter(Boolean)
-                          .join(", ") || "-"}
+                          .join(", ") || copy.values.noValue}
                       </strong>
                     </div>
                     <div className="metric">
-                      <span>Consent</span>
-                      <strong>{selectedCrmClient.consent_to_contact ? "Yes" : "No"}</strong>
+                      <span>{copy.metrics.consent}</span>
+                      <strong>
+                        {selectedCrmClient.consent_to_contact ? copy.values.yes : copy.values.no}
+                      </strong>
                     </div>
                   </div>
 
@@ -1200,12 +1230,14 @@ export default function AccountPage() {
                       <div className="panel-header inline">
                         <h3 className="icon-title">
                           <MessageSquare size={16} />
-                          Notes
+                          {copy.sections.notes}
                         </h3>
-                        <span className="muted">{selectedCrmClient.notes.length}</span>
+                        <span className="muted">
+                          {numberValue(selectedCrmClient.notes.length, locale)}
+                        </span>
                       </div>
                       <label className="field">
-                        <span>Note</span>
+                        <span>{copy.fields.note}</span>
                         <textarea
                           className="textarea"
                           value={crmNoteForm.body}
@@ -1215,12 +1247,12 @@ export default function AccountPage() {
                               body: event.target.value,
                             }))
                           }
-                          placeholder="Что важно для клиента или проверки объекта"
+                          placeholder={copy.placeholders.note}
                         />
                       </label>
                       <div className="form-grid compact">
                         <label className="field">
-                          <span>Visibility</span>
+                          <span>{copy.fields.visibility}</span>
                           <select
                             className="select"
                             value={crmNoteForm.visibility}
@@ -1231,9 +1263,9 @@ export default function AccountPage() {
                               }))
                             }
                           >
-                            {Object.entries(CRM_NOTE_VISIBILITY_LABELS).map(([value, label]) => (
+                            {CRM_NOTE_VISIBILITY_OPTIONS.map((value) => (
                               <option key={value} value={value}>
-                                {label}
+                                {copy.labels.noteVisibility[value] ?? value}
                               </option>
                             ))}
                           </select>
@@ -1249,12 +1281,12 @@ export default function AccountPage() {
                               }))
                             }
                           />
-                          <span>Pinned</span>
+                          <span>{copy.fields.pinned}</span>
                         </label>
                         <div className="field">
-                          <span>Action</span>
+                          <span>{copy.fields.action}</span>
                           <button className="button" type="submit" disabled={crmBusy}>
-                            Добавить note
+                            {copy.actions.addNote}
                           </button>
                         </div>
                       </div>
@@ -1262,8 +1294,8 @@ export default function AccountPage() {
                         {selectedCrmClient.notes.slice(0, 5).map((note) => (
                           <li key={note.id}>
                             <strong>
-                              {note.pinned ? "Pinned · " : ""}
-                              {CRM_NOTE_VISIBILITY_LABELS[note.visibility]}
+                              {note.pinned ? copy.values.pinnedPrefix : ""}
+                              {copy.labels.noteVisibility[note.visibility] ?? note.visibility}
                             </strong>
                             <p className="muted">{note.body}</p>
                           </li>
@@ -1278,12 +1310,14 @@ export default function AccountPage() {
                       <div className="panel-header inline">
                         <h3 className="icon-title">
                           <FileText size={16} />
-                          Shortlist
+                          {copy.sections.shortlist}
                         </h3>
-                        <span className="muted">{selectedCrmClient.shortlists.length}</span>
+                        <span className="muted">
+                          {numberValue(selectedCrmClient.shortlists.length, locale)}
+                        </span>
                       </div>
                       <label className="field">
-                        <span>Title</span>
+                        <span>{copy.fields.title}</span>
                         <input
                           className="input"
                           value={crmShortlistForm.title}
@@ -1293,11 +1327,11 @@ export default function AccountPage() {
                               title: event.target.value,
                             }))
                           }
-                          placeholder="Top options for Anna"
+                          placeholder={copy.placeholders.shortlistTitle}
                         />
                       </label>
                       <label className="field">
-                        <span>Listing IDs</span>
+                        <span>{copy.fields.listingIds}</span>
                         <input
                           className="input"
                           value={crmShortlistForm.listing_ids}
@@ -1307,11 +1341,11 @@ export default function AccountPage() {
                               listing_ids: event.target.value,
                             }))
                           }
-                          placeholder="wr-001, wr-002"
+                          placeholder={copy.placeholders.listingIds}
                         />
                       </label>
                       <label className="field">
-                        <span>Report IDs</span>
+                        <span>{copy.fields.reportIds}</span>
                         <input
                           className="input"
                           value={crmShortlistForm.report_ids}
@@ -1321,11 +1355,11 @@ export default function AccountPage() {
                               report_ids: event.target.value,
                             }))
                           }
-                          placeholder="optional saved reports"
+                          placeholder={copy.placeholders.reportIds}
                         />
                       </label>
                       <label className="field">
-                        <span>Client message</span>
+                        <span>{copy.fields.clientMessage}</span>
                         <textarea
                           className="textarea"
                           value={crmShortlistForm.client_message}
@@ -1335,7 +1369,7 @@ export default function AccountPage() {
                               client_message: event.target.value,
                             }))
                           }
-                          placeholder="These options are worth discussing before viewings."
+                          placeholder={copy.placeholders.clientMessage}
                         />
                       </label>
                       <div className="form-grid compact">
@@ -1350,13 +1384,13 @@ export default function AccountPage() {
                               }))
                             }
                           />
-                          <span>Share link</span>
+                          <span>{copy.fields.shareLink}</span>
                         </label>
                         <div className="field">
-                          <span>Action</span>
+                          <span>{copy.fields.action}</span>
                           <button className="button primary" type="submit" disabled={crmBusy}>
                             <Share2 size={16} />
-                            Собрать
+                            {copy.actions.build}
                           </button>
                         </div>
                       </div>
@@ -1371,17 +1405,20 @@ export default function AccountPage() {
                             <h3>{shortlist.title}</h3>
                             <div className="toolbar">
                               <span className={`status-pill ${shortlistStatusTone(shortlist)}`}>
-                                {shortlist.status}
+                                {copy.labels.shortlistStatus[shortlist.status] ?? shortlist.status}
                               </span>
                               <span className="muted">
-                                {shortlist.items.length} listings · {formatDate(shortlist.updated_at)}
+                                {copy.values.listingsUpdated(
+                                  shortlist.items.length,
+                                  formatDate(shortlist.updated_at, locale),
+                                )}
                               </span>
                             </div>
                           </div>
                           {shortlist.client_message ? (
                             <p className="muted">{shortlist.client_message}</p>
                           ) : null}
-                          <CrmShortlistItems items={shortlist.items} />
+                          <CrmShortlistItems copy={copy} items={shortlist.items} locale={locale} />
                           <div className="button-row">
                             <button
                               className="button"
@@ -1390,7 +1427,9 @@ export default function AccountPage() {
                               onClick={() => void toggleCrmShortlistShare(shortlist)}
                             >
                               <Share2 size={16} />
-                              {shortlist.share_enabled ? "Отключить share" : "Включить share"}
+                              {shortlist.share_enabled
+                                ? copy.actions.disableShare
+                                : copy.actions.enableShare}
                             </button>
                             <button
                               className="button"
@@ -1399,7 +1438,7 @@ export default function AccountPage() {
                               onClick={() => void previewCrmShare(shortlist)}
                             >
                               <Clipboard size={16} />
-                              Preview
+                              {copy.actions.preview}
                             </button>
                             {shortlist.share_token ? (
                               <a
@@ -1408,7 +1447,7 @@ export default function AccountPage() {
                                 target="_blank"
                                 rel="noreferrer"
                               >
-                                Public link
+                                {copy.actions.publicLink}
                               </a>
                             ) : null}
                           </div>
@@ -1416,13 +1455,15 @@ export default function AccountPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="empty-state">Shortlists появятся после сборки по listing ids.</p>
+                    <p className="empty-state">{copy.empty.shortlists}</p>
                   )}
 
-                  {crmSharePreview ? <CrmSharePreviewBlock preview={crmSharePreview} /> : null}
+                  {crmSharePreview ? (
+                    <CrmSharePreviewBlock copy={copy} locale={locale} preview={crmSharePreview} />
+                  ) : null}
                 </div>
               ) : (
-                <p className="empty-state">Выбери или создай CRM клиента для заметок и shortlist.</p>
+                <p className="empty-state">{copy.empty.crmClientPrompt}</p>
               )}
             </div>
           </div>
@@ -1431,17 +1472,17 @@ export default function AccountPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Разовые покупки</h2>
-          <span className="muted">{orders.length} orders</span>
+          <h2>{copy.sections.oneTimePurchases}</h2>
+          <span className="muted">{copy.values.orders(orders.length)}</span>
         </div>
         <div className="panel-body">
           <table className="table">
             <thead>
               <tr>
-                <th>Продукт</th>
-                <th>Объект</th>
-                <th>Статус</th>
-                <th>Отчет</th>
+                <th>{copy.tables.product}</th>
+                <th>{copy.tables.object}</th>
+                <th>{copy.tables.status}</th>
+                <th>{copy.tables.report}</th>
               </tr>
             </thead>
             <tbody>
@@ -1449,7 +1490,7 @@ export default function AccountPage() {
                 <tr key={order.id}>
                   <td>{order.product_code}</td>
                   <td>{order.listing_id}</td>
-                  <td>{order.status}</td>
+                  <td>{copy.labels.reportOrderStatus[order.status] ?? order.status}</td>
                   <td>
                     {order.generated_report_id ? (
                       <a
@@ -1458,10 +1499,10 @@ export default function AccountPage() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        Открыть
+                        {copy.actions.open}
                       </a>
                     ) : (
-                      <span className="muted">-</span>
+                      <span className="muted">{copy.values.noValue}</span>
                     )}
                   </td>
                 </tr>
@@ -1474,12 +1515,22 @@ export default function AccountPage() {
   );
 }
 
-function UsageBar({ label, value, limit }: { label: string; value: number; limit: number }) {
+function UsageBar({
+  label,
+  value,
+  limit,
+  locale,
+}: {
+  label: string;
+  value: number;
+  limit: number;
+  locale: Locale;
+}) {
   const width = Math.min(100, Math.round((value / Math.max(1, limit)) * 100));
   return (
     <div className="usage-row">
       <span>
-        {label}: {value}/{limit}
+        {label}: {numberValue(value, locale)}/{numberValue(limit, locale)}
       </span>
       <div className="bar">
         <span style={{ width: `${width}%` }} />
@@ -1497,20 +1548,28 @@ function Capability({ label, enabled }: { label: string; enabled: boolean }) {
   );
 }
 
-function CrmShortlistItems({ items }: { items: CrmShortlist["items"] }) {
+function CrmShortlistItems({
+  copy,
+  items,
+  locale,
+}: {
+  copy: AccountPageCopy;
+  items: CrmShortlist["items"];
+  locale: Locale;
+}) {
   if (items.length === 0) {
-    return <p className="empty-state">В shortlist пока нет валидных объектов из базы.</p>;
+    return <p className="empty-state">{copy.empty.shortlistItems}</p>;
   }
   return (
     <div className="table-scroll">
       <table className="table crm-shortlist-table">
         <thead>
           <tr>
-            <th>Объект</th>
-            <th>Цена</th>
-            <th>Score</th>
-            <th>Fair delta</th>
-            <th>Developer</th>
+            <th>{copy.tables.object}</th>
+            <th>{copy.tables.price}</th>
+            <th>{copy.tables.score}</th>
+            <th>{copy.tables.fairDelta}</th>
+            <th>{copy.tables.developer}</th>
           </tr>
         </thead>
         <tbody>
@@ -1521,30 +1580,33 @@ function CrmShortlistItems({ items }: { items: CrmShortlist["items"] }) {
                   #{item.rank} · {item.title}
                 </strong>
                 <small>
-                  {item.city}, {item.district}, {item.address} · {item.rooms} pok. ·{" "}
-                  {numberValue(item.area_m2)} m2
+                  {item.city}, {item.district}, {item.address} ·{" "}
+                  {formatRooms([item.rooms], copy)} · {numberValue(item.area_m2, locale)} m2
                 </small>
               </td>
               <td>
-                <strong>{money(item.price)}</strong>
-                <small>{money(Math.round(item.price / Math.max(item.area_m2, 1)))}/m2</small>
+                <strong>{money(item.price, locale)}</strong>
+                <small>{money(Math.round(item.price / Math.max(item.area_m2, 1)), locale)}/m2</small>
               </td>
               <td>
-                <strong>{item.decision_score}/100</strong>
+                <strong>{numberValue(item.decision_score, locale)}/100</strong>
                 <small>
-                  Risk {item.risk_score}/100 · liquidity {item.liquidity_score}/100
+                  {copy.values.scoreDetails(item.risk_score, item.liquidity_score)}
                 </small>
               </td>
               <td>
-                <strong>{percent(item.price_delta_to_fair_mid_pct)}</strong>
-                <small>Fair mid {money(item.fair_price_mid_pln)}</small>
+                <strong>{percent(item.price_delta_to_fair_mid_pct, locale)}</strong>
+                <small>{copy.values.fairMid(money(item.fair_price_mid_pln, locale))}</small>
               </td>
               <td>
-                <strong>{item.developer_name ?? "-"}</strong>
+                <strong>{item.developer_name ?? copy.values.noValue}</strong>
                 <small>
                   {item.developer_reputation_score !== null
-                    ? `${item.developer_reputation_score}/100 · ${item.developer_reputation_label}`
-                    : "no reputation data"}
+                    ? copy.values.developerReputation(
+                        item.developer_reputation_score,
+                        item.developer_reputation_label,
+                      )
+                    : copy.values.noReputationData}
                 </small>
               </td>
             </tr>
@@ -1555,13 +1617,21 @@ function CrmShortlistItems({ items }: { items: CrmShortlist["items"] }) {
   );
 }
 
-function CrmSharePreviewBlock({ preview }: { preview: CrmSharePreview }) {
+function CrmSharePreviewBlock({
+  copy,
+  locale,
+  preview,
+}: {
+  copy: AccountPageCopy;
+  locale: Locale;
+  preview: CrmSharePreview;
+}) {
   return (
     <div className="crm-share-preview">
       <div className="panel-header inline">
         <h3 className="icon-title">
           <Share2 size={16} />
-          Share preview
+          {copy.sections.sharePreview}
         </h3>
         {preview.share_token ? (
           <a
@@ -1570,7 +1640,7 @@ function CrmSharePreviewBlock({ preview }: { preview: CrmSharePreview }) {
             target="_blank"
             rel="noreferrer"
           >
-            Public link
+            {copy.actions.publicLink}
           </a>
         ) : null}
       </div>
@@ -1586,7 +1656,7 @@ function CrmSharePreviewBlock({ preview }: { preview: CrmSharePreview }) {
           ))}
         </ul>
       ) : null}
-      <CrmShortlistItems items={preview.items} />
+      <CrmShortlistItems copy={copy} items={preview.items} locale={locale} />
       <p className="muted">{preview.disclaimer}</p>
     </div>
   );
@@ -1625,24 +1695,34 @@ function parseNumberList(value: string) {
     .filter((item) => Number.isInteger(item) && item > 0);
 }
 
-function formatBudget(minValue: number | null, maxValue: number | null) {
-  if (minValue !== null && maxValue !== null) return `${money(minValue)} - ${money(maxValue)}`;
-  if (maxValue !== null) return `до ${money(maxValue)}`;
-  if (minValue !== null) return `от ${money(minValue)}`;
-  return "-";
+function formatBudget(
+  minValue: number | null,
+  maxValue: number | null,
+  locale: Locale,
+  copy: AccountPageCopy,
+) {
+  if (minValue !== null && maxValue !== null) {
+    return `${money(minValue, locale)} - ${money(maxValue, locale)}`;
+  }
+  if (maxValue !== null) return copy.values.budgetTo(money(maxValue, locale));
+  if (minValue !== null) return copy.values.budgetFrom(money(minValue, locale));
+  return copy.values.noValue;
 }
 
-function formatRooms(rooms: number[]) {
-  return rooms.length > 0 ? rooms.join(", ") : "-";
+function formatRooms(rooms: number[], copy: AccountPageCopy) {
+  return rooms.length > 0 ? rooms.join(", ") : copy.values.noValue;
 }
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("pl-PL", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value));
+function formatDate(value: string, locale: Locale) {
+  return new Intl.DateTimeFormat(
+    ACCOUNT_INTL_LOCALES[locale],
+    {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  ).format(new Date(value));
 }
 
 function crmClientStatusTone(status: CrmClientStatus) {

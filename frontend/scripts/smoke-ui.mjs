@@ -130,7 +130,8 @@ expectIncludes("api client contracts", apiClient, [
 ]);
 
 expectIncludes("account CRM workspace", accountPage, [
-  "Agency CRM",
+  "ACCOUNT_PAGE_COPY[locale]",
+  "useLocalePreference()",
   "createAgencyCrmClient",
   "createAgencyCrmShortlist",
   "previewAgencyCrmShortlistShare",

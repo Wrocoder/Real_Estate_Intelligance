@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Activity,
   Building2,
@@ -23,9 +23,13 @@ import {
   type ReportOrderEvent,
   type ReportProduct,
 } from "@/lib/api";
-import { numberValue } from "@/lib/format";
+import { money, numberValue } from "@/lib/format";
+import { PRICING_PAGE_COPY, type Locale, type PricingPageCopy } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 export default function PricingPage() {
+  const { locale } = useLocalePreference();
+  const copy = PRICING_PAGE_COPY[locale];
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [plans, setPlans] = useState<PlanLimits[]>([]);
   const [products, setProducts] = useState<ReportProduct[]>([]);
@@ -43,12 +47,12 @@ export default function PricingPage() {
     city: "Wrocław",
     countryCode: "PL",
   });
-  const [status, setStatus] = useState("Загрузка тарифов...");
+  const [status, setStatus] = useState(copy.statuses.loading);
   const [error, setError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setError("");
-    setStatus("Загрузка тарифов...");
+    setStatus(copy.statuses.loading);
     try {
       const [accountData, planData, productData, orderData] = await Promise.all([
         api.getMe(),
@@ -60,40 +64,46 @@ export default function PricingPage() {
       setPlans(planData);
       setProducts(productData);
       setOrders(orderData);
-      setStatus("Готово");
+      setStatus(copy.statuses.ready);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Backend API недоступен");
+      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+      setStatus(copy.statuses.backendUnavailable);
     }
-  }
+  }, [copy]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   async function createAndPay(product: ReportProduct) {
-    setStatus(`Создание заказа: ${product.title}...`);
-    const listingReference = reportOrderReference(product, listingId, areaId);
-    const checkout = await api.createReportOrder({
-      listing_id: listingReference,
-      product_code: product.code,
-      audience: product.audience,
-      billing_details: billingPayload(billingForm),
-    });
-    setStatus(`Checkout ${checkout.provider}: ${checkout.external_reference ?? checkout.order.id}`);
+    setError("");
+    try {
+      setStatus(copy.statuses.creatingOrder(product.title));
+      const listingReference = reportOrderReference(product, listingId, areaId);
+      const checkout = await api.createReportOrder({
+        listing_id: listingReference,
+        product_code: product.code,
+        audience: product.audience,
+        billing_details: billingPayload(billingForm),
+      });
+      setStatus(copy.statuses.checkout(checkout.provider, checkout.external_reference ?? checkout.order.id));
 
-    const paid = await api.mockPayReportOrder(checkout.order.id);
-    setStatus(`Оплачено: ${paid.id}`);
+      const paid = await api.mockPayReportOrder(checkout.order.id);
+      setStatus(copy.statuses.paid(paid.id));
 
-    const fulfilled = await api.fulfillReportOrder(paid.id);
-    setOrders((current) => [fulfilled, ...current.filter((order) => order.id !== fulfilled.id)]);
-    setEvents(await api.listReportOrderEvents(fulfilled.id));
-    setStatus(`Отчет готов: ${fulfilled.generated_report_id}`);
+      const fulfilled = await api.fulfillReportOrder(paid.id);
+      setOrders((current) => [fulfilled, ...current.filter((order) => order.id !== fulfilled.id)]);
+      setEvents(await api.listReportOrderEvents(fulfilled.id));
+      setStatus(copy.statuses.reportReady(fulfilled.generated_report_id));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+      setStatus(copy.statuses.backendUnavailable);
+    }
   }
 
   async function loadEvents(orderId: string) {
     setEvents(await api.listReportOrderEvents(orderId));
-    setStatus(`Audit events: ${orderId}`);
+    setStatus(copy.statuses.auditEvents(orderId));
   }
 
   function updateBilling(field: keyof Omit<BillingForm, "invoiceRequested">, value: string) {
@@ -102,51 +112,51 @@ export default function PricingPage() {
 
   const planByCode = useMemo(() => Object.fromEntries(plans.map((plan) => [plan.plan, plan])), [plans]);
 
-  if (error) return <ErrorBlock message={error} />;
-  if (!account || products.length === 0) return <LoadingBlock label="Загрузка pricing" />;
+  if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
+  if (!account || products.length === 0) return <LoadingBlock label={copy.empty.loading} />;
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Оплата и отчеты</h1>
-          <p>Разовые отчеты, mock checkout и тарифные ограничения для paid MVP.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <button className="button" type="button" onClick={() => void load()}>
-          <RefreshCw size={16} /> Обновить
+          <RefreshCw size={16} /> {copy.actions.refresh}
         </button>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Текущий тариф</span>
+          <span>{copy.metrics.currentPlan}</span>
           <strong>{account.subscription.plan}</strong>
         </div>
         <div className="metric">
-          <span>Отчеты по подписке</span>
+          <span>{copy.metrics.subscriptionReports}</span>
           <strong>
             {account.usage.reports_this_month}/{account.limits.monthly_reports}
           </strong>
         </div>
         <div className="metric">
-          <span>One-time orders</span>
-          <strong>{numberValue(orders.length)}</strong>
+          <span>{copy.metrics.oneTimeOrders}</span>
+          <strong>{numberValue(orders.length, locale)}</strong>
         </div>
         <div className="metric">
-          <span>Status</span>
+          <span>{copy.metrics.status}</span>
           <strong>{status}</strong>
         </div>
       </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Разовый отчет</h2>
-          <span className="muted">mock checkout без реального PSP</span>
+          <h2>{copy.sections.oneTimeReport}</h2>
+          <span className="muted">{copy.hints.mockCheckout}</span>
         </div>
         <div className="panel-body">
           <div className="pricing-reference-grid">
             <label className="field">
-              <span>Listing ID</span>
+              <span>{copy.fields.listingId}</span>
               <input
                 className="input"
                 value={listingId}
@@ -154,7 +164,7 @@ export default function PricingPage() {
               />
             </label>
             <label className="field">
-              <span>Area ID</span>
+              <span>{copy.fields.areaId}</span>
               <input
                 className="input"
                 value={areaId}
@@ -165,7 +175,7 @@ export default function PricingPage() {
 
           <div className="panel" style={{ marginTop: 14 }}>
             <div className="panel-header inline">
-              <h3>Invoice</h3>
+              <h3>{copy.sections.invoice}</h3>
               <ReceiptText size={18} />
             </div>
             <div className="panel-body">
@@ -179,43 +189,43 @@ export default function PricingPage() {
                       invoiceRequested: event.target.checked,
                     }))
                   }
-                />
-                <span>B2B invoice</span>
+                  />
+                <span>{copy.fields.b2bInvoice}</span>
               </label>
               {billingForm.invoiceRequested ? (
                 <div className="form-grid compact" style={{ marginTop: 12 }}>
                   <BillingInput
-                    label="Company"
+                    label={copy.fields.company}
                     value={billingForm.companyName}
                     onChange={(value) => updateBilling("companyName", value)}
                   />
                   <BillingInput
-                    label="VAT/NIP"
+                    label={copy.fields.vat}
                     value={billingForm.vatId}
                     onChange={(value) => updateBilling("vatId", value)}
                   />
                   <BillingInput
-                    label="Email"
+                    label={copy.fields.email}
                     value={billingForm.email}
                     onChange={(value) => updateBilling("email", value)}
                   />
                   <BillingInput
-                    label="Address"
+                    label={copy.fields.address}
                     value={billingForm.streetAddress}
                     onChange={(value) => updateBilling("streetAddress", value)}
                   />
                   <BillingInput
-                    label="Postal code"
+                    label={copy.fields.postalCode}
                     value={billingForm.postalCode}
                     onChange={(value) => updateBilling("postalCode", value)}
                   />
                   <BillingInput
-                    label="City"
+                    label={copy.fields.city}
                     value={billingForm.city}
                     onChange={(value) => updateBilling("city", value)}
                   />
                   <BillingInput
-                    label="Country"
+                    label={copy.fields.country}
                     value={billingForm.countryCode}
                     onChange={(value) => updateBilling("countryCode", value)}
                   />
@@ -232,7 +242,7 @@ export default function PricingPage() {
                     <strong>{product.title}</strong>
                     <span>{product.description}</span>
                   </div>
-                  <b>{formatGrosz(product.amount_grosz)}</b>
+                  <b>{formatGrosz(product.amount_grosz, locale)}</b>
                 </div>
                 <ul className="section-list compact">
                   {product.features.map((feature) => (
@@ -246,7 +256,7 @@ export default function PricingPage() {
                   type="button"
                   onClick={() => void createAndPay(product)}
                 >
-                  <CreditCard size={16} /> Mock pay + generate
+                  <CreditCard size={16} /> {copy.actions.mockPayGenerate}
                 </button>
               </article>
             ))}
@@ -257,19 +267,19 @@ export default function PricingPage() {
       <div className="grid-2" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>История заказов</h2>
-            <span className="muted">{orders.length} orders</span>
+            <h2>{copy.sections.orderHistory}</h2>
+            <span className="muted">{copy.values.orders(orders.length)}</span>
           </div>
           <div className="panel-body">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Заказ</th>
-                  <th>Объект</th>
-                  <th>Статус</th>
-                  <th>Invoice</th>
-                  <th>Отчет</th>
-                  <th>Audit</th>
+                  <th>{copy.table.order}</th>
+                  <th>{copy.table.object}</th>
+                  <th>{copy.table.status}</th>
+                  <th>{copy.table.invoice}</th>
+                  <th>{copy.table.report}</th>
+                  <th>{copy.table.audit}</th>
                 </tr>
               </thead>
               <tbody>
@@ -284,7 +294,7 @@ export default function PricingPage() {
                           <Building2 size={13} /> {order.billing_details.company_name}
                         </span>
                       ) : (
-                        <span className="muted">-</span>
+                        <span className="muted">{copy.values.noValue}</span>
                       )}
                     </td>
                     <td>
@@ -295,15 +305,15 @@ export default function PricingPage() {
                           target="_blank"
                           rel="noreferrer"
                         >
-                          <ExternalLink size={16} /> Открыть
+                          <ExternalLink size={16} /> {copy.actions.open}
                         </a>
                       ) : (
-                        <span className="muted">-</span>
+                        <span className="muted">{copy.values.noValue}</span>
                       )}
                     </td>
                     <td>
                       <button className="button" type="button" onClick={() => void loadEvents(order.id)}>
-                        <Activity size={16} /> Events
+                        <Activity size={16} /> {copy.actions.events}
                       </button>
                     </td>
                   </tr>
@@ -315,15 +325,14 @@ export default function PricingPage() {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Подписки</h2>
+            <h2>{copy.sections.subscriptions}</h2>
             <FileText size={18} />
           </div>
           <div className="panel-body">
             <ul className="section-list">
               {Object.entries(planByCode).map(([plan, limits]) => (
                 <li key={plan}>
-                  <strong>{plan}</strong>: {limits.monthly_reports} отчетов/мес,{" "}
-                  {limits.max_alerts} alerts, {limits.can_white_label ? "white-label" : "standard"}
+                  <strong>{plan}</strong>: {planSummary(limits, locale, copy)}
                 </li>
               ))}
             </ul>
@@ -333,19 +342,19 @@ export default function PricingPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Audit trail</h2>
-          <span className="muted">{events.length} events</span>
+          <h2>{copy.sections.auditTrail}</h2>
+          <span className="muted">{copy.values.events(events.length)}</span>
         </div>
         <div className="panel-body">
           {events.length === 0 ? (
-            <p className="muted">Выберите заказ, чтобы увидеть историю checkout, оплаты и генерации.</p>
+            <p className="muted">{copy.values.auditEmpty}</p>
           ) : (
             <ul className="section-list">
               {events.map((event) => (
                 <li key={event.id}>
                   <Activity size={14} />
                   <strong>{event.event_type}</strong>
-                  <span>{event.message ?? "event"}</span>
+                  <span>{event.message ?? copy.values.eventFallback}</span>
                 </li>
               ))}
             </ul>
@@ -382,8 +391,8 @@ function billingPayload(form: BillingForm): ReportOrderBillingDetails | null {
   };
 }
 
-function formatGrosz(value: number) {
-  return `${new Intl.NumberFormat("pl-PL").format(value / 100)} PLN`;
+function formatGrosz(value: number, locale: Locale) {
+  return money(value / 100, locale);
 }
 
 function reportOrderReference(product: ReportProduct, listingId: string, areaId: string) {
@@ -406,5 +415,13 @@ function BillingInput({
       <span>{label}</span>
       <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
+  );
+}
+
+function planSummary(limits: PlanLimits, locale: Locale, copy: PricingPageCopy) {
+  return copy.values.planSummary(
+    numberValue(limits.monthly_reports, locale),
+    numberValue(limits.max_alerts, locale),
+    limits.can_white_label ? copy.values.whiteLabel : copy.values.standard,
   );
 }

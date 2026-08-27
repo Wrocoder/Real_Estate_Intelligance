@@ -319,6 +319,12 @@
   comparables, scoring, area/news/guides blocks and developer reputation summary.
 - [x] Локализовать compare page: selector, decision metrics, AI verdict,
   realtor client shortlist, comparison matrix and locale-aware number/currency formatting.
+- [x] Локализовать reports page: report generation/history, export gating,
+  white-label controls, AI insight labels and locale-aware date formatting.
+- [x] Локализовать pricing page: payment/report shell, checkout statuses,
+  invoice form, orders, subscription summary and locale-aware prices/counters.
+- [x] Локализовать alerts page: saved-search form, preference controls,
+  preview metrics, realtor digest shell, delivery history and locale-aware values.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
 - [ ] Локализовать главные публичные страницы: reports, alerts,
@@ -749,6 +755,12 @@
   comparables, scoring sidebar, developer summary and locale-aware score labels.
 - [x] Локализовать compare page: object selector, AI verdict, client shortlist,
   comparison matrix, developer labels and locale-aware numeric formatting.
+- [x] Локализовать reports page: generation/history, export availability,
+  white-label controls, AI insight labels and locale-aware dates.
+- [x] Локализовать pricing page: payment/report shell, checkout states,
+  invoice fields, order tables, subscription summary and localized prices.
+- [x] Локализовать alerts page: form labels, option values, preference controls,
+  preview, realtor digest shell, delivery history and filter labels.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.
