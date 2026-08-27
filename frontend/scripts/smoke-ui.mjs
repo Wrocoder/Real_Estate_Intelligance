@@ -54,11 +54,15 @@ const reportsPage = read("app/reports/page.tsx");
 const adminPage = read("app/admin/page.tsx");
 const accountPage = read("app/account/page.tsx");
 const areasPage = read("app/areas/page.tsx");
+const areaComparePage = read("app/areas/compare/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
 const buyerBetaPage = read("app/beta/page.tsx");
 const realtorsPage = read("app/realtors/page.tsx");
+const newsPage = read("app/news/page.tsx");
+const developersPage = read("app/developers/page.tsx");
+const developerDetailPage = read("app/developers/[developerId]/page.tsx");
 const guidesPage = read("app/guides/page.tsx");
 const guideDetailPage = read("app/guides/[guideId]/page.tsx");
 const landingScene = read("components/LandingMapScene.tsx");
@@ -354,10 +358,38 @@ expectIncludes("area guide internal links", areasPage, [
   "href={`/guides/${guide.slug}`}",
 ]);
 
+expectIncludes("area compare localization", areaComparePage, [
+  "AREA_COMPARE_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "money(area.median_price_per_m2, locale)",
+  "formatNullablePercent(area.price_per_m2_vs_city_pct, locale, copy)",
+]);
+
 expectIncludes("area detail guide internal links", areaDetailPage, [
   "relatedGuides",
   "guide.relatedAreaSlugs.includes(area.slug)",
   "href={`/guides/${guide.slug}`}",
+]);
+
+expectIncludes("news page localization", newsPage, [
+  "NEWS_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "dateValue(article.published_at, locale)",
+  "copy.labels.category[article.category]",
+]);
+
+expectIncludes("developers page localization", developersPage, [
+  "DEVELOPERS_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "api.listDevelopers",
+  "copy.labels.reputation[selected.label]",
+]);
+
+expectIncludes("developer detail localization", developerDetailPage, [
+  "DEVELOPERS_PAGE_COPY[locale]",
+  "useLocalePreference()",
+  "api.getDeveloper",
+  "dateValue(data.developer.updated_at, locale)",
 ]);
 
 expectIncludes("listing detail guide internal links", listingDetailPage, [

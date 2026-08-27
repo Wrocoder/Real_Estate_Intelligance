@@ -325,6 +325,12 @@
   invoice form, orders, subscription summary and locale-aware prices/counters.
 - [x] Локализовать alerts page: saved-search form, preference controls,
   preview metrics, realtor digest shell, delivery history and locale-aware values.
+- [x] Локализовать areas compare page: dashboard shell, AI area summary controls,
+  comparison table labels and locale-aware metrics.
+- [x] Локализовать news page: filters, article/detail shell, AI news summary,
+  category/impact labels and locale-aware dates.
+- [x] Локализовать developers pages: ranking/detail shell, filters, factor labels,
+  statuses and locale-aware date/number formatting.
 - [ ] Вынести все UI labels, navigation, forms, validation messages, buttons,
   table headers, filters, map layer names и empty/error states в translation dictionaries.
 - [ ] Локализовать главные публичные страницы: reports, alerts,
@@ -761,6 +767,12 @@
   invoice fields, order tables, subscription summary and localized prices.
 - [x] Локализовать alerts page: form labels, option values, preference controls,
   preview, realtor digest shell, delivery history and filter labels.
+- [x] Локализовать areas compare page: parameters, top signals, AI area summary,
+  comparison table labels and locale-aware values.
+- [x] Локализовать news page: category filters, article detail shell,
+  AI summary controls, category/impact labels and locale-aware dates.
+- [x] Локализовать developers pages: list/detail shell, filters, factor labels,
+  project/status labels and locale-aware date/number formatting.
 - [x] Сделать Commit 17 и push.
 - [x] Сделать Commit 18 и push.
 - [x] Сделать Commit 19 и push.

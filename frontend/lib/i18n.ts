@@ -875,6 +875,252 @@ export type AccountPageCopy = {
   errorPrefix: string;
 };
 
+export type AreaComparePageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    areas: string;
+    refresh: string;
+    calculate: string;
+    summary: string;
+  };
+  sections: {
+    parameters: string;
+    topSignals: string;
+    currentBaseline: string;
+    aiSummary: string;
+    positiveSignals: string;
+    riskSignals: string;
+    sources: string;
+    buyerNotes: string;
+    investorNotes: string;
+    guardrails: string;
+    areas: string;
+  };
+  fields: {
+    city: string;
+    sort: string;
+    action: string;
+    area: string;
+    scope: string;
+  };
+  metrics: {
+    cityMedianM2: string;
+    cityAvgDom: string;
+    activeSupply: string;
+    areas: string;
+  };
+  labels: {
+    sort: OptionLabelMap;
+    topSignal: {
+      value: string;
+      growth: string;
+      buyerMarket: string;
+      liquidity: string;
+    };
+    market: OptionLabelMap;
+  };
+  table: {
+    area: string;
+    label: string;
+    medianM2: string;
+    vsCity: string;
+    dom: string;
+    domVsCity: string;
+    supply: string;
+    value: string;
+    growth: string;
+    liquidity: string;
+    buyer: string;
+    seller: string;
+    overheated: string;
+  };
+  statuses: {
+    loadingComparison: string;
+    loadingAreaComparison: string;
+    ready: string;
+    backendUnavailable: string;
+    aiNotCreated: string;
+    aiReady: string;
+    aiBuilding: string;
+    aiSaved: (id: string) => string;
+    aiUnavailable: string;
+    unknownComparisonError: string;
+    unknownSummaryError: string;
+  };
+  values: {
+    noValue: string;
+    days: (count: number) => string;
+    rows: (count: number) => string;
+    score: (value: number) => string;
+    scope: string;
+    sourceGrounded: string;
+    indexSummary: (value: number, growth: number) => string;
+    topSignalDetails: (value: number, growth: number, price: string) => string;
+    noData: string;
+  };
+  empty: {
+    aiPrompt: string;
+    noAreas: string;
+  };
+  errorPrefix: string;
+};
+
+export type NewsPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    source: string;
+    summary: string;
+  };
+  sections: {
+    articles: string;
+    articleDetail: string;
+    aiSummary: string;
+    keyPoints: string;
+    areaImpact: string;
+    sources: string;
+    buyerNotes: string;
+    investorNotes: string;
+    guardrails: string;
+  };
+  placeholders: {
+    areaId: string;
+  };
+  labels: {
+    category: OptionLabelMap;
+    impact: OptionLabelMap;
+  };
+  statuses: {
+    loading: string;
+    loadingNews: string;
+    loaded: (count: number) => string;
+    backendUnavailable: string;
+    aiNotCreated: string;
+    aiReady: string;
+    aiBuilding: string;
+    aiSaved: (id: string) => string;
+    aiUnavailable: string;
+    unknownNewsError: string;
+    unknownDetailError: string;
+    unknownAiError: string;
+  };
+  values: {
+    allAreas: string;
+    areaIds: (ids: string) => string;
+    sourceGrounded: string;
+    noData: string;
+  };
+  empty: {
+    noNews: string;
+    chooseNews: string;
+    aiPrompt: string;
+  };
+  errorPrefix: string;
+};
+
+export type DevelopersPageCopy = {
+  title: string;
+  subtitle: string;
+  actions: {
+    refresh: string;
+    apply: string;
+    open: string;
+    openProfile: string;
+    ranking: string;
+    source: string;
+  };
+  sections: {
+    filters: string;
+    developers: string;
+    profile: string;
+    factors: string;
+    projects: string;
+    qualitySignals: string;
+    dueDiligence: string;
+    company: string;
+    check: string;
+    sources: string;
+  };
+  fields: {
+    city: string;
+    minRating: string;
+    minConfidence: string;
+  };
+  metrics: {
+    inSample: string;
+    averageRating: string;
+    strongGood: string;
+    needsReview: string;
+    rating: string;
+    technicalQuality: string;
+    legalScope: string;
+    transparency: string;
+    reputationScore: string;
+    confidence: string;
+    completedProjects: string;
+    activeProjects: string;
+  };
+  table: {
+    developer: string;
+    rating: string;
+    confidence: string;
+    projects: string;
+    signals: string;
+    profile: string;
+    factor: string;
+    score: string;
+    meaning: string;
+    project: string;
+    location: string;
+    status: string;
+    units: string;
+    source: string;
+  };
+  labels: {
+    reputation: OptionLabelMap;
+    projectStatus: OptionLabelMap;
+    moderationStatus: OptionLabelMap;
+    disputeStatus: OptionLabelMap;
+  };
+  factors: Record<
+    | "trackRecord"
+    | "delivery"
+    | "technicalQuality"
+    | "legal"
+    | "financial"
+    | "transparency"
+    | "local",
+    { label: string; detail: string }
+  >;
+  statuses: {
+    loadingRanking: string;
+    loadingProfile: string;
+    loadingDeveloperProfile: string;
+    profileUnavailable: string;
+    updated: (date: string) => string;
+    found: (count: number) => string;
+    unknownError: string;
+  };
+  values: {
+    noValue: string;
+    noData: string;
+    legalNameMissing: string;
+    headquartersMissing: string;
+    completedActive: (completed: number, active: number) => string;
+    sources: (sources: string) => string;
+    units: (count: string) => string;
+    score: (value: number) => string;
+    confidence: (value: number) => string;
+    dataQuality: (value: number) => string;
+    foundedUpdated: (founded: string, updated: string) => string;
+    checked: (date: string) => string;
+    dispute: (status: string) => string;
+  };
+  errorPrefix: string;
+};
+
 export type ListingDetailCopy = {
   actions: {
     back: string;
@@ -3969,6 +4215,1264 @@ export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
       shortlists: "Shortlists з'являться після збірки за listing ids.",
       crmClientPrompt: "Вибери або створи CRM клієнта для нотаток і shortlist.",
       shortlistItems: "У shortlist поки немає валідних об'єктів з бази.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const AREA_COMPARE_PAGE_COPY: Record<Locale, AreaComparePageCopy> = {
+  en: {
+    title: "Area comparison",
+    subtitle: "Prices, exposure, liquidity and market pressure against the city baseline.",
+    actions: {
+      areas: "Areas",
+      refresh: "Refresh",
+      calculate: "Calculate",
+      summary: "Summary",
+    },
+    sections: {
+      parameters: "Parameters",
+      topSignals: "Top signals",
+      currentBaseline: "Current baseline",
+      aiSummary: "AI area impact summary",
+      positiveSignals: "Positive signals",
+      riskSignals: "Risk signals",
+      sources: "Sources",
+      buyerNotes: "Buyer notes",
+      investorNotes: "Investor notes",
+      guardrails: "Guardrails",
+      areas: "Areas",
+    },
+    fields: {
+      city: "City",
+      sort: "Sort",
+      action: "Action",
+      area: "Area",
+      scope: "Scope",
+    },
+    metrics: {
+      cityMedianM2: "City median m2",
+      cityAvgDom: "City avg DOM",
+      activeSupply: "Active supply",
+      areas: "Areas",
+    },
+    labels: {
+      sort: {
+        value: "Value",
+        growth: "Growth",
+        buyer_market: "Buyer market",
+        seller_market: "Seller market",
+        liquidity: "Liquidity",
+        price_asc: "Price asc",
+        price_desc: "Price desc",
+      },
+      topSignal: {
+        value: "Value",
+        growth: "Growth",
+        buyerMarket: "Buyer market",
+        liquidity: "Liquidity",
+      },
+      market: {
+        buyer_market: "buyer",
+        seller_market: "seller",
+        overheated: "overheated",
+        balanced: "balanced",
+      },
+    },
+    table: {
+      area: "Area",
+      label: "Label",
+      medianM2: "Median m2",
+      vsCity: "vs city",
+      dom: "DOM",
+      domVsCity: "DOM vs city",
+      supply: "Supply",
+      value: "Value",
+      growth: "Growth",
+      liquidity: "Liquidity",
+      buyer: "Buyer",
+      seller: "Seller",
+      overheated: "Overheated",
+    },
+    statuses: {
+      loadingComparison: "Loading comparison...",
+      loadingAreaComparison: "Loading area comparison",
+      ready: "Ready",
+      backendUnavailable: "Backend API unavailable",
+      aiNotCreated: "AI area summary not created",
+      aiReady: "AI area summary ready to generate",
+      aiBuilding: "Building AI area summary...",
+      aiSaved: (id) => `AI area summary saved: ${id}`,
+      aiUnavailable: "AI area summary unavailable",
+      unknownComparisonError: "unknown area comparison error",
+      unknownSummaryError: "unknown area summary error",
+    },
+    values: {
+      noValue: "-",
+      days: (count) => `${count} d`,
+      rows: (count) => `${count} row${count === 1 ? "" : "s"}`,
+      score: (value) => `${value}/100`,
+      scope: "market metrics, buyer/investor notes, planned investments",
+      sourceGrounded: "Source-grounded",
+      indexSummary: (value, growth) => `V ${value}/100 · G ${growth}/100`,
+      topSignalDetails: (value, growth, price) => `V ${value}/100 · G ${growth}/100 · ${price}/m2`,
+      noData: "No data.",
+    },
+    empty: {
+      aiPrompt: "AI summary will appear after generation for the selected area.",
+      noAreas: "No areas for the selected city.",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Porównanie obszarów",
+    subtitle: "Ceny, ekspozycja, płynność i presja rynku względem city baseline.",
+    actions: {
+      areas: "Obszary",
+      refresh: "Odśwież",
+      calculate: "Policz",
+      summary: "Summary",
+    },
+    sections: {
+      parameters: "Parametry",
+      topSignals: "Top signals",
+      currentBaseline: "Current baseline",
+      aiSummary: "AI area impact summary",
+      positiveSignals: "Pozytywne sygnały",
+      riskSignals: "Sygnały ryzyka",
+      sources: "Źródła",
+      buyerNotes: "Notatki dla kupującego",
+      investorNotes: "Notatki dla inwestora",
+      guardrails: "Guardrails",
+      areas: "Obszary",
+    },
+    fields: {
+      city: "Miasto",
+      sort: "Sortowanie",
+      action: "Akcja",
+      area: "Obszar",
+      scope: "Scope",
+    },
+    metrics: {
+      cityMedianM2: "Mediana miasta m2",
+      cityAvgDom: "Śr. DOM miasta",
+      activeSupply: "Aktywna podaż",
+      areas: "Obszary",
+    },
+    labels: {
+      sort: {
+        value: "Value",
+        growth: "Growth",
+        buyer_market: "Buyer market",
+        seller_market: "Seller market",
+        liquidity: "Liquidity",
+        price_asc: "Cena rosnąco",
+        price_desc: "Cena malejąco",
+      },
+      topSignal: {
+        value: "Value",
+        growth: "Growth",
+        buyerMarket: "Buyer market",
+        liquidity: "Liquidity",
+      },
+      market: {
+        buyer_market: "buyer",
+        seller_market: "seller",
+        overheated: "przegrzany",
+        balanced: "zbalansowany",
+      },
+    },
+    table: {
+      area: "Obszar",
+      label: "Label",
+      medianM2: "Mediana m2",
+      vsCity: "vs miasto",
+      dom: "DOM",
+      domVsCity: "DOM vs miasto",
+      supply: "Podaż",
+      value: "Value",
+      growth: "Growth",
+      liquidity: "Liquidity",
+      buyer: "Buyer",
+      seller: "Seller",
+      overheated: "Overheated",
+    },
+    statuses: {
+      loadingComparison: "Ładowanie porównania...",
+      loadingAreaComparison: "Ładowanie porównania obszarów",
+      ready: "Gotowe",
+      backendUnavailable: "Backend API niedostępne",
+      aiNotCreated: "AI area summary nie utworzone",
+      aiReady: "AI area summary gotowe do generacji",
+      aiBuilding: "Budowanie AI area summary...",
+      aiSaved: (id) => `AI area summary zapisane: ${id}`,
+      aiUnavailable: "AI area summary niedostępne",
+      unknownComparisonError: "nieznany błąd porównania obszarów",
+      unknownSummaryError: "nieznany błąd area summary",
+    },
+    values: {
+      noValue: "-",
+      days: (count) => `${count} d`,
+      rows: (count) => `${count} ${pluralPl(count, "wiersz", "wiersze", "wierszy")}`,
+      score: (value) => `${value}/100`,
+      scope: "metryki rynku, notatki buyer/investor, planned investments",
+      sourceGrounded: "Source-grounded",
+      indexSummary: (value, growth) => `V ${value}/100 · G ${growth}/100`,
+      topSignalDetails: (value, growth, price) => `V ${value}/100 · G ${growth}/100 · ${price}/m2`,
+      noData: "Brak danych.",
+    },
+    empty: {
+      aiPrompt: "AI summary pojawi się po generacji dla wybranego obszaru.",
+      noAreas: "Brak obszarów dla wybranego miasta.",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Сравнение районов",
+    subtitle: "Цены, экспозиция, ликвидность и рыночное давление по city baseline.",
+    actions: {
+      areas: "Районы",
+      refresh: "Обновить",
+      calculate: "Рассчитать",
+      summary: "Summary",
+    },
+    sections: {
+      parameters: "Параметры",
+      topSignals: "Top signals",
+      currentBaseline: "Current baseline",
+      aiSummary: "AI area impact summary",
+      positiveSignals: "Позитивные сигналы",
+      riskSignals: "Риски",
+      sources: "Sources",
+      buyerNotes: "Заметки для покупателя",
+      investorNotes: "Заметки для инвестора",
+      guardrails: "Guardrails",
+      areas: "Районы",
+    },
+    fields: {
+      city: "Город",
+      sort: "Сортировка",
+      action: "Действие",
+      area: "Район",
+      scope: "Scope",
+    },
+    metrics: {
+      cityMedianM2: "Медиана города m2",
+      cityAvgDom: "Средний DOM города",
+      activeSupply: "Активное предложение",
+      areas: "Районы",
+    },
+    labels: {
+      sort: {
+        value: "Value",
+        growth: "Growth",
+        buyer_market: "Buyer market",
+        seller_market: "Seller market",
+        liquidity: "Liquidity",
+        price_asc: "Цена по возрастанию",
+        price_desc: "Цена по убыванию",
+      },
+      topSignal: {
+        value: "Value",
+        growth: "Growth",
+        buyerMarket: "Buyer market",
+        liquidity: "Liquidity",
+      },
+      market: {
+        buyer_market: "buyer",
+        seller_market: "seller",
+        overheated: "перегрет",
+        balanced: "сбалансирован",
+      },
+    },
+    table: {
+      area: "Район",
+      label: "Label",
+      medianM2: "Median m2",
+      vsCity: "vs city",
+      dom: "DOM",
+      domVsCity: "DOM vs city",
+      supply: "Supply",
+      value: "Value",
+      growth: "Growth",
+      liquidity: "Liquidity",
+      buyer: "Buyer",
+      seller: "Seller",
+      overheated: "Overheated",
+    },
+    statuses: {
+      loadingComparison: "Загрузка сравнения...",
+      loadingAreaComparison: "Загрузка сравнения районов",
+      ready: "Готово",
+      backendUnavailable: "Backend API недоступен",
+      aiNotCreated: "AI area summary не создан",
+      aiReady: "AI area summary готов к генерации",
+      aiBuilding: "AI area summary строится...",
+      aiSaved: (id) => `AI area summary сохранен: ${id}`,
+      aiUnavailable: "AI area summary недоступен",
+      unknownComparisonError: "unknown area comparison error",
+      unknownSummaryError: "unknown area summary error",
+    },
+    values: {
+      noValue: "-",
+      days: (count) => `${count} дн.`,
+      rows: (count) => `${count} ${pluralRu(count, "строка", "строки", "строк")}`,
+      score: (value) => `${value}/100`,
+      scope: "market metrics, buyer/investor notes, planned investments",
+      sourceGrounded: "Source-grounded",
+      indexSummary: (value, growth) => `V ${value}/100 · G ${growth}/100`,
+      topSignalDetails: (value, growth, price) => `V ${value}/100 · G ${growth}/100 · ${price}/m2`,
+      noData: "Нет данных.",
+    },
+    empty: {
+      aiPrompt: "AI summary появится после генерации для выбранного района.",
+      noAreas: "Нет районов для выбранного города.",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Порівняння районів",
+    subtitle: "Ціни, експозиція, ліквідність і ринковий тиск за city baseline.",
+    actions: {
+      areas: "Райони",
+      refresh: "Оновити",
+      calculate: "Розрахувати",
+      summary: "Summary",
+    },
+    sections: {
+      parameters: "Параметри",
+      topSignals: "Top signals",
+      currentBaseline: "Current baseline",
+      aiSummary: "AI area impact summary",
+      positiveSignals: "Позитивні сигнали",
+      riskSignals: "Ризики",
+      sources: "Sources",
+      buyerNotes: "Нотатки для покупця",
+      investorNotes: "Нотатки для інвестора",
+      guardrails: "Guardrails",
+      areas: "Райони",
+    },
+    fields: {
+      city: "Місто",
+      sort: "Сортування",
+      action: "Дія",
+      area: "Район",
+      scope: "Scope",
+    },
+    metrics: {
+      cityMedianM2: "Медіана міста m2",
+      cityAvgDom: "Середній DOM міста",
+      activeSupply: "Активна пропозиція",
+      areas: "Райони",
+    },
+    labels: {
+      sort: {
+        value: "Value",
+        growth: "Growth",
+        buyer_market: "Buyer market",
+        seller_market: "Seller market",
+        liquidity: "Liquidity",
+        price_asc: "Ціна за зростанням",
+        price_desc: "Ціна за спаданням",
+      },
+      topSignal: {
+        value: "Value",
+        growth: "Growth",
+        buyerMarket: "Buyer market",
+        liquidity: "Liquidity",
+      },
+      market: {
+        buyer_market: "buyer",
+        seller_market: "seller",
+        overheated: "перегрітий",
+        balanced: "збалансований",
+      },
+    },
+    table: {
+      area: "Район",
+      label: "Label",
+      medianM2: "Median m2",
+      vsCity: "vs city",
+      dom: "DOM",
+      domVsCity: "DOM vs city",
+      supply: "Supply",
+      value: "Value",
+      growth: "Growth",
+      liquidity: "Liquidity",
+      buyer: "Buyer",
+      seller: "Seller",
+      overheated: "Overheated",
+    },
+    statuses: {
+      loadingComparison: "Завантаження порівняння...",
+      loadingAreaComparison: "Завантаження порівняння районів",
+      ready: "Готово",
+      backendUnavailable: "Backend API недоступний",
+      aiNotCreated: "AI area summary не створено",
+      aiReady: "AI area summary готовий до генерації",
+      aiBuilding: "AI area summary будується...",
+      aiSaved: (id) => `AI area summary збережено: ${id}`,
+      aiUnavailable: "AI area summary недоступний",
+      unknownComparisonError: "unknown area comparison error",
+      unknownSummaryError: "unknown area summary error",
+    },
+    values: {
+      noValue: "-",
+      days: (count) => `${count} дн.`,
+      rows: (count) => `${count} ${pluralUk(count, "рядок", "рядки", "рядків")}`,
+      score: (value) => `${value}/100`,
+      scope: "market metrics, buyer/investor notes, planned investments",
+      sourceGrounded: "Source-grounded",
+      indexSummary: (value, growth) => `V ${value}/100 · G ${growth}/100`,
+      topSignalDetails: (value, growth, price) => `V ${value}/100 · G ${growth}/100 · ${price}/m2`,
+      noData: "Немає даних.",
+    },
+    empty: {
+      aiPrompt: "AI summary з'явиться після генерації для вибраного району.",
+      noAreas: "Немає районів для вибраного міста.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const NEWS_PAGE_COPY: Record<Locale, NewsPageCopy> = {
+  en: {
+    title: "News intelligence",
+    subtitle: "Market, mortgage, transport and MPZP news with area impact.",
+    actions: {
+      refresh: "Refresh",
+      source: "Source",
+      summary: "Summary",
+    },
+    sections: {
+      articles: "Articles",
+      articleDetail: "Article detail",
+      aiSummary: "AI news summary",
+      keyPoints: "Key points",
+      areaImpact: "Area impact",
+      sources: "Sources",
+      buyerNotes: "Buyer notes",
+      investorNotes: "Investor notes",
+      guardrails: "Guardrails",
+    },
+    placeholders: {
+      areaId: "area_id",
+    },
+    labels: {
+      category: {
+        all: "All",
+        market: "Market",
+        mortgage: "Mortgage",
+        tax: "Tax",
+        legal: "Legal",
+        developer: "Developer",
+        city_investment: "City investment",
+        transport: "Transport",
+        mpzp: "MPZP",
+      },
+      impact: {
+        positive: "Positive",
+        neutral: "Neutral",
+        negative: "Negative",
+        mixed: "Mixed",
+        unknown: "Unknown",
+      },
+    },
+    statuses: {
+      loading: "Loading news...",
+      loadingNews: "Loading news",
+      loaded: (count) => `News: ${count}`,
+      backendUnavailable: "Backend API unavailable",
+      aiNotCreated: "AI summary not created",
+      aiReady: "AI summary ready to generate",
+      aiBuilding: "Building AI summary...",
+      aiSaved: (id) => `AI summary saved: ${id}`,
+      aiUnavailable: "AI summary unavailable",
+      unknownNewsError: "unknown news error",
+      unknownDetailError: "unknown news detail error",
+      unknownAiError: "unknown AI summary error",
+    },
+    values: {
+      allAreas: "all areas",
+      areaIds: (ids) => `Area ids: ${ids}`,
+      sourceGrounded: "Source-grounded",
+      noData: "No data.",
+    },
+    empty: {
+      noNews: "No news for the selected filter.",
+      chooseNews: "Choose a news article.",
+      aiPrompt: "AI summary will appear after generation.",
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "News intelligence",
+    subtitle: "Aktualności rynku, kredytów, transportu i MPZP z wpływem na obszary.",
+    actions: {
+      refresh: "Odśwież",
+      source: "Źródło",
+      summary: "Summary",
+    },
+    sections: {
+      articles: "Artykuły",
+      articleDetail: "Szczegóły artykułu",
+      aiSummary: "AI news summary",
+      keyPoints: "Kluczowe punkty",
+      areaImpact: "Wpływ na obszary",
+      sources: "Źródła",
+      buyerNotes: "Notatki dla kupującego",
+      investorNotes: "Notatki dla inwestora",
+      guardrails: "Guardrails",
+    },
+    placeholders: {
+      areaId: "area_id",
+    },
+    labels: {
+      category: {
+        all: "Wszystkie",
+        market: "Rynek",
+        mortgage: "Kredyty",
+        tax: "Podatki",
+        legal: "Prawo",
+        developer: "Deweloperzy",
+        city_investment: "Inwestycje miejskie",
+        transport: "Transport",
+        mpzp: "MPZP",
+      },
+      impact: {
+        positive: "Pozytywny",
+        neutral: "Neutralny",
+        negative: "Negatywny",
+        mixed: "Mieszany",
+        unknown: "Nieznany",
+      },
+    },
+    statuses: {
+      loading: "Ładowanie aktualności...",
+      loadingNews: "Ładowanie aktualności",
+      loaded: (count) => `Aktualności: ${count}`,
+      backendUnavailable: "Backend API niedostępne",
+      aiNotCreated: "AI summary nie utworzone",
+      aiReady: "AI summary gotowe do generacji",
+      aiBuilding: "Budowanie AI summary...",
+      aiSaved: (id) => `AI summary zapisane: ${id}`,
+      aiUnavailable: "AI summary niedostępne",
+      unknownNewsError: "nieznany błąd aktualności",
+      unknownDetailError: "nieznany błąd szczegółów aktualności",
+      unknownAiError: "nieznany błąd AI summary",
+    },
+    values: {
+      allAreas: "wszystkie obszary",
+      areaIds: (ids) => `Area ids: ${ids}`,
+      sourceGrounded: "Source-grounded",
+      noData: "Brak danych.",
+    },
+    empty: {
+      noNews: "Brak aktualności dla wybranego filtra.",
+      chooseNews: "Wybierz aktualność.",
+      aiPrompt: "AI summary pojawi się po generacji.",
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "News intelligence",
+    subtitle: "Новости рынка, ипотеки, транспорта, MPZP и их влияние на районы.",
+    actions: {
+      refresh: "Обновить",
+      source: "Источник",
+      summary: "Summary",
+    },
+    sections: {
+      articles: "Articles",
+      articleDetail: "Детали новости",
+      aiSummary: "AI news summary",
+      keyPoints: "Главное",
+      areaImpact: "Влияние на районы",
+      sources: "Sources",
+      buyerNotes: "Заметки для покупателя",
+      investorNotes: "Заметки для инвестора",
+      guardrails: "Guardrails",
+    },
+    placeholders: {
+      areaId: "area_id",
+    },
+    labels: {
+      category: {
+        all: "Все",
+        market: "Рынок",
+        mortgage: "Ипотека",
+        tax: "Налоги",
+        legal: "Право",
+        developer: "Застройщики",
+        city_investment: "Городские инвестиции",
+        transport: "Транспорт",
+        mpzp: "MPZP",
+      },
+      impact: {
+        positive: "Позитивный",
+        neutral: "Нейтральный",
+        negative: "Негативный",
+        mixed: "Смешанный",
+        unknown: "Неизвестный",
+      },
+    },
+    statuses: {
+      loading: "Загрузка новостей...",
+      loadingNews: "Загрузка новостей",
+      loaded: (count) => `Новостей: ${count}`,
+      backendUnavailable: "Backend API недоступен",
+      aiNotCreated: "AI summary не создан",
+      aiReady: "AI summary готов к генерации",
+      aiBuilding: "AI summary строится...",
+      aiSaved: (id) => `AI summary сохранен: ${id}`,
+      aiUnavailable: "AI summary недоступен",
+      unknownNewsError: "unknown news error",
+      unknownDetailError: "unknown news detail error",
+      unknownAiError: "unknown AI summary error",
+    },
+    values: {
+      allAreas: "все районы",
+      areaIds: (ids) => `Area ids: ${ids}`,
+      sourceGrounded: "Source-grounded",
+      noData: "Нет данных.",
+    },
+    empty: {
+      noNews: "Нет новостей для выбранного фильтра.",
+      chooseNews: "Выбери новость.",
+      aiPrompt: "AI summary появится после генерации.",
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "News intelligence",
+    subtitle: "Новини ринку, іпотеки, транспорту, MPZP та їхній вплив на райони.",
+    actions: {
+      refresh: "Оновити",
+      source: "Джерело",
+      summary: "Summary",
+    },
+    sections: {
+      articles: "Articles",
+      articleDetail: "Деталі новини",
+      aiSummary: "AI news summary",
+      keyPoints: "Головне",
+      areaImpact: "Вплив на райони",
+      sources: "Sources",
+      buyerNotes: "Нотатки для покупця",
+      investorNotes: "Нотатки для інвестора",
+      guardrails: "Guardrails",
+    },
+    placeholders: {
+      areaId: "area_id",
+    },
+    labels: {
+      category: {
+        all: "Усі",
+        market: "Ринок",
+        mortgage: "Іпотека",
+        tax: "Податки",
+        legal: "Право",
+        developer: "Забудовники",
+        city_investment: "Міські інвестиції",
+        transport: "Транспорт",
+        mpzp: "MPZP",
+      },
+      impact: {
+        positive: "Позитивний",
+        neutral: "Нейтральний",
+        negative: "Негативний",
+        mixed: "Змішаний",
+        unknown: "Невідомий",
+      },
+    },
+    statuses: {
+      loading: "Завантаження новин...",
+      loadingNews: "Завантаження новин",
+      loaded: (count) => `Новин: ${count}`,
+      backendUnavailable: "Backend API недоступний",
+      aiNotCreated: "AI summary не створено",
+      aiReady: "AI summary готовий до генерації",
+      aiBuilding: "AI summary будується...",
+      aiSaved: (id) => `AI summary збережено: ${id}`,
+      aiUnavailable: "AI summary недоступний",
+      unknownNewsError: "unknown news error",
+      unknownDetailError: "unknown news detail error",
+      unknownAiError: "unknown AI summary error",
+    },
+    values: {
+      allAreas: "усі райони",
+      areaIds: (ids) => `Area ids: ${ids}`,
+      sourceGrounded: "Source-grounded",
+      noData: "Немає даних.",
+    },
+    empty: {
+      noNews: "Немає новин для вибраного фільтра.",
+      chooseNews: "Вибери новину.",
+      aiPrompt: "AI summary з'явиться після генерації.",
+    },
+    errorPrefix: "Помилка",
+  },
+};
+
+export const DEVELOPERS_PAGE_COPY: Record<Locale, DevelopersPageCopy> = {
+  en: {
+    title: "Developer ranking",
+    subtitle: "Risk profile, local track record, sources and due-diligence questions.",
+    actions: {
+      refresh: "Refresh",
+      apply: "Apply",
+      open: "Open",
+      openProfile: "Open profile",
+      ranking: "Ranking",
+      source: "Source",
+    },
+    sections: {
+      filters: "Filters",
+      developers: "Developers",
+      profile: "Profile",
+      factors: "Rating factors",
+      projects: "Projects",
+      qualitySignals: "Quality and risk signals",
+      dueDiligence: "Due diligence",
+      company: "Company",
+      check: "What to check",
+      sources: "Sources",
+    },
+    fields: {
+      city: "City",
+      minRating: "Min. rating",
+      minConfidence: "Min. confidence",
+    },
+    metrics: {
+      inSample: "In sample",
+      averageRating: "Average rating",
+      strongGood: "Strong/good",
+      needsReview: "Needs review",
+      rating: "Rating",
+      technicalQuality: "Technical quality",
+      legalScope: "Legal scope",
+      transparency: "Transparency",
+      reputationScore: "Reputation Score",
+      confidence: "Confidence",
+      completedProjects: "Completed projects",
+      activeProjects: "Active projects",
+    },
+    table: {
+      developer: "Developer",
+      rating: "Rating",
+      confidence: "Confidence",
+      projects: "Projects",
+      signals: "Signals",
+      profile: "Profile",
+      factor: "Factor",
+      score: "Score",
+      meaning: "Meaning",
+      project: "Project",
+      location: "Location",
+      status: "Status",
+      units: "Units",
+      source: "Source",
+    },
+    labels: {
+      reputation: {
+        strong: "strong profile",
+        good: "good profile",
+        mixed: "mixed profile",
+        limited_data: "limited data",
+        risk_review: "needs review",
+      },
+      projectStatus: {
+        active: "active",
+        completed: "completed",
+        planned: "planned",
+        unknown: "status unknown",
+      },
+      moderationStatus: {
+        active: "active",
+        under_review: "under review",
+        suppressed: "suppressed",
+      },
+      disputeStatus: {
+        none: "none",
+        open: "open",
+        resolved: "resolved",
+        rejected: "rejected",
+      },
+    },
+    factors: {
+      trackRecord: {
+        label: "Track record",
+        detail: "Count and freshness of completed and active projects.",
+      },
+      delivery: {
+        label: "Delivery",
+        detail: "Signals for schedule, construction stages and handover.",
+      },
+      technicalQuality: {
+        label: "Technical quality",
+        detail: "Defect, acceptance and technical inspection signals.",
+      },
+      legal: {
+        label: "Legal compliance",
+        detail: "KRS/REGON/UOKiK and consumer-risk contract signals.",
+      },
+      financial: {
+        label: "Financial stability",
+        detail: "Basic company stability and ownership transparency.",
+      },
+      transparency: {
+        label: "Transparency",
+        detail: "Documents, schedule, project pages and source freshness.",
+      },
+      local: {
+        label: "Local experience",
+        detail: "Experience in the same city, area and comparable projects.",
+      },
+    },
+    statuses: {
+      loadingRanking: "Loading ranking",
+      loadingProfile: "Loading profile...",
+      loadingDeveloperProfile: "Loading developer profile",
+      profileUnavailable: "Profile unavailable",
+      updated: (date) => `Updated: ${date}`,
+      found: (count) => `${count} found`,
+      unknownError: "unknown error",
+    },
+    values: {
+      noValue: "-",
+      noData: "No data",
+      legalNameMissing: "Legal name not provided",
+      headquartersMissing: "city not provided",
+      completedActive: (completed, active) => `${completed} completed / ${active} active`,
+      sources: (sources) => `Sources: ${sources}`,
+      units: (count) => `${count} units`,
+      score: (value) => `${value}/100`,
+      confidence: (value) => `confidence ${value}/100`,
+      dataQuality: (value) => `DQ ${value}`,
+      foundedUpdated: (founded, updated) => `Founded: ${founded} · updated ${updated}`,
+      checked: (date) => `checked ${date}`,
+      dispute: (status) => `dispute ${status}`,
+    },
+    errorPrefix: "Error",
+  },
+  pl: {
+    title: "Ranking deweloperów",
+    subtitle: "Profil ryzyka, lokalne doświadczenie, źródła i pytania due diligence.",
+    actions: {
+      refresh: "Odśwież",
+      apply: "Zastosuj",
+      open: "Otwórz",
+      openProfile: "Otwórz profil",
+      ranking: "Ranking",
+      source: "Źródło",
+    },
+    sections: {
+      filters: "Filtry",
+      developers: "Deweloperzy",
+      profile: "Profil",
+      factors: "Czynniki ratingu",
+      projects: "Projekty",
+      qualitySignals: "Quality i risk signals",
+      dueDiligence: "Due diligence",
+      company: "Firma",
+      check: "Co sprawdzić",
+      sources: "Źródła",
+    },
+    fields: {
+      city: "Miasto",
+      minRating: "Min. rating",
+      minConfidence: "Min. confidence",
+    },
+    metrics: {
+      inSample: "W próbie",
+      averageRating: "Średni rating",
+      strongGood: "Silne/dobre",
+      needsReview: "Do sprawdzenia",
+      rating: "Rating",
+      technicalQuality: "Jakość techniczna",
+      legalScope: "Zakres prawny",
+      transparency: "Transparentność",
+      reputationScore: "Reputation Score",
+      confidence: "Confidence",
+      completedProjects: "Ukończone projekty",
+      activeProjects: "Aktywne projekty",
+    },
+    table: {
+      developer: "Deweloper",
+      rating: "Rating",
+      confidence: "Confidence",
+      projects: "Projekty",
+      signals: "Sygnały",
+      profile: "Profil",
+      factor: "Czynnik",
+      score: "Score",
+      meaning: "Znaczenie",
+      project: "Projekt",
+      location: "Lokalizacja",
+      status: "Status",
+      units: "Lokale",
+      source: "Źródło",
+    },
+    labels: {
+      reputation: {
+        strong: "silny profil",
+        good: "dobry profil",
+        mixed: "mieszany profil",
+        limited_data: "mało danych",
+        risk_review: "do sprawdzenia",
+      },
+      projectStatus: {
+        active: "aktywny",
+        completed: "ukończony",
+        planned: "planowany",
+        unknown: "status nieznany",
+      },
+      moderationStatus: {
+        active: "aktywny",
+        under_review: "w przeglądzie",
+        suppressed: "ukryty",
+      },
+      disputeStatus: {
+        none: "brak",
+        open: "otwarty",
+        resolved: "rozwiązany",
+        rejected: "odrzucony",
+      },
+    },
+    factors: {
+      trackRecord: {
+        label: "Track record",
+        detail: "Liczba i świeżość ukończonych oraz aktywnych projektów.",
+      },
+      delivery: {
+        label: "Delivery",
+        detail: "Sygnały terminów, etapów budowy i przekazania lokali.",
+      },
+      technicalQuality: {
+        label: "Jakość techniczna",
+        detail: "Sygnały usterek, odbiorów i kontroli technicznych.",
+      },
+      legal: {
+        label: "Legal compliance",
+        detail: "KRS/REGON/UOKiK i consumer-risk signals w umowach.",
+      },
+      financial: {
+        label: "Stabilność finansowa",
+        detail: "Podstawowa stabilność firmy i transparentność struktury.",
+      },
+      transparency: {
+        label: "Transparentność",
+        detail: "Dokumenty, harmonogram, strony projektów i świeżość źródeł.",
+      },
+      local: {
+        label: "Lokalne doświadczenie",
+        detail: "Doświadczenie w tym samym mieście, obszarze i podobnych projektach.",
+      },
+    },
+    statuses: {
+      loadingRanking: "Ładowanie rankingu",
+      loadingProfile: "Ładowanie profilu...",
+      loadingDeveloperProfile: "Ładowanie profilu dewelopera",
+      profileUnavailable: "Profil niedostępny",
+      updated: (date) => `Zaktualizowano: ${date}`,
+      found: (count) => `Znaleziono: ${count}`,
+      unknownError: "nieznany błąd",
+    },
+    values: {
+      noValue: "-",
+      noData: "Brak danych",
+      legalNameMissing: "Brak nazwy prawnej",
+      headquartersMissing: "brak miasta",
+      completedActive: (completed, active) =>
+        `${completed} ${pluralPl(completed, "ukończony", "ukończone", "ukończonych")} / ${active} aktywne`,
+      sources: (sources) => `Źródła: ${sources}`,
+      units: (count) => `${count} lokali`,
+      score: (value) => `${value}/100`,
+      confidence: (value) => `confidence ${value}/100`,
+      dataQuality: (value) => `DQ ${value}`,
+      foundedUpdated: (founded, updated) => `Założony: ${founded} · aktualizacja ${updated}`,
+      checked: (date) => `sprawdzone ${date}`,
+      dispute: (status) => `dispute ${status}`,
+    },
+    errorPrefix: "Błąd",
+  },
+  ru: {
+    title: "Рейтинг застройщиков",
+    subtitle: "Профиль риска, локальный опыт, источники и вопросы для проверки перед сделкой.",
+    actions: {
+      refresh: "Обновить",
+      apply: "Применить",
+      open: "Открыть",
+      openProfile: "Открыть профиль",
+      ranking: "Рейтинг",
+      source: "Источник",
+    },
+    sections: {
+      filters: "Фильтры",
+      developers: "Застройщики",
+      profile: "Профиль",
+      factors: "Факторы рейтинга",
+      projects: "Проекты",
+      qualitySignals: "Quality и risk signals",
+      dueDiligence: "Due diligence",
+      company: "Компания",
+      check: "Что проверить",
+      sources: "Источники",
+    },
+    fields: {
+      city: "Город",
+      minRating: "Мин. рейтинг",
+      minConfidence: "Мин. уверенность",
+    },
+    metrics: {
+      inSample: "В выборке",
+      averageRating: "Средний рейтинг",
+      strongGood: "Сильные/хорошие",
+      needsReview: "Нужна проверка",
+      rating: "Рейтинг",
+      technicalQuality: "Техкачество",
+      legalScope: "Юр. контур",
+      transparency: "Прозрачность",
+      reputationScore: "Reputation Score",
+      confidence: "Confidence",
+      completedProjects: "Сданные проекты",
+      activeProjects: "Активные проекты",
+    },
+    table: {
+      developer: "Застройщик",
+      rating: "Рейтинг",
+      confidence: "Уверенность",
+      projects: "Проекты",
+      signals: "Сигналы",
+      profile: "Профиль",
+      factor: "Фактор",
+      score: "Score",
+      meaning: "Что означает",
+      project: "Проект",
+      location: "Локация",
+      status: "Статус",
+      units: "Units",
+      source: "Источник",
+    },
+    labels: {
+      reputation: {
+        strong: "сильный профиль",
+        good: "хороший профиль",
+        mixed: "смешанный профиль",
+        limited_data: "мало данных",
+        risk_review: "нужна проверка",
+      },
+      projectStatus: {
+        active: "активный",
+        completed: "сдан",
+        planned: "планируется",
+        unknown: "статус неизвестен",
+      },
+      moderationStatus: {
+        active: "активен",
+        under_review: "на проверке",
+        suppressed: "скрыт",
+      },
+      disputeStatus: {
+        none: "нет",
+        open: "открыт",
+        resolved: "решен",
+        rejected: "отклонен",
+      },
+    },
+    factors: {
+      trackRecord: {
+        label: "Track record",
+        detail: "Количество и свежесть сданных/активных проектов.",
+      },
+      delivery: {
+        label: "Delivery",
+        detail: "Сигналы по срокам, этапам строительства и handover.",
+      },
+      technicalQuality: {
+        label: "Technical quality",
+        detail: "Сигналы дефектов, приемок и технических проверок.",
+      },
+      legal: {
+        label: "Legal compliance",
+        detail: "KRS/REGON/UOKiK и договорные consumer-risk signals.",
+      },
+      financial: {
+        label: "Financial stability",
+        detail: "Базовая устойчивость компании и прозрачность структуры.",
+      },
+      transparency: {
+        label: "Transparency",
+        detail: "Документы, schedule, проектные страницы и source freshness.",
+      },
+      local: {
+        label: "Local experience",
+        detail: "Опыт в том же городе/районе и сопоставимых проектах.",
+      },
+    },
+    statuses: {
+      loadingRanking: "Загрузка рейтинга",
+      loadingProfile: "Загрузка профиля...",
+      loadingDeveloperProfile: "Загрузка профиля застройщика",
+      profileUnavailable: "Профиль недоступен",
+      updated: (date) => `Обновлено: ${date}`,
+      found: (count) => `${count} найдено`,
+      unknownError: "unknown error",
+    },
+    values: {
+      noValue: "-",
+      noData: "Нет данных",
+      legalNameMissing: "Legal entity не указан",
+      headquartersMissing: "город не указан",
+      completedActive: (completed, active) => `${completed} сдано / ${active} активно`,
+      sources: (sources) => `Источники: ${sources}`,
+      units: (count) => `${count} units`,
+      score: (value) => `${value}/100`,
+      confidence: (value) => `confidence ${value}/100`,
+      dataQuality: (value) => `DQ ${value}`,
+      foundedUpdated: (founded, updated) => `Основан: ${founded} · обновлено ${updated}`,
+      checked: (date) => `checked ${date}`,
+      dispute: (status) => `dispute ${status}`,
+    },
+    errorPrefix: "Ошибка",
+  },
+  uk: {
+    title: "Рейтинг забудовників",
+    subtitle: "Профіль ризику, локальний досвід, джерела й питання для перевірки перед угодою.",
+    actions: {
+      refresh: "Оновити",
+      apply: "Застосувати",
+      open: "Відкрити",
+      openProfile: "Відкрити профіль",
+      ranking: "Рейтинг",
+      source: "Джерело",
+    },
+    sections: {
+      filters: "Фільтри",
+      developers: "Забудовники",
+      profile: "Профіль",
+      factors: "Фактори рейтингу",
+      projects: "Проекти",
+      qualitySignals: "Quality і risk signals",
+      dueDiligence: "Due diligence",
+      company: "Компанія",
+      check: "Що перевірити",
+      sources: "Джерела",
+    },
+    fields: {
+      city: "Місто",
+      minRating: "Мін. рейтинг",
+      minConfidence: "Мін. впевненість",
+    },
+    metrics: {
+      inSample: "У вибірці",
+      averageRating: "Середній рейтинг",
+      strongGood: "Сильні/хороші",
+      needsReview: "Потрібна перевірка",
+      rating: "Рейтинг",
+      technicalQuality: "Техякість",
+      legalScope: "Юр. контур",
+      transparency: "Прозорість",
+      reputationScore: "Reputation Score",
+      confidence: "Confidence",
+      completedProjects: "Здані проекти",
+      activeProjects: "Активні проекти",
+    },
+    table: {
+      developer: "Забудовник",
+      rating: "Рейтинг",
+      confidence: "Впевненість",
+      projects: "Проекти",
+      signals: "Сигнали",
+      profile: "Профіль",
+      factor: "Фактор",
+      score: "Score",
+      meaning: "Що означає",
+      project: "Проект",
+      location: "Локація",
+      status: "Статус",
+      units: "Units",
+      source: "Джерело",
+    },
+    labels: {
+      reputation: {
+        strong: "сильний профіль",
+        good: "хороший профіль",
+        mixed: "змішаний профіль",
+        limited_data: "мало даних",
+        risk_review: "потрібна перевірка",
+      },
+      projectStatus: {
+        active: "активний",
+        completed: "зданий",
+        planned: "планується",
+        unknown: "статус невідомий",
+      },
+      moderationStatus: {
+        active: "активний",
+        under_review: "на перевірці",
+        suppressed: "прихований",
+      },
+      disputeStatus: {
+        none: "немає",
+        open: "відкритий",
+        resolved: "вирішений",
+        rejected: "відхилений",
+      },
+    },
+    factors: {
+      trackRecord: {
+        label: "Track record",
+        detail: "Кількість і свіжість зданих/активних проектів.",
+      },
+      delivery: {
+        label: "Delivery",
+        detail: "Сигнали щодо строків, етапів будівництва й handover.",
+      },
+      technicalQuality: {
+        label: "Technical quality",
+        detail: "Сигнали дефектів, приймань і технічних перевірок.",
+      },
+      legal: {
+        label: "Legal compliance",
+        detail: "KRS/REGON/UOKiK і договірні consumer-risk signals.",
+      },
+      financial: {
+        label: "Financial stability",
+        detail: "Базова стійкість компанії та прозорість структури.",
+      },
+      transparency: {
+        label: "Transparency",
+        detail: "Документи, schedule, сторінки проектів і source freshness.",
+      },
+      local: {
+        label: "Local experience",
+        detail: "Досвід у тому ж місті/районі та подібних проектах.",
+      },
+    },
+    statuses: {
+      loadingRanking: "Завантаження рейтингу",
+      loadingProfile: "Завантаження профілю...",
+      loadingDeveloperProfile: "Завантаження профілю забудовника",
+      profileUnavailable: "Профіль недоступний",
+      updated: (date) => `Оновлено: ${date}`,
+      found: (count) => `${count} знайдено`,
+      unknownError: "unknown error",
+    },
+    values: {
+      noValue: "-",
+      noData: "Немає даних",
+      legalNameMissing: "Legal entity не вказано",
+      headquartersMissing: "місто не вказано",
+      completedActive: (completed, active) => `${completed} здано / ${active} активно`,
+      sources: (sources) => `Джерела: ${sources}`,
+      units: (count) => `${count} units`,
+      score: (value) => `${value}/100`,
+      confidence: (value) => `confidence ${value}/100`,
+      dataQuality: (value) => `DQ ${value}`,
+      foundedUpdated: (founded, updated) => `Засновано: ${founded} · оновлено ${updated}`,
+      checked: (date) => `checked ${date}`,
+      dispute: (status) => `dispute ${status}`,
     },
     errorPrefix: "Помилка",
   },

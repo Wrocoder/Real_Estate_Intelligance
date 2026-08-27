@@ -10,11 +10,14 @@ import {
   type DeveloperQualitySignal,
   type DeveloperRankingResponse,
   type DeveloperReputation,
-  type DeveloperReputationLabel,
 } from "@/lib/api";
 import { numberValue, scoreTone } from "@/lib/format";
+import { DEVELOPERS_PAGE_COPY, type DevelopersPageCopy, type Locale } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 export default function DevelopersPage() {
+  const { locale } = useLocalePreference();
+  const copy = DEVELOPERS_PAGE_COPY[locale];
   const [city, setCity] = useState("Wrocław");
   const [minScore, setMinScore] = useState("0");
   const [minConfidence, setMinConfidence] = useState("0");
@@ -45,11 +48,11 @@ export default function DevelopersPage() {
           : data.items[0]?.developer.id ?? null,
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
     } finally {
       setLoading(false);
     }
-  }, [city, minConfidence, minScore]);
+  }, [city, copy, minConfidence, minScore]);
 
   useEffect(() => {
     void load();
@@ -66,25 +69,25 @@ export default function DevelopersPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Рейтинг застройщиков</h1>
-          <p>Профиль риска, локальный опыт, источники и вопросы для проверки перед сделкой.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <button className="button" type="button" onClick={() => void load()}>
-          <RefreshCw size={16} /> Обновить
+          <RefreshCw size={16} /> {copy.actions.refresh}
         </button>
       </header>
 
       <form className="panel" onSubmit={submit}>
         <div className="panel-header">
-          <h2>Фильтры</h2>
+          <h2>{copy.sections.filters}</h2>
         </div>
         <div className="panel-body form-grid compact">
           <label>
-            Город
+            {copy.fields.city}
             <input className="input" value={city} onChange={(event) => setCity(event.target.value)} />
           </label>
           <label>
-            Мин. рейтинг
+            {copy.fields.minRating}
             <input
               className="input"
               min="0"
@@ -95,7 +98,7 @@ export default function DevelopersPage() {
             />
           </label>
           <label>
-            Мин. уверенность
+            {copy.fields.minConfidence}
             <input
               className="input"
               min="0"
@@ -106,50 +109,50 @@ export default function DevelopersPage() {
             />
           </label>
           <button className="button primary" type="submit">
-            <ShieldCheck size={16} /> Применить
+            <ShieldCheck size={16} /> {copy.actions.apply}
           </button>
         </div>
       </form>
 
       <section className="metric-grid" style={{ marginTop: 16 }}>
         <div className="metric">
-          <span>В выборке</span>
-          <strong>{metrics.total}</strong>
+          <span>{copy.metrics.inSample}</span>
+          <strong>{numberValue(metrics.total, locale)}</strong>
         </div>
         <div className="metric">
-          <span>Средний рейтинг</span>
-          <strong>{metrics.averageScore}/100</strong>
+          <span>{copy.metrics.averageRating}</span>
+          <strong>{copy.values.score(metrics.averageScore)}</strong>
         </div>
         <div className="metric">
-          <span>Сильные/хорошие</span>
-          <strong>{metrics.goodCount}</strong>
+          <span>{copy.metrics.strongGood}</span>
+          <strong>{numberValue(metrics.goodCount, locale)}</strong>
         </div>
         <div className="metric">
-          <span>Нужна проверка</span>
-          <strong>{metrics.riskCount}</strong>
+          <span>{copy.metrics.needsReview}</span>
+          <strong>{numberValue(metrics.riskCount, locale)}</strong>
         </div>
       </section>
 
-      {error ? <ErrorBlock message={error} /> : null}
-      {loading ? <LoadingBlock label="Загрузка рейтинга" /> : null}
+      {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
+      {loading ? <LoadingBlock label={copy.statuses.loadingRanking} /> : null}
 
       {!loading && ranking ? (
         <div className="detail-grid" style={{ marginTop: 16 }}>
           <section className="panel">
             <div className="panel-header">
-              <h2>Застройщики</h2>
-              <span className="status-line">{ranking.total} найдено</span>
+              <h2>{copy.sections.developers}</h2>
+              <span className="status-line">{copy.statuses.found(ranking.total)}</span>
             </div>
             <div className="table-scroll">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Застройщик</th>
-                    <th>Рейтинг</th>
-                    <th>Уверенность</th>
-                    <th>Проекты</th>
-                    <th>Сигналы</th>
-                    <th>Профиль</th>
+                    <th>{copy.table.developer}</th>
+                    <th>{copy.table.rating}</th>
+                    <th>{copy.table.confidence}</th>
+                    <th>{copy.table.projects}</th>
+                    <th>{copy.table.signals}</th>
+                    <th>{copy.table.profile}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -162,26 +165,31 @@ export default function DevelopersPage() {
                       <td>
                         <strong>{item.developer.name}</strong>
                         <small>
-                          {item.developer.legal_name ?? item.developer.headquarters_city ?? "—"}
+                          {item.developer.legal_name ??
+                            item.developer.headquarters_city ??
+                            copy.values.noValue}
                         </small>
                       </td>
                       <td>
                         <span className={`status-pill ${scoreTone(item.reputation_score)}`}>
-                          {item.reputation_score}/100
+                          {copy.values.score(item.reputation_score)}
                         </span>
                       </td>
-                      <td>{item.confidence_score}/100</td>
+                      <td>{copy.values.score(item.confidence_score)}</td>
                       <td>
-                        {item.completed_projects_count} сдано / {item.active_projects_count} активно
+                        {copy.values.completedActive(
+                          item.completed_projects_count,
+                          item.active_projects_count,
+                        )}
                       </td>
-                      <td>{item.quality_signals.length}</td>
+                      <td>{numberValue(item.quality_signals.length, locale)}</td>
                       <td>
                         <Link
                           className="button"
                           href={`/developers/${item.developer.id}`}
                           onClick={(event) => event.stopPropagation()}
                         >
-                          Открыть
+                          {copy.actions.open}
                         </Link>
                       </td>
                     </tr>
@@ -193,10 +201,10 @@ export default function DevelopersPage() {
 
           <aside className="panel">
             <div className="panel-header">
-              <h2>Профиль</h2>
+              <h2>{copy.sections.profile}</h2>
               {selected ? (
                 <span className={`status-pill ${labelTone(selected.label)}`}>
-                  {labelText(selected.label)}
+                  {copy.labels.reputation[selected.label] ?? selected.label}
                 </span>
               ) : null}
             </div>
@@ -205,13 +213,13 @@ export default function DevelopersPage() {
                 <>
                   <div className="button-row" style={{ marginBottom: 12 }}>
                     <Link className="button primary" href={`/developers/${selected.developer.id}`}>
-                      <Building2 size={16} /> Открыть профиль
+                      <Building2 size={16} /> {copy.actions.openProfile}
                     </Link>
                   </div>
-                  <DeveloperDetails reputation={selected} />
+                  <DeveloperDetails copy={copy} locale={locale} reputation={selected} />
                 </>
               ) : (
-                "Нет данных"
+                copy.values.noData
               )}
             </div>
           </aside>
@@ -221,66 +229,82 @@ export default function DevelopersPage() {
   );
 }
 
-function DeveloperDetails({ reputation }: { reputation: DeveloperReputation }) {
+function DeveloperDetails({
+  copy,
+  locale,
+  reputation,
+}: {
+  copy: DevelopersPageCopy;
+  locale: Locale;
+  reputation: DeveloperReputation;
+}) {
   return (
     <>
       <div className="metric-grid compact">
         <div className="metric">
-          <span>Рейтинг</span>
-          <strong>{reputation.reputation_score}/100</strong>
+          <span>{copy.metrics.rating}</span>
+          <strong>{copy.values.score(reputation.reputation_score)}</strong>
         </div>
         <div className="metric">
-          <span>Техкачество</span>
-          <strong>{reputation.technical_quality_score}/100</strong>
+          <span>{copy.metrics.technicalQuality}</span>
+          <strong>{copy.values.score(reputation.technical_quality_score)}</strong>
         </div>
         <div className="metric">
-          <span>Юр. контур</span>
-          <strong>{reputation.legal_compliance_score}/100</strong>
+          <span>{copy.metrics.legalScope}</span>
+          <strong>{copy.values.score(reputation.legal_compliance_score)}</strong>
         </div>
         <div className="metric">
-          <span>Прозрачность</span>
-          <strong>{reputation.transparency_score}/100</strong>
+          <span>{copy.metrics.transparency}</span>
+          <strong>{copy.values.score(reputation.transparency_score)}</strong>
         </div>
       </div>
 
       <h2>{reputation.developer.name}</h2>
       <ul className="section-list compact">
         <li>
-          <Building2 size={16} /> {reputation.developer.legal_name ?? "Legal name не указан"}
+          <Building2 size={16} /> {reputation.developer.legal_name ?? copy.values.legalNameMissing}
         </li>
         <li>
-          KRS {reputation.developer.krs ?? "—"} · NIP {reputation.developer.nip ?? "—"} · REGON{" "}
-          {reputation.developer.regon ?? "—"}
+          KRS {reputation.developer.krs ?? copy.values.noValue} · NIP{" "}
+          {reputation.developer.nip ?? copy.values.noValue} · REGON{" "}
+          {reputation.developer.regon ?? copy.values.noValue}
         </li>
-        <li>Источники: {reputation.source_citations.map((item) => item.source_name).join(", ")}</li>
+        <li>
+          {copy.values.sources(
+            reputation.source_citations.map((item) => item.source_name).join(", "),
+          )}
+        </li>
       </ul>
 
-      <h2>Сигналы</h2>
+      <h2>{copy.sections.qualitySignals}</h2>
       <ul className="section-list compact">
         {reputation.quality_signals.map((signal) => (
           <li key={signal.id}>
             <SignalIcon signal={signal} /> {signal.title}: {signal.summary}
-            {signalStatusText(signal) ? (
-              <small className="muted"> · {signalStatusText(signal)}</small>
+            {signalStatusText(signal, copy) ? (
+              <small className="muted"> · {signalStatusText(signal, copy)}</small>
             ) : null}
           </li>
         ))}
       </ul>
 
-      <h2>Вопросы перед сделкой</h2>
+      <h2>{copy.sections.dueDiligence}</h2>
       <ul className="section-list compact">
         {reputation.due_diligence_questions.map((question) => (
           <li key={question}>{question}</li>
         ))}
       </ul>
 
-      <h2>Проекты</h2>
+      <h2>{copy.sections.projects}</h2>
       <ul className="section-list compact">
         {reputation.projects.map((project) => (
           <li key={project.id}>
-            {project.name}, {project.district ?? project.city}: {projectStatusText(project.status)}
+            {project.name}, {project.district ?? project.city}:{" "}
+            {copy.labels.projectStatus[project.status] ?? project.status}
             {project.completed_year ? `, ${project.completed_year}` : ""}
-            {project.units_count ? `, ${numberValue(project.units_count)} units` : ""}
+            {project.units_count
+              ? `, ${copy.values.units(numberValue(project.units_count, locale))}`
+              : ""}
           </li>
         ))}
       </ul>
@@ -295,13 +319,13 @@ function SignalIcon({ signal }: { signal: DeveloperQualitySignal }) {
   return <ShieldCheck size={16} />;
 }
 
-function signalStatusText(signal: DeveloperQualitySignal) {
+function signalStatusText(signal: DeveloperQualitySignal, copy: DevelopersPageCopy) {
   const parts: string[] = [];
   if (signal.moderation_status !== "active") {
-    parts.push(signal.moderation_status);
+    parts.push(copy.labels.moderationStatus[signal.moderation_status] ?? signal.moderation_status);
   }
   if (signal.dispute_status !== "none") {
-    parts.push(`dispute ${signal.dispute_status}`);
+    parts.push(copy.values.dispute(copy.labels.disputeStatus[signal.dispute_status] ?? signal.dispute_status));
   }
   return parts.join(", ");
 }
@@ -319,27 +343,8 @@ function buildMetrics(ranking: DeveloperRankingResponse | null) {
   };
 }
 
-function labelText(label: DeveloperReputationLabel) {
-  return {
-    strong: "сильный",
-    good: "хороший",
-    mixed: "смешанный",
-    limited_data: "мало данных",
-    risk_review: "проверить",
-  }[label];
-}
-
-function labelTone(label: DeveloperReputationLabel) {
+function labelTone(label: DeveloperReputation["label"]) {
   if (label === "strong" || label === "good") return "healthy";
   if (label === "mixed" || label === "limited_data") return "warning";
   return "error";
-}
-
-function projectStatusText(status: string) {
-  return {
-    active: "активный",
-    completed: "сдан",
-    planned: "планируется",
-    unknown: "статус неизвестен",
-  }[status] ?? status;
 }

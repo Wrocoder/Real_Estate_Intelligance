@@ -21,92 +21,96 @@ import {
   type DeveloperReputation,
   type DeveloperSourceCitation,
 } from "@/lib/api";
-import { numberValue, scoreTone } from "@/lib/format";
+import { dateValue, numberValue, scoreTone } from "@/lib/format";
+import { DEVELOPERS_PAGE_COPY, type DevelopersPageCopy, type Locale } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 export default function DeveloperProfilePage() {
+  const { locale } = useLocalePreference();
+  const copy = DEVELOPERS_PAGE_COPY[locale];
   const params = useParams<{ developerId: string }>();
   const developerId = decodeURIComponent(params.developerId);
   const [reputation, setReputation] = useState<DeveloperReputation | null>(null);
-  const [status, setStatus] = useState("Загрузка профиля...");
+  const [status, setStatus] = useState(copy.statuses.loadingProfile);
   const [error, setError] = useState("");
 
   const load = useCallback(async () => {
     setError("");
-    setStatus("Загрузка профиля...");
+    setStatus(copy.statuses.loadingProfile);
     try {
       const data = await api.getDeveloper(developerId);
       setReputation(data);
-      setStatus(`Обновлено: ${dateLabel(data.developer.updated_at)}`);
+      setStatus(copy.statuses.updated(dateValue(data.developer.updated_at, locale)));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Профиль недоступен");
+      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+      setStatus(copy.statuses.profileUnavailable);
     }
-  }, [developerId]);
+  }, [copy, developerId, locale]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  const factors = useMemo(() => (reputation ? factorRows(reputation) : []), [reputation]);
+  const factors = useMemo(() => (reputation ? factorRows(reputation, copy) : []), [copy, reputation]);
 
-  if (error) return <ErrorBlock message={error} />;
-  if (!reputation) return <LoadingBlock label="Загрузка профиля застройщика" />;
+  if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
+  if (!reputation) return <LoadingBlock label={copy.statuses.loadingDeveloperProfile} />;
 
   return (
     <>
       <header className="page-header">
         <div>
           <Link href="/developers" className="button">
-            <ArrowLeft size={16} /> Рейтинг
+            <ArrowLeft size={16} /> {copy.actions.ranking}
           </Link>
           <h1 style={{ marginTop: 14 }}>{reputation.developer.name}</h1>
           <p>
-            {reputation.developer.legal_name ?? "Legal entity не указан"} ·{" "}
-            {reputation.developer.headquarters_city ?? "город не указан"}
+            {reputation.developer.legal_name ?? copy.values.legalNameMissing} ·{" "}
+            {reputation.developer.headquarters_city ?? copy.values.headquartersMissing}
           </p>
         </div>
         <div className="toolbar">
           <span className={`status-pill ${reputationTone(reputation)}`}>
-            {reputationLabel(reputation)}
+            {copy.labels.reputation[reputation.label] ?? reputation.label}
           </span>
           <button className="button" type="button" onClick={() => void load()}>
-            <RefreshCw size={16} /> Обновить
+            <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
         </div>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Reputation Score</span>
-          <strong>{reputation.reputation_score}/100</strong>
+          <span>{copy.metrics.reputationScore}</span>
+          <strong>{copy.values.score(reputation.reputation_score)}</strong>
         </div>
         <div className="metric">
-          <span>Confidence</span>
-          <strong>{reputation.confidence_score}/100</strong>
+          <span>{copy.metrics.confidence}</span>
+          <strong>{copy.values.score(reputation.confidence_score)}</strong>
         </div>
         <div className="metric">
-          <span>Сданные проекты</span>
-          <strong>{reputation.completed_projects_count}</strong>
+          <span>{copy.metrics.completedProjects}</span>
+          <strong>{numberValue(reputation.completed_projects_count, locale)}</strong>
         </div>
         <div className="metric">
-          <span>Активные проекты</span>
-          <strong>{reputation.active_projects_count}</strong>
+          <span>{copy.metrics.activeProjects}</span>
+          <strong>{numberValue(reputation.active_projects_count, locale)}</strong>
         </div>
       </section>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>Факторы рейтинга</h2>
+            <h2>{copy.sections.factors}</h2>
             <span className="status-line">{status}</span>
           </div>
           <div className="table-scroll">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Фактор</th>
-                  <th>Score</th>
-                  <th>Что означает</th>
+                  <th>{copy.table.factor}</th>
+                  <th>{copy.table.score}</th>
+                  <th>{copy.table.meaning}</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,7 +119,7 @@ export default function DeveloperProfilePage() {
                     <td>{factor.label}</td>
                     <td>
                       <span className={`status-pill ${scoreTone(factor.score)}`}>
-                        {factor.score}/100
+                        {copy.values.score(factor.score)}
                       </span>
                     </td>
                     <td>{factor.detail}</td>
@@ -126,10 +130,10 @@ export default function DeveloperProfilePage() {
           </div>
 
           <div className="panel-body">
-            <h2>Проекты</h2>
-            <ProjectTable projects={reputation.projects} />
+            <h2>{copy.sections.projects}</h2>
+            <ProjectTable copy={copy} locale={locale} projects={reputation.projects} />
 
-            <h2>Quality и risk signals</h2>
+            <h2>{copy.sections.qualitySignals}</h2>
             <ul className="section-list">
               {reputation.quality_signals.map((signal) => (
                 <li key={signal.id}>
@@ -137,9 +141,9 @@ export default function DeveloperProfilePage() {
                   {signal.summary}
                   <br />
                   <small className="muted">
-                    {signal.source_name} · confidence {signal.confidence_score}/100
-                    {signal.observed_at ? ` · ${dateLabel(signal.observed_at)}` : ""}
-                    {signalStatusText(signal) ? ` · ${signalStatusText(signal)}` : ""}
+                    {signal.source_name} · {copy.values.confidence(signal.confidence_score)}
+                    {signal.observed_at ? ` · ${dateValue(signal.observed_at, locale)}` : ""}
+                    {signalStatusText(signal, copy) ? ` · ${signalStatusText(signal, copy)}` : ""}
                   </small>
                 </li>
               ))}
@@ -149,24 +153,26 @@ export default function DeveloperProfilePage() {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Due diligence</h2>
-            <span className="score-pill">DQ {reputation.confidence_score}</span>
+            <h2>{copy.sections.dueDiligence}</h2>
+            <span className="score-pill">{copy.values.dataQuality(reputation.confidence_score)}</span>
           </div>
           <div className="panel-body">
-            <h2>Компания</h2>
+            <h2>{copy.sections.company}</h2>
             <ul className="section-list compact">
               <li>
                 <Building2 size={16} />{" "}
                 {reputation.developer.legal_name ?? reputation.developer.name}
               </li>
               <li>
-                KRS {reputation.developer.krs ?? "-"} · NIP{" "}
-                {reputation.developer.nip ?? "-"} · REGON{" "}
-                {reputation.developer.regon ?? "-"}
+                KRS {reputation.developer.krs ?? copy.values.noValue} · NIP{" "}
+                {reputation.developer.nip ?? copy.values.noValue} · REGON{" "}
+                {reputation.developer.regon ?? copy.values.noValue}
               </li>
               <li>
-                Основан: {reputation.developer.founded_year ?? "-"} · обновлено{" "}
-                {dateLabel(reputation.developer.updated_at)}
+                {copy.values.foundedUpdated(
+                  reputation.developer.founded_year?.toString() ?? copy.values.noValue,
+                  dateValue(reputation.developer.updated_at, locale),
+                )}
               </li>
               {reputation.developer.website_url ? (
                 <li>
@@ -177,7 +183,7 @@ export default function DeveloperProfilePage() {
               ) : null}
             </ul>
 
-            <h2>Что проверить</h2>
+            <h2>{copy.sections.check}</h2>
             <ul className="section-list compact">
               {reputation.due_diligence_questions.map((question) => (
                 <li key={question}>
@@ -186,10 +192,15 @@ export default function DeveloperProfilePage() {
               ))}
             </ul>
 
-            <h2>Источники</h2>
+            <h2>{copy.sections.sources}</h2>
             <ul className="section-list compact">
               {reputation.source_citations.map((citation) => (
-                <SourceItem citation={citation} key={`${citation.source_name}-${citation.checked_at}`} />
+                <SourceItem
+                  citation={citation}
+                  copy={copy}
+                  key={`${citation.source_name}-${citation.checked_at}`}
+                  locale={locale}
+                />
               ))}
             </ul>
           </div>
@@ -199,17 +210,25 @@ export default function DeveloperProfilePage() {
   );
 }
 
-function ProjectTable({ projects }: { projects: DeveloperProject[] }) {
+function ProjectTable({
+  copy,
+  locale,
+  projects,
+}: {
+  copy: DevelopersPageCopy;
+  locale: Locale;
+  projects: DeveloperProject[];
+}) {
   return (
     <div className="table-scroll">
       <table className="table">
         <thead>
           <tr>
-            <th>Проект</th>
-            <th>Локация</th>
-            <th>Статус</th>
-            <th>Units</th>
-            <th>Источник</th>
+            <th>{copy.table.project}</th>
+            <th>{copy.table.location}</th>
+            <th>{copy.table.status}</th>
+            <th>{copy.table.units}</th>
+            <th>{copy.table.source}</th>
           </tr>
         </thead>
         <tbody>
@@ -217,22 +236,26 @@ function ProjectTable({ projects }: { projects: DeveloperProject[] }) {
             <tr key={project.id}>
               <td>{project.name}</td>
               <td>
-                {project.district ?? "-"}, {project.city}
+                {project.district ?? copy.values.noValue}, {project.city}
               </td>
               <td>
                 <span className={`status-pill ${projectTone(project)}`}>
-                  {projectStatus(project)}
+                  {copy.labels.projectStatus[project.status] ?? project.status}
                   {project.completed_year ? ` · ${project.completed_year}` : ""}
                 </span>
               </td>
-              <td>{project.units_count ? numberValue(project.units_count) : "-"}</td>
+              <td>
+                {project.units_count
+                  ? numberValue(project.units_count, locale)
+                  : copy.values.noValue}
+              </td>
               <td>
                 {project.source_url ? (
                   <a href={project.source_url} target="_blank" rel="noreferrer">
-                    <ExternalLink size={16} /> source
+                    <ExternalLink size={16} /> {copy.actions.source}
                   </a>
                 ) : (
-                  "-"
+                  copy.values.noValue
                 )}
               </td>
             </tr>
@@ -243,7 +266,15 @@ function ProjectTable({ projects }: { projects: DeveloperProject[] }) {
   );
 }
 
-function SourceItem({ citation }: { citation: DeveloperSourceCitation }) {
+function SourceItem({
+  citation,
+  copy,
+  locale,
+}: {
+  citation: DeveloperSourceCitation;
+  copy: DevelopersPageCopy;
+  locale: Locale;
+}) {
   return (
     <li>
       <CalendarDays size={16} />{" "}
@@ -256,7 +287,7 @@ function SourceItem({ citation }: { citation: DeveloperSourceCitation }) {
       )}
       <br />
       <small className="muted">
-        checked {dateLabel(citation.checked_at)}
+        {copy.values.checked(dateValue(citation.checked_at, locale))}
         {citation.note ? ` · ${citation.note}` : ""}
       </small>
     </li>
@@ -270,72 +301,62 @@ function SignalIcon({ signal }: { signal: DeveloperQualitySignal }) {
   return <ShieldCheck size={16} />;
 }
 
-function signalStatusText(signal: DeveloperQualitySignal) {
+function signalStatusText(signal: DeveloperQualitySignal, copy: DevelopersPageCopy) {
   const parts: string[] = [];
   if (signal.moderation_status !== "active") {
-    parts.push(signal.moderation_status);
+    parts.push(copy.labels.moderationStatus[signal.moderation_status] ?? signal.moderation_status);
   }
   if (signal.dispute_status !== "none") {
-    parts.push(`dispute ${signal.dispute_status}`);
+    parts.push(copy.values.dispute(copy.labels.disputeStatus[signal.dispute_status] ?? signal.dispute_status));
   }
   return parts.join(", ");
 }
 
-function factorRows(reputation: DeveloperReputation) {
+function factorRows(reputation: DeveloperReputation, copy: DevelopersPageCopy) {
   return [
     {
       id: "track-record",
-      label: "Track record",
+      label: copy.factors.trackRecord.label,
       score: reputation.track_record_score,
-      detail: "Количество и свежесть сданных/активных проектов.",
+      detail: copy.factors.trackRecord.detail,
     },
     {
       id: "delivery",
-      label: "Delivery",
+      label: copy.factors.delivery.label,
       score: reputation.delivery_score,
-      detail: "Сигналы по срокам, этапам строительства и handover.",
+      detail: copy.factors.delivery.detail,
     },
     {
       id: "technical-quality",
-      label: "Technical quality",
+      label: copy.factors.technicalQuality.label,
       score: reputation.technical_quality_score,
-      detail: "Сигналы дефектов, приемок и технических проверок.",
+      detail: copy.factors.technicalQuality.detail,
     },
     {
       id: "legal",
-      label: "Legal compliance",
+      label: copy.factors.legal.label,
       score: reputation.legal_compliance_score,
-      detail: "KRS/REGON/UOKiK и договорные consumer-risk signals.",
+      detail: copy.factors.legal.detail,
     },
     {
       id: "financial",
-      label: "Financial stability",
+      label: copy.factors.financial.label,
       score: reputation.financial_stability_score,
-      detail: "Базовая устойчивость компании и прозрачность структуры.",
+      detail: copy.factors.financial.detail,
     },
     {
       id: "transparency",
-      label: "Transparency",
+      label: copy.factors.transparency.label,
       score: reputation.transparency_score,
-      detail: "Документы, schedule, проектные страницы и source freshness.",
+      detail: copy.factors.transparency.detail,
     },
     {
       id: "local",
-      label: "Local experience",
+      label: copy.factors.local.label,
       score: reputation.local_experience_score,
-      detail: "Опыт в том же городе/районе и сопоставимых проектах.",
+      detail: copy.factors.local.detail,
     },
   ];
-}
-
-function reputationLabel(reputation: DeveloperReputation) {
-  return {
-    strong: "сильный профиль",
-    good: "хороший профиль",
-    mixed: "смешанный профиль",
-    limited_data: "мало данных",
-    risk_review: "нужна проверка",
-  }[reputation.label];
 }
 
 function reputationTone(reputation: DeveloperReputation) {
@@ -344,28 +365,11 @@ function reputationTone(reputation: DeveloperReputation) {
   return "error";
 }
 
-function projectStatus(project: DeveloperProject) {
-  return {
-    active: "активный",
-    completed: "сдан",
-    planned: "планируется",
-    unknown: "статус неизвестен",
-  }[project.status];
-}
-
 function projectTone(project: DeveloperProject) {
   if (project.status === "completed") return "healthy";
   if (project.status === "active") return "info";
   if (project.status === "planned") return "warning";
   return "";
-}
-
-function dateLabel(value: string) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-  }).format(new Date(value));
 }
 
 function host(value: string) {
