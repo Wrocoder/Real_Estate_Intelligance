@@ -209,6 +209,8 @@ DueDiligenceCheckStatus = Literal[
     "not_applicable",
 ]
 PreViewingRecommendation = Literal["view", "skip", "verify_first"]
+PostViewingIssueLevel = Literal["unknown", "good", "minor_issue", "major_issue"]
+PostViewingRenovationNeed = Literal["unknown", "none", "refresh", "light", "full"]
 ScoringBacktestSeverity = Literal["healthy", "watch", "drift", "critical"]
 ScoringBacktestSegmentType = Literal["area", "period"]
 GrowthFactorCode = Literal[
@@ -1545,6 +1547,30 @@ class BuyerDecisionPackage(BaseModel):
     pre_viewing: ViewingAssistant
     post_viewing_checklist: list[str] = Field(default_factory=list)
     watch_triggers: list[str] = Field(default_factory=list)
+    disclaimer: str
+
+
+class PostViewingChecklistAnswers(BaseModel):
+    condition: PostViewingIssueLevel = "unknown"
+    windows: PostViewingIssueLevel = "unknown"
+    noise: PostViewingIssueLevel = "unknown"
+    smell: PostViewingIssueLevel = "unknown"
+    humidity: PostViewingIssueLevel = "unknown"
+    staircase: PostViewingIssueLevel = "unknown"
+    orientation: PostViewingIssueLevel = "unknown"
+    kitchen_bathroom: PostViewingIssueLevel = "unknown"
+    renovation_need: PostViewingRenovationNeed = "unknown"
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class PostViewingVerdictRecalculation(BaseModel):
+    original_decision: BuyerDecisionPackage
+    updated_decision: BuyerDecisionPackage
+    checklist_answers: PostViewingChecklistAnswers
+    risk_adjustment_points: int = Field(ge=-20, le=100)
+    offer_adjustment_pln: int = Field(ge=0)
+    applied_findings: list[str] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
     disclaimer: str
 
 

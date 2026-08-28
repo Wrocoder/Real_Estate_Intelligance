@@ -107,7 +107,7 @@ P2 buyer assistant tasks:
   buyer decision panel and report.
 - [x] Добавить pre-viewing assistant: should view/skip, positives, risks,
   seller questions, photos, documents, building and surroundings checks.
-- [ ] Добавить post-viewing verdict recalculation after checklist answers.
+- [x] Добавить post-viewing verdict recalculation after checklist answers.
 - [x] Добавить post-viewing checklist fields for condition, windows, noise, smell,
   humidity, staircase, orientation, kitchen/bathroom and renovation need.
 - [x] Усилить future infrastructure impact narrative: status, expected year,
@@ -714,6 +714,7 @@ P3 trust and monetization tasks:
 - [x] Commit 114: Listing detail page i18n.
 - [x] Commit 115: Compare page i18n.
 - [x] Commit 116: Expert review brief and plan progress audit.
+- [x] Commit 117: Post-viewing verdict recalculation.
 
 ## Current Sprint
 

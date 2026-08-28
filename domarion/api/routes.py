@@ -212,6 +212,8 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentImportResponse,
     PlannedInvestmentUpdate,
+    PostViewingChecklistAnswers,
+    PostViewingVerdictRecalculation,
     PriceHistoryRebuildResult,
     PropertyDeduplicationDecision,
     PropertyDeduplicationMatch,
@@ -289,6 +291,7 @@ from domarion.services.area_ai_summary import (
 from domarion.services.area_comparison import build_area_comparison
 from domarion.services.area_snapshots import run_area_market_snapshot_job
 from domarion.services.backtesting import build_scoring_backtest_report, run_scoring_backtest
+from domarion.services.buyer_decision import recalculate_post_viewing_verdict
 from domarion.services.crm import (
     attach_crm_shortlist_items,
     build_crm_share_preview,
@@ -1774,6 +1777,23 @@ def get_user_submitted_listing_draft(
     if draft is None:
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
     return draft
+
+
+@router.post(
+    "/user-submitted-listings/drafts/{draft_id}/post-viewing-verdict",
+    response_model=PostViewingVerdictRecalculation,
+)
+def recalculate_user_submitted_listing_post_viewing_verdict(
+    draft_id: str,
+    payload: PostViewingChecklistAnswers,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> PostViewingVerdictRecalculation:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    user_analysis = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
+    return recalculate_post_viewing_verdict(user_analysis.analysis, payload)
 
 
 @router.delete("/user-submitted-listings/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -4090,6 +4110,22 @@ def analyze_listing(listing_id: str, repository: RepositoryDep) -> ListingAnalys
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     return build_listing_analysis(repository, listing)
+
+
+@router.post(
+    "/listings/{listing_id}/post-viewing-verdict",
+    response_model=PostViewingVerdictRecalculation,
+)
+def recalculate_listing_post_viewing_verdict(
+    listing_id: str,
+    payload: PostViewingChecklistAnswers,
+    repository: RepositoryDep,
+) -> PostViewingVerdictRecalculation:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    analysis = build_listing_analysis(repository, listing)
+    return recalculate_post_viewing_verdict(analysis, payload)
 
 
 @router.get("/listings/{listing_id}/future-impact", response_model=ListingFutureImpact)

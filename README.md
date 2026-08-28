@@ -1518,7 +1518,8 @@ Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist
   decision-first панели, а score cards остаются supporting evidence.
 - Добавлены `Property Due Diligence`, `Negotiation Assistant`,
   `What we know / estimate / could not verify`, source confidence,
-  check completeness, Total Acquisition Cost and pre/post-viewing checklist v1.
+  check completeness, Total Acquisition Cost, pre/post-viewing checklist v1
+  and post-viewing verdict recalculation.
 - `/check` принимает выбранную цель покупки (`self`, `family`, `rental`,
   `investment`, `unsure`) и показывает personalized `For you: X/10`.
 - Compare учитывает renovation, furniture, transaction costs, total move-in cost,
@@ -1549,18 +1550,17 @@ git push -u origin feature/mvp-api-foundation
    незнакомым людям по 49-149 PLN или 3 paid realtor bundle pilots.
 2. Реализовать document metadata/upload first slice по
    `docs/document_upload_due_diligence_plan.md` только после validation/legal gate.
-3. Реализовать пересчёт verdict после post-viewing checklist.
-4. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
+3. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
    comparable, DOM thresholds, planned investment status, developer signal and
    negotiation opportunity.
-5. Провести source-specific legal review и зафиксировать approved/blocked matrix
+4. Провести source-specific legal review и зафиксировать approved/blocked matrix
    перед любым scheduled ingestion за пределами partner/open-data/manual flows.
-6. Подключить production auth вместо MVP header/demo identity.
-7. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
+5. Подключить production auth вместо MVP header/demo identity.
+6. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
    пройти restore drill перед paid traffic.
-8. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
-9. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
+7. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
+8. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
    user-submitted one-off анализа.
-10. Заморозить expansion/enterprise/news/investor tooling до выполнения
+9. Заморозить expansion/enterprise/news/investor tooling до выполнения
    validation gate; расширять partner/open-data coverage на новые города только
    по checklist из `docs/poland_city_expansion_checklist.md`.

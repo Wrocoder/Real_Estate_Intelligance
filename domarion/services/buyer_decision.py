@@ -9,10 +9,14 @@ from domarion.schemas import (
     DeveloperReputation,
     DueDiligenceChecklistItem,
     Listing,
+    ListingAnalysis,
     ListingFutureImpact,
     ListingRentalEstimate,
     ListingRiskProfile,
     MortgageCalculationRequest,
+    PostViewingChecklistAnswers,
+    PostViewingIssueLevel,
+    PostViewingVerdictRecalculation,
     PropertyDueDiligence,
     PropertyScores,
     PurchaseIntent,
@@ -26,6 +30,33 @@ BUYER_DECISION_DISCLAIMER = (
     "financial, tax, valuation or investment advice and do not confirm that a property "
     "is legally or technically clean."
 )
+
+POST_VIEWING_FIELD_LABELS = {
+    "condition": "overall condition",
+    "windows": "windows and acoustic/thermal seal",
+    "noise": "noise inside the apartment",
+    "smell": "smell and ventilation",
+    "humidity": "humidity or moisture",
+    "staircase": "staircase and common areas",
+    "orientation": "orientation and daylight",
+    "kitchen_bathroom": "kitchen and bathroom condition",
+}
+POST_VIEWING_MAJOR_ADJUSTMENTS = {
+    "condition": (14, 50_000),
+    "windows": (8, 25_000),
+    "noise": (14, 40_000),
+    "smell": (10, 25_000),
+    "humidity": (18, 70_000),
+    "staircase": (9, 25_000),
+    "orientation": (5, 15_000),
+    "kitchen_bathroom": (10, 35_000),
+}
+POST_VIEWING_RENOVATION_ADJUSTMENTS = {
+    "none": (-2, 0, "ready_to_move_in", "No material renovation need confirmed."),
+    "refresh": (3, 20_000, "needs_refresh", "Refresh budget should be priced in."),
+    "light": (7, 60_000, "light_renovation", "Light renovation scope should be priced in."),
+    "full": (16, 160_000, "full_renovation", "Full renovation scope should be priced in."),
+}
 
 
 def build_buyer_decision(
@@ -110,6 +141,136 @@ def build_buyer_decision(
             developer_reputation=developer_reputation,
         ),
         disclaimer=BUYER_DECISION_DISCLAIMER,
+    )
+
+
+def recalculate_post_viewing_verdict(
+    analysis: ListingAnalysis,
+    answers: PostViewingChecklistAnswers,
+) -> PostViewingVerdictRecalculation:
+    original_decision = analysis.buyer_decision or build_buyer_decision(
+        listing=analysis.listing,
+        area_statistics=analysis.area_statistics,
+        scores=analysis.scores,
+        comparables=analysis.comparables,
+        negotiation_arguments=analysis.negotiation_arguments,
+        data_quality_notes=analysis.data_quality_notes,
+        developer_reputation=analysis.developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+        risk_profile=analysis.risk_profile,
+        rental_estimate=analysis.rental_estimate,
+    )
+    risk_adjustment, offer_adjustment, findings, issue_findings, actions = (
+        _post_viewing_adjustments(analysis.listing, answers)
+    )
+    adjusted_listing = analysis.listing.model_copy(
+        update=_post_viewing_listing_updates(answers)
+    )
+    adjusted_scores = _post_viewing_scores(
+        analysis.scores,
+        adjusted_listing,
+        risk_adjustment=risk_adjustment,
+        offer_adjustment_pln=offer_adjustment,
+        issue_findings=issue_findings,
+    )
+    due_diligence = _due_diligence(
+        listing=adjusted_listing,
+        scores=adjusted_scores,
+        developer_reputation=analysis.developer_reputation,
+        risk_profile=analysis.risk_profile,
+    )
+    due_diligence = _post_viewing_due_diligence(
+        due_diligence,
+        answers,
+        risk_adjustment=risk_adjustment,
+        issue_findings=issue_findings,
+    )
+    total_acquisition = _total_acquisition_cost(adjusted_listing)
+    intent_fit = _intent_fit(
+        listing=adjusted_listing,
+        scores=adjusted_scores,
+        rental_estimate=analysis.rental_estimate,
+        total_acquisition=total_acquisition,
+    )
+    selected_intent = original_decision.selected_intent
+    selected_intent_fit = _selected_intent_fit(intent_fit, selected_intent)
+    verdict = _verdict(
+        listing=adjusted_listing,
+        area_statistics=analysis.area_statistics,
+        scores=adjusted_scores,
+        comparables=analysis.comparables,
+        risk_profile=analysis.risk_profile,
+        due_diligence=due_diligence,
+        future_area_impact=analysis.future_area_impact,
+        total_acquisition=total_acquisition,
+        selected_intent_fit=selected_intent_fit,
+    )
+    negotiation = _negotiation_assistant(
+        listing=adjusted_listing,
+        scores=adjusted_scores,
+        verdict=verdict,
+        area_statistics=analysis.area_statistics,
+        comparables=analysis.comparables,
+        negotiation_arguments=[
+            *analysis.negotiation_arguments,
+            *(
+                [f"Post-viewing discount reserve: {_money(offer_adjustment)}."]
+                if offer_adjustment
+                else []
+            ),
+        ],
+    )
+    knowledge = _knowledge_matrix(
+        listing=adjusted_listing,
+        area_statistics=analysis.area_statistics,
+        scores=adjusted_scores,
+        comparables=analysis.comparables,
+        due_diligence=due_diligence,
+        future_area_impact=analysis.future_area_impact,
+        rental_estimate=analysis.rental_estimate,
+        data_quality_notes=[
+            *analysis.data_quality_notes,
+            "Post-viewing checklist answers were applied to the buyer verdict.",
+        ],
+    )
+    pre_viewing = _pre_viewing_assistant(
+        verdict=verdict,
+        due_diligence=due_diligence,
+        listing=adjusted_listing,
+    )
+    updated_decision = BuyerDecisionPackage(
+        verdict=verdict,
+        negotiation=negotiation,
+        due_diligence=due_diligence,
+        knowledge=knowledge,
+        total_acquisition=total_acquisition,
+        selected_intent=selected_intent,
+        selected_intent_fit=selected_intent_fit,
+        intent_fit=intent_fit,
+        pre_viewing=pre_viewing,
+        post_viewing_checklist=_post_viewing_checklist(adjusted_listing),
+        watch_triggers=_watch_triggers(
+            listing=adjusted_listing,
+            scores=adjusted_scores,
+            comparables=analysis.comparables,
+            verdict=verdict,
+            future_area_impact=analysis.future_area_impact,
+            developer_reputation=analysis.developer_reputation,
+        ),
+        disclaimer=BUYER_DECISION_DISCLAIMER,
+    )
+    return PostViewingVerdictRecalculation(
+        original_decision=original_decision,
+        updated_decision=updated_decision,
+        checklist_answers=answers,
+        risk_adjustment_points=risk_adjustment,
+        offer_adjustment_pln=offer_adjustment,
+        applied_findings=findings,
+        recommended_actions=actions,
+        disclaimer=(
+            "Post-viewing recalculation is a screening adjustment from buyer-entered "
+            "observations. It is not a technical inspection, valuation or legal opinion."
+        ),
     )
 
 
@@ -1024,6 +1185,243 @@ def _post_viewing_checklist(listing: Listing) -> list[str]:
     if listing.market_type == "primary":
         checks.append("handover standard and developer defect-removal process")
     return checks
+
+
+def _post_viewing_adjustments(
+    listing: Listing,
+    answers: PostViewingChecklistAnswers,
+) -> tuple[int, int, list[str], list[str], list[str]]:
+    risk_adjustment = 0
+    offer_adjustment = 0
+    findings: list[str] = []
+    issue_findings: list[str] = []
+    actions: list[str] = []
+
+    for field, label in POST_VIEWING_FIELD_LABELS.items():
+        level: PostViewingIssueLevel = getattr(answers, field)
+        if level == "unknown":
+            continue
+
+        risk_delta, offer_delta = _post_viewing_issue_delta(field, level)
+        risk_adjustment += risk_delta
+        offer_adjustment += offer_delta
+        if level == "good":
+            findings.append(f"{label}: checked as good at viewing.")
+            continue
+
+        issue_label = "major issue" if level == "major_issue" else "minor issue"
+        finding = f"{label}: {issue_label} observed at viewing."
+        findings.append(finding)
+        issue_findings.append(finding)
+        if level == "major_issue":
+            actions.append(
+                f"Pause before zadatek until {label} is inspected or fully priced in."
+            )
+        else:
+            actions.append(f"Keep a negotiation reserve for {label}.")
+
+    if answers.renovation_need != "unknown":
+        risk_delta, offer_delta, _, finding = POST_VIEWING_RENOVATION_ADJUSTMENTS[
+            answers.renovation_need
+        ]
+        risk_adjustment += risk_delta
+        offer_adjustment += offer_delta
+        findings.append(f"renovation need: {finding}")
+        if answers.renovation_need in {"light", "full"}:
+            issue_findings.append(f"renovation need: {finding}")
+            actions.append("Get a written renovation estimate before raising the offer.")
+
+    if answers.notes:
+        findings.append(f"viewing note: {answers.notes[:220]}")
+
+    if not findings:
+        findings.append("No post-viewing answers supplied; verdict unchanged.")
+    if not actions:
+        actions.append(
+            "Use the checked viewing answers as support, but still verify documents before deposit."
+        )
+    if issue_findings:
+        actions.append(
+            "Compare the updated ceiling with seller expectations before making "
+            "or increasing an offer."
+        )
+
+    capped_offer_adjustment = min(
+        _round_price(listing.price * 0.25),
+        _round_price(offer_adjustment),
+    )
+    return (
+        max(-20, min(100, risk_adjustment)),
+        capped_offer_adjustment,
+        _deduplicate(findings),
+        _deduplicate(issue_findings),
+        _deduplicate(actions),
+    )
+
+
+def _post_viewing_issue_delta(field: str, level: PostViewingIssueLevel) -> tuple[int, int]:
+    if level == "good":
+        return (-1, 0)
+
+    major_risk, major_offer = POST_VIEWING_MAJOR_ADJUSTMENTS[field]
+    if level == "minor_issue":
+        return (max(2, round(major_risk * 0.35)), _round_price(major_offer * 0.25))
+    return (major_risk, major_offer)
+
+
+def _post_viewing_listing_updates(answers: PostViewingChecklistAnswers) -> dict[str, object]:
+    if answers.renovation_need == "unknown":
+        return {}
+    _, _, renovation_state, _ = POST_VIEWING_RENOVATION_ADJUSTMENTS[
+        answers.renovation_need
+    ]
+    return {"renovation_state": renovation_state}
+
+
+def _post_viewing_scores(
+    scores: PropertyScores,
+    listing: Listing,
+    *,
+    risk_adjustment: int,
+    offer_adjustment_pln: int,
+    issue_findings: list[str],
+) -> PropertyScores:
+    fair_price_low = max(1_000, _round_price(scores.fair_price_low - offer_adjustment_pln))
+    fair_price_mid = max(fair_price_low, _round_price(scores.fair_price_mid - offer_adjustment_pln))
+    fair_price_high = max(
+        fair_price_mid,
+        _round_price(scores.fair_price_high - offer_adjustment_pln),
+    )
+    score_payload = scores.model_dump()
+    score_payload.update(
+        {
+            "risk_score": _clamp(scores.risk_score + risk_adjustment),
+            "negotiation_score": _clamp(
+                scores.negotiation_score + min(max(risk_adjustment, 0) * 0.35, 18)
+            ),
+            "fair_price_low": fair_price_low,
+            "fair_price_mid": fair_price_mid,
+            "fair_price_high": fair_price_high,
+            "price_delta_to_fair_mid_pct": round(
+                ((listing.price - fair_price_mid) / fair_price_mid) * 100,
+                1,
+            ),
+            "warnings": _deduplicate([*scores.warnings, *issue_findings]),
+            "breakdown": scores.breakdown.model_copy(
+                update={
+                    "risk_penalty": _clamp(
+                        scores.breakdown.risk_penalty + max(risk_adjustment, 0)
+                    )
+                }
+            ),
+        }
+    )
+    for label_field in (
+        "decision_label",
+        "price_label",
+        "risk_label",
+        "negotiation_label",
+        "liquidity_label",
+        "rental_potential_label",
+    ):
+        score_payload.pop(label_field, None)
+    return PropertyScores.model_validate(score_payload)
+
+
+def _post_viewing_due_diligence(
+    due_diligence: PropertyDueDiligence,
+    answers: PostViewingChecklistAnswers,
+    *,
+    risk_adjustment: int,
+    issue_findings: list[str],
+) -> PropertyDueDiligence:
+    answered_count = _post_viewing_answered_count(answers)
+    unknowns = _remove_answered_post_viewing_unknowns(due_diligence.unknowns, answers)
+    if risk_adjustment >= 0:
+        score_delta = min(answered_count * 2, 12) - min(risk_adjustment * 0.5, 45)
+    else:
+        score_delta = min(answered_count * 2 + abs(risk_adjustment), 14)
+    score = _clamp(due_diligence.score + score_delta)
+    checklist = _post_viewing_checklist_statuses(due_diligence.checklist, answers)
+    return due_diligence.model_copy(
+        update={
+            "score": score,
+            "label": _due_diligence_label(score),
+            "red_flags": _deduplicate([*due_diligence.red_flags, *issue_findings])[:10],
+            "unknowns": unknowns,
+            "checklist": checklist,
+        }
+    )
+
+
+def _post_viewing_answered_count(answers: PostViewingChecklistAnswers) -> int:
+    values = [
+        *(getattr(answers, field) for field in POST_VIEWING_FIELD_LABELS),
+        answers.renovation_need,
+    ]
+    return sum(1 for value in values if value != "unknown")
+
+
+def _remove_answered_post_viewing_unknowns(
+    unknowns: list[str],
+    answers: PostViewingChecklistAnswers,
+) -> list[str]:
+    remove_tokens: set[str] = set()
+    if answers.noise != "unknown":
+        remove_tokens.add("noise inside")
+    if any(
+        getattr(answers, field) != "unknown"
+        for field in ("condition", "windows", "smell", "humidity", "kitchen_bathroom")
+    ):
+        remove_tokens.add("condition of pipes")
+    if answers.renovation_need != "unknown":
+        remove_tokens.add("planned building repairs")
+    if not remove_tokens:
+        return unknowns
+
+    return [
+        unknown
+        for unknown in unknowns
+        if not any(token in unknown.lower() for token in remove_tokens)
+    ]
+
+
+def _post_viewing_checklist_statuses(
+    checklist: list[DueDiligenceChecklistItem],
+    answers: PostViewingChecklistAnswers,
+) -> list[DueDiligenceChecklistItem]:
+    technical_answered = any(
+        getattr(answers, field) != "unknown"
+        for field in ("condition", "windows", "smell", "humidity", "kitchen_bathroom")
+    )
+    updated: list[DueDiligenceChecklistItem] = []
+    for item in checklist:
+        if item.code == "installations" and technical_answered:
+            status = (
+                "verify_required"
+                if any(
+                    getattr(answers, field) in {"minor_issue", "major_issue"}
+                    for field in (
+                        "condition",
+                        "windows",
+                        "smell",
+                        "humidity",
+                        "kitchen_bathroom",
+                    )
+                )
+                else "known"
+            )
+            updated.append(
+                item.model_copy(
+                    update={
+                        "status": status,
+                        "rationale": "Updated from buyer-entered post-viewing observations.",
+                    }
+                )
+            )
+            continue
+        updated.append(item)
+    return updated
 
 
 def _building_checks(listing: Listing) -> list[str]:

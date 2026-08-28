@@ -122,6 +122,52 @@ def test_user_submitted_listing_accepts_purchase_intent_for_personalized_verdict
     )
 
 
+def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
+    headers = {"X-Domarion-User-Id": "post-viewing-owner"}
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "purchase_intent": "family",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    response = client.post(
+        (
+            "/api/v1/user-submitted-listings/drafts/"
+            f"{created['draft_id']}/post-viewing-verdict"
+        ),
+        headers=headers,
+        json={
+            "condition": "minor_issue",
+            "noise": "major_issue",
+            "humidity": "major_issue",
+            "renovation_need": "light",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["updated_decision"]["selected_intent"] == "family"
+    assert payload["risk_adjustment_points"] > 0
+    assert payload["offer_adjustment_pln"] > 0
+    assert payload["updated_decision"]["verdict"]["score"] < payload["original_decision"][
+        "verdict"
+    ]["score"]
+    assert any("noise" in item for item in payload["applied_findings"])
+
+
 def test_user_submitted_listing_custom_condition_requires_budget() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/analyze",

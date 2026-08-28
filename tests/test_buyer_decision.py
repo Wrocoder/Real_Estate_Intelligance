@@ -1,9 +1,12 @@
 import pytest
 
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
-from domarion.schemas import PurchaseIntent
-from domarion.services.buyer_decision import build_buyer_decision
-from domarion.services.scoring import calculate_scores
+from domarion.schemas import PostViewingChecklistAnswers, PurchaseIntent
+from domarion.services.buyer_decision import (
+    build_buyer_decision,
+    recalculate_post_viewing_verdict,
+)
+from domarion.services.scoring import build_listing_analysis, calculate_scores
 
 
 @pytest.mark.parametrize(
@@ -122,6 +125,38 @@ def test_pre_viewing_and_watch_outputs_support_buyer_workflow() -> None:
     assert decision.post_viewing_checklist
     assert any("price drops" in trigger for trigger in decision.watch_triggers)
     assert any("relisted" in argument for argument in decision.negotiation.arguments)
+
+
+def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
+    repository = InMemoryRealEstateRepository()
+    listing = repository.get_listing("wr-001")
+    assert listing is not None
+    analysis = build_listing_analysis(repository, listing)
+    original_decision = analysis.buyer_decision
+    assert original_decision is not None
+
+    result = recalculate_post_viewing_verdict(
+        analysis,
+        PostViewingChecklistAnswers(
+            humidity="major_issue",
+            noise="major_issue",
+            kitchen_bathroom="minor_issue",
+            renovation_need="full",
+            notes="Visible stains under the window and strong traffic noise.",
+        ),
+    )
+
+    assert result.original_decision.verdict.status == original_decision.verdict.status
+    assert result.updated_decision.verdict.score < result.original_decision.verdict.score
+    assert (
+        result.updated_decision.verdict.max_reasonable_offer_pln
+        < result.original_decision.verdict.max_reasonable_offer_pln
+    )
+    assert result.updated_decision.verdict.status in {"verify_first", "avoid"}
+    assert result.risk_adjustment_points > 0
+    assert result.offer_adjustment_pln > 0
+    assert any("humidity" in item for item in result.applied_findings)
+    assert any("written renovation estimate" in item for item in result.recommended_actions)
 
 
 def _build_decision(

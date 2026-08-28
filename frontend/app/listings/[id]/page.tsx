@@ -18,6 +18,7 @@ import {
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { LineChart } from "@/components/Charts";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
+import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -30,6 +31,8 @@ import {
   type Listing,
   type ListingAnalysis,
   type NewsArticleListItem,
+  type PostViewingChecklistAnswers,
+  type PostViewingVerdictRecalculation,
   type ReportAudience,
 } from "@/lib/api";
 import { dateValue, money, percent } from "@/lib/format";
@@ -46,6 +49,8 @@ export default function ListingDetailPage() {
   const attributeLabels = LISTING_CARD_COPY[locale].attributes;
   const [analysis, setAnalysis] = useState<ListingAnalysis | null>(null);
   const [areaNews, setAreaNews] = useState<NewsArticleListItem[]>([]);
+  const [postViewingResult, setPostViewingResult] =
+    useState<PostViewingVerdictRecalculation | null>(null);
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
   const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
@@ -63,6 +68,7 @@ export default function ListingDetailPage() {
     try {
       const data = await api.getAnalysis(listingId);
       setAnalysis(data);
+      setPostViewingResult(null);
       setStatus(copy.statuses.analyticsUpdated);
       try {
         const news = await api.listNews({ area_id: data.listing.area_id, limit: 3 });
@@ -143,11 +149,18 @@ export default function ListingDetailPage() {
     }
   }
 
+  async function recalculatePostViewing(answers: PostViewingChecklistAnswers) {
+    const payload = await api.recalculateListingPostViewingVerdict(listingId, answers);
+    setPostViewingResult(payload);
+    return payload;
+  }
+
   if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
   if (!analysis) return <LoadingBlock label={copy.empty.loadingAnalytics} />;
 
   const { listing, scores, area_statistics: areaStats } = analysis;
   const verdictTone = decisionTone(scores);
+  const displayedDecision = postViewingResult?.updated_decision ?? analysis.buyer_decision;
   const developer = analysis.developer_reputation;
   const priceHistoryPoints = analysis.price_history.map((point) => ({
     label: point.observed_at,
@@ -181,8 +194,18 @@ export default function ListingDetailPage() {
         </div>
       </header>
 
+      {displayedDecision ? (
+        <BuyerDecisionPanel decision={displayedDecision} locale={locale} />
+      ) : null}
+
       {analysis.buyer_decision ? (
-        <BuyerDecisionPanel decision={analysis.buyer_decision} locale={locale} />
+        <div style={{ marginTop: 16 }}>
+          <PostViewingVerdictRecalculator
+            locale={locale}
+            onRecalculate={recalculatePostViewing}
+            result={postViewingResult}
+          />
+        </div>
       ) : null}
 
       <section className="metric-grid">

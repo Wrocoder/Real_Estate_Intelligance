@@ -154,7 +154,7 @@ Scores остаются доказательствами, но не являют
 - [x] Add post-viewing checklist: repair condition, windows, noise, smell,
   humidity, staircase, building state, orientation, kitchen/bathroom condition
   and renovation need.
-- [ ] Recompute verdict after post-viewing answers.
+- [x] Recompute verdict after post-viewing answers.
 
 ### P2 - Future Infrastructure Impact
 

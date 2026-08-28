@@ -1052,6 +1052,8 @@ export type DueDiligenceCheckStatus =
   | "unknown"
   | "not_applicable";
 export type PreViewingRecommendation = "view" | "skip" | "verify_first";
+export type PostViewingIssueLevel = "unknown" | "good" | "minor_issue" | "major_issue";
+export type PostViewingRenovationNeed = "unknown" | "none" | "refresh" | "light" | "full";
 
 export type BuyerDecisionVerdict = {
   status: BuyerVerdictStatus;
@@ -1177,6 +1179,32 @@ export type BuyerDecisionPackage = {
   pre_viewing: ViewingAssistant;
   post_viewing_checklist: string[];
   watch_triggers: string[];
+  disclaimer: string;
+};
+
+export type PostViewingChecklistAnswers = {
+  condition?: PostViewingIssueLevel;
+  windows?: PostViewingIssueLevel;
+  noise?: PostViewingIssueLevel;
+  smell?: PostViewingIssueLevel;
+  humidity?: PostViewingIssueLevel;
+  staircase?: PostViewingIssueLevel;
+  orientation?: PostViewingIssueLevel;
+  kitchen_bathroom?: PostViewingIssueLevel;
+  renovation_need?: PostViewingRenovationNeed;
+  notes?: string | null;
+};
+
+export type PostViewingVerdictRecalculation = {
+  original_decision: BuyerDecisionPackage;
+  updated_decision: BuyerDecisionPackage;
+  checklist_answers: Required<Omit<PostViewingChecklistAnswers, "notes">> & {
+    notes: string | null;
+  };
+  risk_adjustment_points: number;
+  offer_adjustment_pln: number;
+  applied_findings: string[];
+  recommended_actions: string[];
   disclaimer: string;
 };
 
@@ -3919,6 +3947,17 @@ export const api = {
     request<MapFeatureCollection>(`/api/v1/map/features${toQueryString(params)}`),
   getListing: (id: string) => request<Listing>(`/api/v1/listings/${id}`),
   getAnalysis: (id: string) => request<ListingAnalysis>(`/api/v1/listings/${id}/analysis`),
+  recalculateListingPostViewingVerdict: (
+    id: string,
+    payload: PostViewingChecklistAnswers,
+  ) =>
+    request<PostViewingVerdictRecalculation>(
+      `/api/v1/listings/${encodeURIComponent(id)}/post-viewing-verdict`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
   getListingFutureImpact: (id: string) =>
     request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
   getListingGrowthAnalysis: (id: string) =>
@@ -3961,6 +4000,19 @@ export const api = {
   ) =>
     request<AIListingAnswer>(
       `/api/v1/ai/user-submitted-listing-drafts/${encodeURIComponent(draftId)}/answer`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  recalculateUserSubmittedDraftPostViewingVerdict: (
+    draftId: string,
+    payload: PostViewingChecklistAnswers,
+  ) =>
+    request<PostViewingVerdictRecalculation>(
+      `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(
+        draftId,
+      )}/post-viewing-verdict`,
       {
         method: "POST",
         body: JSON.stringify(payload),

@@ -74,6 +74,14 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "post",
         ): "UserSubmittedListingReport",
         (
+            "/api/v1/listings/{listing_id}/post-viewing-verdict",
+            "post",
+        ): "PostViewingVerdictRecalculation",
+        (
+            "/api/v1/user-submitted-listings/drafts/{draft_id}/post-viewing-verdict",
+            "post",
+        ): "PostViewingVerdictRecalculation",
+        (
             "/api/v1/user-submitted-listings/drafts/{draft_id}",
             "get",
         ): "UserSubmittedListingDraft",
@@ -388,6 +396,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "PartnerReferralUpdate",
         "PartnerCsvImportResponse",
         "PlannedInvestmentImportResponse",
+        "PostViewingChecklistAnswers",
+        "PostViewingVerdictRecalculation",
         "PriceHistoryRebuildResult",
         "RealtorClientShortlist",
         "RealtorClientShortlistItem",

@@ -17,6 +17,7 @@ import {
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
+import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
@@ -26,6 +27,8 @@ import {
   type AIQuestionDescriptor,
   type DeveloperReputation,
   type GeneratedReport,
+  type PostViewingChecklistAnswers,
+  type PostViewingVerdictRecalculation,
   type PurchaseIntent,
   type RenovationCondition,
   type ReportAudience,
@@ -110,6 +113,8 @@ export default function CheckListingPage() {
     useState<SourceUrlImportResult | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
+  const [postViewingResult, setPostViewingResult] =
+    useState<PostViewingVerdictRecalculation | null>(null);
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
   const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
@@ -168,6 +173,7 @@ export default function CheckListingPage() {
       setResult(payload);
       setReportResult(null);
       setSavedReport(null);
+      setPostViewingResult(null);
       resetAIAnswer(payload.draft_id ? copy.statuses.aiReady : copy.statuses.aiNeedsDraft);
       setStatus(copy.statuses.checkReady);
       setReportStatus(copy.statuses.reportNotCreated);
@@ -241,6 +247,7 @@ export default function CheckListingPage() {
       setResult(payload.analysis);
       setReportResult(payload);
       setSavedReport(null);
+      setPostViewingResult(null);
       resetAIAnswer(payload.analysis.draft_id ? copy.statuses.aiReady : copy.statuses.aiNeedsDraft);
       setStatus(copy.statuses.checkReady);
       setReportStatus(copy.statuses.reportReady);
@@ -298,11 +305,24 @@ export default function CheckListingPage() {
     }
   }
 
+  async function recalculatePostViewing(answers: PostViewingChecklistAnswers) {
+    if (!result?.draft_id) {
+      throw new Error(copy.statuses.aiNeedsDraft);
+    }
+    const payload = await api.recalculateUserSubmittedDraftPostViewingVerdict(
+      result.draft_id,
+      answers,
+    );
+    setPostViewingResult(payload);
+    return payload;
+  }
+
   function updateField<K extends keyof CheckFormState>(key: K, value: CheckFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
   const analysis = result?.analysis ?? null;
+  const displayedDecision = postViewingResult?.updated_decision ?? analysis?.buyer_decision ?? null;
   const verdictTone = analysis ? decisionTone(analysis.scores) : "info";
 
   return (
@@ -337,8 +357,19 @@ export default function CheckListingPage() {
 
       {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
 
+      {displayedDecision ? (
+        <BuyerDecisionPanel decision={displayedDecision} locale={locale} />
+      ) : null}
+
       {analysis?.buyer_decision ? (
-        <BuyerDecisionPanel decision={analysis.buyer_decision} locale={locale} />
+        <div style={{ marginTop: 16 }}>
+          <PostViewingVerdictRecalculator
+            disabled={!result?.draft_id}
+            locale={locale}
+            onRecalculate={recalculatePostViewing}
+            result={postViewingResult}
+          />
+        </div>
       ) : null}
 
       <section className="panel">

@@ -558,6 +558,29 @@ def test_listing_future_impact_returns_radius_buckets() -> None:
     assert "guarantee" in payload["methodology_note"]
 
 
+def test_listing_post_viewing_verdict_recalculation() -> None:
+    response = client.post(
+        "/api/v1/listings/wr-001/post-viewing-verdict",
+        json={
+            "noise": "major_issue",
+            "humidity": "major_issue",
+            "renovation_need": "full",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["risk_adjustment_points"] > 0
+    assert payload["offer_adjustment_pln"] > 0
+    assert payload["updated_decision"]["verdict"]["status"] in {"verify_first", "avoid"}
+    assert (
+        payload["updated_decision"]["verdict"]["max_reasonable_offer_pln"]
+        < payload["original_decision"]["verdict"]["max_reasonable_offer_pln"]
+    )
+    assert payload["applied_findings"]
+    assert "screening adjustment" in payload["disclaimer"]
+
+
 def test_listing_growth_analysis_returns_structured_factors() -> None:
     response = client.get("/api/v1/listings/wr-001/growth-analysis")
     payload = response.json()
