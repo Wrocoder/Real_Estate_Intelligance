@@ -1515,6 +1515,8 @@ class BuyerDecisionPackage(BaseModel):
     due_diligence: PropertyDueDiligence
     knowledge: BuyerKnowledgeMatrix
     total_acquisition: TotalAcquisitionCost
+    selected_intent: PurchaseIntent = "unsure"
+    selected_intent_fit: BuyerIntentFit | None = None
     intent_fit: list[BuyerIntentFit] = Field(default_factory=list)
     pre_viewing: ViewingAssistant
     post_viewing_checklist: list[str] = Field(default_factory=list)
@@ -1888,6 +1890,7 @@ class UserSubmittedListingRequest(BaseModel):
     city: str = "Wrocław"
     district: str
     market_type: MarketType = "secondary"
+    purchase_intent: PurchaseIntent = "unsure"
     renovation_condition: RenovationCondition | None = None
     custom_renovation_budget_pln: int | None = Field(default=None, ge=0, le=2_000_000)
     price: int = Field(gt=0)

@@ -1147,6 +1147,8 @@ export type BuyerDecisionPackage = {
   due_diligence: PropertyDueDiligence;
   knowledge: BuyerKnowledgeMatrix;
   total_acquisition: TotalAcquisitionCost;
+  selected_intent: PurchaseIntent;
+  selected_intent_fit: BuyerIntentFit | null;
   intent_fit: BuyerIntentFit[];
   pre_viewing: ViewingAssistant;
   post_viewing_checklist: string[];
@@ -1192,6 +1194,7 @@ export type UserSubmittedListingRequest = {
   city?: string;
   district: string;
   market_type?: "primary" | "secondary";
+  purchase_intent?: PurchaseIntent;
   renovation_condition?: RenovationCondition | null;
   custom_renovation_budget_pln?: number | null;
   price: number;

@@ -33,6 +33,8 @@ def test_generate_and_list_saved_html_report() -> None:
     assert payload["report_metadata"]["risk_label"]
     assert payload["report_metadata"]["negotiation_label"]
     assert payload["report_metadata"]["fair_price_confidence_score"] >= 0
+    assert payload["report_metadata"]["buyer_selected_intent"] == "unsure"
+    assert 0 <= payload["report_metadata"]["buyer_selected_intent_score"] <= 100
     assert payload["report_metadata"]["report_template_code"] == "buyer_object_report_v1"
     assert payload["report_metadata"]["scoring_formula_version"] == "domarion-scoring-v1"
     assert '<section class="scores">' in payload["content"]

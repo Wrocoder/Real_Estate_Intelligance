@@ -15,6 +15,7 @@ from domarion.schemas import (
     MortgageCalculationRequest,
     PropertyDueDiligence,
     PropertyScores,
+    PurchaseIntent,
     TotalAcquisitionCost,
     ViewingAssistant,
 )
@@ -39,6 +40,7 @@ def build_buyer_decision(
     future_area_impact: ListingFutureImpact | None = None,
     risk_profile: ListingRiskProfile | None = None,
     rental_estimate: ListingRentalEstimate | None = None,
+    purchase_intent: PurchaseIntent = "unsure",
 ) -> BuyerDecisionPackage:
     total_acquisition = _total_acquisition_cost(listing)
     due_diligence = _due_diligence(
@@ -47,6 +49,13 @@ def build_buyer_decision(
         developer_reputation=developer_reputation,
         risk_profile=risk_profile,
     )
+    intent_fit = _intent_fit(
+        listing=listing,
+        scores=scores,
+        rental_estimate=rental_estimate,
+        total_acquisition=total_acquisition,
+    )
+    selected_intent_fit = _selected_intent_fit(intent_fit, purchase_intent)
     verdict = _verdict(
         listing=listing,
         area_statistics=area_statistics,
@@ -56,6 +65,7 @@ def build_buyer_decision(
         due_diligence=due_diligence,
         future_area_impact=future_area_impact,
         total_acquisition=total_acquisition,
+        selected_intent_fit=selected_intent_fit,
     )
     negotiation = _negotiation_assistant(
         listing=listing,
@@ -86,12 +96,9 @@ def build_buyer_decision(
         due_diligence=due_diligence,
         knowledge=knowledge,
         total_acquisition=total_acquisition,
-        intent_fit=_intent_fit(
-            listing=listing,
-            scores=scores,
-            rental_estimate=rental_estimate,
-            total_acquisition=total_acquisition,
-        ),
+        selected_intent=purchase_intent,
+        selected_intent_fit=selected_intent_fit,
+        intent_fit=intent_fit,
         pre_viewing=pre_viewing,
         post_viewing_checklist=_post_viewing_checklist(listing),
         watch_triggers=_watch_triggers(
@@ -116,12 +123,13 @@ def _verdict(
     due_diligence: PropertyDueDiligence,
     future_area_impact: ListingFutureImpact | None,
     total_acquisition: TotalAcquisitionCost,
+    selected_intent_fit: BuyerIntentFit,
 ) -> BuyerDecisionVerdict:
     max_offer = _max_reasonable_offer(listing, scores)
     opening_offer = _opening_offer(listing, scores, max_offer)
     realistic_low = min(max(opening_offer + 5_000, scores.fair_price_low), max_offer)
     realistic_high = max(realistic_low, max_offer)
-    status = _verdict_status(scores, due_diligence)
+    status = _verdict_status(scores, due_diligence, selected_intent_fit)
     top_reasons = _top_reasons(
         listing=listing,
         area_statistics=area_statistics,
@@ -129,14 +137,16 @@ def _verdict(
         comparables=comparables,
         future_area_impact=future_area_impact,
         total_acquisition=total_acquisition,
+        selected_intent_fit=selected_intent_fit,
     )
     top_risks = _top_risks(
         listing=listing,
         scores=scores,
         risk_profile=risk_profile,
         due_diligence=due_diligence,
+        selected_intent_fit=selected_intent_fit,
     )
-    score = _buyer_score(scores, due_diligence, total_acquisition)
+    score = _buyer_score(scores, due_diligence, total_acquisition, selected_intent_fit)
     overpricing = max(listing.price - scores.fair_price_mid, 0)
     return BuyerDecisionVerdict(
         status=status,
@@ -160,12 +170,18 @@ def _verdict(
     )
 
 
-def _verdict_status(scores: PropertyScores, due_diligence: PropertyDueDiligence) -> str:
+def _verdict_status(
+    scores: PropertyScores,
+    due_diligence: PropertyDueDiligence,
+    selected_intent_fit: BuyerIntentFit,
+) -> str:
     if scores.risk_score >= 75 or (
         scores.price_delta_to_fair_mid_pct >= 15 and due_diligence.score < 50
     ):
         return "avoid"
     if scores.risk_score >= 62 or due_diligence.score < 55:
+        return "verify_first"
+    if selected_intent_fit.intent != "unsure" and selected_intent_fit.score < 40:
         return "verify_first"
     if scores.price_delta_to_fair_mid_pct >= 5 or scores.negotiation_score >= 60:
         return "negotiate"
@@ -176,6 +192,7 @@ def _buyer_score(
     scores: PropertyScores,
     due_diligence: PropertyDueDiligence,
     total_acquisition: TotalAcquisitionCost,
+    selected_intent_fit: BuyerIntentFit,
 ) -> float:
     total_cost_penalty = 0
     if total_acquisition.post_renovation_value_gap_pln:
@@ -190,7 +207,9 @@ def _buyer_score(
         - max(scores.price_delta_to_fair_mid_pct, 0) * 0.45
         - total_cost_penalty
     )
-    return round(max(0, min(value, 100)) / 10, 1)
+    base_score = max(0, min(value, 100)) / 10
+    for_you_score = selected_intent_fit.score / 10
+    return round(base_score * 0.75 + for_you_score * 0.25, 1)
 
 
 def _headline(status: str, scores: PropertyScores) -> str:
@@ -924,7 +943,12 @@ def _intent_fit(
     ]
 
 
-def _fit(intent: str, score: int, reasons: list[str], tradeoffs: list[str]) -> BuyerIntentFit:
+def _fit(
+    intent: PurchaseIntent,
+    score: int,
+    reasons: list[str],
+    tradeoffs: list[str],
+) -> BuyerIntentFit:
     if score >= 75:
         label = "strong fit"
     elif score >= 60:
@@ -940,6 +964,19 @@ def _fit(intent: str, score: int, reasons: list[str], tradeoffs: list[str]) -> B
         reasons=reasons,
         tradeoffs=tradeoffs,
     )
+
+
+def _selected_intent_fit(
+    intent_fit: list[BuyerIntentFit],
+    selected_intent: PurchaseIntent,
+) -> BuyerIntentFit:
+    for fit in intent_fit:
+        if fit.intent == selected_intent:
+            return fit
+    for fit in intent_fit:
+        if fit.intent == "unsure":
+            return fit
+    return _fit("unsure", 50, [], [])
 
 
 def _pre_viewing_assistant(
@@ -1056,8 +1093,11 @@ def _top_reasons(
     comparables: list[Listing],
     future_area_impact: ListingFutureImpact | None,
     total_acquisition: TotalAcquisitionCost,
+    selected_intent_fit: BuyerIntentFit,
 ) -> list[str]:
     reasons: list[str] = []
+    if selected_intent_fit.score >= 55:
+        reasons.append(_intent_reason(selected_intent_fit))
     if scores.price_delta_to_fair_mid_pct <= 3:
         reasons.append("Asking price is close to or below the fair-price midpoint.")
     if listing.price_reductions:
@@ -1095,8 +1135,11 @@ def _top_risks(
     scores: PropertyScores,
     risk_profile: ListingRiskProfile | None,
     due_diligence: PropertyDueDiligence,
+    selected_intent_fit: BuyerIntentFit,
 ) -> list[str]:
     risks: list[str] = []
+    if selected_intent_fit.score < 55:
+        risks.append(_intent_risk(selected_intent_fit))
     if scores.price_delta_to_fair_mid_pct >= 5:
         risks.append(
             f"Asking price is {scores.price_delta_to_fair_mid_pct:+.1f}% above fair-price midpoint."
@@ -1112,6 +1155,32 @@ def _top_risks(
     risks.extend(scores.warnings)
     risks.extend(due_diligence.red_flags)
     return _deduplicate(risks)
+
+
+def _intent_reason(fit: BuyerIntentFit) -> str:
+    reasons = ", ".join(fit.reasons) if fit.reasons else "balanced profile"
+    return (
+        f"Selected buyer goal ({_intent_label(fit.intent)}) is a {fit.label} "
+        f"at {round(fit.score / 10)}/10 because of {reasons}."
+    )
+
+
+def _intent_risk(fit: BuyerIntentFit) -> str:
+    tradeoffs = ", ".join(fit.tradeoffs) if fit.tradeoffs else "mixed buyer goals"
+    return (
+        f"Selected buyer goal ({_intent_label(fit.intent)}) is only a {fit.label} "
+        f"at {round(fit.score / 10)}/10; verify {tradeoffs} before relying on the verdict."
+    )
+
+
+def _intent_label(intent: PurchaseIntent) -> str:
+    return {
+        "self": "own living",
+        "family": "family",
+        "rental": "rental",
+        "investment": "investment",
+        "unsure": "unsure",
+    }[intent]
 
 
 def _future_confidence(future_area_impact: ListingFutureImpact) -> int:

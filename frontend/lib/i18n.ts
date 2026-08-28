@@ -198,6 +198,7 @@ export type CheckPageCopy = {
     city: string;
     district: string;
     market: string;
+    purchaseIntent: string;
     renovationCondition: string;
     renovationBudget: string;
     price: string;
@@ -295,6 +296,7 @@ export type CheckPageCopy = {
     dash: string;
     primary: string;
     secondary: string;
+    purchaseIntents: Record<string, string>;
     renovationConditionUnknown: string;
     renovationConditions: Record<string, string>;
     buyer: string;
@@ -1665,6 +1667,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "City",
       district: "District",
       market: "Market",
+      purchaseIntent: "Purchase goal",
       renovationCondition: "Renovation condition",
       renovationBudget: "Custom renovation budget",
       price: "Price",
@@ -1762,6 +1765,13 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      purchaseIntents: {
+        self: "For myself",
+        family: "Family with children",
+        rental: "Rental",
+        investment: "Investment",
+        unsure: "Not sure",
+      },
       renovationConditionUnknown: "not sure",
       renovationConditions: {
         move_in_ready: "Move-in ready",
@@ -1851,6 +1861,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Miasto",
       district: "Dzielnica",
       market: "Rynek",
+      purchaseIntent: "Cel zakupu",
       renovationCondition: "Stan remontu",
       renovationBudget: "Własny budżet remontu",
       price: "Cena",
@@ -1948,6 +1959,13 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "pierwotny",
       secondary: "wtórny",
+      purchaseIntents: {
+        self: "Dla siebie",
+        family: "Rodzina z dziećmi",
+        rental: "Najem",
+        investment: "Inwestycja",
+        unsure: "Nie wiem",
+      },
       renovationConditionUnknown: "nie wiem",
       renovationConditions: {
         move_in_ready: "Gotowe do wprowadzenia",
@@ -2037,6 +2055,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Город",
       district: "Район",
       market: "Рынок",
+      purchaseIntent: "Цель покупки",
       renovationCondition: "Состояние ремонта",
       renovationBudget: "Свой бюджет ремонта",
       price: "Цена",
@@ -2134,6 +2153,13 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      purchaseIntents: {
+        self: "Для себя",
+        family: "Семья с детьми",
+        rental: "Аренда",
+        investment: "Инвестиция",
+        unsure: "Не уверен",
+      },
       renovationConditionUnknown: "не знаю",
       renovationConditions: {
         move_in_ready: "Можно въезжать",
@@ -2224,6 +2250,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Місто",
       district: "Район",
       market: "Ринок",
+      purchaseIntent: "Ціль купівлі",
       renovationCondition: "Стан ремонту",
       renovationBudget: "Свій бюджет ремонту",
       price: "Ціна",
@@ -2321,6 +2348,13 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      purchaseIntents: {
+        self: "Для себе",
+        family: "Сім'я з дітьми",
+        rental: "Оренда",
+        investment: "Інвестиція",
+        unsure: "Не впевнений",
+      },
       renovationConditionUnknown: "не знаю",
       renovationConditions: {
         move_in_ready: "Можна заїжджати",

@@ -461,6 +461,13 @@ def _render_buyer_verdict(buyer_decision) -> str:
     verdict = buyer_decision.verdict
     knowledge = buyer_decision.knowledge
     total = buyer_decision.total_acquisition
+    selected_intent_fit = buyer_decision.selected_intent_fit
+    for_you_metric = ""
+    if selected_intent_fit is not None:
+        for_you_metric = _metric(
+            "For you",
+            f"{round(selected_intent_fit.score / 10)}/10 ({selected_intent_fit.intent})",
+        )
     reasons = "".join(f"<li>{escape(item)}</li>" for item in verdict.top_reasons[:5])
     risks = "".join(f"<li>{escape(item)}</li>" for item in verdict.top_risks[:5])
     unknowns = "".join(f"<li>{escape(item)}</li>" for item in verdict.critical_unknowns[:5])
@@ -491,6 +498,7 @@ def _render_buyer_verdict(buyer_decision) -> str:
         )}
         {_metric("Рекомендуемый offer", _money(verdict.recommended_offer_pln))}
         {_metric("Верхняя граница", _money(verdict.max_reasonable_offer_pln))}
+        {for_you_metric}
         {_metric("Стартовый offer", _money(verdict.opening_offer_pln))}
         {_metric("Реальная стоимость въезда", _money(total.total_move_in_cost_pln))}
         {_metric("Ремонт", _money(total.renovation_estimate_pln))}

@@ -1134,7 +1134,7 @@ Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/import-fr
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"source_url":"https://www.otodom.pl/pl/oferta/demo","confirm_private_analysis":true}'
+  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","purchase_intent":"family","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"source_url":"https://www.otodom.pl/pl/oferta/demo","confirm_private_analysis":true}'
 ```
 
 Frontend flow доступен на `http://127.0.0.1:3000/check`.
@@ -1145,7 +1145,7 @@ Frontend flow доступен на `http://127.0.0.1:3000/check`.
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/user-submitted-listings/report `
   -Method Post `
   -ContentType "application/json" `
-  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"audience":"buyer","confirm_private_analysis":true}'
+  -Body '{"address":"Nowy Dwór, Wrocław","city":"Wrocław","district":"Fabryczna","market_type":"secondary","purchase_intent":"family","price":675000,"area_m2":58.4,"rooms":3,"floor":3,"building_floors":6,"building_year":2014,"audience":"buyer","confirm_private_analysis":true}'
 ```
 
 Сохранить report из существующего private draft в `/reports` history:
@@ -1519,6 +1519,8 @@ Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist
 - Добавлены `Property Due Diligence`, `Negotiation Assistant`,
   `What we know / estimate / could not verify`, source confidence,
   check completeness, Total Acquisition Cost and pre/post-viewing checklist v1.
+- `/check` принимает выбранную цель покупки (`self`, `family`, `rental`,
+  `investment`, `unsure`) и показывает personalized `For you: X/10`.
 - Compare учитывает renovation, furniture, transaction costs, total move-in cost,
   ready-to-move proxy, offer strategy, critical unknowns and source confidence.
 
@@ -1547,23 +1549,20 @@ git push -u origin feature/mvp-api-foundation
    незнакомым людям по 49-149 PLN или 3 paid realtor bundle pilots.
 2. Реализовать document metadata/upload first slice по
    `docs/document_upload_due_diligence_plan.md` только после validation/legal gate.
-3. Добавить пользовательские renovation condition/budget inputs и пересчёт
-   verdict после post-viewing checklist.
-4. Добавить выбранную цель покупки в flow и показывать `For you: X/10` вместо
-   только generic intent-fit scores.
-5. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
+3. Реализовать пересчёт verdict после post-viewing checklist.
+4. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
    comparable, DOM thresholds, planned investment status, developer signal and
    negotiation opportunity.
-6. Усилить future infrastructure impact narrative: expected year, status,
+5. Усилить future infrastructure impact narrative: expected year, status,
    confidence, positive effects, construction disruption and supply pressure.
-7. Провести source-specific legal review и зафиксировать approved/blocked matrix
+6. Провести source-specific legal review и зафиксировать approved/blocked matrix
    перед любым scheduled ingestion за пределами partner/open-data/manual flows.
-8. Подключить production auth вместо MVP header/demo identity.
-9. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
+7. Подключить production auth вместо MVP header/demo identity.
+8. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
    пройти restore drill перед paid traffic.
-10. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
-11. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
+9. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
+10. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
    user-submitted one-off анализа.
-12. Заморозить expansion/enterprise/news/investor tooling до выполнения
+11. Заморозить expansion/enterprise/news/investor tooling до выполнения
    validation gate; расширять partner/open-data coverage на новые города только
    по checklist из `docs/poland_city_expansion_checklist.md`.

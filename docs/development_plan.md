@@ -102,7 +102,7 @@ P2 buyer assistant tasks:
   bank costs, renovation, furniture, upfront cash and ready-to-move alternative comparison.
 - [x] Добавить renovation condition/budget inputs.
 - [x] Сделать renovation/furniture/total move-in cost частью compare matrix.
-- [ ] Добавить purchase-intent personalization: self, family, rental, investment, unsure.
+- [x] Добавить purchase-intent personalization: self, family, rental, investment, unsure.
 - [x] Показать intent-fit scores для self/family/rental/investment/unsure в
   buyer decision panel and report.
 - [x] Добавить pre-viewing assistant: should view/skip, positives, risks,

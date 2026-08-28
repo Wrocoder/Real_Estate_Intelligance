@@ -139,12 +139,12 @@ Scores остаются доказательствами, но не являют
 
 ### P2 - Personalized Fit
 
-- [ ] Ask purchase intent at start: self, family with children, rental,
+- [x] Ask purchase intent at start: self, family with children, rental,
   investment, unsure.
-- [ ] Weight verdict reasons by intent.
+- [x] Weight verdict reasons by intent.
 - [x] Show intent-fit scores for self, family, rental, investment and unsure
   as supporting buyer-decision evidence.
-- [ ] Turn selected intent into `For you: X/10`, not only generic 0-100 scores.
+- [x] Turn selected intent into `For you: X/10`, not only generic 0-100 scores.
 
 ### P2 - Pre/Post Viewing Assistant
 

@@ -239,6 +239,8 @@ def _assert_score_metadata(metadata: dict) -> None:
         "risk_label",
         "negotiation_label",
         "fair_price_confidence_score",
+        "buyer_selected_intent",
+        "buyer_selected_intent_score",
         "scoring_formula_version",
         "scoring_weights_profile",
         "report_template_code",
@@ -248,6 +250,10 @@ def _assert_score_metadata(metadata: dict) -> None:
     assert all(0 <= metadata[key] <= 100 for key in ("investment_score", "risk_score"))
     assert isinstance(metadata["decision_label"], str)
     assert isinstance(metadata["price_label"], str)
+    assert isinstance(metadata["buyer_selected_intent"], str)
+    assert metadata["buyer_selected_intent_score"] is None or isinstance(
+        metadata["buyer_selected_intent_score"], int | float
+    )
     assert isinstance(metadata["scoring_formula_version"], str)
     assert isinstance(metadata["scoring_weights_profile"], str)
 

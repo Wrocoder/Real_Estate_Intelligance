@@ -33,7 +33,8 @@ Request model `UserSubmittedListingRequest` принимает:
 
 - `title`, `source_url`, `developer_id`, `developer_name`, `investment_name`,
   `primary_market_project_id`;
-- `address`, `city`, `district`, `market_type`, `price`, `area_m2`, `rooms`;
+- `address`, `city`, `district`, `market_type`, `purchase_intent`, `price`,
+  `area_m2`, `rooms`;
 - optional building/location/enrichment fields: `floor`, `building_floors`,
   `building_year`, `lat`, `lon`, distance/count fields;
 - `confirm_private_analysis`, `save_private_draft`, `retention_days`.

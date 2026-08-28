@@ -25,6 +25,7 @@ import {
   type AIQuestionDescriptor,
   type DeveloperReputation,
   type GeneratedReport,
+  type PurchaseIntent,
   type RenovationCondition,
   type ReportAudience,
   type SourceReferencePreview,
@@ -48,6 +49,7 @@ type CheckFormState = {
   city: string;
   district: string;
   market_type: "primary" | "secondary";
+  purchase_intent: PurchaseIntent;
   renovation_condition: "" | RenovationCondition;
   custom_renovation_budget_pln: string;
   price: string;
@@ -70,6 +72,7 @@ const DEFAULT_FORM: CheckFormState = {
   city: "Wrocław",
   district: "Fabryczna",
   market_type: "secondary",
+  purchase_intent: "unsure",
   renovation_condition: "",
   custom_renovation_budget_pln: "",
   price: "",
@@ -84,6 +87,7 @@ const DEFAULT_FORM: CheckFormState = {
 };
 
 const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
+const PURCHASE_INTENTS: PurchaseIntent[] = ["self", "family", "rental", "investment", "unsure"];
 const RENOVATION_CONDITIONS: RenovationCondition[] = [
   "move_in_ready",
   "refresh",
@@ -555,6 +559,25 @@ export default function CheckListingPage() {
                 >
                   <option value="secondary">{copy.values.secondary}</option>
                   <option value="primary">{copy.values.primary}</option>
+                </select>
+              </label>
+              <label className="field">
+                <span>{copy.fields.purchaseIntent}</span>
+                <select
+                  className="select"
+                  value={form.purchase_intent}
+                  onChange={(event) =>
+                    updateField(
+                      "purchase_intent",
+                      event.target.value as CheckFormState["purchase_intent"],
+                    )
+                  }
+                >
+                  {PURCHASE_INTENTS.map((intent) => (
+                    <option key={intent} value={intent}>
+                      {copy.values.purchaseIntents[intent] ?? intent}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field">
@@ -1046,6 +1069,7 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
     city: form.city.trim() || "Wrocław",
     district: form.district,
     market_type: form.market_type,
+    purchase_intent: form.purchase_intent,
     renovation_condition: form.renovation_condition || null,
     custom_renovation_budget_pln: toOptionalNumber(form.custom_renovation_budget_pln),
     price: toNumber(form.price),
@@ -1095,6 +1119,7 @@ function clearObjectFieldsForNewUrl(current: CheckFormState, sourceUrl: string) 
     city: current.city || DEFAULT_FORM.city,
     district: current.district || DEFAULT_FORM.district,
     market_type: current.market_type,
+    purchase_intent: current.purchase_intent,
     confirm_private_analysis: current.confirm_private_analysis,
     source_url: sourceUrl,
   };

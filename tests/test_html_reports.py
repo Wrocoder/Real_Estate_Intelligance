@@ -27,6 +27,7 @@ def test_render_object_report_html_contains_printable_report() -> None:
     assert "Вопросы продавцу" in html
     assert "Чеклист проверки перед оффером" in html
     assert "Застройщик и репутация" in html
+    assert "For you" in html
     assert "Fabryczna Estate Partners" in html
     assert "księga wieczysta" in html
     assert "История цены" in html

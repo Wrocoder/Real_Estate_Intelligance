@@ -488,7 +488,7 @@ button {
 
 .buyer-decision-metrics {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 10px;
 }
 
@@ -630,6 +630,11 @@ button {
 .score-pill.risk {
   background: #fff0ed;
   color: var(--risk);
+}
+
+.score-pill.selected {
+  background: #e7f5ee;
+  color: #116149;
 }
 
 .compare-toggle {

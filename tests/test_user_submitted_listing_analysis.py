@@ -91,6 +91,37 @@ def test_user_submitted_listing_accepts_renovation_condition_and_custom_budget()
     assert any("buyer-provided custom budget" in item for item in total["notes"])
 
 
+def test_user_submitted_listing_accepts_purchase_intent_for_personalized_verdict() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "purchase_intent": "family",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+    buyer_decision = payload["analysis"]["buyer_decision"]
+
+    assert response.status_code == 200
+    assert buyer_decision["selected_intent"] == "family"
+    assert buyer_decision["selected_intent_fit"]["intent"] == "family"
+    assert 0 <= buyer_decision["selected_intent_fit"]["score"] <= 100
+    assert any(
+        "Selected buyer goal (family)" in item
+        for item in buyer_decision["verdict"]["top_reasons"]
+    )
+
+
 def test_user_submitted_listing_custom_condition_requires_budget() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/analyze",

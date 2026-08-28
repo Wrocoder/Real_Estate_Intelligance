@@ -334,6 +334,7 @@ def analyze_user_submitted_listing(
         future_area_impact=analysis.future_area_impact,
         risk_profile=risk_profile,
         rental_estimate=analysis.rental_estimate,
+        purchase_intent=payload.purchase_intent,
     )
 
     analysis = analysis.model_copy(

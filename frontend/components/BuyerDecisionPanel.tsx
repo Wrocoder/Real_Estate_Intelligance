@@ -23,6 +23,7 @@ type BuyerDecisionCopy = {
   eyebrow: string;
   cta: string;
   metrics: {
+    forYou: string;
     sellerPrice: string;
     fairPrice: string;
     recommendedOffer: string;
@@ -60,6 +61,7 @@ type BuyerDecisionCopy = {
     couldNotVerify: string;
     updated: string;
     confidence: string;
+    selectedIntent: string;
     monthlyPayment: string;
     renovationCondition: string;
     budgetSource: string;
@@ -79,6 +81,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     eyebrow: "Domarion verdict",
     cta: "Prepare viewing and negotiation",
     metrics: {
+      forYou: "For you",
       sellerPrice: "Seller price",
       fairPrice: "Fair price",
       recommendedOffer: "Recommended offer",
@@ -116,6 +119,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       couldNotVerify: "Could not verify",
       updated: "Updated",
       confidence: "Confidence",
+      selectedIntent: "Goal",
       monthlyPayment: "Monthly baseline",
       renovationCondition: "Condition",
       budgetSource: "Budget source",
@@ -144,6 +148,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     eyebrow: "Werdykt Domarion",
     cta: "Przygotuj oględziny i negocjacje",
     metrics: {
+      forYou: "Dla Ciebie",
       sellerPrice: "Cena sprzedającego",
       fairPrice: "Fair price",
       recommendedOffer: "Rekomendowana oferta",
@@ -181,6 +186,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       couldNotVerify: "Nie udało się sprawdzić",
       updated: "Aktualizacja",
       confidence: "Pewność",
+      selectedIntent: "Cel",
       monthlyPayment: "Rata bazowa",
       renovationCondition: "Stan",
       budgetSource: "Źródło budżetu",
@@ -209,6 +215,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     eyebrow: "Вердикт Domarion",
     cta: "Подготовиться к просмотру и торгу",
     metrics: {
+      forYou: "Для вас",
       sellerPrice: "Цена продавца",
       fairPrice: "Справедливая цена",
       recommendedOffer: "Рекомендуемый offer",
@@ -246,6 +253,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       couldNotVerify: "Не удалось проверить",
       updated: "Обновлено",
       confidence: "Уверенность",
+      selectedIntent: "Цель",
       monthlyPayment: "Платеж baseline",
       renovationCondition: "Состояние",
       budgetSource: "Источник бюджета",
@@ -274,6 +282,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     eyebrow: "Вердикт Domarion",
     cta: "Підготувати перегляд і торг",
     metrics: {
+      forYou: "Для вас",
       sellerPrice: "Ціна продавця",
       fairPrice: "Справедлива ціна",
       recommendedOffer: "Рекомендована offer",
@@ -311,6 +320,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       couldNotVerify: "Не вдалося перевірити",
       updated: "Оновлено",
       confidence: "Впевненість",
+      selectedIntent: "Ціль",
       monthlyPayment: "Платіж baseline",
       renovationCondition: "Стан",
       budgetSource: "Джерело бюджету",
@@ -346,6 +356,11 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
   const dueDiligence = decision.due_diligence;
   const knowledge = decision.knowledge;
   const total = decision.total_acquisition;
+  const selectedIntentFit =
+    decision.selected_intent_fit ??
+    decision.intent_fit.find((fit) => fit.intent === decision.selected_intent) ??
+    decision.intent_fit.find((fit) => fit.intent === "unsure") ??
+    null;
 
   return (
     <section className={`buyer-decision buyer-decision-${verdict.status}`}>
@@ -356,6 +371,12 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
               {copy.statuses[verdict.status]}
             </span>
             <span className="status-pill info">{copy.eyebrow}</span>
+            {selectedIntentFit ? (
+              <span className="status-pill info">
+                {copy.labels.selectedIntent}:{" "}
+                {copy.intents[decision.selected_intent] ?? decision.selected_intent}
+              </span>
+            ) : null}
           </div>
           <h2>{verdict.headline}</h2>
           <p>{verdict.summary}</p>
@@ -364,6 +385,12 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
       </div>
 
       <div className="buyer-decision-metrics">
+        {selectedIntentFit ? (
+          <Metric
+            label={copy.metrics.forYou}
+            value={`${Math.round(selectedIntentFit.score / 10)}/10`}
+          />
+        ) : null}
         <Metric label={copy.metrics.sellerPrice} value={money(verdict.seller_price_pln, locale)} />
         <Metric
           label={copy.metrics.fairPrice}
@@ -541,7 +568,10 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
           <h3>{copy.sections.intent}</h3>
           <div className="buyer-intent-strip">
             {decision.intent_fit.map((fit) => (
-              <span className="score-pill" key={fit.intent}>
+              <span
+                className={`score-pill ${fit.intent === decision.selected_intent ? "selected" : ""}`}
+                key={fit.intent}
+              >
                 {copy.intents[fit.intent] ?? fit.intent}: {Math.round(fit.score / 10)}/10
               </span>
             ))}

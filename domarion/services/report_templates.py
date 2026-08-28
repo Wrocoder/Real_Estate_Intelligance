@@ -358,9 +358,22 @@ def _personalization_section(analysis: ListingAnalysis | None) -> ReportSection:
             ],
         )
 
+    selected = decision.selected_intent_fit
+    selected_items = (
+        [
+            (
+                f"For you ({selected.intent}): {selected.score}/100 ({selected.label}); "
+                f"плюсы: {', '.join(selected.reasons) or 'нет'}; "
+                f"проверить: {', '.join(selected.tradeoffs) or 'нет'}."
+            )
+        ]
+        if selected is not None
+        else []
+    )
     return ReportSection(
         title="Для кого подходит",
-        items=[
+        items=selected_items
+        + [
             (
                 f"{item.intent}: {item.score}/100 ({item.label}); "
                 f"плюсы: {', '.join(item.reasons) or 'нет'}; "

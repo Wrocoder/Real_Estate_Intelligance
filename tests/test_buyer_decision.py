@@ -1,6 +1,7 @@
 import pytest
 
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
+from domarion.schemas import PurchaseIntent
 from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.scoring import calculate_scores
 
@@ -73,6 +74,21 @@ def test_buyer_decision_uses_custom_renovation_budget_before_condition_estimate(
     assert any("buyer-provided custom budget" in item for item in decision.total_acquisition.notes)
 
 
+def test_buyer_decision_personalizes_verdict_for_selected_purchase_intent() -> None:
+    decision = _build_decision(
+        price_delta_pct=4.0,
+        risk_score=24,
+        negotiation_score=52,
+        purchase_intent="family",
+    )
+
+    assert decision.selected_intent == "family"
+    assert decision.selected_intent_fit is not None
+    assert decision.selected_intent_fit.intent == "family"
+    assert 0 <= decision.selected_intent_fit.score <= 100
+    assert any("Selected buyer goal (family)" in item for item in decision.verdict.top_reasons)
+
+
 def test_primary_market_due_diligence_covers_developer_contract_and_escrow_checks() -> None:
     decision = _build_decision(
         market_type="primary",
@@ -117,6 +133,7 @@ def _build_decision(
     renovation_state: str = "ready_to_move_in",
     custom_renovation_budget_pln: int | None = None,
     relisted: bool = False,
+    purchase_intent: PurchaseIntent = "unsure",
 ):
     repository = InMemoryRealEstateRepository()
     base_listing = repository.get_listing("wr-001")
@@ -164,4 +181,5 @@ def _build_decision(
         comparables=repository.find_comparables(listing),
         negotiation_arguments=["Object has visible price negotiation room."],
         data_quality_notes=["Data Quality Score: 95/100."],
+        purchase_intent=purchase_intent,
     )

@@ -97,6 +97,14 @@ def generate_and_store_object_report(
             "buyer_verdict_score": (
                 analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
             ),
+            "buyer_selected_intent": (
+                analysis.buyer_decision.selected_intent if analysis.buyer_decision else None
+            ),
+            "buyer_selected_intent_score": (
+                analysis.buyer_decision.selected_intent_fit.score
+                if analysis.buyer_decision and analysis.buyer_decision.selected_intent_fit
+                else None
+            ),
             "recommended_offer_pln": (
                 analysis.buyer_decision.verdict.recommended_offer_pln
                 if analysis.buyer_decision
@@ -178,6 +186,14 @@ def generate_and_store_user_submitted_draft_report(
             ),
             "buyer_verdict_score": (
                 analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
+            ),
+            "buyer_selected_intent": (
+                analysis.buyer_decision.selected_intent if analysis.buyer_decision else None
+            ),
+            "buyer_selected_intent_score": (
+                analysis.buyer_decision.selected_intent_fit.score
+                if analysis.buyer_decision and analysis.buyer_decision.selected_intent_fit
+                else None
             ),
             "recommended_offer_pln": (
                 analysis.buyer_decision.verdict.recommended_offer_pln
