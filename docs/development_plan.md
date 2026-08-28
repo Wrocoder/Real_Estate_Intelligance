@@ -90,8 +90,9 @@ P1 due diligence tasks:
 - [x] Добавить primary-market due-diligence checklist: developer/project identity,
   delays, legal/regulatory signals, rachunek powierniczy, permits, build status,
   finish standard, prospekt informacyjny, handover, delay penalties and warranties.
-- [ ] Спроектировать document upload flow: extract checklist signals without
-  legal guarantees, with minimal personal-data retention and clear disclaimers.
+- [x] Спроектировать document upload flow: extract checklist signals without
+  legal guarantees, with minimal personal-data retention and clear disclaimers
+  (`docs/document_upload_due_diligence_plan.md`).
 - [x] Добавить Full Due Diligence report section: red flags, unknowns, documents
   to request, expert/legal checks and human-review handoff.
 

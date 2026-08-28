@@ -56,6 +56,8 @@ restore drill must be completed before selling at scale.
 - `docs/product_validation_strategy.md` - validation metrics, risks and roadmap.
 - `docs/buyer_decision_product_direction.md` - текущий product reset:
   verdict-first buyer assistant, PMF gate, pricing ladder and prioritized backlog.
+- `docs/document_upload_due_diligence_plan.md` - future due-diligence document
+  upload/metadata flow with minimal retention, redaction and legal guardrails.
 - `docs/development_plan.md` - detailed implementation checklist.
 
 ## Что уже подготовлено
@@ -1543,8 +1545,8 @@ git push -u origin feature/mvp-api-foundation
 
 1. До новых крупных модулей пройти validation gate: 20 платных buyer reports
    незнакомым людям по 49-149 PLN или 3 paid realtor bundle pilots.
-2. Спроектировать document upload flow для due diligence: extract checklist
-   signals без legal guarantee и с минимальным хранением персональных данных.
+2. Реализовать document metadata/upload first slice по
+   `docs/document_upload_due_diligence_plan.md` только после validation/legal gate.
 3. Добавить пользовательские renovation condition/budget inputs и пересчёт
    verdict после post-viewing checklist.
 4. Добавить выбранную цель покупки в flow и показывать `For you: X/10` вместо

@@ -102,8 +102,9 @@ Scores остаются доказательствами, но не являют
   developer, project history, delays, legal/regulatory signals, rachunek
   powierniczy, permits, construction status, finish standard, prospekt
   informacyjny, handover date, delay penalties and warranties.
-- [ ] Add document upload/metadata plan: extract checklist signals without giving
-  legal guarantees and without storing unnecessary personal data.
+- [x] Add document upload/metadata plan: extract checklist signals without giving
+  legal guarantees and without storing unnecessary personal data
+  (`docs/document_upload_due_diligence_plan.md`).
 - [x] Add `Full Due Diligence` report section with red flags, unknowns and
   recommended expert/legal checks.
 
