@@ -185,6 +185,11 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
             "post",
         ): "CrmShortlist",
         ("/api/v1/enterprise/custom-dashboards", "post"): "CustomDashboardConfig",
+        ("/api/v1/listings/{listing_id}/watch", "post"): "Alert",
+        (
+            "/api/v1/user-submitted-listings/drafts/{draft_id}/watch",
+            "post",
+        ): "Alert",
     }
     for (path, method), schema_name in expected_created_refs.items():
         operation = openapi["paths"][path][method]
@@ -385,6 +390,8 @@ def test_openapi_exposes_recent_request_and_response_models() -> None:
         "NewsArticleListItem",
         "NewsArticleUpdate",
         "ObjectReport",
+        "ObjectWatchCreate",
+        "ObjectWatchEvent",
         "OpenDataRoadmapItem",
         "AlertDeliveryBatchRequest",
         "AlertDeliveryBatchResult",

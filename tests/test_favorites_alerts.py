@@ -333,6 +333,84 @@ def test_advanced_investor_alert_filters() -> None:
     assert match["scores"]["rental_potential_score"] >= 75
 
 
+def test_listing_object_watch_creates_alert_and_preview_events() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/listings/wr-003/watch?owner_id=object-watch-owner",
+        json={
+            "frequency": "instant",
+            "triggers": [
+                "cheaper_comparable",
+                "days_on_market_threshold",
+                "negotiation_opportunity",
+            ],
+        },
+    )
+    alert = created.json()
+
+    assert created.status_code == 201
+    assert alert["filters"]["alert_kind"] == "object_watch"
+    assert alert["filters"]["target_type"] == "listing"
+    assert alert["filters"]["target_listing_id"] == "wr-003"
+    assert alert["filters"]["baseline_price"] == 799000
+    assert alert["filters"]["baseline_days_on_market"] == 139
+    assert alert["frequency"] == "instant"
+
+    preview = client.get(
+        f"/api/v1/alerts/{alert['id']}/preview?owner_id=object-watch-owner"
+    ).json()
+    trigger_types = {event["trigger_type"] for event in preview["watch_events"]}
+    listing_ids = {item["listing"]["id"] for item in preview["matches"]}
+
+    assert preview["total_matches"] == len(preview["watch_events"])
+    assert "cheaper_comparable" in trigger_types
+    assert "days_on_market_threshold" in trigger_types
+    assert "negotiation_opportunity" in trigger_types
+    assert {"wr-001", "wr-003"} <= listing_ids
+    assert any(
+        event["related_listing_id"] == "wr-001"
+        for event in preview["watch_events"]
+        if event["trigger_type"] == "cheaper_comparable"
+    )
+
+    job = client.post(
+        f"/api/v1/alerts/{alert['id']}/deliver?owner_id=object-watch-owner",
+        json={"dry_run": True, "max_matches": 5},
+    ).json()
+
+    assert job["status"] == "dry_run"
+    assert "watch events" in job["message"]
+    assert job["metadata"]["watch_events"]
+
+
+def test_object_watch_preview_reports_price_change_against_baseline() -> None:
+    memory_user_store.clear()
+
+    created = client.post(
+        "/api/v1/alerts?owner_id=object-watch-price-owner",
+        json={
+            "name": "Manual price baseline",
+            "filters": {
+                "alert_kind": "object_watch",
+                "target_type": "listing",
+                "target_listing_id": "wr-001",
+                "object_watch_triggers": ["price_change"],
+                "baseline_price": 710000,
+            },
+        },
+    ).json()
+
+    preview = client.get(
+        f"/api/v1/alerts/{created['id']}/preview?owner_id=object-watch-price-owner"
+    ).json()
+
+    assert preview["watch_events"][0]["trigger_type"] == "price_change"
+    assert preview["watch_events"][0]["severity"] == "opportunity"
+    assert preview["watch_events"][0]["baseline_value"] == "710 000 PLN"
+    assert preview["watch_events"][0]["current_value"] == "690 000 PLN"
+
+
 def test_alert_delivery_dry_run_is_persisted() -> None:
     memory_user_store.clear()
     headers = {

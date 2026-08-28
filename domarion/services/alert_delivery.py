@@ -52,8 +52,8 @@ class EmailAlertProvider:
         target = alert.delivery_target or owner_email
 
         if request.dry_run:
-            return _dry_run_result(alert.channel, listing_ids, target)
-        if not listing_ids:
+            return _dry_run_result(alert.channel, listing_ids, target, len(preview.watch_events))
+        if not listing_ids and not preview.watch_events:
             return _skipped_result(self.provider, "No matching listings to deliver.", target)
         if not target:
             return _skipped_result(self.provider, "Email target is missing.", target)
@@ -119,8 +119,8 @@ class TelegramAlertProvider:
         target = alert.delivery_target
 
         if request.dry_run:
-            return _dry_run_result(alert.channel, listing_ids, target)
-        if not listing_ids:
+            return _dry_run_result(alert.channel, listing_ids, target, len(preview.watch_events))
+        if not listing_ids and not preview.watch_events:
             return _skipped_result(self.provider, "No matching listings to deliver.", target)
         if not target:
             return _skipped_result(self.provider, "Telegram chat id is missing.", target)
@@ -209,6 +209,9 @@ def build_alert_delivery_job(
             **result.metadata,
             "dry_run": request.dry_run,
             "max_matches": request.max_matches,
+            "watch_events": [
+                event.model_dump(mode="json") for event in preview.watch_events
+            ],
         },
         created_at=datetime.now(UTC),
     )
@@ -221,19 +224,30 @@ def _provider_for_channel(channel: str) -> AlertChannelProvider:
 
 
 def _preview_listing_ids(preview: AlertPreview) -> list[str]:
-    return [item.listing.id for item in preview.matches]
+    listing_ids = [item.listing.id for item in preview.matches]
+    for event in preview.watch_events:
+        for listing_id in (event.listing_id, event.related_listing_id):
+            if listing_id and listing_id not in listing_ids:
+                listing_ids.append(listing_id)
+    return listing_ids
 
 
 def _dry_run_result(
     channel: str,
     listing_ids: list[str],
     target: str | None,
+    event_count: int = 0,
 ) -> AlertDeliveryResult:
+    subject = (
+        f"{event_count} watch events and {len(listing_ids)} listing references"
+        if event_count
+        else f"{len(listing_ids)} listing matches"
+    )
     return AlertDeliveryResult(
         provider=f"{channel}:dry-run",
         status="dry_run",
         delivered_count=0,
-        message=f"Dry run prepared {len(listing_ids)} listing matches.",
+        message=f"Dry run prepared {subject}.",
         metadata={"target": target, "listing_ids": listing_ids},
     )
 
@@ -267,6 +281,8 @@ def _failed_result(
 
 
 def _delivery_subject(alert: Alert, preview: AlertPreview) -> str:
+    if preview.watch_events:
+        return f"Domarion object watch: {alert.name} ({len(preview.watch_events)} events)"
     return f"Domarion alert: {alert.name} ({preview.total_matches} matches)"
 
 
@@ -276,7 +292,23 @@ def _delivery_text(alert: Alert, preview: AlertPreview) -> str:
         f"Matches: {preview.total_matches}",
         "",
     ]
-    if not preview.matches:
+    if preview.watch_events:
+        lines.append("Object Watch events:")
+        for event in preview.watch_events[:10]:
+            lines.extend(
+                [
+                    f"- {event.title}",
+                    f"  {event.summary}",
+                    f"  Trigger: {event.trigger_type} | severity: {event.severity}",
+                ]
+            )
+            if event.current_value:
+                lines.append(f"  Current: {event.current_value}")
+            if event.baseline_value:
+                lines.append(f"  Baseline: {event.baseline_value}")
+        lines.append("")
+
+    if not preview.matches and not preview.watch_events:
         lines.append("No matching listings found.")
         return "\n".join(lines)
 

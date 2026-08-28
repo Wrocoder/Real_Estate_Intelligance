@@ -17,6 +17,17 @@ ReportAudience = Literal["buyer", "realtor", "investor"]
 ReportFormat = Literal["json", "html"]
 AlertChannel = Literal["email", "telegram"]
 AlertFrequency = Literal["instant", "daily", "weekly"]
+AlertKind = Literal["saved_search", "object_watch"]
+ObjectWatchTargetType = Literal["listing", "user_submitted_draft"]
+ObjectWatchTriggerType = Literal[
+    "price_change",
+    "cheaper_comparable",
+    "days_on_market_threshold",
+    "planned_investment_status",
+    "developer_signal",
+    "negotiation_opportunity",
+]
+ObjectWatchSeverity = Literal["info", "watch", "opportunity", "risk"]
 UserRole = Literal["buyer", "realtor", "agency_admin", "admin"]
 SubscriptionPlan = Literal["free", "buyer_pro", "investor", "realtor", "agency", "enterprise"]
 SubscriptionStatus = Literal["trialing", "active", "past_due", "canceled"]
@@ -3661,6 +3672,7 @@ class Favorite(BaseModel):
 
 
 class AlertFilters(BaseModel):
+    alert_kind: AlertKind = "saved_search"
     voivodeship: str | None = None
     city: str | None = None
     district: str | None = None
@@ -3690,6 +3702,23 @@ class AlertFilters(BaseModel):
     min_rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     min_price_reductions: int | None = Field(default=None, ge=0)
     max_days_on_market: int | None = Field(default=None, ge=0)
+    target_type: ObjectWatchTargetType | None = None
+    target_listing_id: str | None = Field(default=None, min_length=1, max_length=160)
+    target_draft_id: str | None = Field(default=None, min_length=1, max_length=160)
+    object_watch_triggers: list[ObjectWatchTriggerType] | None = Field(
+        default=None,
+        max_length=12,
+    )
+    baseline_price: int | None = Field(default=None, gt=0)
+    baseline_days_on_market: int | None = Field(default=None, ge=0)
+    baseline_price_reductions: int | None = Field(default=None, ge=0)
+    baseline_negotiation_score: int | None = Field(default=None, ge=0, le=100)
+    baseline_max_reasonable_offer: int | None = Field(default=None, gt=0)
+    baseline_planned_investment_statuses: dict[str, str] | None = None
+    baseline_developer_reputation_score: int | None = Field(default=None, ge=0, le=100)
+    baseline_developer_risk_signal_count: int | None = Field(default=None, ge=0)
+    days_on_market_thresholds: list[int] | None = Field(default=None, max_length=10)
+    min_cheaper_comparable_discount_pct: float | None = Field(default=None, ge=0, le=50)
 
 
 class AlertCreate(BaseModel):
@@ -3722,11 +3751,32 @@ class Alert(BaseModel):
     updated_at: datetime
 
 
+class ObjectWatchCreate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    triggers: list[ObjectWatchTriggerType] = Field(default_factory=list, max_length=12)
+    channel: AlertChannel = "email"
+    frequency: AlertFrequency = "daily"
+    delivery_target: str | None = None
+
+
+class ObjectWatchEvent(BaseModel):
+    trigger_type: ObjectWatchTriggerType
+    severity: ObjectWatchSeverity
+    listing_id: str | None = None
+    related_listing_id: str | None = None
+    title: str
+    summary: str
+    baseline_value: str | None = None
+    current_value: str | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
 class AlertPreview(BaseModel):
     alert: Alert
     matches: list[ListingAnalysis]
     total_matches: int
     applied_filters: dict[str, Any]
+    watch_events: list[ObjectWatchEvent] = Field(default_factory=list)
 
 
 class RealtorSavedSearchDigestRequest(BaseModel):

@@ -277,6 +277,10 @@ end-to-end и включать delivery только после настройк
 MVP hosting decision зафиксирован в `docs/mvp_hosting_decision.md`: текущая
 целевая схема для paid beta - Render Blueprint в Frankfurt region.
 
+Альтернативный план миграции на Oracle Cloud Infrastructure описан в
+`docs/oracle_cloud_deployment_plan.md`. Он ориентирован на single-VM Docker
+Compose deployment на OCI Always Free Ampere A1, с self-managed Postgres/PostGIS.
+
 `render.yaml` описывает:
 
 - `domarion-postgres`: managed Postgres 18 with PostGIS migration.

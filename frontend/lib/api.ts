@@ -2718,6 +2718,7 @@ export type Favorite = {
 };
 
 export type AlertFilters = {
+  alert_kind?: "saved_search" | "object_watch";
   voivodeship?: string | null;
   city?: string | null;
   district?: string | null;
@@ -2747,10 +2748,40 @@ export type AlertFilters = {
   min_rental_potential_score?: number | null;
   min_price_reductions?: number | null;
   max_days_on_market?: number | null;
+  target_type?: "listing" | "user_submitted_draft" | null;
+  target_listing_id?: string | null;
+  target_draft_id?: string | null;
+  object_watch_triggers?: ObjectWatchTriggerType[] | null;
+  baseline_price?: number | null;
+  baseline_days_on_market?: number | null;
+  baseline_price_reductions?: number | null;
+  baseline_negotiation_score?: number | null;
+  baseline_max_reasonable_offer?: number | null;
+  baseline_planned_investment_statuses?: Record<string, string> | null;
+  baseline_developer_reputation_score?: number | null;
+  baseline_developer_risk_signal_count?: number | null;
+  days_on_market_thresholds?: number[] | null;
+  min_cheaper_comparable_discount_pct?: number | null;
 };
 
 export type AlertChannel = "email" | "telegram";
 export type AlertFrequency = "instant" | "daily" | "weekly";
+export type ObjectWatchTriggerType =
+  | "price_change"
+  | "cheaper_comparable"
+  | "days_on_market_threshold"
+  | "planned_investment_status"
+  | "developer_signal"
+  | "negotiation_opportunity";
+export type ObjectWatchSeverity = "info" | "watch" | "opportunity" | "risk";
+
+export type ObjectWatchCreate = {
+  name?: string | null;
+  triggers?: ObjectWatchTriggerType[];
+  channel?: AlertChannel;
+  frequency?: AlertFrequency;
+  delivery_target?: string | null;
+};
 
 export type Alert = {
   id: string;
@@ -2774,11 +2805,24 @@ export type AlertUpdate = {
   is_active?: boolean;
 };
 
+export type ObjectWatchEvent = {
+  trigger_type: ObjectWatchTriggerType;
+  severity: ObjectWatchSeverity;
+  listing_id: string | null;
+  related_listing_id: string | null;
+  title: string;
+  summary: string;
+  baseline_value: string | null;
+  current_value: string | null;
+  metadata: Record<string, unknown>;
+};
+
 export type AlertPreview = {
   alert: Alert;
   matches: ListingAnalysis[];
   total_matches: number;
   applied_filters: Record<string, unknown>;
+  watch_events: ObjectWatchEvent[];
 };
 
 export type RealtorSavedSearchDigestRequest = {
@@ -3958,6 +4002,11 @@ export const api = {
         body: JSON.stringify(payload),
       },
     ),
+  createListingObjectWatch: (id: string, payload: ObjectWatchCreate = {}) =>
+    request<Alert>(`/api/v1/listings/${encodeURIComponent(id)}/watch`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
   getListingFutureImpact: (id: string) =>
     request<ListingFutureImpact>(`/api/v1/listings/${encodeURIComponent(id)}/future-impact`),
   getListingGrowthAnalysis: (id: string) =>
@@ -4013,6 +4062,17 @@ export const api = {
       `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(
         draftId,
       )}/post-viewing-verdict`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+    ),
+  createUserSubmittedDraftObjectWatch: (
+    draftId: string,
+    payload: ObjectWatchCreate = {},
+  ) =>
+    request<Alert>(
+      `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(draftId)}/watch`,
       {
         method: "POST",
         body: JSON.stringify(payload),

@@ -194,6 +194,7 @@ from domarion.schemas import (
     NewsArticleUpdate,
     NewsCategory,
     ObjectReport,
+    ObjectWatchCreate,
     OpenDataRoadmapItem,
     OpenDataRoadmapStatus,
     PaidBetaTrackingRow,
@@ -271,7 +272,7 @@ from domarion.schemas import (
 from domarion.services.ai_insights import persist_generated_report_insights
 from domarion.services.alert_delivery import build_alert_delivery_job
 from domarion.services.alert_scheduler import run_daily_email_alert_delivery
-from domarion.services.alerts import build_alert_preview
+from domarion.services.alerts import build_alert_preview, build_object_watch_alert_create
 from domarion.services.api_lite import (
     ApiLiteConfigurationError,
     ApiLitePrincipal,
@@ -1794,6 +1795,34 @@ def recalculate_user_submitted_listing_post_viewing_verdict(
         raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
     user_analysis = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
     return recalculate_post_viewing_verdict(user_analysis.analysis, payload)
+
+
+@router.post(
+    "/user-submitted-listings/drafts/{draft_id}/watch",
+    response_model=Alert,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_user_submitted_listing_object_watch(
+    draft_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    payload: ObjectWatchCreate | None = None,
+) -> Alert:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+
+    _ensure_alert_limit(account, user_store)
+    user_analysis = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
+    alert_payload = build_object_watch_alert_create(
+        user_analysis.analysis,
+        payload,
+        target_type="user_submitted_draft",
+        target_draft_id=draft_id,
+    )
+    alert_payload = _with_default_alert_delivery_target(alert_payload, account)
+    return user_store.create_alert(account.user.id, alert_payload)
 
 
 @router.delete("/user-submitted-listings/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -4126,6 +4155,32 @@ def recalculate_listing_post_viewing_verdict(
         raise HTTPException(status_code=404, detail="Listing not found")
     analysis = build_listing_analysis(repository, listing)
     return recalculate_post_viewing_verdict(analysis, payload)
+
+
+@router.post(
+    "/listings/{listing_id}/watch",
+    response_model=Alert,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_listing_object_watch(
+    listing_id: str,
+    repository: RepositoryDep,
+    user_store: UserStoreDep,
+    account: CurrentAccountDep,
+    payload: ObjectWatchCreate | None = None,
+) -> Alert:
+    listing = repository.get_listing(listing_id)
+    if listing is None:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    _ensure_alert_limit(account, user_store)
+    alert_payload = build_object_watch_alert_create(
+        build_listing_analysis(repository, listing),
+        payload,
+        target_type="listing",
+    )
+    alert_payload = _with_default_alert_delivery_target(alert_payload, account)
+    return user_store.create_alert(account.user.id, alert_payload)
 
 
 @router.get("/listings/{listing_id}/future-impact", response_model=ListingFutureImpact)

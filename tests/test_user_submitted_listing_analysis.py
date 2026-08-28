@@ -11,6 +11,7 @@ from domarion.ingestion_admin_store.system_sources import (
 from domarion.main import app
 from domarion.report_store.factory import memory_report_store
 from domarion.services import user_submitted_listings as user_submitted_listing_service
+from domarion.user_store.factory import memory_user_store
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
@@ -20,6 +21,7 @@ def setup_function() -> None:
     memory_ingestion_admin_store.reset_demo()
     memory_user_submitted_listing_store.clear()
     memory_report_store.clear()
+    memory_user_store.clear()
 
 
 def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
@@ -166,6 +168,102 @@ def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
         "verdict"
     ]["score"]
     assert any("noise" in item for item in payload["applied_findings"])
+
+
+def test_user_submitted_draft_object_watch_uses_alerts_without_url_leak() -> None:
+    headers = {
+        "X-Domarion-User-Id": "draft-watch-owner",
+        "X-Domarion-Email": "buyer@example.com",
+    }
+    source_url = "https://www.otodom.pl/pl/oferta/private-watch-demo"
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": source_url,
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "purchase_intent": "self",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+
+    response = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{created['draft_id']}/watch",
+        headers=headers,
+        json={
+            "frequency": "daily",
+            "triggers": ["price_change", "cheaper_comparable"],
+        },
+    )
+    alert = response.json()
+
+    assert response.status_code == 201
+    assert alert["delivery_target"] == "buyer@example.com"
+    assert alert["filters"]["alert_kind"] == "object_watch"
+    assert alert["filters"]["target_type"] == "user_submitted_draft"
+    assert alert["filters"]["target_draft_id"] == created["draft_id"]
+    assert alert["filters"]["target_listing_id"].startswith("user-submitted-")
+    assert source_url not in str(alert)
+
+    preview = client.get(
+        f"/api/v1/alerts/{alert['id']}/preview",
+        headers=headers,
+    ).json()
+
+    assert preview["watch_events"]
+    assert preview["watch_events"][0]["trigger_type"] in {
+        "price_change",
+        "cheaper_comparable",
+    }
+    assert "not re-crawl" in str(preview["watch_events"])
+    assert source_url not in str(preview)
+
+
+def test_user_submitted_draft_object_watch_respects_selected_triggers() -> None:
+    headers = {
+        "X-Domarion-User-Id": "draft-watch-trigger-owner",
+        "X-Domarion-Email": "buyer@example.com",
+    }
+    created = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers,
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/private-trigger-demo",
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "purchase_intent": "self",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    ).json()
+    alert = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{created['draft_id']}/watch",
+        headers=headers,
+        json={"triggers": ["price_change"]},
+    ).json()
+
+    preview = client.get(
+        f"/api/v1/alerts/{alert['id']}/preview",
+        headers=headers,
+    ).json()
+
+    assert {event["trigger_type"] for event in preview["watch_events"]} == {"price_change"}
 
 
 def test_user_submitted_listing_custom_condition_requires_budget() -> None:
