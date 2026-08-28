@@ -28,6 +28,7 @@ from domarion.schemas import (
     UserSubmittedListingAnalysis,
     UserSubmittedListingRequest,
 )
+from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.risk_profile import build_listing_risk_profile
 from domarion.services.scoring import build_listing_analysis, clamp
 
@@ -297,35 +298,51 @@ def analyze_user_submitted_listing(
         + min(len(analysis.comparables), 5) * 2
     )
 
+    risk_profile = build_listing_risk_profile(
+        listing=listing,
+        area_statistics=analysis.area_statistics,
+        scores=analysis.scores,
+        developer_reputation=developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+    )
+    data_quality_notes = [
+        *analysis.data_quality_notes,
+        (
+            "User-submitted object was analyzed from confirmed fields "
+            "and legal-first comparables."
+        ),
+        "Source URL, if provided, is treated as a private reference only.",
+        *(
+            [
+                (
+                    "Developer reputation matched: "
+                    f"{developer_reputation.developer.name}."
+                )
+            ]
+            if developer_reputation is not None
+            else []
+        ),
+    ]
+    buyer_decision = build_buyer_decision(
+        listing=listing,
+        area_statistics=analysis.area_statistics,
+        scores=analysis.scores,
+        comparables=analysis.comparables,
+        negotiation_arguments=analysis.negotiation_arguments,
+        data_quality_notes=data_quality_notes,
+        developer_reputation=developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+        risk_profile=risk_profile,
+        rental_estimate=analysis.rental_estimate,
+    )
+
     analysis = analysis.model_copy(
         update={
             "listing": listing,
             "developer_reputation": developer_reputation,
-            "risk_profile": build_listing_risk_profile(
-                listing=listing,
-                area_statistics=analysis.area_statistics,
-                scores=analysis.scores,
-                developer_reputation=developer_reputation,
-                future_area_impact=analysis.future_area_impact,
-            ),
-            "data_quality_notes": [
-                *analysis.data_quality_notes,
-                (
-                    "User-submitted object was analyzed from confirmed fields "
-                    "and legal-first comparables."
-                ),
-                "Source URL, if provided, is treated as a private reference only.",
-                *(
-                    [
-                        (
-                            "Developer reputation matched: "
-                            f"{developer_reputation.developer.name}."
-                        )
-                    ]
-                    if developer_reputation is not None
-                    else []
-                ),
-            ]
+            "risk_profile": risk_profile,
+            "buyer_decision": buyer_decision,
+            "data_quality_notes": data_quality_notes,
         }
     )
 
@@ -449,6 +466,7 @@ def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListing
     developer_name = _clean_optional(payload.developer_name)
     investment_name = _clean_optional(payload.investment_name)
     primary_market_project_id = _clean_optional(payload.primary_market_project_id)
+    renovation_condition = _clean_optional(payload.renovation_condition)
     address = payload.address.strip()
     city = payload.city.strip()
     district = payload.district.strip()
@@ -468,6 +486,7 @@ def _clean_payload(payload: UserSubmittedListingRequest) -> UserSubmittedListing
             "developer_name": developer_name,
             "investment_name": investment_name,
             "primary_market_project_id": primary_market_project_id,
+            "renovation_condition": renovation_condition,
             "address": address,
             "city": city,
             "district": district,
@@ -842,6 +861,8 @@ def _build_listing(
         municipality=payload.city,
         address=payload.address,
         market_type=payload.market_type,
+        renovation_state=payload.renovation_condition,
+        custom_renovation_budget_pln=payload.custom_renovation_budget_pln,
         developer_id=payload.developer_id,
         developer_name=payload.developer_name,
         investment_name=payload.investment_name,

@@ -91,6 +91,27 @@ def generate_and_store_object_report(
             "risk_label": analysis.scores.risk_label,
             "negotiation_label": analysis.scores.negotiation_label,
             "fair_price_confidence_score": analysis.scores.fair_price_confidence_score,
+            "buyer_verdict_status": (
+                analysis.buyer_decision.verdict.status if analysis.buyer_decision else None
+            ),
+            "buyer_verdict_score": (
+                analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
+            ),
+            "recommended_offer_pln": (
+                analysis.buyer_decision.verdict.recommended_offer_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "max_reasonable_offer_pln": (
+                analysis.buyer_decision.verdict.max_reasonable_offer_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "total_move_in_cost_pln": (
+                analysis.buyer_decision.total_acquisition.total_move_in_cost_pln
+                if analysis.buyer_decision
+                else None
+            ),
             "report_template_code": report.template_code,
             "report_template_name": report.template_name,
             "report_branding": (
@@ -152,6 +173,27 @@ def generate_and_store_user_submitted_draft_report(
             "risk_label": analysis.scores.risk_label,
             "negotiation_label": analysis.scores.negotiation_label,
             "fair_price_confidence_score": analysis.scores.fair_price_confidence_score,
+            "buyer_verdict_status": (
+                analysis.buyer_decision.verdict.status if analysis.buyer_decision else None
+            ),
+            "buyer_verdict_score": (
+                analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
+            ),
+            "recommended_offer_pln": (
+                analysis.buyer_decision.verdict.recommended_offer_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "max_reasonable_offer_pln": (
+                analysis.buyer_decision.verdict.max_reasonable_offer_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "total_move_in_cost_pln": (
+                analysis.buyer_decision.total_acquisition.total_move_in_cost_pln
+                if analysis.buyer_decision
+                else None
+            ),
             "report_template_code": report.template_code,
             "report_template_name": report.template_name,
             "report_branding": (

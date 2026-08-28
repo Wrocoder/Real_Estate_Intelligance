@@ -259,6 +259,129 @@ def test_admin_can_score_partner_referrals_for_handoff_priority() -> None:
     assert single["recommended_actions"]
 
 
+def test_admin_paid_beta_tracking_sheet_defaults_and_update() -> None:
+    admin_headers = {
+        "X-Domarion-User-Id": "admin-1",
+        "X-Domarion-Role": "admin",
+        "X-Domarion-Plan": "enterprise",
+    }
+
+    buyer_lead = client.post(
+        "/api/v1/partner-referrals",
+        json={
+            "referral_type": "buyer_beta",
+            "source_context": "buyer_beta_landing",
+            "city": "Wrocław",
+            "district": "Krzyki",
+            "contact_email": "buyer@example.com",
+            "message": "Need a report before making an offer.",
+            "consent_to_contact": True,
+            "metadata": {
+                "entry_point": "/beta",
+                "beta_segment": "buyer_beta",
+                "object_reference_private": "https://www.otodom.pl/example",
+            },
+        },
+    ).json()
+    client.post(
+        "/api/v1/partner-referrals",
+        json={
+            "referral_type": "mortgage",
+            "source_context": "mortgage_calculator",
+            "city": "Wrocław",
+            "contact_email": "mortgage@example.com",
+            "consent_to_contact": True,
+        },
+    )
+
+    listed = client.get("/api/v1/admin/paid-beta/tracking", headers=admin_headers)
+    rows = listed.json()
+
+    assert listed.status_code == 200
+    assert len(rows) == 1
+    assert rows[0]["referral_id"] == buyer_lead["id"]
+    assert rows[0]["tracking"]["lead_source"] == "/beta"
+    assert rows[0]["tracking"]["segment"] == "buyer_beta"
+    assert rows[0]["tracking"]["payment_status"] == "unpaid"
+    assert rows[0]["tracking"]["price_paid_pln"] == 0
+    assert rows[0]["tracking"]["report_type"] == "buyer_check"
+    assert rows[0]["tracking"]["decision_impact"] == "pending"
+
+    updated = client.patch(
+        f"/api/v1/admin/paid-beta/tracking/{buyer_lead['id']}",
+        headers=admin_headers,
+        json={
+            "lead_source": "facebook-buyer-group",
+            "payment_status": "paid",
+            "price_paid_pln": 149,
+            "report_type": "full_due_diligence",
+            "decision_impact": "negotiated_lower",
+            "decision_impact_note": "Buyer used opening offer in seller call.",
+            "objections": ["wanted more legal certainty"],
+            "missing_trust_data": ["noise data"],
+            "refund_risk": "low",
+            "next_follow_up_date": "2026-09-03",
+            "expert_review_interest": True,
+            "manual_qa_status": "passed",
+            "manual_qa_notes": "No source URL leak.",
+        },
+    )
+    payload = updated.json()
+
+    assert updated.status_code == 200
+    tracking = payload["tracking"]
+    assert tracking["lead_source"] == "facebook-buyer-group"
+    assert tracking["payment_status"] == "paid"
+    assert tracking["price_paid_pln"] == 149
+    assert tracking["report_type"] == "full_due_diligence"
+    assert tracking["decision_impact"] == "negotiated_lower"
+    assert tracking["objections"] == ["wanted more legal certainty"]
+    assert tracking["missing_trust_data"] == ["noise data"]
+    assert tracking["refund_risk"] == "low"
+    assert tracking["next_follow_up_date"] == "2026-09-03"
+    assert tracking["expert_review_interest"] is True
+    assert tracking["manual_qa_status"] == "passed"
+
+    stored = client.get(
+        f"/api/v1/partner-referrals/{buyer_lead['id']}",
+        headers={"X-Domarion-User-Id": buyer_lead["owner_id"]},
+    ).json()
+    assert stored["metadata"]["paid_beta_tracking"]["price_paid_pln"] == 149
+    assert stored["metadata"]["object_reference_private"].startswith("https://www.otodom.pl/")
+
+
+def test_paid_beta_tracking_requires_admin_and_beta_referral() -> None:
+    created = client.post(
+        "/api/v1/partner-referrals",
+        json={
+            "referral_type": "legal",
+            "source_context": "manual",
+            "city": "Wrocław",
+            "contact_email": "buyer@example.com",
+            "consent_to_contact": True,
+        },
+    ).json()
+
+    forbidden = client.get(
+        "/api/v1/admin/paid-beta/tracking",
+        headers={"X-Domarion-User-Id": "buyer-1"},
+    )
+    rejected = client.patch(
+        f"/api/v1/admin/paid-beta/tracking/{created['id']}",
+        headers={
+            "X-Domarion-User-Id": "admin-1",
+            "X-Domarion-Role": "admin",
+            "X-Domarion-Plan": "enterprise",
+        },
+        json={"payment_status": "paid"},
+    )
+
+    assert forbidden.status_code == 403
+    assert forbidden.json()["detail"] == "Admin role required"
+    assert rejected.status_code == 400
+    assert rejected.json()["detail"] == "Referral is not a paid beta lead"
+
+
 def test_partner_referral_lead_scores_require_admin_role() -> None:
     response = client.get(
         "/api/v1/admin/partner-referrals/lead-scores",

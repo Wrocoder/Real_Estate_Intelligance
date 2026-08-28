@@ -1,6 +1,7 @@
 from statistics import mean
 
 from domarion.schemas import (
+    BuyerDecisionPackage,
     CompareItemMetrics,
     CompareMortgageAssumptions,
     CompareResponse,
@@ -8,6 +9,7 @@ from domarion.schemas import (
     ListingAnalysis,
     MortgageCalculationRequest,
 )
+from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.mortgage import calculate_mortgage
 
 DEFAULT_DOWN_PAYMENT_PCT = 20.0
@@ -56,6 +58,9 @@ def _build_item_metrics(
 ) -> CompareItemMetrics:
     listing = analysis.listing
     scores = analysis.scores
+    buyer_decision = _buyer_decision(analysis)
+    total_acquisition = buyer_decision.total_acquisition
+    verdict = buyer_decision.verdict
     down_payment = round(listing.price * assumptions.down_payment_pct / 100)
     mortgage = calculate_mortgage(
         MortgageCalculationRequest(
@@ -66,6 +71,8 @@ def _build_item_metrics(
             rate_type=assumptions.rate_type,
             market_type=listing.market_type,
             include_pcc=listing.market_type == "secondary",
+            renovation_budget_pln=total_acquisition.renovation_estimate_pln,
+            bank_commission_pct=0.5,
         )
     )
     fair_price_gap = listing.price - scores.fair_price_mid
@@ -98,7 +105,17 @@ def _build_item_metrics(
         estimated_monthly_payment_per_m2_pln=round(
             mortgage.base_scenario.monthly_total_payment_pln / listing.area_m2
         ),
-        upfront_cash_needed_pln=mortgage.costs.upfront_cash_needed_pln,
+        upfront_cash_needed_pln=total_acquisition.upfront_cash_needed_pln,
+        renovation_estimate_pln=total_acquisition.renovation_estimate_pln,
+        furniture_estimate_pln=total_acquisition.furniture_estimate_pln,
+        transaction_costs_pln=total_acquisition.transaction_costs_pln,
+        total_move_in_cost_pln=total_acquisition.total_move_in_cost_pln,
+        ready_to_move_alternative_price_pln=(
+            total_acquisition.ready_to_move_alternative_price_pln
+        ),
+        post_renovation_value_gap_pln=total_acquisition.post_renovation_value_gap_pln,
+        max_reasonable_offer_pln=verdict.max_reasonable_offer_pln,
+        opening_offer_pln=verdict.opening_offer_pln,
         estimated_gross_rental_yield_pct=estimated_rental_yield,
         estimated_monthly_rent_pln=estimated_monthly_rent,
         recommendation=_recommendation(analysis, decision_score),
@@ -121,6 +138,14 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
         metrics,
         key=lambda metric: (metric.estimated_monthly_payment_pln, metric.listing_id),
     )
+    best_total_cost = min(
+        metrics,
+        key=lambda metric: (
+            metric.total_move_in_cost_pln,
+            -metric.decision_score,
+            metric.listing_id,
+        ),
+    )
     strongest_liquidity = max(
         metrics,
         key=lambda metric: (metric.liquidity_score, -metric.risk_score, metric.listing_id),
@@ -134,6 +159,7 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
     return CompareSummary(
         best_listing_id=best.listing_id,
         best_value_listing_id=best_value.listing_id,
+        best_total_cost_listing_id=best_total_cost.listing_id,
         lowest_monthly_payment_listing_id=lowest_payment.listing_id,
         strongest_liquidity_listing_id=strongest_liquidity.listing_id,
         strongest_rental_listing_id=strongest_rental.listing_id,
@@ -141,6 +167,9 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
         average_price_per_m2=round(mean(metric.price_per_m2_pln for metric in metrics)),
         average_estimated_monthly_payment_pln=round(
             mean(metric.estimated_monthly_payment_pln for metric in metrics)
+        ),
+        average_total_move_in_cost_pln=round(
+            mean(metric.total_move_in_cost_pln for metric in metrics)
         ),
         average_liquidity_score=round(mean(metric.liquidity_score for metric in metrics)),
         average_rental_potential_score=round(
@@ -152,13 +181,19 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
                 "Decision score балансирует investment, risk, liquidity, "
                 "rental potential и переплату к fair price."
             ),
+            (
+                "Total move-in cost включает цену, transaction costs, ремонт "
+                "и базовую мебель/оборудование."
+            ),
         ],
     )
 
 
 def _decision_score(analysis: ListingAnalysis) -> int:
     scores = analysis.scores
+    total_acquisition = _buyer_decision(analysis).total_acquisition
     overpricing_penalty = max(scores.price_delta_to_fair_mid_pct, 0) * 0.65
+    renovation_gap_penalty = max(total_acquisition.post_renovation_value_gap_pln or 0, 0) / 8000
     value = (
         scores.investment_score * 0.42
         + (100 - scores.risk_score) * 0.16
@@ -166,6 +201,7 @@ def _decision_score(analysis: ListingAnalysis) -> int:
         + scores.rental_potential_score * 0.15
         + scores.negotiation_score * 0.10
         - overpricing_penalty
+        - renovation_gap_penalty
     )
     return round(_clamp(value, 0, 100))
 
@@ -181,6 +217,7 @@ def _estimated_gross_rental_yield_pct(analysis: ListingAnalysis) -> float:
 
 def _recommendation(analysis: ListingAnalysis, decision_score: int) -> str:
     scores = analysis.scores
+    buyer_decision = _buyer_decision(analysis)
     if scores.risk_score >= 70:
         return (
             "Сначала проверить юридические и рыночные риски; "
@@ -188,6 +225,14 @@ def _recommendation(analysis: ListingAnalysis, decision_score: int) -> str:
         )
     if scores.price_delta_to_fair_mid_pct >= 12:
         return "Цена заметно выше fair range; основной сценарий - торг или ожидание снижения."
+    if (
+        buyer_decision.total_acquisition.post_renovation_value_gap_pln is not None
+        and buyer_decision.total_acquisition.post_renovation_value_gap_pln > 0
+    ):
+        return (
+            "После ремонта и мебели объект теряет ценовое преимущество; сравнить с готовыми "
+            "вариантами перед оффером."
+        )
     if decision_score >= 75 and scores.liquidity_score >= 60:
         return "Лучший кандидат для короткого списка: хорошее сочетание цены, ликвидности и рисков."
     if scores.rental_potential_score >= 70:
@@ -195,6 +240,23 @@ def _recommendation(analysis: ListingAnalysis, decision_score: int) -> str:
     if scores.liquidity_score < 40:
         return "Покупка возможна, но выход из объекта может быть медленнее среднего."
     return "Можно рассматривать после проверки документов, состояния здания и реальных расходов."
+
+
+def _buyer_decision(analysis: ListingAnalysis) -> BuyerDecisionPackage:
+    if analysis.buyer_decision is not None:
+        return analysis.buyer_decision
+    return build_buyer_decision(
+        listing=analysis.listing,
+        area_statistics=analysis.area_statistics,
+        scores=analysis.scores,
+        comparables=analysis.comparables,
+        negotiation_arguments=analysis.negotiation_arguments,
+        data_quality_notes=analysis.data_quality_notes,
+        developer_reputation=analysis.developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+        risk_profile=analysis.risk_profile,
+        rental_estimate=analysis.rental_estimate,
+    )
 
 
 def _clamp(value: float, low: float, high: float) -> float:

@@ -18,14 +18,14 @@ import { LandingMapScene } from "@/components/LandingMapScene";
 export const metadata: Metadata = {
   title: "Проверка квартиры перед покупкой | Domarion Analytics",
   description:
-    "Paid beta Domarion: проверка квартиры по адресу или ссылке Otodom/OLX, отчет по цене, рискам, району и торгу.",
+    "Paid beta Domarion: не переплатить за квартиру, не купить проблему и подготовиться к торгу перед zadatek.",
 };
 
 const reportChecks = [
   {
     icon: TrendingUp,
-    title: "Цена и торг",
-    text: "Сравниваем цену с районом и похожими объектами, показываем fair value, переплату и аргументы для offer.",
+    title: "Не переплатить",
+    text: "Показываем fair range, переплату, opening offer и максимальную цену, выше которой нужен сильный аргумент.",
   },
   {
     icon: MapPinned,
@@ -34,13 +34,13 @@ const reportChecks = [
   },
   {
     icon: ShieldCheck,
-    title: "Риски покупки",
-    text: "Выносим в отчет ликвидность, слабые данные, долгое время на рынке, шумовые/промышленные proxy и developer risk.",
+    title: "Не купить проблему",
+    text: "Выносим legal/technical unknowns, шумовые и промышленные proxy, слабые данные, developer risk и checklist до zadatek.",
   },
   {
     icon: WalletCards,
-    title: "Бюджет решения",
-    text: "Добавляем ипотечный платеж, total purchase cost, max offer и checklist перед zadatek.",
+    title: "Подготовиться к торгу",
+    text: "Собираем seller questions, аргументы по цене, walk-away level и список того, что проверить на просмотре.",
   },
 ];
 
@@ -60,8 +60,8 @@ export default function BuyerBetaPage() {
           <span className="landing-eyebrow">Paid beta · Wrocław i okolice</span>
           <h1>Проверка квартиры перед покупкой</h1>
           <p>
-            Введите адрес или ссылку на объект, а Domarion соберет отчет по цене,
-            рискам, району, будущей инфраструктуре и аргументам для торга.
+            Введите адрес или ссылку на объект, а Domarion ответит: покупать,
+            торговаться, отказаться или сначала закрыть критичные неизвестные.
           </p>
           <div className="landing-cta-row">
             <Link className="button primary landing-button" href="/check?source=buyer-beta">
@@ -76,8 +76,8 @@ export default function BuyerBetaPage() {
 
       <section className="landing-proof-strip" aria-label="Paid beta metrics">
         <div>
-          <strong>29-199 PLN</strong>
-          <span>гипотеза цены за разовый отчет</span>
+          <strong>49-149 PLN</strong>
+          <span>гипотеза цены за buyer reports</span>
         </div>
         <div>
           <strong>15 минут</strong>
@@ -98,8 +98,8 @@ export default function BuyerBetaPage() {
           <span className="landing-eyebrow">Что внутри отчета</span>
           <h2>Не еще одно объявление, а решение по объекту</h2>
           <p>
-            Buyer report должен дать короткий вывод: нормальная ли цена, где риски,
-            какой offer разумен и что проверить до задатка.
+            Buyer report должен быстро показать, где можно сэкономить, где объект
+            может стать проблемой и какие аргументы использовать до offer.
           </p>
         </div>
         <div className="landing-card-grid">

@@ -12,6 +12,7 @@ export type Listing = {
   market_type: "primary" | "secondary";
   building_type: string | null;
   renovation_state: string | null;
+  custom_renovation_budget_pln: number | null;
   has_balcony: boolean | null;
   has_terrace: boolean | null;
   has_garden: boolean | null;
@@ -1017,6 +1018,142 @@ export type PropertyScores = {
   warnings: string[];
 };
 
+export type BuyerVerdictStatus = "buy" | "negotiate" | "avoid" | "verify_first";
+export type PurchaseIntent = "self" | "family" | "rental" | "investment" | "unsure";
+export type DueDiligencePriority = "critical" | "high" | "medium" | "low";
+export type DueDiligenceCheckStatus =
+  | "known"
+  | "estimated"
+  | "verify_required"
+  | "unknown"
+  | "not_applicable";
+export type PreViewingRecommendation = "view" | "skip" | "verify_first";
+
+export type BuyerDecisionVerdict = {
+  status: BuyerVerdictStatus;
+  score: number;
+  headline: string;
+  summary: string;
+  seller_price_pln: number;
+  fair_price_low_pln: number;
+  fair_price_mid_pln: number;
+  fair_price_high_pln: number;
+  opening_offer_pln: number;
+  recommended_offer_pln: number;
+  realistic_deal_low_pln: number;
+  realistic_deal_high_pln: number;
+  max_reasonable_offer_pln: number;
+  price_delta_to_fair_mid_pct: number;
+  overpricing_pln: number;
+  cta_label: string;
+  top_reasons: string[];
+  top_risks: string[];
+  critical_unknowns: string[];
+};
+
+export type BuyerNegotiationAssistant = {
+  asking_price_pln: number;
+  opening_offer_pln: number;
+  realistic_deal_low_pln: number;
+  realistic_deal_high_pln: number;
+  max_reasonable_offer_pln: number;
+  negotiation_score: number;
+  posture: string;
+  arguments: string[];
+  seller_script: string[];
+  guardrails: string[];
+};
+
+export type DueDiligenceChecklistItem = {
+  code: string;
+  category: string;
+  label: string;
+  priority: DueDiligencePriority;
+  status: DueDiligenceCheckStatus;
+  rationale: string;
+};
+
+export type PropertyDueDiligence = {
+  market_type: "primary" | "secondary";
+  score: number;
+  label: string;
+  red_flags: string[];
+  unknowns: string[];
+  documents_to_request: string[];
+  questions_for_seller: string[];
+  checklist: DueDiligenceChecklistItem[];
+  disclaimer: string;
+};
+
+export type BuyerSourceEvidence = {
+  topic: string;
+  basis: string;
+  source_name: string;
+  source_type: string;
+  updated_at: string | null;
+  confidence_score: number;
+  note: string | null;
+};
+
+export type BuyerKnowledgeMatrix = {
+  known: string[];
+  estimated: string[];
+  could_not_verify: string[];
+  check_completeness_score: number;
+  source_evidence: BuyerSourceEvidence[];
+};
+
+export type TotalAcquisitionCost = {
+  purchase_price_pln: number;
+  renovation_condition: string | null;
+  renovation_budget_source: string;
+  pcc_tax_pln: number;
+  notary_and_court_pln: number;
+  bank_costs_pln: number;
+  agent_commission_pln: number;
+  renovation_estimate_pln: number;
+  furniture_estimate_pln: number;
+  transaction_costs_pln: number;
+  total_move_in_cost_pln: number;
+  upfront_cash_needed_pln: number;
+  ready_to_move_alternative_price_pln: number | null;
+  post_renovation_value_gap_pln: number | null;
+  monthly_payment_baseline_pln: number;
+  notes: string[];
+};
+
+export type BuyerIntentFit = {
+  intent: PurchaseIntent;
+  score: number;
+  label: string;
+  reasons: string[];
+  tradeoffs: string[];
+};
+
+export type ViewingAssistant = {
+  recommendation: PreViewingRecommendation;
+  positives: string[];
+  risks: string[];
+  seller_questions: string[];
+  photos_to_take: string[];
+  documents_to_request: string[];
+  building_checks: string[];
+  surroundings_checks: string[];
+};
+
+export type BuyerDecisionPackage = {
+  verdict: BuyerDecisionVerdict;
+  negotiation: BuyerNegotiationAssistant;
+  due_diligence: PropertyDueDiligence;
+  knowledge: BuyerKnowledgeMatrix;
+  total_acquisition: TotalAcquisitionCost;
+  intent_fit: BuyerIntentFit[];
+  pre_viewing: ViewingAssistant;
+  post_viewing_checklist: string[];
+  watch_triggers: string[];
+  disclaimer: string;
+};
+
 export type ListingAnalysis = {
   listing: Listing;
   area_statistics: AreaStatistics;
@@ -1028,12 +1165,21 @@ export type ListingAnalysis = {
   growth_analysis: ListingGrowthAnalysis | null;
   risk_profile: ListingRiskProfile | null;
   rental_estimate: ListingRentalEstimate | null;
+  buyer_decision: BuyerDecisionPackage | null;
   scores: PropertyScores;
   insights: string[];
   negotiation_arguments: string[];
   data_quality_notes: string[];
   disclaimer: string;
 };
+
+export type RenovationCondition =
+  | "move_in_ready"
+  | "refresh"
+  | "light_renovation"
+  | "full_renovation"
+  | "shell_developer_standard"
+  | "custom_budget";
 
 export type UserSubmittedListingRequest = {
   title?: string | null;
@@ -1046,6 +1192,8 @@ export type UserSubmittedListingRequest = {
   city?: string;
   district: string;
   market_type?: "primary" | "secondary";
+  renovation_condition?: RenovationCondition | null;
+  custom_renovation_budget_pln?: number | null;
   price: number;
   area_m2: number;
   rooms: number;
@@ -1263,6 +1411,7 @@ export type ObjectReport = {
   template_code: string;
   template_name: string;
   branding: ReportBranding | null;
+  buyer_decision: BuyerDecisionPackage | null;
   summary: string;
   sections: ReportSection[];
   disclaimer: string;
@@ -1786,6 +1935,63 @@ export type PartnerLeadScore = {
   disclaimer: string;
 };
 
+export type PaidBetaPaymentStatus = "unpaid" | "paid" | "refunded" | "waived" | "unknown";
+export type PaidBetaReportType =
+  | "free_check"
+  | "buyer_check"
+  | "full_due_diligence"
+  | "expert_review"
+  | "realtor_bundle"
+  | "realtor_pro"
+  | "custom";
+export type PaidBetaDecisionImpact =
+  | "pending"
+  | "viewed"
+  | "skipped_viewing"
+  | "negotiated_lower"
+  | "requested_documents"
+  | "rejected_object"
+  | "bought"
+  | "no_impact"
+  | "unknown";
+export type PaidBetaRefundRisk = "low" | "medium" | "high" | "unknown";
+export type PaidBetaQaStatus = "not_started" | "passed" | "needs_fix" | "failed";
+
+export type PaidBetaTracking = {
+  lead_source: string | null;
+  segment: string | null;
+  payment_status: PaidBetaPaymentStatus;
+  price_paid_pln: number;
+  report_type: PaidBetaReportType;
+  decision_impact: PaidBetaDecisionImpact;
+  decision_impact_note: string | null;
+  objections: string[];
+  missing_trust_data: string[];
+  refund_risk: PaidBetaRefundRisk;
+  next_follow_up_date: string | null;
+  expert_review_interest: boolean | null;
+  manual_qa_status: PaidBetaQaStatus;
+  manual_qa_notes: string | null;
+};
+
+export type PaidBetaTrackingPayload = Partial<PaidBetaTracking>;
+
+export type PaidBetaTrackingRow = {
+  referral_id: string;
+  referral_type: PartnerReferralType;
+  status: PartnerReferralStatus;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  city: string;
+  district: string | null;
+  listing_id: string | null;
+  report_id: string | null;
+  created_at: string;
+  updated_at: string;
+  tracking: PaidBetaTracking;
+};
+
 export type AccountUsage = {
   favorites: number;
   alerts: number;
@@ -1955,6 +2161,14 @@ export type CompareItemMetrics = {
   estimated_monthly_payment_pln: number;
   estimated_monthly_payment_per_m2_pln: number;
   upfront_cash_needed_pln: number;
+  renovation_estimate_pln: number;
+  furniture_estimate_pln: number;
+  transaction_costs_pln: number;
+  total_move_in_cost_pln: number;
+  ready_to_move_alternative_price_pln: number | null;
+  post_renovation_value_gap_pln: number | null;
+  max_reasonable_offer_pln: number;
+  opening_offer_pln: number;
   estimated_gross_rental_yield_pct: number;
   estimated_monthly_rent_pln: number;
   recommendation: string;
@@ -1965,12 +2179,14 @@ export type CompareItemMetrics = {
 export type CompareSummary = {
   best_listing_id: string;
   best_value_listing_id: string;
+  best_total_cost_listing_id: string;
   lowest_monthly_payment_listing_id: string;
   strongest_liquidity_listing_id: string;
   strongest_rental_listing_id: string;
   riskiest_listing_id: string;
   average_price_per_m2: number;
   average_estimated_monthly_payment_pln: number;
+  average_total_move_in_cost_pln: number;
   average_liquidity_score: number;
   average_rental_potential_score: number;
   notes: string[];
@@ -3285,6 +3501,24 @@ export const api = {
     request<PartnerLeadScore>(
       `/api/v1/admin/partner-referrals/${encodeURIComponent(referralId)}/lead-score`,
       { headers: ADMIN_HEADERS },
+    ),
+  listAdminPaidBetaTracking: (params: {
+    status?: PartnerReferralStatus;
+    referral_type?: PartnerReferralType;
+    limit?: number;
+  } = {}) =>
+    request<PaidBetaTrackingRow[]>(
+      `/api/v1/admin/paid-beta/tracking${toQueryString(params)}`,
+      { headers: ADMIN_HEADERS },
+    ),
+  updateAdminPaidBetaTracking: (referralId: string, payload: PaidBetaTrackingPayload) =>
+    request<PaidBetaTrackingRow>(
+      `/api/v1/admin/paid-beta/tracking/${encodeURIComponent(referralId)}`,
+      {
+        method: "PATCH",
+        headers: ADMIN_HEADERS,
+        body: JSON.stringify(payload),
+      },
     ),
   updateAdminPartnerReferral: (
     referralId: string,

@@ -5,6 +5,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 MarketType = Literal["primary", "secondary"]
+RenovationCondition = Literal[
+    "move_in_ready",
+    "refresh",
+    "light_renovation",
+    "full_renovation",
+    "shell_developer_standard",
+    "custom_budget",
+]
 ReportAudience = Literal["buyer", "realtor", "investor"]
 ReportFormat = Literal["json", "html"]
 AlertChannel = Literal["email", "telegram"]
@@ -38,6 +46,29 @@ PartnerReferralType = Literal[
 PartnerReferralStatus = Literal["new", "contacted", "qualified", "closed", "rejected"]
 PartnerLeadPriority = Literal["hot", "warm", "nurture", "low_fit", "disqualified"]
 PartnerLeadFit = Literal["mortgage", "legal", "renovation", "beta_sales", "general"]
+PaidBetaPaymentStatus = Literal["unpaid", "paid", "refunded", "waived", "unknown"]
+PaidBetaReportType = Literal[
+    "free_check",
+    "buyer_check",
+    "full_due_diligence",
+    "expert_review",
+    "realtor_bundle",
+    "realtor_pro",
+    "custom",
+]
+PaidBetaDecisionImpact = Literal[
+    "pending",
+    "viewed",
+    "skipped_viewing",
+    "negotiated_lower",
+    "requested_documents",
+    "rejected_object",
+    "bought",
+    "no_impact",
+    "unknown",
+]
+PaidBetaRefundRisk = Literal["low", "medium", "high", "unknown"]
+PaidBetaQaStatus = Literal["not_started", "passed", "needs_fix", "failed"]
 AIInsightSubjectType = Literal[
     "listing",
     "user_submitted_draft",
@@ -161,6 +192,17 @@ ScoreNegotiationLabel = Literal[
     "strong_negotiation",
 ]
 ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
+BuyerVerdictStatus = Literal["buy", "negotiate", "avoid", "verify_first"]
+PurchaseIntent = Literal["self", "family", "rental", "investment", "unsure"]
+DueDiligencePriority = Literal["critical", "high", "medium", "low"]
+DueDiligenceCheckStatus = Literal[
+    "known",
+    "estimated",
+    "verify_required",
+    "unknown",
+    "not_applicable",
+]
+PreViewingRecommendation = Literal["view", "skip", "verify_first"]
 ScoringBacktestSeverity = Literal["healthy", "watch", "drift", "critical"]
 ScoringBacktestSegmentType = Literal["area", "period"]
 GrowthFactorCode = Literal[
@@ -295,6 +337,7 @@ class Listing(BaseModel):
     market_type: MarketType
     building_type: str | None = None
     renovation_state: str | None = None
+    custom_renovation_budget_pln: int | None = Field(default=None, ge=0)
     has_balcony: bool | None = None
     has_terrace: bool | None = None
     has_garden: bool | None = None
@@ -1354,6 +1397,131 @@ class PropertyScores(BaseModel):
         return next_data
 
 
+class BuyerDecisionVerdict(BaseModel):
+    status: BuyerVerdictStatus
+    score: float = Field(ge=0, le=10)
+    headline: str
+    summary: str
+    seller_price_pln: int
+    fair_price_low_pln: int
+    fair_price_mid_pln: int
+    fair_price_high_pln: int
+    opening_offer_pln: int
+    recommended_offer_pln: int
+    realistic_deal_low_pln: int
+    realistic_deal_high_pln: int
+    max_reasonable_offer_pln: int
+    price_delta_to_fair_mid_pct: float
+    overpricing_pln: int
+    cta_label: str = "Prepare for viewing and negotiation"
+    top_reasons: list[str] = Field(default_factory=list)
+    top_risks: list[str] = Field(default_factory=list)
+    critical_unknowns: list[str] = Field(default_factory=list)
+
+
+class BuyerNegotiationAssistant(BaseModel):
+    asking_price_pln: int
+    opening_offer_pln: int
+    realistic_deal_low_pln: int
+    realistic_deal_high_pln: int
+    max_reasonable_offer_pln: int
+    negotiation_score: int = Field(ge=0, le=100)
+    posture: str
+    arguments: list[str] = Field(default_factory=list)
+    seller_script: list[str] = Field(default_factory=list)
+    guardrails: list[str] = Field(default_factory=list)
+
+
+class DueDiligenceChecklistItem(BaseModel):
+    code: str
+    category: str
+    label: str
+    priority: DueDiligencePriority
+    status: DueDiligenceCheckStatus
+    rationale: str
+
+
+class PropertyDueDiligence(BaseModel):
+    market_type: MarketType
+    score: int = Field(ge=0, le=100)
+    label: str
+    red_flags: list[str] = Field(default_factory=list)
+    unknowns: list[str] = Field(default_factory=list)
+    documents_to_request: list[str] = Field(default_factory=list)
+    questions_for_seller: list[str] = Field(default_factory=list)
+    checklist: list[DueDiligenceChecklistItem] = Field(default_factory=list)
+    disclaimer: str
+
+
+class BuyerSourceEvidence(BaseModel):
+    topic: str
+    basis: str
+    source_name: str
+    source_type: str
+    updated_at: date | None = None
+    confidence_score: int = Field(ge=0, le=100)
+    note: str | None = None
+
+
+class BuyerKnowledgeMatrix(BaseModel):
+    known: list[str] = Field(default_factory=list)
+    estimated: list[str] = Field(default_factory=list)
+    could_not_verify: list[str] = Field(default_factory=list)
+    check_completeness_score: int = Field(ge=0, le=100)
+    source_evidence: list[BuyerSourceEvidence] = Field(default_factory=list)
+
+
+class TotalAcquisitionCost(BaseModel):
+    purchase_price_pln: int
+    renovation_condition: str | None = None
+    renovation_budget_source: str = "market_state_default"
+    pcc_tax_pln: int = Field(ge=0)
+    notary_and_court_pln: int = Field(ge=0)
+    bank_costs_pln: int = Field(ge=0)
+    agent_commission_pln: int = Field(ge=0)
+    renovation_estimate_pln: int = Field(ge=0)
+    furniture_estimate_pln: int = Field(ge=0)
+    transaction_costs_pln: int = Field(ge=0)
+    total_move_in_cost_pln: int = Field(ge=0)
+    upfront_cash_needed_pln: int = Field(ge=0)
+    ready_to_move_alternative_price_pln: int | None = Field(default=None, ge=0)
+    post_renovation_value_gap_pln: int | None = None
+    monthly_payment_baseline_pln: int = Field(ge=0)
+    notes: list[str] = Field(default_factory=list)
+
+
+class BuyerIntentFit(BaseModel):
+    intent: PurchaseIntent
+    score: int = Field(ge=0, le=100)
+    label: str
+    reasons: list[str] = Field(default_factory=list)
+    tradeoffs: list[str] = Field(default_factory=list)
+
+
+class ViewingAssistant(BaseModel):
+    recommendation: PreViewingRecommendation
+    positives: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    seller_questions: list[str] = Field(default_factory=list)
+    photos_to_take: list[str] = Field(default_factory=list)
+    documents_to_request: list[str] = Field(default_factory=list)
+    building_checks: list[str] = Field(default_factory=list)
+    surroundings_checks: list[str] = Field(default_factory=list)
+
+
+class BuyerDecisionPackage(BaseModel):
+    verdict: BuyerDecisionVerdict
+    negotiation: BuyerNegotiationAssistant
+    due_diligence: PropertyDueDiligence
+    knowledge: BuyerKnowledgeMatrix
+    total_acquisition: TotalAcquisitionCost
+    intent_fit: list[BuyerIntentFit] = Field(default_factory=list)
+    pre_viewing: ViewingAssistant
+    post_viewing_checklist: list[str] = Field(default_factory=list)
+    watch_triggers: list[str] = Field(default_factory=list)
+    disclaimer: str
+
+
 def _int_label_input(value: object) -> int:
     if isinstance(value, bool):
         return 0
@@ -1510,6 +1678,7 @@ class ListingAnalysis(BaseModel):
     growth_analysis: ListingGrowthAnalysis | None = None
     risk_profile: ListingRiskProfile | None = None
     rental_estimate: ListingRentalEstimate | None = None
+    buyer_decision: BuyerDecisionPackage | None = None
     scores: PropertyScores
     insights: list[str]
     negotiation_arguments: list[str]
@@ -1719,6 +1888,8 @@ class UserSubmittedListingRequest(BaseModel):
     city: str = "Wrocław"
     district: str
     market_type: MarketType = "secondary"
+    renovation_condition: RenovationCondition | None = None
+    custom_renovation_budget_pln: int | None = Field(default=None, ge=0, le=2_000_000)
     price: int = Field(gt=0)
     area_m2: float = Field(gt=0)
     rooms: int = Field(ge=1, le=10)
@@ -1738,6 +1909,17 @@ class UserSubmittedListingRequest(BaseModel):
     confirm_private_analysis: bool
     save_private_draft: bool = True
     retention_days: int = Field(default=30, ge=1, le=180)
+
+    @model_validator(mode="after")
+    def ensure_custom_renovation_budget(self) -> "UserSubmittedListingRequest":
+        if (
+            self.renovation_condition == "custom_budget"
+            and self.custom_renovation_budget_pln is None
+        ):
+            raise ValueError(
+                "custom_renovation_budget_pln is required for custom_budget renovation condition"
+            )
+        return self
 
 
 class UserSubmittedListingAnalysis(BaseModel):
@@ -1929,6 +2111,14 @@ class CompareItemMetrics(BaseModel):
     estimated_monthly_payment_pln: int = Field(ge=0)
     estimated_monthly_payment_per_m2_pln: int = Field(ge=0)
     upfront_cash_needed_pln: int = Field(ge=0)
+    renovation_estimate_pln: int = Field(ge=0)
+    furniture_estimate_pln: int = Field(ge=0)
+    transaction_costs_pln: int = Field(ge=0)
+    total_move_in_cost_pln: int = Field(ge=0)
+    ready_to_move_alternative_price_pln: int | None = Field(default=None, ge=0)
+    post_renovation_value_gap_pln: int | None = None
+    max_reasonable_offer_pln: int = Field(ge=0)
+    opening_offer_pln: int = Field(ge=0)
     estimated_gross_rental_yield_pct: float = Field(ge=0)
     estimated_monthly_rent_pln: int = Field(ge=0)
     recommendation: str
@@ -1939,12 +2129,14 @@ class CompareItemMetrics(BaseModel):
 class CompareSummary(BaseModel):
     best_listing_id: str
     best_value_listing_id: str
+    best_total_cost_listing_id: str
     lowest_monthly_payment_listing_id: str
     strongest_liquidity_listing_id: str
     strongest_rental_listing_id: str
     riskiest_listing_id: str
     average_price_per_m2: int = Field(ge=0)
     average_estimated_monthly_payment_pln: int = Field(ge=0)
+    average_total_move_in_cost_pln: int = Field(ge=0)
     average_liquidity_score: int = Field(ge=0, le=100)
     average_rental_potential_score: int = Field(ge=0, le=100)
     notes: list[str] = Field(default_factory=list)
@@ -2294,6 +2486,56 @@ class PartnerReferral(BaseModel):
     updated_at: datetime
 
 
+class PaidBetaTracking(BaseModel):
+    lead_source: str | None = Field(default=None, max_length=120)
+    segment: str | None = Field(default=None, max_length=80)
+    payment_status: PaidBetaPaymentStatus = "unpaid"
+    price_paid_pln: int = Field(default=0, ge=0)
+    report_type: PaidBetaReportType = "buyer_check"
+    decision_impact: PaidBetaDecisionImpact = "pending"
+    decision_impact_note: str | None = Field(default=None, max_length=1200)
+    objections: list[str] = Field(default_factory=list)
+    missing_trust_data: list[str] = Field(default_factory=list)
+    refund_risk: PaidBetaRefundRisk = "unknown"
+    next_follow_up_date: date | None = None
+    expert_review_interest: bool | None = None
+    manual_qa_status: PaidBetaQaStatus = "not_started"
+    manual_qa_notes: str | None = Field(default=None, max_length=1200)
+
+
+class PaidBetaTrackingUpdate(BaseModel):
+    lead_source: str | None = Field(default=None, max_length=120)
+    segment: str | None = Field(default=None, max_length=80)
+    payment_status: PaidBetaPaymentStatus | None = None
+    price_paid_pln: int | None = Field(default=None, ge=0)
+    report_type: PaidBetaReportType | None = None
+    decision_impact: PaidBetaDecisionImpact | None = None
+    decision_impact_note: str | None = Field(default=None, max_length=1200)
+    objections: list[str] | None = None
+    missing_trust_data: list[str] | None = None
+    refund_risk: PaidBetaRefundRisk | None = None
+    next_follow_up_date: date | None = None
+    expert_review_interest: bool | None = None
+    manual_qa_status: PaidBetaQaStatus | None = None
+    manual_qa_notes: str | None = Field(default=None, max_length=1200)
+
+
+class PaidBetaTrackingRow(BaseModel):
+    referral_id: str
+    referral_type: PartnerReferralType
+    status: PartnerReferralStatus
+    contact_name: str | None = None
+    contact_email: str | None = None
+    contact_phone: str | None = None
+    city: str
+    district: str | None = None
+    listing_id: str | None = None
+    report_id: str | None = None
+    created_at: datetime
+    updated_at: datetime
+    tracking: PaidBetaTracking
+
+
 class PartnerLeadScoreComponent(BaseModel):
     code: str
     label: str
@@ -2572,6 +2814,7 @@ class ObjectReport(BaseModel):
     template_code: str
     template_name: str
     branding: ReportBranding | None = None
+    buyer_decision: BuyerDecisionPackage | None = None
     summary: str
     sections: list[ReportSection]
     disclaimer: str

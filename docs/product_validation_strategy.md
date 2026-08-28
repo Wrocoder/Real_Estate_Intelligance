@@ -1,8 +1,8 @@
 # Product Validation Strategy
 
-Дата обновления: 2026-07-18
-Статус: desk research и product strategy. Это не заменяет юридический review,
-интервью с рынком и список реальных paid beta candidates.
+Дата обновления: 2026-08-27
+Статус: product validation plan поверх реализованного MVP. Это не заменяет
+юридический review, интервью с рынком и список реальных paid beta candidates.
 
 ## Executive Summary
 
@@ -13,12 +13,55 @@ developer reputation, alerts, карты и score explanations. Главный �
 оставаться инженерным демо без валидации спроса, юридического допуска источников
 и production deployment.
 
+Текущая оценка:
+
+- product readiness: 7/10;
+- technical readiness: 9/10.
+
 Практичный first wedge:
 
 - B2C: one-time buyer object report по конкретной квартире перед offer/zadatek.
 - B2Pro: realtor branded report и 5-report beta bundle.
-- Investor: hidden gems shortlist только после улучшения data coverage.
-- Enterprise/API: отложить до появления стабильных данных, monitoring и keys.
+- Investor: hidden gems shortlist только после улучшения data coverage and buyer proof.
+- Enterprise/API: использовать как existing technical surface, но не расширять
+  до доказанного B2C/B2Pro demand and stable data.
+
+Product reset зафиксирован отдельно в
+`docs/buyer_decision_product_direction.md`. Новый главный вопрос продукта:
+
+> Стоит ли мне покупать именно эту квартиру за эти деньги?
+
+Fair Price, Risk Score, Investment Score, Negotiation Score, developer
+reputation, infrastructure and mortgage are supporting evidence for that
+decision, not the headline product.
+
+## Validation Gate
+
+До следующей крупной разработки продукт должен доказать willingness to pay:
+
+- 20 paid buyer reports sold to strangers at 49-149 PLN; or
+- 3 paid realtor bundle pilots with real client conversations; and
+- at least 5 concrete decision-impact outcomes: price negotiation, avoided bad
+  purchase, due-diligence issue found, viewing skipped, or better alternative chosen.
+
+Do not start new large modules before this gate: broader CRM, enterprise
+dashboards, API expansion, country expansion, rental/houses/commercial roadmap,
+wide news product or new investor tooling.
+
+## Decision-First Positioning
+
+Do not sell "analytics". Sell outcome:
+
+- buyer: do not overpay by 30-100k PLN;
+- buyer: do not buy a problematic apartment;
+- family: avoid a wrong district/building choice;
+- investor: find a good object faster;
+- realtor: make client conversations more credible;
+- agency: produce professional decision reports in minutes.
+
+The B2C product name to test:
+
+> Проверка квартиры перед покупкой: цена, документы, риски, район, торг.
 
 ## Commercial Potential Scorecard
 
@@ -27,7 +70,7 @@ developer reputation, alerts, карты и score explanations. Главный �
 
 | Direction | Score | Why | What strengthens it | What weakens it | What to validate |
 | --- | ---: | --- | --- | --- | --- |
-| Overall commercial potential | 8.0 | Buying property is high-stakes and reports are concrete paid artifacts. | Report flow, price/future infra/risk mix, Wrocław focus. | Legal/data dependency and trust gap. | 10 paid reports or 3 realtor beta bundles. |
+| Overall commercial potential | 8.0 | Buying property is high-stakes and reports are concrete paid artifacts. | Report flow, price/future infra/risk mix, Wrocław focus. | Legal/data dependency and trust gap. | 20 paid buyer reports or 3 realtor beta bundles. |
 | B2C buyers | 6.5 | Pain is strong, but repeat subscription is weak. | One-time report, SEO, clear checklist. | Low retention and high trust requirement. | Landing conversion and willingness to pay 49-199 PLN. |
 | B2B realtors | 8.5 | Agents repeatedly need client-ready arguments. | White-label PDF, workspace, comparables, negotiation angle. | CRM/process inertia and agency politics. | 5 agents using reports in real client calls. |
 | Investors | 8.0 | Hidden gems and rental/fair-value analytics are valuable. | Alerts, scoring, price history. | Needs better live coverage and confidence. | Paid shortlist conversion and repeat use. |
@@ -39,7 +82,7 @@ developer reputation, alerts, карты и score explanations. Главный �
 | Legal complexity | 7.0 | Portals, database rights, GDPR/RODO and disclaimers matter. | Source compliance policy and partner feeds. | Aggressive scraping would raise risk. | Lawyer-approved source matrix. |
 | Source dependency risk | 8.0 | Current value needs active listing coverage. | Partner data, user-submitted flow, open-data moat. | Overreliance on one portal. | 3 independent listing sources. |
 | Competitive advantage | 7.5 | Combined reports, future infra, scoring and source policy are differentiated. | Historical snapshots and dedup over time. | Portals can copy simpler analytics. | Users cite Domarion-only insights as buying reason. |
-| First sales in 3 months | 7.0 | Possible with manual/semi-auto report workflow. | `/beta`, `/realtors`, lead capture. | No real outreach/interviews yet. | 5 paid beta customers. |
+| First sales in 3 months | 7.0 | Possible with manual/semi-auto report workflow. | `/beta`, `/realtors`, lead capture. | No real outreach/interviews yet. | 20 stranger-paid buyer reports or 3 realtor bundles. |
 | MRR 10,000 PLN | 6.5 | Realistic with agencies, harder through B2C alone. | Realtor bundles and agency workspace. | Sales cycle and trust. | 20-30 active pro seats or report bundles. |
 | Poland expansion | 7.0 | Replicable after source and geodata checklist. | Narrow playbook and modular sources. | Local data differences. | Second-city source checklist and pilot. |
 
@@ -101,6 +144,8 @@ Near-term moat:
 - private user-submitted object flow with no public source leak;
 - fair price, negotiation, risk and buyer decision summary in one artifact;
 - developer reputation citations and due-diligence questions;
+- future infrastructure impact as an explanation of how the area may change,
+  not just points on a map;
 - paid beta feedback loop tied to lead/admin queue.
 
 Data moat:
@@ -126,44 +171,66 @@ Trust moat:
 - confidence and disclaimers instead of overpromising;
 - sponsored/promoted separation from analytics.
 
-## Updated 12-Month Roadmap
+## Updated 12-Month Validation Roadmap
 
 ### Months 1-2: Paid Beta Readiness
 
-- Choose MVP hosting and deploy staging/production path.
+- Render Blueprint, staging compose, production preflight, worker model,
+  API-lite, market intelligence, reports, payments, alerts, developer CRUD/import
+  and SEO pages are already implemented as product/technical surface.
+- Freeze new large modules until the validation gate is met.
+- Reframe `/check`, `/beta`, `/pricing` and buyer reports around
+  `buy / negotiate / avoid / verify first`.
+- Add visible `What we know / estimate / could not verify` and source basis to
+  buyer-facing surfaces.
 - Run legal review for source matrix and developer reputation sources.
 - Recruit first 30 paid beta candidates.
-- Sell first 5-10 buyer reports or 2 realtor bundles.
-- Add mobile QA pass for `/beta`, `/check`, `/pricing`, `/reports`, `/realtors`.
-- Add backup/monitoring for reports and source freshness.
+- Sell 20 stranger-paid buyer reports or 3 realtor bundle pilots.
+- Run mobile QA pass for `/beta`, `/check`, `/pricing`, `/reports`, `/realtors`,
+  `/account` and `/admin`.
+- Fill Render secrets/domains, configure S3/R2 artifacts, monitoring targets,
+  cost alerts and logical backup restore drill.
+- Verify live Stripe or PayU checkout and webhook fulfillment before paid traffic.
 
 ### Months 3-4: Data Coverage and Trust
 
 - Improve Wrocław/suburban listing coverage via partner CSV/API and user-owned data.
-- Add admin normalized listing correction.
-- Add developer CRUD/import and dispute workflow.
-- Add more GIS risk layers: district/gmina boundaries, roads/noise proxies, flood/pollution where legally available.
-- Add SEO pages for price/m2, best districts and purchase checklists.
+- Convert first partner imports into recurring approved source playbooks:
+  Source Registry, dry-run QA, non-dry-run import, dedup review and removal path.
+- Extend infrastructure/open-data imports only where legal status and attribution
+  are clear.
+- Calibrate fair-price confidence using more historical snapshots and backtests.
+- Add report QA rubric for low-confidence comparables, developer matches and
+  user-submitted URL extraction failures.
+- Build P1 buyer modules: Property Due Diligence checklist, Negotiation
+  Assistant, Total Acquisition Cost and Renovation Cost.
 
 ### Months 5-6: Sales Repeatability
 
-- Package realtor workflow: branded report, object comparison, shortlist, export.
+- Package realtor workflow already present in the app: branded report, object
+  comparison, shortlist, export and agency workspace.
 - Measure report conversion, refund objections, most-used report sections.
-- Add CRM-light backlog details only after realtor pilot confirms need.
-- Start second-city data-source checklist.
+- Decide which CRM-light parts agents actually use before expanding workflow depth.
+- Start second-city data-source checklist only after Wrocław paid beta proves
+  repeatable value.
 
 ### Months 7-9: Pro and Investor Product
 
-- Improve hidden gems with better source coverage and alert quality.
-- Add API-lite design, keys, quotas and usage logs.
-- Add market intelligence report templates for developers/funds/banks.
-- Add production worker deployment for alerts, ingestion and report generation.
+- Improve hidden gems and Object Watch only if buyer paid reports show recurring
+  monitoring demand.
+- Validate API-lite and market intelligence with 2-3 B2B discovery/pilot buyers
+  before committing to SLA-style enterprise support.
+- Add operational metrics for API usage, report fulfillment, alert delivery,
+  source freshness and support tickets.
+- Decide whether paid data providers are needed to make investor workflows
+  trustworthy.
 
 ### Months 10-12: Expansion Decision
 
 - Decide whether to expand beyond Wrocław/Dolnośląskie or deepen local moat.
 - Prepare rental, houses, land and commercial roadmaps.
-- Add enterprise custom dashboard backlog only if data buyers show demand.
+- Keep enterprise custom dashboards as configured-preview workflow unless data
+  buyers show concrete demand for bespoke dashboards.
 - Evaluate country expansion only after Poland multi-city source checklist is proven.
 
 ## Minimum Launch Team
@@ -207,9 +274,12 @@ Can be compressed for founder-led MVP if founder covers product/backend/data:
 
 - 20 interviews completed by segment.
 - 30 paid beta candidates with channel and status.
-- 5 paid buyer reports or 2 realtor beta bundles.
+- 20 paid buyer reports sold to strangers or 3 paid realtor beta bundles.
 - Landing conversion: visit to lead, lead to paid, paid to repeat/referral.
 - Report usefulness score after delivery.
+- Decision impact count: price reduced, bad object rejected, problem found,
+  viewing skipped, or better alternative selected.
+- Average estimated buyer savings vs report price.
 - Top 5 missing data objections.
 - Legal source matrix approved/blocked/review-required.
 - Number of reports with low confidence because of weak comparables.

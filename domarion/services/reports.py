@@ -18,20 +18,10 @@ def build_object_report(
 ) -> ObjectReport:
     listing = analysis.listing
     scores = analysis.scores
+    buyer_decision = analysis.buyer_decision
     template = get_report_template(audience)
 
-    if scores.price_delta_to_fair_mid_pct > 7:
-        price_text = "цена выглядит выше расчетного fair price"
-    elif scores.price_delta_to_fair_mid_pct < -7:
-        price_text = "цена выглядит ниже расчетного fair price"
-    else:
-        price_text = "цена близка к расчетному fair price"
-
-    summary = (
-        f"{listing.title}: {_label_text(scores.decision_label)}; {price_text}. "
-        f"Investment Score {scores.investment_score}/100, "
-        f"Risk Score {scores.risk_score}/100, Negotiation Score {scores.negotiation_score}/100."
-    )
+    summary = _report_summary(listing.title, scores, buyer_decision)
     sections = template.build_sections(analysis)
     if analysis.developer_reputation is not None:
         sections.append(_developer_reputation_section(analysis.developer_reputation))
@@ -42,6 +32,7 @@ def build_object_report(
         template_code=template.code,
         template_name=template.name,
         branding=branding if _has_branding(branding) else None,
+        buyer_decision=buyer_decision,
         summary=summary,
         sections=sections,
         disclaimer=(
@@ -86,6 +77,30 @@ def _label_text(value: str) -> str:
         "risky": "высокий риск",
         "weak_fit": "слабое совпадение",
     }.get(value, value)
+
+
+def _report_summary(title: str, scores, buyer_decision) -> str:
+    if buyer_decision is not None:
+        verdict = buyer_decision.verdict
+        return (
+            f"{title}: {verdict.score:.1f}/10 - {verdict.headline}. "
+            f"Seller price {_money(verdict.seller_price_pln)}, recommended offer "
+            f"{_money(verdict.recommended_offer_pln)}, max reasonable "
+            f"{_money(verdict.max_reasonable_offer_pln)}."
+        )
+
+    if scores.price_delta_to_fair_mid_pct > 7:
+        price_text = "цена выглядит выше расчетного fair price"
+    elif scores.price_delta_to_fair_mid_pct < -7:
+        price_text = "цена выглядит ниже расчетного fair price"
+    else:
+        price_text = "цена близка к расчетному fair price"
+
+    return (
+        f"{title}: {_label_text(scores.decision_label)}; {price_text}. "
+        f"Investment Score {scores.investment_score}/100, "
+        f"Risk Score {scores.risk_score}/100, Negotiation Score {scores.negotiation_score}/100."
+    )
 
 
 def _developer_reputation_section(reputation: DeveloperReputation) -> ReportSection:

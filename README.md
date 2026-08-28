@@ -3,6 +3,61 @@
 SaaS-платформа аналитики недвижимости в Польше. Первый технический фокус:
 FastAPI backend для поиска объектов, сравнения, скоринга и подготовки отчетов.
 
+## Текущее состояние проекта
+
+Проект сейчас состоит из FastAPI backend, Next.js frontend и набора ingestion,
+scoring/reporting и ops-инструментов вокруг legal-first данных недвижимости.
+Локально все критичные функции работают в `memory`-режиме без PostgreSQL; для
+staging/production предусмотрены PostgreSQL/PostGIS-backed stores, Redis,
+S3-compatible report artifacts и worker-процессы.
+
+Основные рабочие контуры:
+
+- поиск и сравнение объектов, hidden gems, карта MapLibre/PostGIS и GeoJSON layers;
+- scoring: investment/risk/negotiation/liquidity/rental, fair-price confidence,
+  versioned weights и backtesting;
+- user-submitted `/check`: ручной ввод или one-off Otodom/OLX URL import без
+  массового scraping, без фото/контактов/raw HTML и без публичного source URL leak;
+- HTML/PDF reports, saved report history, paid report orders, bundles, mock/Stripe/PayU
+  checkout adapters и webhook fulfillment;
+- auth/subscription MVP через headers, plan limits, favorites, alerts, email/Telegram
+  delivery jobs и daily worker;
+- agency workspaces, CRM-light, shared shortlists, API-lite, dataset exports,
+  market intelligence и enterprise custom dashboards;
+- admin ingestion console: Source Registry, source checks/errors, data quality,
+  raw listings preview, corrections, dedup review, planned investments,
+  infrastructure imports, developer reputation CRUD/import and moderation;
+- frontend routes for buyer/realtor beta, search, maps, check/drafts, reports,
+  pricing, alerts, account/CRM, admin, areas, guides, market, news and developers;
+- CI/deployment baseline: tests, lint/typecheck/smoke, Docker images,
+  staging compose, Render Blueprint, `/ready` production preflight, backups and
+  production ops runbook.
+
+Production traffic is intentionally gated: real auth, live payment secrets,
+production domains, source legal review, monitoring targets, offsite backups and
+restore drill must be completed before selling at scale.
+
+## Основная документация
+
+- `README.md` - quick start, локальный запуск и практические API/CLI examples.
+- `docs/api_surface.md` - актуальная карта API surface, сверенная с OpenAPI.
+- `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
+- `docs/production_ops_runbook.md` - production preflight, managed services,
+  backups, S3 artifacts and worker deployment.
+- `docs/source_compliance_policy.md` - legal/data guardrails для источников,
+  user-submitted URLs, reports, AI and exports.
+- `docs/data_governance_retention.md` - retention, raw payload pruning,
+  data deletion requests and admin audit.
+- `docs/partner_onboarding.md` - Source Registry и partner CSV/API onboarding.
+- `docs/hybrid_listing_analysis.md` - фактический `/check` flow и private draft model.
+- `docs/developer_reputation_plan.md` - developer ranking/reputation model,
+  importer, citations and moderation.
+- `docs/paid_beta_playbook.md` - paid beta offers and operational workflow.
+- `docs/product_validation_strategy.md` - validation metrics, risks and roadmap.
+- `docs/buyer_decision_product_direction.md` - текущий product reset:
+  verdict-first buyer assistant, PMF gate, pricing ladder and prioritized backlog.
+- `docs/development_plan.md` - detailed implementation checklist.
+
 ## Что уже подготовлено
 
 - `.idea/` удалена из git и добавлена в `.gitignore`.
@@ -112,6 +167,7 @@ FastAPI backend для поиска объектов, сравнения, ско
 - Добавлены SEO guide pages: `/guides`, price-per-m2, district comparison, mortgage, purchase checklist и total cost.
 - Полный продуктовый план: `docs/domarion_analytics_plan.md`.
 - Экспертный обзор текущего состояния продукта и рисков: `docs/expert_review_brief_ru.md`.
+- Актуальная карта backend API surface: `docs/api_surface.md`.
 
 ## Backend локально
 
@@ -161,6 +217,12 @@ API будет доступен:
 - http://127.0.0.1:8000/health
 - http://127.0.0.1:8000/ready
 - http://127.0.0.1:8000/docs
+
+Полная карта текущего backend API: `docs/api_surface.md`. Swagger UI всегда
+является источником истины для request/response schemas: `/docs`.
+
+Ключевые endpoint groups:
+
 - http://127.0.0.1:8000/api/v1/me
 - http://127.0.0.1:8000/api/v1/plans
 - http://127.0.0.1:8000/api/v1/api-lite/listings
@@ -169,6 +231,7 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/api-lite/usage
 - http://127.0.0.1:8000/api/v1/datasets/listings/export
 - http://127.0.0.1:8000/api/v1/market/intelligence-report
+- http://127.0.0.1:8000/api/v1/market/dashboard
 - http://127.0.0.1:8000/api/v1/scoring/evaluate
 - http://127.0.0.1:8000/api/v1/enterprise/custom-dashboards
 - http://127.0.0.1:8000/api/v1/agencies/{agency_id}/crm/clients
@@ -184,6 +247,9 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/developers/{developer_id}
 - http://127.0.0.1:8000/api/v1/listings/{listing_id}/developer
 - http://127.0.0.1:8000/api/v1/areas/compare
+- http://127.0.0.1:8000/api/v1/locations
+- http://127.0.0.1:8000/api/v1/infrastructure/transport-stops
+- http://127.0.0.1:8000/api/v1/news
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/reference-preview
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/import-from-url
 - http://127.0.0.1:8000/api/v1/user-submitted-listings/analyze
@@ -193,9 +259,14 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/user-submitted-listing-drafts
 - http://127.0.0.1:8000/api/v1/admin/ingestion/jobs
 - http://127.0.0.1:8000/api/v1/admin/ingestion/sources
+- http://127.0.0.1:8000/api/v1/admin/ingestion/source-health
 - http://127.0.0.1:8000/api/v1/admin/ingestion/source-checks
 - http://127.0.0.1:8000/api/v1/admin/ingestion/source-errors
+- http://127.0.0.1:8000/api/v1/admin/ingestion/sources/prune-retained-raw-payloads
+- http://127.0.0.1:8000/api/v1/admin/data-deletion-requests
+- http://127.0.0.1:8000/api/v1/admin/audit-logs
 - http://127.0.0.1:8000/api/v1/admin/infrastructure/enrich
+- http://127.0.0.1:8000/api/v1/admin/infrastructure/import
 - http://127.0.0.1:8000/api/v1/admin/data-quality/logs
 - http://127.0.0.1:8000/api/v1/admin/raw-listings
 - http://127.0.0.1:8000/api/v1/admin/listings/{listing_id}/normalized
@@ -209,6 +280,8 @@ API будет доступен:
 - http://127.0.0.1:8000/api/v1/admin/partner-referrals/lead-scores
 - http://127.0.0.1:8000/api/v1/admin/alerts/deliver-daily-email
 - http://127.0.0.1:8000/api/v1/alert-delivery-jobs
+- http://127.0.0.1:8000/api/v1/favorites
+- http://127.0.0.1:8000/api/v1/alerts
 - http://127.0.0.1:8000/api/v1/map/features
 - http://127.0.0.1:8000/api/v1/reports/object/wr-001.html
 
@@ -1434,6 +1507,19 @@ Full production operations checklist: `docs/production_ops_runbook.md`.
 MVP hosting decision and Render Blueprint notes: `docs/mvp_hosting_decision.md`.
 Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist.md`.
 
+## Закрыто по product review 2026-08-27
+
+- `Domarion Verdict` стал частью analysis/report contract: buy / negotiate /
+  avoid / verify first, score 0-10, fair range, recommended offer, realistic
+  deal range, max reasonable offer, top reasons and critical unknowns.
+- `/check`, `/listings/[id]` and buyer HTML report теперь начинаются с
+  decision-first панели, а score cards остаются supporting evidence.
+- Добавлены `Property Due Diligence`, `Negotiation Assistant`,
+  `What we know / estimate / could not verify`, source confidence,
+  check completeness, Total Acquisition Cost and pre/post-viewing checklist v1.
+- Compare учитывает renovation, furniture, transaction costs, total move-in cost,
+  ready-to-move proxy, offer strategy, critical unknowns and source confidence.
+
 ## Git workflow
 
 Перед началом работы:
@@ -1453,8 +1539,29 @@ git commit -m "Build initial API foundation"
 git push -u origin feature/mvp-api-foundation
 ```
 
-## Следующий технический шаг
+## Открытые технические задачи
 
-1. Добавить URL-import fixture corpus для новых edge cases по мере появления пользовательских ссылок.
-2. Добавить deployment workflow после выбора hosting.
-3. Расширить partner/open-data ingestion на новые города после выбора первых пилотных источников.
+1. До новых крупных модулей пройти validation gate: 20 платных buyer reports
+   незнакомым людям по 49-149 PLN или 3 paid realtor bundle pilots.
+2. Спроектировать document upload flow для due diligence: extract checklist
+   signals без legal guarantee и с минимальным хранением персональных данных.
+3. Добавить пользовательские renovation condition/budget inputs и пересчёт
+   verdict после post-viewing checklist.
+4. Добавить выбранную цель покупки в flow и показывать `For you: X/10` вместо
+   только generic intent-fit scores.
+5. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
+   comparable, DOM thresholds, planned investment status, developer signal and
+   negotiation opportunity.
+6. Усилить future infrastructure impact narrative: expected year, status,
+   confidence, positive effects, construction disruption and supply pressure.
+7. Провести source-specific legal review и зафиксировать approved/blocked matrix
+   перед любым scheduled ingestion за пределами partner/open-data/manual flows.
+8. Подключить production auth вместо MVP header/demo identity.
+9. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
+   пройти restore drill перед paid traffic.
+10. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
+11. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
+   user-submitted one-off анализа.
+12. Заморозить expansion/enterprise/news/investor tooling до выполнения
+   validation gate; расширять partner/open-data coverage на новые города только
+   по checklist из `docs/poland_city_expansion_checklist.md`.

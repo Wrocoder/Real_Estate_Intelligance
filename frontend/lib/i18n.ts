@@ -198,6 +198,8 @@ export type CheckPageCopy = {
     city: string;
     district: string;
     market: string;
+    renovationCondition: string;
+    renovationBudget: string;
     price: string;
     area: string;
     rooms: string;
@@ -293,6 +295,8 @@ export type CheckPageCopy = {
     dash: string;
     primary: string;
     secondary: string;
+    renovationConditionUnknown: string;
+    renovationConditions: Record<string, string>;
     buyer: string;
     realtor: string;
     investor: string;
@@ -1326,6 +1330,12 @@ export type ComparePageCopy = {
     developerCheck: string;
     mortgagePayment: string;
     cashNeeded: string;
+    totalMoveInCost: string;
+    transactionCosts: string;
+    renovationFurniture: string;
+    readyAlternative: string;
+    postRenovationGap: string;
+    offerStrategy: string;
     rentalEstimate: string;
     priceLabel: string;
     investmentScore: string;
@@ -1335,6 +1345,9 @@ export type ComparePageCopy = {
     rentalPotential: string;
     fairPrice: string;
     fairPriceConfidence: string;
+    checkCompleteness: string;
+    criticalUnknowns: string;
+    sourceConfidence: string;
     fairPriceDelta: string;
     discountToFair: string;
     transport: string;
@@ -1652,6 +1665,8 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "City",
       district: "District",
       market: "Market",
+      renovationCondition: "Renovation condition",
+      renovationBudget: "Custom renovation budget",
       price: "Price",
       area: "Area m2",
       rooms: "Rooms",
@@ -1747,6 +1762,15 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      renovationConditionUnknown: "not sure",
+      renovationConditions: {
+        move_in_ready: "Move-in ready",
+        refresh: "Refresh",
+        light_renovation: "Light renovation",
+        full_renovation: "Full renovation",
+        shell_developer_standard: "Shell / developer standard",
+        custom_budget: "Custom budget",
+      },
       buyer: "Buyer",
       realtor: "Realtor",
       investor: "Investor",
@@ -1827,6 +1851,8 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Miasto",
       district: "Dzielnica",
       market: "Rynek",
+      renovationCondition: "Stan remontu",
+      renovationBudget: "Własny budżet remontu",
       price: "Cena",
       area: "Powierzchnia m2",
       rooms: "Pokoje",
@@ -1922,6 +1948,15 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "pierwotny",
       secondary: "wtórny",
+      renovationConditionUnknown: "nie wiem",
+      renovationConditions: {
+        move_in_ready: "Gotowe do wprowadzenia",
+        refresh: "Odświeżenie",
+        light_renovation: "Lekki remont",
+        full_renovation: "Pełny remont",
+        shell_developer_standard: "Stan deweloperski",
+        custom_budget: "Własny budżet",
+      },
       buyer: "Kupujący",
       realtor: "Pośrednik",
       investor: "Inwestor",
@@ -2002,6 +2037,8 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Город",
       district: "Район",
       market: "Рынок",
+      renovationCondition: "Состояние ремонта",
+      renovationBudget: "Свой бюджет ремонта",
       price: "Цена",
       area: "Площадь m2",
       rooms: "Комнаты",
@@ -2097,6 +2134,15 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      renovationConditionUnknown: "не знаю",
+      renovationConditions: {
+        move_in_ready: "Можно въезжать",
+        refresh: "Освежить",
+        light_renovation: "Легкий ремонт",
+        full_renovation: "Полный ремонт",
+        shell_developer_standard: "Developer standard",
+        custom_budget: "Свой бюджет",
+      },
       buyer: "Buyer",
       realtor: "Realtor",
       investor: "Investor",
@@ -2178,6 +2224,8 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       city: "Місто",
       district: "Район",
       market: "Ринок",
+      renovationCondition: "Стан ремонту",
+      renovationBudget: "Свій бюджет ремонту",
       price: "Ціна",
       area: "Площа m2",
       rooms: "Кімнати",
@@ -2273,6 +2321,15 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       dash: "-",
       primary: "primary",
       secondary: "secondary",
+      renovationConditionUnknown: "не знаю",
+      renovationConditions: {
+        move_in_ready: "Можна заїжджати",
+        refresh: "Освіжити",
+        light_renovation: "Легкий ремонт",
+        full_renovation: "Повний ремонт",
+        shell_developer_standard: "Developer standard",
+        custom_budget: "Свій бюджет",
+      },
       buyer: "Buyer",
       realtor: "Realtor",
       investor: "Investor",
@@ -2818,8 +2875,8 @@ export const REPORTS_PAGE_COPY: Record<Locale, ReportsPageCopy> = {
 
 export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
   en: {
-    title: "Payments and reports",
-    subtitle: "One-time reports, mock checkout and paid MVP plan limits.",
+    title: "Buyer reports and pricing",
+    subtitle: "Pay for a decision-first report: avoid overpaying, catch risks and prepare negotiation.",
     actions: {
       refresh: "Refresh",
       mockPayGenerate: "Mock pay + generate",
@@ -2833,14 +2890,14 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
       status: "Status",
     },
     sections: {
-      oneTimeReport: "One-time report",
+      oneTimeReport: "Decision report",
       invoice: "Invoice",
       orderHistory: "Order history",
       subscriptions: "Subscriptions",
       auditTrail: "Audit trail",
     },
     hints: {
-      mockCheckout: "mock checkout without a real PSP",
+      mockCheckout: "paid beta checkout shell; replace mock provider before live payments",
     },
     fields: {
       listingId: "Listing ID",
@@ -2890,8 +2947,8 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     errorPrefix: "Error",
   },
   pl: {
-    title: "Płatności i raporty",
-    subtitle: "Raporty jednorazowe, mock checkout i limity planów paid MVP.",
+    title: "Raporty kupującego i cennik",
+    subtitle: "Raport decyzyjny: nie przepłacić, wykryć ryzyka i przygotować negocjacje.",
     actions: {
       refresh: "Odśwież",
       mockPayGenerate: "Mock pay + generuj",
@@ -2905,14 +2962,14 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
       status: "Status",
     },
     sections: {
-      oneTimeReport: "Raport jednorazowy",
+      oneTimeReport: "Raport decyzyjny",
       invoice: "Faktura",
       orderHistory: "Historia zamówień",
       subscriptions: "Subskrypcje",
       auditTrail: "Audyt",
     },
     hints: {
-      mockCheckout: "mock checkout bez realnego PSP",
+      mockCheckout: "paid beta checkout shell; przed live payments podłącz realny PSP",
     },
     fields: {
       listingId: "Listing ID",
@@ -2962,8 +3019,8 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     errorPrefix: "Błąd",
   },
   ru: {
-    title: "Оплата и отчеты",
-    subtitle: "Разовые отчеты, mock checkout и тарифные ограничения для paid MVP.",
+    title: "Buyer reports и цены",
+    subtitle: "Отчет перед покупкой: не переплатить, не купить проблему и подготовиться к торгу.",
     actions: {
       refresh: "Обновить",
       mockPayGenerate: "Mock pay + generate",
@@ -2977,14 +3034,14 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
       status: "Статус",
     },
     sections: {
-      oneTimeReport: "Разовый отчет",
+      oneTimeReport: "Отчет для решения",
       invoice: "Счет",
       orderHistory: "История заказов",
       subscriptions: "Подписки",
       auditTrail: "Аудит",
     },
     hints: {
-      mockCheckout: "mock checkout без реального PSP",
+      mockCheckout: "paid beta checkout shell; перед live payments нужен реальный PSP",
     },
     fields: {
       listingId: "Listing ID",
@@ -3034,8 +3091,8 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     errorPrefix: "Ошибка",
   },
   uk: {
-    title: "Оплата і звіти",
-    subtitle: "Разові звіти, mock checkout і тарифні обмеження для paid MVP.",
+    title: "Buyer reports і ціни",
+    subtitle: "Звіт перед купівлею: не переплатити, не купити проблему й підготуватися до торгу.",
     actions: {
       refresh: "Оновити",
       mockPayGenerate: "Mock pay + generate",
@@ -3049,14 +3106,14 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
       status: "Статус",
     },
     sections: {
-      oneTimeReport: "Разовий звіт",
+      oneTimeReport: "Звіт для рішення",
       invoice: "Рахунок",
       orderHistory: "Історія замовлень",
       subscriptions: "Підписки",
       auditTrail: "Аудит",
     },
     hints: {
-      mockCheckout: "mock checkout без реального PSP",
+      mockCheckout: "paid beta checkout shell; перед live payments потрібен реальний PSP",
     },
     fields: {
       listingId: "Listing ID",
@@ -6062,6 +6119,12 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       developerCheck: "Developer checks",
       mortgagePayment: "Baseline mortgage",
       cashNeeded: "Cash needed",
+      totalMoveInCost: "Total move-in cost",
+      transactionCosts: "Transaction costs",
+      renovationFurniture: "Renovation + furniture",
+      readyAlternative: "Ready-to-move proxy",
+      postRenovationGap: "After-renovation gap",
+      offerStrategy: "Offer strategy",
       rentalEstimate: "Rental estimate",
       priceLabel: "Price label",
       investmentScore: "Investment Score",
@@ -6071,6 +6134,9 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       rentalPotential: "Rental Potential",
       fairPrice: "Fair price",
       fairPriceConfidence: "Fair price confidence",
+      checkCompleteness: "Check completeness",
+      criticalUnknowns: "Critical unknowns",
+      sourceConfidence: "Source confidence",
       fairPriceDelta: "Delta to fair mid",
       discountToFair: "Discount to fair",
       transport: "Transport",
@@ -6195,6 +6261,12 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       developerCheck: "Sprawdzenie dewelopera",
       mortgagePayment: "Bazowa hipoteka",
       cashNeeded: "Potrzebna gotówka",
+      totalMoveInCost: "Całkowity koszt wejścia",
+      transactionCosts: "Koszty transakcyjne",
+      renovationFurniture: "Remont + meble",
+      readyAlternative: "Gotowa alternatywa proxy",
+      postRenovationGap: "Różnica po remoncie",
+      offerStrategy: "Strategia oferty",
       rentalEstimate: "Szacunek najmu",
       priceLabel: "Price label",
       investmentScore: "Investment Score",
@@ -6204,6 +6276,9 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       rentalPotential: "Rental Potential",
       fairPrice: "Fair price",
       fairPriceConfidence: "Fair price confidence",
+      checkCompleteness: "Pełność sprawdzenia",
+      criticalUnknowns: "Kluczowe niewiadome",
+      sourceConfidence: "Pewność źródeł",
       fairPriceDelta: "Delta do fair mid",
       discountToFair: "Rabat do fair",
       transport: "Transport",
@@ -6333,6 +6408,12 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       developerCheck: "Проверить по застройщику",
       mortgagePayment: "Ипотека baseline",
       cashNeeded: "Cash needed",
+      totalMoveInCost: "Полная стоимость въезда",
+      transactionCosts: "Сделка и fees",
+      renovationFurniture: "Ремонт + мебель",
+      readyAlternative: "Готовая альтернатива",
+      postRenovationGap: "Разница после ремонта",
+      offerStrategy: "Стратегия offer",
       rentalEstimate: "Rental estimate",
       priceLabel: "Оценка цены",
       investmentScore: "Investment Score",
@@ -6342,6 +6423,9 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       rentalPotential: "Rental Potential",
       fairPrice: "Fair price",
       fairPriceConfidence: "Fair price confidence",
+      checkCompleteness: "Полнота проверки",
+      criticalUnknowns: "Ключевые неизвестные",
+      sourceConfidence: "Уверенность источников",
       fairPriceDelta: "Delta до fair mid",
       discountToFair: "Скидка до fair",
       transport: "Транспорт",
@@ -6471,6 +6555,12 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       developerCheck: "Перевірити забудовника",
       mortgagePayment: "Іпотека baseline",
       cashNeeded: "Cash needed",
+      totalMoveInCost: "Повна вартість входу",
+      transactionCosts: "Угода і fees",
+      renovationFurniture: "Ремонт + меблі",
+      readyAlternative: "Готова альтернатива",
+      postRenovationGap: "Різниця після ремонту",
+      offerStrategy: "Стратегія offer",
       rentalEstimate: "Rental estimate",
       priceLabel: "Оцінка ціни",
       investmentScore: "Investment Score",
@@ -6480,6 +6570,9 @@ export const COMPARE_PAGE_COPY: Record<Locale, ComparePageCopy> = {
       rentalPotential: "Rental Potential",
       fairPrice: "Fair price",
       fairPriceConfidence: "Fair price confidence",
+      checkCompleteness: "Повнота перевірки",
+      criticalUnknowns: "Ключові невідомі",
+      sourceConfidence: "Впевненість джерел",
       fairPriceDelta: "Delta до fair mid",
       discountToFair: "Знижка до fair",
       transport: "Транспорт",

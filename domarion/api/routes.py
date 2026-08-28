@@ -196,6 +196,8 @@ from domarion.schemas import (
     ObjectReport,
     OpenDataRoadmapItem,
     OpenDataRoadmapStatus,
+    PaidBetaTrackingRow,
+    PaidBetaTrackingUpdate,
     PartnerCsvImportResponse,
     PartnerLeadScore,
     PartnerReferral,
@@ -314,6 +316,11 @@ from domarion.services.market_intelligence import build_market_intelligence_repo
 from domarion.services.mortgage import calculate_mortgage
 from domarion.services.news_ai_summary import build_news_ai_summary, save_news_ai_summary
 from domarion.services.open_data_roadmap import list_open_data_roadmap
+from domarion.services.paid_beta_tracking import (
+    build_paid_beta_tracking_row,
+    is_paid_beta_referral,
+    merge_paid_beta_tracking_metadata,
+)
 from domarion.services.payments import (
     PaymentConfigurationError,
     PaymentWebhookVerificationError,
@@ -1592,6 +1599,55 @@ def get_admin_partner_referral_lead_score(
     if referral is None:
         raise HTTPException(status_code=404, detail="Partner referral not found")
     return build_partner_lead_score(repository, referral)
+
+
+@router.get("/admin/paid-beta/tracking", response_model=list[PaidBetaTrackingRow])
+def list_admin_paid_beta_tracking(
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+    referral_status: Annotated[PartnerReferralStatus | None, Query(alias="status")] = None,
+    referral_type: Annotated[PartnerReferralType | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+) -> list[PaidBetaTrackingRow]:
+    _ensure_admin(account)
+    referrals = referral_store.list_all(
+        limit=limit,
+        status=referral_status,
+        referral_type=referral_type,
+    )
+    return [
+        build_paid_beta_tracking_row(referral)
+        for referral in referrals
+        if is_paid_beta_referral(referral)
+    ]
+
+
+@router.patch(
+    "/admin/paid-beta/tracking/{referral_id}",
+    response_model=PaidBetaTrackingRow,
+)
+def update_admin_paid_beta_tracking(
+    referral_id: str,
+    payload: PaidBetaTrackingUpdate,
+    referral_store: PartnerReferralStoreDep,
+    account: CurrentAccountDep,
+) -> PaidBetaTrackingRow:
+    _ensure_admin(account)
+    referrals = referral_store.list_all(limit=10_000)
+    referral = next((item for item in referrals if item.id == referral_id), None)
+    if referral is None:
+        raise HTTPException(status_code=404, detail="Partner referral not found")
+    if not is_paid_beta_referral(referral):
+        raise HTTPException(status_code=400, detail="Referral is not a paid beta lead")
+
+    metadata = merge_paid_beta_tracking_metadata(referral, payload)
+    updated = referral_store.update_referral(
+        referral_id,
+        PartnerReferralUpdate(metadata=metadata),
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Partner referral not found")
+    return build_paid_beta_tracking_row(updated)
 
 
 @router.patch("/admin/partner-referrals/{referral_id}", response_model=PartnerReferral)

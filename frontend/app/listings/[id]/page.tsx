@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { LineChart } from "@/components/Charts";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
@@ -178,6 +179,10 @@ export default function ListingDetailPage() {
           </button>
         </div>
       </header>
+
+      {analysis.buyer_decision ? (
+        <BuyerDecisionPanel decision={analysis.buyer_decision} locale={locale} />
+      ) : null}
 
       <section className="metric-grid">
         <div className="metric">

@@ -82,7 +82,8 @@ def _shortlist_item(
     label = DECISION_LABELS.get(metric.decision_label, metric.decision_label)
     client_pitch = (
         f"Ranked #{metric.rank} in this shortlist with a {metric.decision_score}/100 "
-        f"decision score. It is a {label}; {metric.recommendation}"
+        f"decision score. It is a {label}; {metric.recommendation} "
+        f"Total move-in baseline: {_money(metric.total_move_in_cost_pln, 'PLN')}."
     )
     return RealtorClientShortlistItem(
         listing_id=listing.id,

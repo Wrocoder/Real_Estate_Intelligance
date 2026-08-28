@@ -326,7 +326,8 @@ def build_compare_ai_answer(
         f"Best overall candidate is {best_listing.title} ({best.listing_id}) with "
         f"Decision Score {best.decision_score}/100, Investment Score "
         f"{best.investment_score}/100 and Risk Score {best.risk_score}/100. "
-        "This ranking balances value, risk, liquidity, rental potential and financing baseline."
+        "This ranking balances value, risk, liquidity, rental potential, financing baseline "
+        "and renovation-adjusted total move-in cost."
     )
     key_points = [
         f"Best value: {_listing_short(comparison, comparison.summary.best_value_listing_id)}.",
@@ -930,6 +931,7 @@ def _compare_listing_citation(
             f"Decision {metric.decision_score}/100, investment "
             f"{metric.investment_score}/100, risk {metric.risk_score}/100, "
             f"monthly payment {_money(metric.estimated_monthly_payment_pln)}, "
+            f"total move-in {_money(metric.total_move_in_cost_pln)}, "
             f"gross rental yield {metric.estimated_gross_rental_yield_pct:.2f}%."
         ),
     )

@@ -13,6 +13,7 @@ from domarion.schemas import (
 def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -> str:
     listing = analysis.listing
     scores = analysis.scores
+    buyer_decision = report.buyer_decision or analysis.buyer_decision
     branding = report.branding
     brand_name = branding.agency_name if branding and branding.agency_name else "Domarion Analytics"
     branding_html = _render_branding(branding)
@@ -55,6 +56,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
         )
         for item in analysis.comparables
     )
+    verdict_html = _render_buyer_verdict(buyer_decision)
 
     return f"""<!doctype html>
 <html lang="ru">
@@ -107,6 +109,32 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       background: var(--soft);
       padding: 14px 16px;
       margin: 18px 0 20px;
+    }}
+    .verdict {{
+      border: 2px solid var(--ink);
+      background: #fbfcfd;
+      padding: 18px;
+      margin: 18px 0 20px;
+    }}
+    .verdict h2 {{ margin-top: 0; font-size: 16px; letter-spacing: .04em; }}
+    .verdict-title {{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: start;
+    }}
+    .verdict-score {{ font-size: 38px; line-height: 1; color: var(--accent); font-weight: 700; }}
+    .money-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }}
+    .split-grid {{
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 14px;
     }}
     .grid {{
       display: grid;
@@ -184,6 +212,8 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
     </section>
 
     <p class="summary">{escape(report.summary)}</p>
+
+    {verdict_html}
 
     <section class="grid">
       {_metric("Цена", _money(listing.price))}
@@ -423,6 +453,71 @@ def render_area_report_html(area: AreaStatistics, dashboard: MarketDashboard, su
 def _render_section(title: str, items: list[str]) -> str:
     rows = "\n".join(f"<li>{escape(item)}</li>" for item in items)
     return f"<section><h2>{escape(title)}</h2><ul>{rows}</ul></section>"
+
+
+def _render_buyer_verdict(buyer_decision) -> str:
+    if buyer_decision is None:
+        return ""
+    verdict = buyer_decision.verdict
+    knowledge = buyer_decision.knowledge
+    total = buyer_decision.total_acquisition
+    reasons = "".join(f"<li>{escape(item)}</li>" for item in verdict.top_reasons[:5])
+    risks = "".join(f"<li>{escape(item)}</li>" for item in verdict.top_risks[:5])
+    unknowns = "".join(f"<li>{escape(item)}</li>" for item in verdict.critical_unknowns[:5])
+    sources = "".join(
+        (
+            "<li>"
+            f"{escape(item.topic)} -> {escape(item.basis)}; "
+            f"{escape(item.source_name)}; confidence {item.confidence_score}/100"
+            "</li>"
+        )
+        for item in knowledge.source_evidence[:5]
+    )
+    return f"""
+    <section class="verdict">
+      <h2>DOMARION VERDICT</h2>
+      <div class="verdict-title">
+        <div>
+          <h1>{escape(verdict.headline)}</h1>
+          <p>{escape(verdict.summary)}</p>
+        </div>
+        <div class="verdict-score">{verdict.score:.1f}/10</div>
+      </div>
+      <div class="money-grid">
+        {_metric("Цена продавца", _money(verdict.seller_price_pln))}
+        {_metric(
+            "Fair price",
+            f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}",
+        )}
+        {_metric("Рекомендуемый offer", _money(verdict.recommended_offer_pln))}
+        {_metric("Верхняя граница", _money(verdict.max_reasonable_offer_pln))}
+        {_metric("Стартовый offer", _money(verdict.opening_offer_pln))}
+        {_metric("Реальная стоимость въезда", _money(total.total_move_in_cost_pln))}
+        {_metric("Ремонт", _money(total.renovation_estimate_pln))}
+        {_metric("Полнота проверки", f"{knowledge.check_completeness_score}/100")}
+      </div>
+      <div class="split-grid">
+        <div><h3>Почему</h3><ul>{reasons}</ul></div>
+        <div><h3>Риски</h3><ul>{risks}</ul></div>
+        <div><h3>Не удалось проверить</h3><ul>{unknowns}</ul></div>
+      </div>
+      <div class="split-grid">
+        <div>
+          <h3>Аргументы продавцу</h3>
+          <ul>{_list_items(buyer_decision.negotiation.arguments[:4])}</ul>
+        </div>
+        <div>
+          <h3>Что запросить</h3>
+          <ul>{_list_items(buyer_decision.due_diligence.documents_to_request[:5])}</ul>
+        </div>
+        <div><h3>Почему мы так считаем</h3><ul>{sources}</ul></div>
+      </div>
+    </section>
+    """
+
+
+def _list_items(items: list[str]) -> str:
+    return "".join(f"<li>{escape(item)}</li>" for item in items)
 
 
 def _score_card(label: str, value: int, helper: str) -> str:

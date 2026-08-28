@@ -23,27 +23,44 @@ Source compliance gate для этого flow описан в `docs/source_compl
 - Не извлекать и не хранить фото, контактные данные, имена частных продавцов, телефоны, email или private notes.
 - Пользователь подтверждает, что он имеет право использовать переданные параметры/ссылку для личного анализа.
 
-## Data Model Direction
+## Data Model And Persistence
 
-Минимальный MVP может хранить объект как draft/report metadata:
+Текущая реализация уже хранит private drafts через
+`domarion/user_submitted_listing_store` (`memory` или `postgres` backend).
+Публичная база listings при этом не пополняется пользовательскими ссылками.
 
-- `owner_id`
-- `address`
-- `city`
-- `district`
-- `price`
-- `area_m2`
-- `rooms`
-- `floor`
-- `building_year`
-- `market_type`
-- `source_url_private`
-- `source_domain`
-- `data_quality_score`
-- `created_at`
-- `expires_at`
+Request model `UserSubmittedListingRequest` принимает:
 
-Позже можно вынести в таблицу `user_submitted_listings` и связать с `report_orders`, `generated_reports`, `user_favorites`.
+- `title`, `source_url`, `developer_id`, `developer_name`, `investment_name`,
+  `primary_market_project_id`;
+- `address`, `city`, `district`, `market_type`, `price`, `area_m2`, `rooms`;
+- optional building/location/enrichment fields: `floor`, `building_floors`,
+  `building_year`, `lat`, `lon`, distance/count fields;
+- `confirm_private_analysis`, `save_private_draft`, `retention_days`.
+
+`confirm_private_analysis=true` обязателен. Без него backend возвращает ошибку,
+потому что пользователь должен явно подтвердить право на private analysis.
+
+Analysis response `UserSubmittedListingAnalysis` содержит:
+
+- обычный `ListingAnalysis` с normalized listing, scores, comparables,
+  fair-price, risks, future impact and developer reputation when matched;
+- `confidence_score`, `warnings`, `comparables_basis`, `retention_note`;
+- `source_url_private` and `source_domain` only for owner-scoped/private handling;
+- `draft_id` and `draft_expires_at`, если `save_private_draft=true`.
+
+Persisted draft stores:
+
+- `owner_id`, `listing_id`, `source_url_private`, `source_domain`;
+- normalized address, city, district, market type and key property fields;
+- developer/project metadata;
+- `data_quality_score`, `confidence_score`;
+- request and analysis payloads;
+- `created_at`, `updated_at`, `expires_at`.
+
+Saved report generation links drafts to `generated_reports` and paid orders via
+`listing_id="draft:<draft_id>"`. Report metadata keeps `user_submitted_draft_id`
+and `source_domain`, but not the full private URL.
 
 ## Analysis Contract
 
@@ -79,12 +96,14 @@ Source compliance gate для этого flow описан в `docs/source_compl
 - buyer object-check report из текущих report templates без сохранения private URL в отчете;
 - owner-scoped draft access, manual deletion, `expires_at` и admin prune для retention;
 - saved report generation из draft в существующую `/reports` history без полного private URL в report metadata/content;
-- paid report order lifecycle для draft references через `listing_id="draft:<draft_id>"`.
-- one-off URL import для Otodom/OLX: минимальные поля объекта, status `extracted/partial/failed/unsupported`, fallback на ручное подтверждение.
+- paid report order lifecycle для draft references через `listing_id="draft:<draft_id>"`;
+- one-off URL import для Otodom/OLX: минимальные поля объекта, status `extracted/partial/failed/unsupported`, fallback на ручное подтверждение;
 - source registry entry `user_submitted_reference` и sanitized ingestion telemetry для monitoring import failures без раскрытия full private URL.
 
-Следующие шаги: draft-to-paid checkout UX для live PSP, source-specific legal review
-и demand-validation landing page.
+Открытые ограничения: live PSP checkout требует production credentials и
+end-to-end payment testing; source-specific legal review остается обязательным
+перед любым scheduled/bulk portal ingestion; URL fixture corpus нужно расширять
+только реальными one-off edge cases.
 
 ## Non-Goals For MVP
 

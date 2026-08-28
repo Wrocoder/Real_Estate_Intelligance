@@ -105,30 +105,84 @@ python scripts\smoke_deployment.py
 
 ## Переменные окружения
 
-Минимум для backend:
+Фактический список backend-настроек задается в `domarion/core/config.py`, а
+sample values лежат в `.env.example`. Для локальной разработки почти все
+persistent stores по умолчанию работают в `memory`-режиме. Для production
+`/ready` и `domarion production-preflight` требуют PostgreSQL-backed stores для
+всех persisted domains.
 
-| Переменная | Назначение | MVP default |
+Core runtime:
+
+| Переменная | Назначение | Local default |
 | --- | --- | --- |
 | `APP_NAME` | Название API | `Domarion Analytics API` |
 | `ENVIRONMENT` | `local`, `staging`, `production` | `local` |
-| `DATABASE_URL` | PostgreSQL/PostGIS connection string | memory/local в dev |
+| `DATABASE_URL` | PostgreSQL/PostGIS connection string | local Docker Postgres |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
 | `CORS_ORIGINS` | JSON-массив frontend origins | localhost origins |
+| `LOG_LEVEL` | уровень `domarion.*` логов | `INFO` |
 | `SENTRY_DSN` | включает Sentry error tracking, если задан | пусто |
 | `SENTRY_TRACES_SAMPLE_RATE` | доля performance traces для Sentry от `0` до `1` | `0` |
-| `DATA_REPOSITORY_BACKEND` | `memory` или `postgres` | `memory` |
-| `REPORT_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `REPORT_ORDER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `USER_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `AUTH_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `INGESTION_ADMIN_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `USER_SUBMITTED_LISTING_STORE_BACKEND` | `memory` или `postgres` | `memory` |
-| `PARTNER_REFERRAL_STORE_BACKEND` | `memory` или `postgres` | `memory` |
+
+Persistent stores:
+
+| Переменная | Назначение | Local default | Production |
+| --- | --- | --- | --- |
+| `DATA_REPOSITORY_BACKEND` | listings, areas, map data, ingestion targets | `memory` | `postgres` |
+| `REPORT_STORE_BACKEND` | saved generated reports | `memory` | `postgres` |
+| `REPORT_ORDER_STORE_BACKEND` | paid report orders, events and webhooks | `memory` | `postgres` |
+| `USER_STORE_BACKEND` | account usage and subscription state | `memory` | `postgres` |
+| `AUTH_STORE_BACKEND` | favorites, alerts and MVP auth state | `memory` | `postgres` |
+| `AGENCY_STORE_BACKEND` | agency workspaces and memberships | `memory` | `postgres` |
+| `CRM_STORE_BACKEND` | CRM clients, notes and shortlists | `memory` | `postgres` |
+| `INGESTION_ADMIN_STORE_BACKEND` | jobs, logs, sources, audit and deletion requests | `memory` | `postgres` |
+| `USER_SUBMITTED_LISTING_STORE_BACKEND` | private drafts and source references | `memory` | `postgres` |
+| `PARTNER_REFERRAL_STORE_BACKEND` | beta/partner leads and scores | `memory` | `postgres` |
+| `AI_INSIGHT_STORE_BACKEND` | stored AI summaries and answers | `memory` | `postgres` |
+| `NEWS_STORE_BACKEND` | news articles and admin edits | `memory` | `postgres` |
+| `CUSTOM_DASHBOARD_STORE_BACKEND` | enterprise dashboard configs | `memory` | `postgres` |
+
+Production preflight requires every store above to be `postgres`.
+
+Report artifacts:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
+| `REPORT_ARTIFACT_STORAGE_BACKEND` | `disabled`, `local` или `s3` artifact mirror | `disabled` |
+| `REPORT_ARTIFACT_LOCAL_DIR` | local artifact directory | `.domarion/report-artifacts` |
+| `REPORT_ARTIFACT_PUBLIC_BASE_URL` | optional public/CDN base URL | пусто |
+| `REPORT_ARTIFACT_S3_ENDPOINT_URL` | S3-compatible endpoint, например R2/MinIO | пусто |
+| `REPORT_ARTIFACT_S3_REGION` | S3 region | `eu-central-1` |
+| `REPORT_ARTIFACT_S3_BUCKET` | bucket для HTML/JSON/PDF artifacts | пусто |
+| `REPORT_ARTIFACT_S3_PREFIX` | prefix внутри bucket | `domarion/reports` |
+| `REPORT_ARTIFACT_S3_ACCESS_KEY_ID` | S3 access key | пусто |
+| `REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY` | S3 secret key | пусто |
+
+Payments:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
 | `PAYMENT_PROVIDER` | `mock`, `stripe` или `payu` | `mock` |
 | `PAYMENT_CHECKOUT_BASE_URL` | Base URL для внешнего checkout handoff | пусто |
+| `PAYMENT_SUCCESS_URL` | success redirect URL/template | пусто |
+| `PAYMENT_CANCEL_URL` | cancel redirect URL/template | пусто |
+| `PAYMENT_CHECKOUT_TIMEOUT_SECONDS` | timeout для hosted checkout calls | `10` |
+| `STRIPE_SECRET_KEY` | Stripe API secret | пусто |
+| `STRIPE_API_BASE_URL` | Stripe API base URL | `https://api.stripe.com` |
 | `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Допуск Stripe timestamp для webhook signature | `300` |
 | `STRIPE_WEBHOOK_SECRET` | Endpoint secret для `Stripe-Signature` verification | пусто |
+| `PAYU_API_BASE_URL` | PayU API base URL | `https://secure.snd.payu.com` |
+| `PAYU_CLIENT_ID` | PayU OAuth client id | пусто |
+| `PAYU_CLIENT_SECRET` | PayU OAuth secret | пусто |
+| `PAYU_MERCHANT_POS_ID` | PayU POS id | пусто |
+| `PAYU_NOTIFY_URL` | webhook notify URL | пусто |
+| `PAYU_CUSTOMER_IP` | customer IP fallback для PayU order | `127.0.0.1` |
 | `PAYU_SECOND_KEY` | PayU second key для `OpenPayU-Signature` verification | пусто |
+
+Alerts and workers:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
 | `ALERT_EMAIL_ENABLED` | включает SMTP email delivery | `false` |
 | `ALERT_EMAIL_SENDER` | отправитель email alerts | `alerts@domarion.local` |
 | `ALERT_SMTP_HOST` | SMTP host для email alerts | пусто |
@@ -141,6 +195,46 @@ python scripts\smoke_deployment.py
 | `ALERT_TELEGRAM_BOT_NAME` | имя Telegram bot для metadata | `DomarionBot` |
 | `ALERT_TELEGRAM_BOT_TOKEN` | token будущего Telegram bot | пусто |
 | `ALERT_TELEGRAM_API_BASE_URL` | Telegram API base URL | `https://api.telegram.org` |
+| `WORKER_TASKS` | comma-separated tasks: `daily-email-alerts`, `area-market-snapshots`, `price-history-rebuild` | `daily-email-alerts` |
+| `WORKER_INTERVAL_SECONDS` | delay между worker loops | `3600` |
+| `WORKER_RUN_ONCE` | run worker once and exit | `false` |
+| `WORKER_APPLY` | persist maintenance tasks | `false` |
+| `WORKER_FORCE` | ignore cooldowns where supported | `false` |
+| `ALERT_WORKER_SEND` | send daily email alerts instead of dry-run | `false` |
+| `ALERT_WORKER_MAX_MATCHES` | max matches per alert delivery | `10` |
+| `ALERT_WORKER_LIMIT` | max active alerts scanned per batch | `500` |
+
+API-lite:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
+| `API_LITE_KEYS_JSON` | configured API-lite keys or SHA-256 hashes | пусто |
+| `API_LITE_DEFAULT_MONTHLY_QUOTA` | quota для key без явного override | `1000` |
+| `API_LITE_DEFAULT_RATE_LIMIT_PER_MINUTE` | per-minute limit для key без override | `60` |
+
+Backups and production preflight markers:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
+| `BACKUP_OUTPUT_DIR` | local logical backup output dir | `.domarion/backups/postgres` |
+| `BACKUP_PREFIX` | filename prefix for dumps | `domarion-postgres` |
+| `BACKUP_RETENTION_DAYS` | local backup retention | `14` |
+| `BACKUP_S3_BUCKET` | offsite backup bucket, required by production preflight | пусто |
+| `BACKUP_S3_PREFIX` | offsite backup prefix | `domarion/postgres` |
+| `BACKUP_S3_ENDPOINT_URL` | S3-compatible backup endpoint | пусто |
+| `BACKUP_S3_REGION` | backup S3 region | `eu-central-1` |
+| `PG_DUMP_BIN` | pg_dump binary name/path | `pg_dump` |
+| `PG_RESTORE_BIN` | pg_restore binary name/path | `pg_restore` |
+| `UPTIME_MONITOR_URL` | external uptime monitor target | пусто |
+| `JOB_FAILURE_ALERT_TARGET` | destination for worker failure alerts | пусто |
+| `SOURCE_FRESHNESS_ALERT_TARGET` | destination for source freshness alerts | пусто |
+| `PAYMENT_WEBHOOK_ALERT_TARGET` | destination for webhook alerts | пусто |
+| `COST_ALERTS_CONFIGURED` | marker that infra/API budget alerts are configured | `false` |
+
+Demo identity:
+
+| Переменная | Назначение | Local default |
+| --- | --- | --- |
 | `DEMO_USER_ID` | fallback user для MVP auth | `demo-user` |
 | `DEMO_USER_EMAIL` | fallback email для MVP auth | `demo@domarion.local` |
 
@@ -173,35 +267,43 @@ Backend поддерживает optional Sentry integration. Она включ�
 | `NEXT_PUBLIC_OWNER_ID` | Временный MVP owner fallback |
 | `NEXT_PUBLIC_SITE_URL` | Публичный URL frontend для sitemap/canonical URLs |
 
-Для реального production нельзя оставлять demo identity как auth-модель. Следующий шаг перед
-публичным запуском: заменить header/demo auth на Auth.js/Clerk/custom JWT, подключить реальные
-hosted checkout SDK calls для PayU/Stripe и включить delivery только после настройки
-SMTP/Telegram secrets.
+Для реального production нельзя оставлять demo identity как auth-модель. Перед
+публичным запуском нужно заменить header/demo auth на Auth.js/Clerk/custom JWT,
+задать live Stripe/PayU credentials и webhook secrets, проверить fulfillment
+end-to-end и включать delivery только после настройки SMTP/Telegram secrets.
 
-## Hosting shortlist для MVP
+## Deployment Target
 
-Дата проверки: 2026-07-10. Перед оплатой нужно вручную перепроверить цены, лимиты и поддержку
-PostGIS/Redis на официальных страницах.
+MVP hosting decision зафиксирован в `docs/mvp_hosting_decision.md`: текущая
+целевая схема для paid beta - Render Blueprint в Frankfurt region.
 
-| Вариант | Когда выбирать | Что проверить |
-| --- | --- | --- |
-| Railway | Быстрый paid beta, GitHub deploy, минимум DevOps | Лимиты плана, стоимость постоянной БД/Redis, поддержка Docker и volumes: https://railway.com/pricing |
-| Render | Простой web service + managed Postgres, понятный dashboard | Стоимость web services, Postgres, Redis/key-value, лимиты free/pro: https://render.com/pricing |
-| Fly.io | Если важны EU regions, Docker и будущая география | Стоимость machines/volumes, Postgres story, operational overhead: https://fly.io/docs/about/pricing/ |
-| Hetzner VPS + Docker Compose | Самый контролируемый и часто дешевый EU-вариант | Backup, security patching, monitoring, managed DB отсутствие: https://www.hetzner.com/cloud |
+`render.yaml` описывает:
 
-Практичная рекомендация для paid beta:
+- `domarion-postgres`: managed Postgres 18 with PostGIS migration.
+- `domarion-redis`: Render Key Value Redis-compatible service.
+- `domarion-api`: backend Docker web service with `/ready` health check.
+- `domarion-frontend`: Next standalone Docker web service.
+- `domarion-worker`: worker process on the same backend image.
 
-1. Если важна скорость запуска и мало DevOps времени: Railway или Render.
-2. Если founder сам ведет backend/infra и хочет контроль расходов: Hetzner VPS + managed backups.
-3. Если появятся клиенты из нескольких стран ЕС и latency станет важной: отдельно оценить Fly.io.
+Blueprint intentionally leaves secrets and public URLs as `sync: false`. Before
+traffic every placeholder must be filled in the hosting dashboard, then verified
+with:
+
+```powershell
+python -m alembic upgrade head
+domarion production-preflight --strict
+python scripts\smoke_deployment.py
+python scripts\verify_postgres_staging.py --database-url $env:DATABASE_URL
+```
 
 ## Что еще нужно до production
 
-- Подключить реальный auth.
-- Подключить PayU/Stripe SDK hosted checkout calls вместо checkout handoff skeleton.
-- Перенести secrets в hosting secret manager.
-- Добавить managed backups для Postgres.
-- Добавить error tracking и structured logs.
-- Добавить отдельный staging домен.
-- Добавить registry publish и deploy workflow после выбора hosting.
+- Подключить real auth вместо MVP header/demo identity.
+- Заполнить production domains, CORS, S3/R2, payment, Sentry and monitoring
+  secrets outside git.
+- Провести legal review Source Registry entries до scheduled ingestion и paid data use.
+- Пройти restore drill: fresh logical backup, restore into empty/staging DB,
+  smoke check after restore.
+- Проверить live Stripe или PayU checkout, webhook idempotency and fulfillment.
+- Включать `ALERT_WORKER_SEND=true` только после SMTP/Telegram deliverability test.
+- Держать `/ready` в `ready`; `degraded` допустим только для controlled staging.

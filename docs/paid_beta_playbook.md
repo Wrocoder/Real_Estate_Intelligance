@@ -1,7 +1,14 @@
 # Paid Beta Playbook
 
-Цель: проверить, платят ли покупатели, риелторы и малые агентства за отчет по
-объекту/району до полноценного production launch.
+Цель: проверить, платят ли покупатели, риелторы и малые агентства за помощь в
+решении "покупать / торговаться / отказаться / сначала проверить", а не просто
+за аналитический отчет.
+
+До следующих крупных product modules действует gate:
+
+- 20 paid buyer reports sold to strangers at 49-149 PLN; or
+- 3 paid realtor bundle pilots with real client conversations; and
+- at least 5 recorded decision-impact outcomes.
 
 ## Entry points
 
@@ -25,12 +32,16 @@
 
 | Offer | Audience | Price hypothesis | Delivery |
 | --- | --- | --- | --- |
-| Object check report | Buyer | 49-79 PLN | HTML/PDF, same day |
-| Full object analysis | Buyer/investor | 149-199 PLN | HTML/PDF + follow-up notes |
-| Area report | Buyer/investor | 79-129 PLN | Area stats, risks, growth signals |
-| Realtor branded report | Realtor | 99-199 PLN/report | White-label PDF/HTML |
+| Free Check | Buyer | 0 PLN | teaser verdict, price position, 3 risks |
+| Buyer Check | Buyer | 49 PLN | verdict, fair price, comparables, risks, negotiation |
+| Full Due Diligence | Buyer/investor | 149 PLN | Buyer Check + documents/building/future/total cost checklist |
+| Expert Review | Buyer/investor | 299-499 PLN | automatic report + analyst QA before zadatek |
+| Realtor Pro | Realtor | 199-399 PLN/month | branded reports, compare, shortlist, workspace |
 | 5-report beta bundle | Realtor/agency | 299-499 PLN | 5 credits, feedback required |
-| Hidden gems shortlist | Investor/realtor | 199-399 PLN | 3-10 objects + reasoning |
+
+Do not lead with "analytics". Lead with:
+
+> Проверка квартиры перед покупкой: цена, документы, риски, район, торг.
 
 ## Manual / Semi-Automated First Report Workflow
 
@@ -43,21 +54,49 @@
    for private analysis; no photo/contact copying; source URL remains private.
 4. Open `/check`, import URL or enter parameters, verify price, area, rooms,
    address, floor, building floors, year and market type.
-5. Generate buyer/realtor/investor report from the draft or existing listing.
-6. Manual QA before sending:
+5. Produce a decision-first result:
+   - verdict: buy / negotiate / avoid / verify first;
+   - fair price range and seller price delta;
+   - opening offer, realistic deal range and max reasonable offer;
+   - top positives, top risks and critical unknowns;
+   - due-diligence checklist for secondary/new-build context;
+   - total acquisition cost estimate with renovation/furniture placeholders.
+6. Generate buyer/realtor/investor report from the draft or existing listing.
+7. Manual QA before sending:
    - no source URL leaks in public report;
    - no photos, contacts or copied full description;
+   - verdict is understandable without reading every score;
+   - negotiation numbers are visible before detailed score cards;
+   - "what we do not know" is visible;
    - fair price confidence is visible;
    - missing data warnings are visible;
+   - due-diligence checklist does not claim legal certainty;
    - disclaimers are present;
    - developer block appears only when matched with enough confidence.
-7. Send HTML/PDF report and ask for feedback:
+8. Send HTML/PDF report and ask for feedback:
    - Was the recommendation clear?
    - Did it change the offer/negotiation?
    - What was missing before viewing or signing zadatek?
+   - Did it make you skip a viewing or request another document?
+   - What uncertainty would you pay an expert to check?
    - Would the user pay again?
-8. Record outcome: paid/unpaid, price, segment, source channel, objections,
-   requested features, next follow-up date.
+9. Record outcome: paid/unpaid, price, segment, source channel, objections,
+   requested features, next follow-up date and decision-impact category.
+
+## Decision-Impact Tracking
+
+Every paid beta case must record:
+
+- lead source and segment;
+- report tier and price paid;
+- object price and city/district;
+- verdict category;
+- recommended offer and max reasonable offer;
+- whether the user viewed, skipped, negotiated, rejected or bought;
+- estimated savings or avoided-risk note;
+- top objection to paying;
+- missing data that reduced trust;
+- whether human expert review would have been purchased.
 
 ## Realtor Commercial Offer
 
@@ -160,3 +199,22 @@ Admin statuses:
 
 Private object references and agency names live in lead metadata and should not
 be copied into public reports, SEO pages or exported datasets.
+
+Paid beta tracking is stored on the same lead under
+`metadata.paid_beta_tracking` and exposed through admin-only endpoints:
+
+- `GET /api/v1/admin/paid-beta/tracking` - tracking sheet rows for
+  `buyer_beta` and `realtor_beta` leads.
+- `PATCH /api/v1/admin/paid-beta/tracking/{referral_id}` - update sales,
+  payment, decision-impact, refund-risk, follow-up and manual QA fields.
+
+Required tracking fields for every paid beta attempt:
+
+- lead source and beta segment;
+- payment status and price paid;
+- report type;
+- decision impact and notes;
+- objections and missing trust data;
+- refund risk;
+- next follow-up date;
+- manual QA status and notes.

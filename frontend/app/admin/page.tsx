@@ -9,6 +9,7 @@ import {
   Mail,
   PencilLine,
   Plus,
+  ReceiptText,
   RefreshCw,
   ShieldAlert,
   Upload,
@@ -40,6 +41,13 @@ import {
   type InfrastructureEnrichmentJobResult,
   type ListingCorrectionPayload,
   type ListingCorrectionResult,
+  type PaidBetaDecisionImpact,
+  type PaidBetaPaymentStatus,
+  type PaidBetaQaStatus,
+  type PaidBetaRefundRisk,
+  type PaidBetaReportType,
+  type PaidBetaTracking,
+  type PaidBetaTrackingPayload,
   type PartnerCsvImportResponse,
   type PartnerReferral,
   type PartnerReferralStatus,
@@ -90,6 +98,23 @@ type SourceForm = {
   private_url_retention_days: string;
   retention_notes: string;
   is_active: boolean;
+};
+
+type PaidBetaTrackingForm = {
+  lead_source: string;
+  segment: string;
+  payment_status: PaidBetaPaymentStatus;
+  price_paid_pln: string;
+  report_type: PaidBetaReportType;
+  decision_impact: PaidBetaDecisionImpact;
+  decision_impact_note: string;
+  objections: string;
+  missing_trust_data: string;
+  refund_risk: PaidBetaRefundRisk;
+  next_follow_up_date: string;
+  expert_review_interest: "" | "true" | "false";
+  manual_qa_status: PaidBetaQaStatus;
+  manual_qa_notes: string;
 };
 
 type DataDeletionRequestForm = {
@@ -239,6 +264,58 @@ const defaultSourceForm: SourceForm = {
   is_active: true,
 };
 
+const defaultPaidBetaTrackingForm: PaidBetaTrackingForm = {
+  lead_source: "",
+  segment: "",
+  payment_status: "unpaid",
+  price_paid_pln: "0",
+  report_type: "buyer_check",
+  decision_impact: "pending",
+  decision_impact_note: "",
+  objections: "",
+  missing_trust_data: "",
+  refund_risk: "unknown",
+  next_follow_up_date: "",
+  expert_review_interest: "",
+  manual_qa_status: "not_started",
+  manual_qa_notes: "",
+};
+
+const PAID_BETA_PAYMENT_STATUSES: PaidBetaPaymentStatus[] = [
+  "unpaid",
+  "paid",
+  "refunded",
+  "waived",
+  "unknown",
+];
+const PAID_BETA_REPORT_TYPES: PaidBetaReportType[] = [
+  "free_check",
+  "buyer_check",
+  "full_due_diligence",
+  "expert_review",
+  "realtor_bundle",
+  "realtor_pro",
+  "custom",
+];
+const PAID_BETA_DECISION_IMPACTS: PaidBetaDecisionImpact[] = [
+  "pending",
+  "viewed",
+  "skipped_viewing",
+  "negotiated_lower",
+  "requested_documents",
+  "rejected_object",
+  "bought",
+  "no_impact",
+  "unknown",
+];
+const PAID_BETA_REFUND_RISKS: PaidBetaRefundRisk[] = ["low", "medium", "high", "unknown"];
+const PAID_BETA_QA_STATUSES: PaidBetaQaStatus[] = [
+  "not_started",
+  "passed",
+  "needs_fix",
+  "failed",
+];
+
 const defaultDeletionRequestForm: DataDeletionRequestForm = {
   target_type: "user_submitted_draft",
   target_id: "",
@@ -370,6 +447,8 @@ export default function AdminPage() {
   const [referralAssignedTo, setReferralAssignedTo] = useState("");
   const [referralPartnerName, setReferralPartnerName] = useState("");
   const [referralNotes, setReferralNotes] = useState("");
+  const [paidBetaTrackingForm, setPaidBetaTrackingForm] =
+    useState<PaidBetaTrackingForm>(defaultPaidBetaTrackingForm);
   const [sourceForm, setSourceForm] = useState<SourceForm>(defaultSourceForm);
   const [deletionRequestForm, setDeletionRequestForm] =
     useState<DataDeletionRequestForm>(defaultDeletionRequestForm);
@@ -949,12 +1028,33 @@ export default function AdminPage() {
       partner_name: blankToNull(referralPartnerName),
       notes: blankToNull(referralNotes),
     });
+    const trackingRow =
+      selectedReferral && isPaidBetaReferral(selectedReferral)
+        ? await api.updateAdminPaidBetaTracking(
+            selectedReferralId,
+            paidBetaTrackingPayload(paidBetaTrackingForm),
+          )
+        : null;
     setReferralStatus(updated.status);
     setReferralAssignedTo(updated.assigned_to ?? "");
     setReferralPartnerName(updated.partner_name ?? "");
     setReferralNotes(updated.notes ?? "");
+    if (trackingRow) {
+      setPaidBetaTrackingForm(formFromTracking(trackingRow.tracking));
+    }
     await load(selectedJobId);
-    setStatus(`Partner referral обновлен: ${updated.id}`);
+    setStatus(
+      trackingRow
+        ? `Partner referral и paid beta tracking обновлены: ${updated.id}`
+        : `Partner referral обновлен: ${updated.id}`,
+    );
+  }
+
+  function updatePaidBetaTrackingField<K extends keyof PaidBetaTrackingForm>(
+    field: K,
+    value: PaidBetaTrackingForm[K],
+  ) {
+    setPaidBetaTrackingForm((current) => ({ ...current, [field]: value }));
   }
 
   async function deliverDailyEmailAlerts(dryRun: boolean) {
@@ -1747,6 +1847,7 @@ export default function AdminPage() {
                         <th>Status</th>
                         <th>Contact</th>
                         <th>Context</th>
+                        <th>Paid beta</th>
                         <th>Created</th>
                       </tr>
                     </thead>
@@ -1763,6 +1864,7 @@ export default function AdminPage() {
                             setReferralAssignedTo(referral.assigned_to ?? "");
                             setReferralPartnerName(referral.partner_name ?? "");
                             setReferralNotes(referral.notes ?? "");
+                            setPaidBetaTrackingForm(formFromPaidBetaTracking(referral));
                           }}
                         >
                           <td>
@@ -1781,6 +1883,16 @@ export default function AdminPage() {
                           <td>
                             {referral.source_context}
                             <small>{referralLeadContext(referral)}</small>
+                          </td>
+                          <td>
+                            {isPaidBetaReferral(referral) ? (
+                              <>
+                                <strong>{referralPaidBetaSummary(referral)}</strong>
+                                <small>{referralPaidBetaImpactSummary(referral)}</small>
+                              </>
+                            ) : (
+                              <span className="muted">-</span>
+                            )}
                           </td>
                           <td>{formatDate(referral.created_at)}</td>
                         </tr>
@@ -1844,6 +1956,207 @@ export default function AdminPage() {
                         onChange={(event) => setReferralNotes(event.target.value)}
                       />
                     </label>
+                    {isPaidBetaReferral(selectedReferral) ? (
+                      <div style={{ marginTop: 14 }}>
+                        <div className="panel-header inline">
+                          <h3>Paid beta tracking</h3>
+                          <ReceiptText size={18} />
+                        </div>
+                        <div className="form-grid compact">
+                          <Field
+                            label="Lead source"
+                            value={paidBetaTrackingForm.lead_source}
+                            onChange={(value) =>
+                              updatePaidBetaTrackingField("lead_source", value)
+                            }
+                          />
+                          <Field
+                            label="Segment"
+                            value={paidBetaTrackingForm.segment}
+                            onChange={(value) => updatePaidBetaTrackingField("segment", value)}
+                          />
+                          <label className="field">
+                            <span>Payment</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.payment_status}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "payment_status",
+                                  event.target.value as PaidBetaPaymentStatus,
+                                )
+                              }
+                            >
+                              {PAID_BETA_PAYMENT_STATUSES.map((status) => (
+                                <option key={status} value={status}>
+                                  {status}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <Field
+                            label="Price paid PLN"
+                            value={paidBetaTrackingForm.price_paid_pln}
+                            onChange={(value) =>
+                              updatePaidBetaTrackingField("price_paid_pln", value)
+                            }
+                          />
+                          <label className="field">
+                            <span>Report type</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.report_type}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "report_type",
+                                  event.target.value as PaidBetaReportType,
+                                )
+                              }
+                            >
+                              {PAID_BETA_REPORT_TYPES.map((reportType) => (
+                                <option key={reportType} value={reportType}>
+                                  {reportType}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>Decision impact</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.decision_impact}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "decision_impact",
+                                  event.target.value as PaidBetaDecisionImpact,
+                                )
+                              }
+                            >
+                              {PAID_BETA_DECISION_IMPACTS.map((impact) => (
+                                <option key={impact} value={impact}>
+                                  {impact}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>Refund risk</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.refund_risk}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "refund_risk",
+                                  event.target.value as PaidBetaRefundRisk,
+                                )
+                              }
+                            >
+                              {PAID_BETA_REFUND_RISKS.map((risk) => (
+                                <option key={risk} value={risk}>
+                                  {risk}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>Next follow-up</span>
+                            <input
+                              className="input"
+                              type="date"
+                              value={paidBetaTrackingForm.next_follow_up_date}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "next_follow_up_date",
+                                  event.target.value,
+                                )
+                              }
+                            />
+                          </label>
+                          <label className="field">
+                            <span>Expert review interest</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.expert_review_interest}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "expert_review_interest",
+                                  event.target.value as "" | "true" | "false",
+                                )
+                              }
+                            >
+                              <option value="">unknown</option>
+                              <option value="true">yes</option>
+                              <option value="false">no</option>
+                            </select>
+                          </label>
+                          <label className="field">
+                            <span>QA status</span>
+                            <select
+                              className="select"
+                              value={paidBetaTrackingForm.manual_qa_status}
+                              onChange={(event) =>
+                                updatePaidBetaTrackingField(
+                                  "manual_qa_status",
+                                  event.target.value as PaidBetaQaStatus,
+                                )
+                              }
+                            >
+                              {PAID_BETA_QA_STATUSES.map((qaStatus) => (
+                                <option key={qaStatus} value={qaStatus}>
+                                  {qaStatus}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        </div>
+                        <label className="field" style={{ marginTop: 10 }}>
+                          <span>Decision impact note</span>
+                          <textarea
+                            className="textarea"
+                            value={paidBetaTrackingForm.decision_impact_note}
+                            onChange={(event) =>
+                              updatePaidBetaTrackingField(
+                                "decision_impact_note",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="field" style={{ marginTop: 10 }}>
+                          <span>Objections</span>
+                          <textarea
+                            className="textarea"
+                            value={paidBetaTrackingForm.objections}
+                            onChange={(event) =>
+                              updatePaidBetaTrackingField("objections", event.target.value)
+                            }
+                          />
+                        </label>
+                        <label className="field" style={{ marginTop: 10 }}>
+                          <span>Missing trust data</span>
+                          <textarea
+                            className="textarea"
+                            value={paidBetaTrackingForm.missing_trust_data}
+                            onChange={(event) =>
+                              updatePaidBetaTrackingField(
+                                "missing_trust_data",
+                                event.target.value,
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="field" style={{ marginTop: 10 }}>
+                          <span>Manual QA notes</span>
+                          <textarea
+                            className="textarea"
+                            value={paidBetaTrackingForm.manual_qa_notes}
+                            onChange={(event) =>
+                              updatePaidBetaTrackingField("manual_qa_notes", event.target.value)
+                            }
+                          />
+                        </label>
+                      </div>
+                    ) : null}
                     <div className="toolbar" style={{ marginTop: 12 }}>
                       <button
                         className="button primary"
@@ -4214,6 +4527,149 @@ function selectedReferralContactLine(referral: PartnerReferral) {
   ]
     .filter(Boolean)
     .join(" · ");
+}
+
+function referralPaidBetaSummary(referral: PartnerReferral) {
+  const form = formFromPaidBetaTracking(referral);
+  return `${form.payment_status} · ${form.price_paid_pln || "0"} PLN · ${form.report_type}`;
+}
+
+function referralPaidBetaImpactSummary(referral: PartnerReferral) {
+  const form = formFromPaidBetaTracking(referral);
+  const nextFollowUp = form.next_follow_up_date ? ` · next ${form.next_follow_up_date}` : "";
+  return `${form.decision_impact} · refund ${form.refund_risk}${nextFollowUp}`;
+}
+
+function isPaidBetaReferral(referral: PartnerReferral) {
+  return referral.referral_type === "buyer_beta" || referral.referral_type === "realtor_beta";
+}
+
+function formFromPaidBetaTracking(referral: PartnerReferral): PaidBetaTrackingForm {
+  const metadata = referral.metadata ?? {};
+  const rawTracking = metadata.paid_beta_tracking;
+  const tracking = isRecord(rawTracking) ? rawTracking : {};
+  const reportTypeFallback =
+    referral.referral_type === "realtor_beta" ? "realtor_bundle" : "buyer_check";
+
+  return {
+    lead_source:
+      stringValue(tracking.lead_source) ||
+      stringValue(metadata.lead_source) ||
+      stringValue(metadata.entry_point) ||
+      referral.source_context,
+    segment:
+      stringValue(tracking.segment) ||
+      stringValue(metadata.beta_segment) ||
+      referral.referral_type,
+    payment_status: paidBetaPaymentStatusValue(tracking.payment_status),
+    price_paid_pln: String(numberValueFromUnknown(tracking.price_paid_pln)),
+    report_type: paidBetaReportTypeValue(tracking.report_type, reportTypeFallback),
+    decision_impact: paidBetaDecisionImpactValue(tracking.decision_impact),
+    decision_impact_note: stringValue(tracking.decision_impact_note),
+    objections: listValue(tracking.objections).join(", "),
+    missing_trust_data: listValue(tracking.missing_trust_data).join(", "),
+    refund_risk: paidBetaRefundRiskValue(tracking.refund_risk),
+    next_follow_up_date: stringValue(tracking.next_follow_up_date),
+    expert_review_interest: booleanSelectValue(tracking.expert_review_interest),
+    manual_qa_status: paidBetaQaStatusValue(tracking.manual_qa_status),
+    manual_qa_notes: stringValue(tracking.manual_qa_notes),
+  };
+}
+
+function formFromTracking(tracking: PaidBetaTracking): PaidBetaTrackingForm {
+  return {
+    lead_source: tracking.lead_source ?? "",
+    segment: tracking.segment ?? "",
+    payment_status: tracking.payment_status,
+    price_paid_pln: String(tracking.price_paid_pln),
+    report_type: tracking.report_type,
+    decision_impact: tracking.decision_impact,
+    decision_impact_note: tracking.decision_impact_note ?? "",
+    objections: tracking.objections.join(", "),
+    missing_trust_data: tracking.missing_trust_data.join(", "),
+    refund_risk: tracking.refund_risk,
+    next_follow_up_date: tracking.next_follow_up_date ?? "",
+    expert_review_interest: booleanSelectValue(tracking.expert_review_interest),
+    manual_qa_status: tracking.manual_qa_status,
+    manual_qa_notes: tracking.manual_qa_notes ?? "",
+  };
+}
+
+function paidBetaTrackingPayload(form: PaidBetaTrackingForm): PaidBetaTrackingPayload {
+  return {
+    lead_source: blankToNull(form.lead_source),
+    segment: blankToNull(form.segment),
+    payment_status: form.payment_status,
+    price_paid_pln: numberValueFromUnknown(form.price_paid_pln),
+    report_type: form.report_type,
+    decision_impact: form.decision_impact,
+    decision_impact_note: blankToNull(form.decision_impact_note),
+    objections: splitList(form.objections),
+    missing_trust_data: splitList(form.missing_trust_data),
+    refund_risk: form.refund_risk,
+    next_follow_up_date: blankToNull(form.next_follow_up_date),
+    expert_review_interest:
+      form.expert_review_interest === "" ? null : form.expert_review_interest === "true",
+    manual_qa_status: form.manual_qa_status,
+    manual_qa_notes: blankToNull(form.manual_qa_notes),
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringValue(value: unknown) {
+  return typeof value === "string" ? value : "";
+}
+
+function numberValueFromUnknown(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return Math.max(0, Math.round(value));
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.max(0, Math.round(parsed)) : 0;
+  }
+  return 0;
+}
+
+function listValue(value: unknown) {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  return typeof value === "string" ? splitList(value) : [];
+}
+
+function booleanSelectValue(value: unknown): "" | "true" | "false" {
+  if (value === true) return "true";
+  if (value === false) return "false";
+  return "";
+}
+
+function paidBetaPaymentStatusValue(value: unknown): PaidBetaPaymentStatus {
+  return includesString(PAID_BETA_PAYMENT_STATUSES, value) ? value : "unpaid";
+}
+
+function paidBetaReportTypeValue(
+  value: unknown,
+  fallback: PaidBetaReportType,
+): PaidBetaReportType {
+  return includesString(PAID_BETA_REPORT_TYPES, value) ? value : fallback;
+}
+
+function paidBetaDecisionImpactValue(value: unknown): PaidBetaDecisionImpact {
+  return includesString(PAID_BETA_DECISION_IMPACTS, value) ? value : "pending";
+}
+
+function paidBetaRefundRiskValue(value: unknown): PaidBetaRefundRisk {
+  return includesString(PAID_BETA_REFUND_RISKS, value) ? value : "unknown";
+}
+
+function paidBetaQaStatusValue(value: unknown): PaidBetaQaStatus {
+  return includesString(PAID_BETA_QA_STATUSES, value) ? value : "not_started";
+}
+
+function includesString<T extends string>(values: readonly T[], value: unknown): value is T {
+  return typeof value === "string" && values.includes(value as T);
 }
 
 function blankToNull(value: string) {

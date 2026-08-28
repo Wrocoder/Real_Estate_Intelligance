@@ -15,6 +15,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
+import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
@@ -24,6 +25,7 @@ import {
   type AIQuestionDescriptor,
   type DeveloperReputation,
   type GeneratedReport,
+  type RenovationCondition,
   type ReportAudience,
   type SourceReferencePreview,
   type SourceUrlImportFields,
@@ -46,6 +48,8 @@ type CheckFormState = {
   city: string;
   district: string;
   market_type: "primary" | "secondary";
+  renovation_condition: "" | RenovationCondition;
+  custom_renovation_budget_pln: string;
   price: string;
   area_m2: string;
   rooms: string;
@@ -66,6 +70,8 @@ const DEFAULT_FORM: CheckFormState = {
   city: "Wrocław",
   district: "Fabryczna",
   market_type: "secondary",
+  renovation_condition: "",
+  custom_renovation_budget_pln: "",
   price: "",
   area_m2: "",
   rooms: "",
@@ -78,6 +84,14 @@ const DEFAULT_FORM: CheckFormState = {
 };
 
 const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
+const RENOVATION_CONDITIONS: RenovationCondition[] = [
+  "move_in_ready",
+  "refresh",
+  "light_renovation",
+  "full_renovation",
+  "shell_developer_standard",
+  "custom_budget",
+];
 type RequiredReportField = keyof CheckPageCopy["requiredFieldLabels"];
 
 export default function CheckListingPage() {
@@ -318,6 +332,10 @@ export default function CheckListingPage() {
 
       {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
 
+      {analysis?.buyer_decision ? (
+        <BuyerDecisionPanel decision={analysis.buyer_decision} locale={locale} />
+      ) : null}
+
       <section className="panel">
         <div className="panel-header">
           <h2>{copy.sections.sourceLink}</h2>
@@ -539,6 +557,31 @@ export default function CheckListingPage() {
                   <option value="primary">{copy.values.primary}</option>
                 </select>
               </label>
+              <label className="field">
+                <span>{copy.fields.renovationCondition}</span>
+                <select
+                  className="select"
+                  value={form.renovation_condition}
+                  onChange={(event) =>
+                    updateField(
+                      "renovation_condition",
+                      event.target.value as CheckFormState["renovation_condition"],
+                    )
+                  }
+                >
+                  <option value="">{copy.values.renovationConditionUnknown}</option>
+                  {RENOVATION_CONDITIONS.map((condition) => (
+                    <option key={condition} value={condition}>
+                      {copy.values.renovationConditions[condition] ?? condition}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <NumberField
+                label={copy.fields.renovationBudget}
+                value={form.custom_renovation_budget_pln}
+                onChange={(value) => updateField("custom_renovation_budget_pln", value)}
+              />
               <NumberField
                 label={copy.fields.price}
                 value={form.price}
@@ -1003,6 +1046,8 @@ function buildListingPayload(form: CheckFormState): UserSubmittedListingRequest 
     city: form.city.trim() || "Wrocław",
     district: form.district,
     market_type: form.market_type,
+    renovation_condition: form.renovation_condition || null,
+    custom_renovation_budget_pln: toOptionalNumber(form.custom_renovation_budget_pln),
     price: toNumber(form.price),
     area_m2: toNumber(form.area_m2),
     rooms: toNumber(form.rooms),

@@ -48,10 +48,18 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
 
     listing = analysis.listing
     scores = analysis.scores
-    max_offer = _buyer_max_offer(analysis)
-    opening_offer = _buyer_opening_offer(analysis, max_offer)
+    decision = analysis.buyer_decision
+    if decision is not None:
+        verdict = decision.verdict
+        max_offer = verdict.max_reasonable_offer_pln
+        opening_offer = verdict.opening_offer_pln
+        decision_text = f"{verdict.score:.1f}/10 - {verdict.headline}"
+    else:
+        max_offer = _buyer_max_offer(analysis)
+        opening_offer = _buyer_opening_offer(analysis, max_offer)
+        decision_text = _buyer_recommendation(analysis)
     items = [
-        f"Decision: {_buyer_recommendation(analysis)}",
+        f"Decision: {decision_text}",
         (
             f"Верхняя цена до дополнительных проверок: {_money(max_offer)}; "
             f"стартовый offer anchor: {_money(opening_offer)}."
@@ -70,6 +78,11 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
     risks = _buyer_top_risks(analysis)
     if risks:
         items.append(f"Главные риски: {'; '.join(risks)}.")
+    if decision is not None:
+        items.append(
+            "Не удалось проверить автоматически: "
+            f"{'; '.join(decision.verdict.critical_unknowns[:5])}."
+        )
     items.append(
         "Перед zadatek/umowa rezerwacyjna обязательно закрыть проверки: "
         f"{'; '.join(_buyer_required_checks(analysis))}."
@@ -83,6 +96,279 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
             "сверить проектную компанию и договор с due-diligence секцией."
         )
     return ReportSection(title="Краткое решение", items=_deduplicate(items))
+
+
+def _domarion_verdict_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Domarion Verdict", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _buyer_decision_summary_section(analysis).model_copy(
+            update={"title": "Domarion Verdict"}
+        )
+
+    verdict = decision.verdict
+    total = decision.total_acquisition
+    return ReportSection(
+        title="Domarion Verdict",
+        items=[
+            f"{verdict.score:.1f}/10 - {verdict.headline}.",
+            verdict.summary,
+            (
+                f"Цена продавца: {_money(verdict.seller_price_pln)}; fair range "
+                f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}."
+            ),
+            (
+                f"Рекомендуемый offer: {_money(verdict.recommended_offer_pln)}; "
+                f"стартовый offer: {_money(verdict.opening_offer_pln)}; "
+                f"не превышать без новых данных: {_money(verdict.max_reasonable_offer_pln)}."
+            ),
+            (
+                f"Реальная стоимость въезда: {_money(total.total_move_in_cost_pln)} "
+                f"(ремонт {_money(total.renovation_estimate_pln)}, "
+                f"мебель/оборудование {_money(total.furniture_estimate_pln)})."
+            ),
+            f"Полнота проверки: {decision.knowledge.check_completeness_score}/100.",
+        ],
+    )
+
+
+def _negotiation_assistant_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Negotiation Assistant", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _negotiation_section(analysis).model_copy(update={"title": "Negotiation Assistant"})
+
+    negotiation = decision.negotiation
+    return ReportSection(
+        title="Negotiation Assistant",
+        items=_deduplicate(
+            [
+                (
+                    f"Старт: {_money(negotiation.opening_offer_pln)}; реалистичная сделка "
+                    f"{_money(negotiation.realistic_deal_low_pln)}-"
+                    f"{_money(negotiation.realistic_deal_high_pln)}; потолок "
+                    f"{_money(negotiation.max_reasonable_offer_pln)}."
+                ),
+                f"Posture: {negotiation.posture}; score {negotiation.negotiation_score}/100.",
+                *[f"Аргумент: {item}" for item in negotiation.arguments[:6]],
+                *[f"Сценарий: {item}" for item in negotiation.seller_script[:5]],
+                *[f"Guardrail: {item}" for item in negotiation.guardrails],
+            ]
+        ),
+    )
+
+
+def _property_due_diligence_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Property Due Diligence", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _purchase_checklist_section(analysis).model_copy(
+            update={"title": "Property Due Diligence"}
+        )
+
+    diligence = decision.due_diligence
+    checklist = [
+        (
+            f"{item.priority}/{item.category}: {item.label} "
+            f"({item.status}) - {item.rationale}"
+        )
+        for item in diligence.checklist[:10]
+    ]
+    return ReportSection(
+        title="Property Due Diligence",
+        items=_deduplicate(
+            [
+                f"Due-diligence score: {diligence.score}/100 ({diligence.label}).",
+                *[f"Red flag/check: {item}" for item in diligence.red_flags[:6]],
+                *[f"Unknown: {item}" for item in diligence.unknowns[:8]],
+                *[f"Document: {item}" for item in diligence.documents_to_request[:8]],
+                *checklist,
+                (
+                    "Human-review handoff: if critical unknowns remain before zadatek, "
+                    "route KW, building, debt and contract checks to a legal/expert reviewer."
+                ),
+                diligence.disclaimer,
+            ]
+        ),
+    )
+
+
+def _what_we_know_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Что мы знаем, оцениваем и не знаем", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _data_quality_section(analysis).model_copy(
+            update={"title": "Что мы знаем, оцениваем и не знаем"}
+        )
+
+    knowledge = decision.knowledge
+    source_items = [
+        (
+            f"Source: {item.topic} -> {item.basis}; {item.source_name}; "
+            f"confidence {item.confidence_score}/100."
+        )
+        for item in knowledge.source_evidence[:6]
+    ]
+    return ReportSection(
+        title="Что мы знаем, оцениваем и не знаем",
+        items=_deduplicate(
+            [
+                f"Общая полнота проверки: {knowledge.check_completeness_score}/100.",
+                *[f"Знаем: {item}" for item in knowledge.known[:6]],
+                *[f"Оцениваем: {item}" for item in knowledge.estimated[:6]],
+                *[f"Не удалось проверить: {item}" for item in knowledge.could_not_verify[:8]],
+                *source_items,
+            ]
+        ),
+    )
+
+
+def _total_acquisition_cost_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Total Acquisition Cost", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _mortgage_budget_section(analysis).model_copy(
+            update={"title": "Total Acquisition Cost"}
+        )
+
+    total = decision.total_acquisition
+    items = [
+        f"Цена: {_money(total.purchase_price_pln)}.",
+        f"Состояние ремонта: {total.renovation_condition or 'не указано'}.",
+        f"Источник бюджета ремонта: {total.renovation_budget_source}.",
+        f"PCC: {_money(total.pcc_tax_pln)}.",
+        f"Нотариус + суд: {_money(total.notary_and_court_pln)}.",
+        f"Банк: {_money(total.bank_costs_pln)}.",
+        f"Ремонт: {_money(total.renovation_estimate_pln)}.",
+        f"Мебель/оборудование: {_money(total.furniture_estimate_pln)}.",
+        f"Реальная стоимость въезда: {_money(total.total_move_in_cost_pln)}.",
+        f"Upfront cash baseline: {_money(total.upfront_cash_needed_pln)}.",
+        f"Ипотечный платеж baseline: {_money(total.monthly_payment_baseline_pln)}/мес.",
+    ]
+    if total.ready_to_move_alternative_price_pln is not None:
+        items.append(
+            f"Готовая альтернатива proxy: {_money(total.ready_to_move_alternative_price_pln)}."
+        )
+    if total.post_renovation_value_gap_pln is not None:
+        gap = total.post_renovation_value_gap_pln
+        if gap > 0:
+            items.append(f"После ремонта объект дороже ready proxy примерно на {_money(gap)}.")
+        else:
+            items.append(f"После ремонта остается запас около {_money(abs(gap))}.")
+    items.extend(total.notes)
+    return ReportSection(title="Total Acquisition Cost", items=_deduplicate(items))
+
+
+def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Есть ли варианты лучше", items=[])
+
+    if not analysis.comparables:
+        return ReportSection(
+            title="Есть ли варианты лучше",
+            items=[
+                (
+                    "В текущей выборке недостаточно сопоставимых объектов; "
+                    "перед оффером расширить поиск по району и соседним локациям."
+                )
+            ],
+        )
+
+    listing = analysis.listing
+    decision = analysis.buyer_decision
+    max_offer = (
+        decision.verdict.max_reasonable_offer_pln
+        if decision is not None
+        else _buyer_max_offer(analysis)
+    )
+    alternatives = sorted(
+        analysis.comparables,
+        key=lambda item: (
+            item.price > max_offer,
+            item.price_per_m2,
+            item.nearest_stop_m,
+            item.id,
+        ),
+    )[:3]
+    items = []
+    for comparable in alternatives:
+        reasons = []
+        if comparable.price <= max_offer:
+            reasons.append("цена не выше разумного потолка по текущему объекту")
+        if comparable.price_per_m2 < listing.price_per_m2:
+            reasons.append("ниже цена за m2")
+        if comparable.nearest_stop_m < listing.nearest_stop_m:
+            reasons.append("лучше транспортная близость")
+        if comparable.days_on_market < listing.days_on_market:
+            reasons.append("меньше экспозиция на рынке")
+        if not reasons:
+            reasons.append("использовать как price anchor в торге")
+        items.append(
+            f"{comparable.title}: {_money(comparable.price)}, "
+            f"{_money(comparable.price_per_m2)}/m2, {comparable.district}; "
+            f"{'; '.join(reasons[:3])}."
+        )
+    return ReportSection(title="Есть ли варианты лучше", items=items)
+
+
+def _pre_viewing_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="До просмотра", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return _next_action_like_section(analysis)
+
+    viewing = decision.pre_viewing
+    return ReportSection(
+        title="До просмотра",
+        items=_deduplicate(
+            [
+                f"Рекомендация: {viewing.recommendation}.",
+                *[f"Плюс: {item}" for item in viewing.positives[:5]],
+                *[f"Риск: {item}" for item in viewing.risks[:5]],
+                *[f"Вопрос продавцу: {item}" for item in viewing.seller_questions[:10]],
+                *[f"Сфотографировать: {item}" for item in viewing.photos_to_take[:5]],
+                *[f"Проверить дом: {item}" for item in viewing.building_checks[:5]],
+                *[f"Проверить вокруг: {item}" for item in viewing.surroundings_checks[:5]],
+                *[
+                    f"После просмотра отметить: {item}"
+                    for item in decision.post_viewing_checklist[:8]
+                ],
+            ]
+        ),
+    )
+
+
+def _personalization_section(analysis: ListingAnalysis | None) -> ReportSection:
+    if analysis is None:
+        return ReportSection(title="Для кого подходит", items=[])
+    decision = analysis.buyer_decision
+    if decision is None:
+        return ReportSection(
+            title="Для кого подходит",
+            items=[
+                f"Для жизни: {_own_living_fit(analysis)}",
+                f"Для семьи: {_family_fit(analysis)}",
+                f"Для аренды: {_rental_fit(analysis)}",
+            ],
+        )
+
+    return ReportSection(
+        title="Для кого подходит",
+        items=[
+            (
+                f"{item.intent}: {item.score}/100 ({item.label}); "
+                f"плюсы: {', '.join(item.reasons) or 'нет'}; "
+                f"проверить: {', '.join(item.tradeoffs) or 'нет'}."
+            )
+            for item in decision.intent_fit
+        ],
+    )
 
 
 def _buyer_decision_section(analysis: ListingAnalysis | None) -> ReportSection:
@@ -102,6 +388,22 @@ def _buyer_decision_section(analysis: ListingAnalysis | None) -> ReportSection:
     else:
         items.append("Автоматическая риск-оценка не показывает критичного уровня риска.")
     return ReportSection(title="Решение покупателя", items=items)
+
+
+def _next_action_like_section(analysis: ListingAnalysis) -> ReportSection:
+    return ReportSection(
+        title="До просмотра",
+        items=[
+            (
+                "Перед просмотром: запросить czynsz, fundusz remontowy, media "
+                "и список того, что входит в цену."
+            ),
+            (
+                "На просмотре: сверить состояние окон/электрики/воды/вентиляции "
+                "и проверить шум."
+            ),
+        ],
+    )
 
 
 def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) -> ReportSection:
@@ -824,7 +1126,15 @@ REPORT_TEMPLATES: dict[ReportAudience, ReportTemplate] = {
         audience="buyer",
         description="Decision-focused report for a buyer comparing price, risk and negotiation.",
         section_builders=(
+            _domarion_verdict_section,
             _buyer_decision_summary_section,
+            _total_acquisition_cost_section,
+            _buyer_better_alternatives_section,
+            _negotiation_assistant_section,
+            _property_due_diligence_section,
+            _what_we_know_section,
+            _pre_viewing_section,
+            _personalization_section,
             _buyer_decision_section,
             _price_market_section,
             _buyer_lifestyle_rental_outlook_section,

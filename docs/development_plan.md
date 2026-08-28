@@ -38,6 +38,92 @@
 - [x] Оценить сложность блоков: ingestion, dedup, geocoding, PostGIS, map, scoring, reports, payments, alerts, AI, scaling, legal.
 - [x] Подготовить экспертный review brief по текущему состоянию продукта,
   архитектуре, рискам и соответствию плану.
+- [x] Зафиксировать decision-first product reset по отзыву 2026-08-27:
+  `docs/buyer_decision_product_direction.md`.
+- [ ] До новых крупных модулей продать 20 buyer reports незнакомым людям по
+  49-149 PLN или закрыть 3 paid realtor bundle pilots.
+- [x] Добавить paid beta tracking schema/API поверх partner referral queue:
+  lead source, segment, paid/unpaid, price paid, report type, decision impact,
+  objections, refund risk, next follow-up and QA status.
+- [x] Обновить `/beta` и `/pricing` copy вокруг buyer outcome: не переплатить,
+  не купить проблему и подготовиться к торгу.
+
+## 1.2 Decision-First Buyer Product Reset
+
+Цель: сменить главный вопрос продукта с “насколько хороша квартира?” на
+“стоит ли покупать именно эту квартиру за эти деньги?”. Scores остаются
+доказательствами, а не главным продуктом.
+
+Validation gate перед следующими крупными направлениями:
+
+- [ ] 20 paid buyer reports sold to strangers at 49-149 PLN.
+- [ ] Или 3 paid realtor bundle pilots with real client conversations.
+- [ ] Минимум 5 recorded decision-impact outcomes: сбили цену, отказались от
+  плохого объекта, нашли проблему, пропустили просмотр или выбрали лучшую альтернативу.
+- [ ] Заморозить новые большие modules до прохождения gate: broad CRM,
+  enterprise dashboards, API expansion, country expansion, rental/houses/commercial,
+  wide news product and new investor tooling.
+
+P1 buyer decision tasks:
+
+- [x] Добавить `Domarion Verdict` contract: buy / negotiate / avoid / verify first,
+  score 0-10, headline, seller price, fair range, opening offer, realistic deal
+  range, max reasonable offer, top reasons and critical unknowns.
+- [x] Перестроить `/check` result UI: сначала verdict, recommended offer,
+  max reasonable offer and "prepare for viewing/negotiation" CTA; score cards ниже.
+- [x] Перестроить listing detail and buyer report first page вокруг verdict and seven questions:
+  real price, offer, risks, area future, checks, total cost, better alternatives.
+- [x] Превратить Negotiation Score в Negotiation Assistant: opening offer,
+  realistic deal range, walk-away price and seller argument script.
+- [x] Добавить `What we know / estimate / could not verify` block с confidence,
+  source basis and check completeness.
+- [x] Добавить source evidence рядом с ключевыми выводами: comparables count,
+  source class, market snapshots, official/open-data source, freshness and confidence.
+
+P1 due diligence tasks:
+
+- [x] Добавить secondary-market due-diligence checklist: księga wieczysta,
+  owner, mortgage, roszczenia, służebność, wspólnota/spółdzielnia debt,
+  land status, użytkowanie wieczyste, czynsz, fundusz remontowy, building repairs,
+  roof/facade/lift/pipes/electricity/heating, energy certificate,
+  unauthorized works and area mismatch.
+- [x] Добавить primary-market due-diligence checklist: developer/project identity,
+  delays, legal/regulatory signals, rachunek powierniczy, permits, build status,
+  finish standard, prospekt informacyjny, handover, delay penalties and warranties.
+- [ ] Спроектировать document upload flow: extract checklist signals without
+  legal guarantees, with minimal personal-data retention and clear disclaimers.
+- [x] Добавить Full Due Diligence report section: red flags, unknowns, documents
+  to request, expert/legal checks and human-review handoff.
+
+P2 buyer assistant tasks:
+
+- [x] Добавить Total Acquisition Cost: price, PCC/VAT context, notary/court,
+  bank costs, renovation, furniture, upfront cash and ready-to-move alternative comparison.
+- [x] Добавить renovation condition/budget inputs.
+- [x] Сделать renovation/furniture/total move-in cost частью compare matrix.
+- [ ] Добавить purchase-intent personalization: self, family, rental, investment, unsure.
+- [x] Показать intent-fit scores для self/family/rental/investment/unsure в
+  buyer decision panel and report.
+- [x] Добавить pre-viewing assistant: should view/skip, positives, risks,
+  seller questions, photos, documents, building and surroundings checks.
+- [ ] Добавить post-viewing verdict recalculation after checklist answers.
+- [x] Добавить post-viewing checklist fields for condition, windows, noise, smell,
+  humidity, staircase, orientation, kitchen/bathroom and renovation need.
+- [ ] Усилить future infrastructure impact narrative: status, expected year,
+  distance, confidence, positive effects, construction disruption and supply risk.
+- [ ] Сделать Object Watch поверх alerts: price change, cheaper comparable,
+  days-on-market threshold, planned investment status, developer signal and
+  negotiation opportunity alerts.
+- [x] Добавить object-specific watch trigger recommendations в buyer decision output.
+- [x] Сделать Compare decision-oriented: choose B over A/C with total cost,
+  renovation, fair value delta, risks and unknowns.
+
+P3 trust and monetization tasks:
+
+- [ ] Добавить Expert Review product plan: 299-499 PLN, analyst verifies
+  comparables, fair price, documents, risks, future infrastructure and negotiation.
+- [ ] Добавить `Verified by Domarion analyst` only after human QA.
+- [ ] Track analyst time, refund reasons and quality misses before automating more.
 
 ## 1.1 Legal, Compliance и Data Governance
 

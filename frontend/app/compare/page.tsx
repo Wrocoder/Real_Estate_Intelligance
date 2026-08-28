@@ -523,6 +523,13 @@ export default function ComparePage() {
                   </small>
                   <div className="meta-row">
                     <span>
+                      {copy.table.totalMoveInCost}: {money(metric.total_move_in_cost_pln, locale)}
+                    </span>
+                    <span>
+                      {copy.table.renovationFurniture}:{" "}
+                      {money(metric.renovation_estimate_pln + metric.furniture_estimate_pln, locale)}
+                    </span>
+                    <span>
                       {money(metric.estimated_monthly_payment_pln, locale)}/{copy.values.monthly}
                     </span>
                     <span>
@@ -708,6 +715,70 @@ function comparisonRows(
       }),
     },
     {
+      id: "total-move-in-cost",
+      label: copy.table.totalMoveInCost,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        return metric ? money(metric.total_move_in_cost_pln, locale) : "-";
+      }),
+    },
+    {
+      id: "transaction-costs",
+      label: copy.table.transactionCosts,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        return metric ? money(metric.transaction_costs_pln, locale) : "-";
+      }),
+    },
+    {
+      id: "renovation-furniture",
+      label: copy.table.renovationFurniture,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        return metric
+          ? `${money(metric.renovation_estimate_pln, locale)} + ${money(
+              metric.furniture_estimate_pln,
+              locale,
+            )}`
+          : "-";
+      }),
+    },
+    {
+      id: "ready-alternative",
+      label: copy.table.readyAlternative,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        if (!metric) return "-";
+        return metric.ready_to_move_alternative_price_pln
+          ? money(metric.ready_to_move_alternative_price_pln, locale)
+          : "-";
+      }),
+    },
+    {
+      id: "post-renovation-gap",
+      label: copy.table.postRenovationGap,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        if (!metric) return "-";
+        return metric.post_renovation_value_gap_pln !== null
+          ? money(metric.post_renovation_value_gap_pln, locale)
+          : "-";
+      }),
+    },
+    {
+      id: "offer-strategy",
+      label: copy.table.offerStrategy,
+      values: items.map((item) => {
+        const metric = metricById.get(item.listing.id);
+        return metric
+          ? `${money(metric.opening_offer_pln, locale)} -> ${money(
+              metric.max_reasonable_offer_pln,
+              locale,
+            )}`
+          : "-";
+      }),
+    },
+    {
       id: "rental-estimate",
       label: copy.table.rentalEstimate,
       values: items.map((item) => {
@@ -785,6 +856,33 @@ function comparisonRows(
       id: "fair-price-confidence",
       label: copy.table.fairPriceConfidence,
       values: items.map((item) => `${item.scores.fair_price_confidence_score}/100`),
+    },
+    {
+      id: "check-completeness",
+      label: copy.table.checkCompleteness,
+      values: items.map((item) =>
+        item.buyer_decision
+          ? `${item.buyer_decision.knowledge.check_completeness_score}/100`
+          : "-",
+      ),
+    },
+    {
+      id: "critical-unknowns",
+      label: copy.table.criticalUnknowns,
+      values: items.map((item) =>
+        item.buyer_decision?.verdict.critical_unknowns.slice(0, 3).join("; ") ||
+        copy.empty.noData,
+      ),
+    },
+    {
+      id: "source-confidence",
+      label: copy.table.sourceConfidence,
+      values: items.map((item) =>
+        item.buyer_decision?.knowledge.source_evidence
+          .slice(0, 3)
+          .map((source) => `${source.topic}: ${source.confidence_score}/100`)
+          .join("; ") || copy.empty.noData,
+      ),
     },
     {
       id: "fair-price-delta",

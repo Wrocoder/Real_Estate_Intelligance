@@ -292,7 +292,7 @@ def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
     )
     assert order_payload["products"] == [
         {
-            "name": "Object Check",
+            "name": "Buyer Check",
             "unitPrice": "4900",
             "quantity": "1",
             "virtual": True,

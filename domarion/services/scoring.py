@@ -13,6 +13,7 @@ from domarion.schemas import (
     PropertyScores,
     ScoreBreakdown,
 )
+from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.rental_estimate import build_listing_rental_estimate
@@ -355,6 +356,18 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         f"Data Quality Score: {listing.data_quality_score}/100.",
         "Расчеты основаны на MVP-данных и требуют проверки источников перед реальной сделкой.",
     ]
+    buyer_decision = build_buyer_decision(
+        listing=listing,
+        area_statistics=area_statistics,
+        scores=scores,
+        comparables=comparables,
+        negotiation_arguments=negotiation_arguments,
+        data_quality_notes=data_quality_notes,
+        developer_reputation=developer_reputation,
+        future_area_impact=future_area_impact,
+        risk_profile=risk_profile,
+        rental_estimate=rental_estimate,
+    )
 
     return ListingAnalysis(
         listing=listing,
@@ -367,6 +380,7 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         growth_analysis=growth_analysis,
         risk_profile=risk_profile,
         rental_estimate=rental_estimate,
+        buyer_decision=buyer_decision,
         scores=scores,
         insights=insights,
         negotiation_arguments=negotiation_arguments,

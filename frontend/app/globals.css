@@ -446,6 +446,149 @@ button {
   line-height: 1.35;
 }
 
+.buyer-decision {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.buyer-decision-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.buyer-decision-hero h2 {
+  margin: 10px 0 8px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.buyer-decision-hero p {
+  max-width: 920px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.buyer-decision-score {
+  color: var(--accent);
+  font-size: 44px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.buyer-decision-metrics {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.buyer-decision-cta {
+  justify-self: start;
+}
+
+.buyer-decision-columns,
+.buyer-decision-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.buyer-decision-block {
+  min-width: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.buyer-decision-block h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.buyer-decision-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 140px) minmax(0, 1fr);
+  gap: 8px 10px;
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.buyer-decision-facts dt {
+  color: var(--muted);
+}
+
+.buyer-decision-facts dd {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.buyer-decision-list-groups {
+  display: grid;
+  gap: 12px;
+}
+
+.buyer-decision-list-groups strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.buyer-intent-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.buyer-decision-sources {
+  padding-top: 14px;
+}
+
+.buyer-source-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.buyer-source-item {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.buyer-source-item strong,
+.buyer-source-item span,
+.buyer-source-item small {
+  overflow-wrap: anywhere;
+}
+
+.buyer-source-item span,
+.buyer-source-item small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.buyer-decision-disclaimer {
+  margin: 0;
+  font-size: 12px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2073,6 +2216,10 @@ button {
   }
 
   .metric-grid,
+  .buyer-decision-metrics,
+  .buyer-decision-columns,
+  .buyer-decision-detail-grid,
+  .buyer-source-grid,
   .grid-3,
   .ai-verdict-grid,
   .plan-grid,
@@ -2147,6 +2294,10 @@ button {
   }
 
   .metric-grid,
+  .buyer-decision-metrics,
+  .buyer-decision-columns,
+  .buyer-decision-detail-grid,
+  .buyer-source-grid,
   .grid-3,
   .ai-verdict-grid,
   .plan-grid,
@@ -2167,6 +2318,18 @@ button {
 
   .button-row {
     justify-content: flex-start;
+  }
+
+  .buyer-decision-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .buyer-decision-score {
+    font-size: 36px;
+  }
+
+  .buyer-decision-facts {
+    grid-template-columns: 1fr;
   }
 
   .panel-header {

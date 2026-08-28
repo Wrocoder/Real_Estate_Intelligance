@@ -60,6 +60,57 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert any("confirmed user-submitted fields" in item for item in payload["warnings"])
 
 
+def test_user_submitted_listing_accepts_renovation_condition_and_custom_budget() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "renovation_condition": "full_renovation",
+            "custom_renovation_budget_pln": 135000,
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    )
+    payload = response.json()
+    total = payload["analysis"]["buyer_decision"]["total_acquisition"]
+
+    assert response.status_code == 200
+    assert payload["analysis"]["listing"]["renovation_state"] == "full_renovation"
+    assert payload["analysis"]["listing"]["custom_renovation_budget_pln"] == 135000
+    assert total["renovation_condition"] == "full_renovation"
+    assert total["renovation_budget_source"] == "custom_budget"
+    assert total["renovation_estimate_pln"] == 135000
+    assert any("buyer-provided custom budget" in item for item in total["notes"])
+
+
+def test_user_submitted_listing_custom_condition_requires_budget() -> None:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        json={
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "renovation_condition": "custom_budget",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "confirm_private_analysis": True,
+        },
+    )
+
+    assert response.status_code == 422
+    assert "custom_renovation_budget_pln is required" in response.text
+
+
 def test_user_submitted_listing_reference_preview_for_otodom_url() -> None:
     source_url = "www.otodom.pl/pl/oferta/mieszkanie-3-pokoje-wroclaw-ID4abc123"
 

@@ -762,6 +762,15 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
         assert 0 <= metric["decision_score"] <= 100
         assert metric["estimated_monthly_payment_pln"] > 0
         assert metric["upfront_cash_needed_pln"] > 0
+        assert metric["renovation_estimate_pln"] > 0
+        assert metric["furniture_estimate_pln"] > 0
+        assert metric["transaction_costs_pln"] > 0
+        assert metric["total_move_in_cost_pln"] > (
+            metric["renovation_estimate_pln"] + metric["furniture_estimate_pln"]
+        )
+        assert "ready_to_move_alternative_price_pln" in metric
+        assert "post_renovation_value_gap_pln" in metric
+        assert metric["opening_offer_pln"] <= metric["max_reasonable_offer_pln"]
         assert metric["estimated_gross_rental_yield_pct"] > 0
         assert metric["estimated_monthly_rent_pln"] > 0
         assert metric["liquidity_score"] >= 0
