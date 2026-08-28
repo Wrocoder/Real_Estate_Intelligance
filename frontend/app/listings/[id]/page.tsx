@@ -17,6 +17,7 @@ import {
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { LineChart } from "@/components/Charts";
+import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -248,6 +249,16 @@ export default function ListingDetailPage() {
       <p className="muted" style={{ marginTop: 12 }}>
         {analysis.disclaimer}
       </p>
+
+      {analysis.future_area_impact ? (
+        <div style={{ marginTop: 16 }}>
+          <FutureImpactNarrativePanel
+            copy={copy.futureImpact}
+            impact={analysis.future_area_impact}
+            locale={locale}
+          />
+        </div>
+      ) : null}
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">

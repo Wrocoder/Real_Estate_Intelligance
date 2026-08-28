@@ -516,6 +516,12 @@ def test_listing_analysis() -> None:
     assert payload["future_area_impact"]["impact_score"] > 0
     assert payload["future_area_impact"]["buckets"][0]["radius_m"] == 500
     assert payload["future_area_impact"]["nearest_investments"]
+    assert payload["future_area_impact"]["impact_narrative"]
+    assert "confidence" in payload["future_area_impact"]["impact_narrative"][0]
+    assert (
+        payload["future_area_impact"]["positive_catalysts"]
+        or payload["future_area_impact"]["negative_or_supply_projects"]
+    )
     assert payload["growth_analysis"]["listing_id"] == "wr-001"
     assert payload["growth_analysis"]["growth_score"] > 0
     assert payload["growth_analysis"]["factors"]
@@ -543,6 +549,11 @@ def test_listing_future_impact_returns_radius_buckets() -> None:
     assert payload["buckets"][2]["radius_m"] == 2000
     assert payload["buckets"][2]["count"] >= 1
     assert payload["nearest_investments"][0]["distance_m"] <= 2000
+    assert payload["impact_narrative"]
+    assert "status" in payload["impact_narrative"][0]
+    assert "expected" in payload["impact_narrative"][0]
+    assert "confidence" in payload["impact_narrative"][0]
+    assert payload["positive_catalysts"] or payload["negative_or_supply_projects"]
     assert payload["growth_signals"]
     assert "guarantee" in payload["methodology_note"]
 
@@ -899,6 +910,7 @@ def test_investor_object_report_includes_rental_cashflow() -> None:
     growth_items = "\n".join(growth_section["items"])
     assert "Growth analysis score:" in growth_items
     assert "Growth positive:" in growth_items
+    assert "Impact narrative:" in growth_items
 
 
 def test_object_report_accepts_realtor_branding() -> None:

@@ -400,6 +400,27 @@ export type FutureImpactRadiusBucket = {
   nearest_distance_m: number | null;
 };
 
+export type FutureImpactNarrativeCategory =
+  | "positive_catalyst"
+  | "mixed"
+  | "disruption_risk"
+  | "supply_pressure";
+
+export type FutureImpactNarrativeItem = {
+  investment_id: string;
+  name: string;
+  investment_type: string;
+  category: FutureImpactNarrativeCategory;
+  distance_m: number;
+  status: string;
+  expected_year: number | null;
+  confidence_score: number;
+  positive_effects: string[];
+  disruption_risks: string[];
+  supply_pressure_risks: string[];
+  narrative: string;
+};
+
 export type ListingFutureImpact = {
   listing_id: string;
   max_radius_m: number;
@@ -408,6 +429,9 @@ export type ListingFutureImpact = {
   nearest_investments: PlannedInvestmentImpactItem[];
   impact_score: number;
   summary: string;
+  impact_narrative: string[];
+  positive_catalysts: FutureImpactNarrativeItem[];
+  negative_or_supply_projects: FutureImpactNarrativeItem[];
   growth_signals: string[];
   risk_signals: string[];
   methodology_note: string;

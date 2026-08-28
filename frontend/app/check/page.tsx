@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
+import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
   api,
@@ -474,6 +475,16 @@ export default function CheckListingPage() {
           </strong>
         </div>
       </section>
+
+      {analysis?.future_area_impact ? (
+        <div style={{ marginTop: 16 }}>
+          <FutureImpactNarrativePanel
+            copy={copy.futureImpact}
+            impact={analysis.future_area_impact}
+            locale={locale}
+          />
+        </div>
+      ) : null}
 
       <section className="grid-2" style={{ marginTop: 16 }}>
         <form className="panel" onSubmit={(event) => void analyze(event)}>

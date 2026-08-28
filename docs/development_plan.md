@@ -110,7 +110,7 @@ P2 buyer assistant tasks:
 - [ ] Добавить post-viewing verdict recalculation after checklist answers.
 - [x] Добавить post-viewing checklist fields for condition, windows, noise, smell,
   humidity, staircase, orientation, kitchen/bathroom and renovation need.
-- [ ] Усилить future infrastructure impact narrative: status, expected year,
+- [x] Усилить future infrastructure impact narrative: status, expected year,
   distance, confidence, positive effects, construction disruption and supply risk.
 - [ ] Сделать Object Watch поверх alerts: price change, cheaper comparable,
   days-on-market threshold, planned investment status, developer signal and

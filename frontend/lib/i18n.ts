@@ -164,6 +164,36 @@ export type ListingCardCopy = {
   heating: (value: string) => string;
 };
 
+export type FutureImpactNarrativeCopy = {
+  title: string;
+  sections: {
+    narrative: string;
+    catalysts: string;
+    checks: string;
+  };
+  metrics: {
+    score: string;
+    within2km: string;
+    nearest: string;
+    confidence: string;
+  };
+  labels: {
+    status: string;
+    expected: string;
+    distance: string;
+    effects: string;
+    risks: string;
+  };
+  values: {
+    noData: string;
+    noYear: string;
+    projects: (count: number) => string;
+    meters: (meters: string) => string;
+    expectedYear: (year: number) => string;
+    categories: Record<string, string>;
+  };
+};
+
 export type CheckPageCopy = {
   title: string;
   subtitle: string;
@@ -190,6 +220,7 @@ export type CheckPageCopy = {
     comparables: string;
     buyerReport: string;
   };
+  futureImpact: FutureImpactNarrativeCopy;
   fields: {
     title: string;
     developer: string;
@@ -1148,6 +1179,7 @@ export type ListingDetailCopy = {
     guides: string;
     readyHtml: string;
   };
+  futureImpact: FutureImpactNarrativeCopy;
   metrics: {
     verdict: string;
     price: string;
@@ -1659,6 +1691,40 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       comparables: "Comparison base",
       buyerReport: "Buyer report",
     },
+    futureImpact: {
+      title: "Future infrastructure impact",
+      sections: {
+        narrative: "Impact narrative",
+        catalysts: "Positive catalysts",
+        checks: "Disruption and supply checks",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "Within 2 km",
+        nearest: "Nearest project",
+        confidence: "Nearest confidence",
+      },
+      labels: {
+        status: "Status",
+        expected: "Expected",
+        distance: "Distance",
+        effects: "Effects",
+        risks: "Checks",
+      },
+      values: {
+        noData: "No data.",
+        noYear: "year unknown",
+        projects: (count) => `${count} project${count === 1 ? "" : "s"}`,
+        meters: (meters) => `${meters} m`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "positive",
+          mixed: "mixed",
+          disruption_risk: "disruption",
+          supply_pressure: "supply pressure",
+        },
+      },
+    },
     fields: {
       title: "Title",
       developer: "Developer",
@@ -1852,6 +1918,40 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       negotiation: "Negocjacje",
       comparables: "Baza porównań",
       buyerReport: "Raport kupującego",
+    },
+    futureImpact: {
+      title: "Wpływ przyszłej infrastruktury",
+      sections: {
+        narrative: "Narracja wpływu",
+        catalysts: "Pozytywne katalizatory",
+        checks: "Ryzyka budowy i podaży",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "W promieniu 2 km",
+        nearest: "Najbliższy projekt",
+        confidence: "Pewność najbliższego",
+      },
+      labels: {
+        status: "Status",
+        expected: "Termin",
+        distance: "Odległość",
+        effects: "Efekty",
+        risks: "Do sprawdzenia",
+      },
+      values: {
+        noData: "Brak danych.",
+        noYear: "rok nieznany",
+        projects: (count) => `${count} ${pluralPl(count, "projekt", "projekty", "projektów")}`,
+        meters: (meters) => `${meters} m`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "pozytywny",
+          mixed: "mieszany",
+          disruption_risk: "utrudnienia",
+          supply_pressure: "presja podaży",
+        },
+      },
     },
     fields: {
       title: "Tytuł",
@@ -2047,6 +2147,40 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       comparables: "База сравнения",
       buyerReport: "Buyer report",
     },
+    futureImpact: {
+      title: "Влияние будущей инфраструктуры",
+      sections: {
+        narrative: "Нарратив влияния",
+        catalysts: "Позитивные катализаторы",
+        checks: "Риски стройки и нового предложения",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "В радиусе 2 км",
+        nearest: "Ближайший проект",
+        confidence: "Уверенность по ближайшему",
+      },
+      labels: {
+        status: "Статус",
+        expected: "Срок",
+        distance: "Расстояние",
+        effects: "Эффекты",
+        risks: "Проверки",
+      },
+      values: {
+        noData: "Нет данных.",
+        noYear: "год неизвестен",
+        projects: (count) => `${count} ${pluralRu(count, "проект", "проекта", "проектов")}`,
+        meters: (meters) => `${meters} м`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "позитив",
+          mixed: "смешанный",
+          disruption_risk: "стройка",
+          supply_pressure: "давление предложения",
+        },
+      },
+    },
     fields: {
       title: "Название",
       developer: "Застройщик",
@@ -2241,6 +2375,40 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       negotiation: "Торг",
       comparables: "База порівняння",
       buyerReport: "Buyer report",
+    },
+    futureImpact: {
+      title: "Вплив майбутньої інфраструктури",
+      sections: {
+        narrative: "Наратив впливу",
+        catalysts: "Позитивні каталізатори",
+        checks: "Ризики будівництва і пропозиції",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "У радіусі 2 км",
+        nearest: "Найближчий проект",
+        confidence: "Впевненість щодо найближчого",
+      },
+      labels: {
+        status: "Статус",
+        expected: "Термін",
+        distance: "Відстань",
+        effects: "Ефекти",
+        risks: "Перевірки",
+      },
+      values: {
+        noData: "Немає даних.",
+        noYear: "рік невідомий",
+        projects: (count) => `${count} ${pluralUk(count, "проект", "проекти", "проектів")}`,
+        meters: (meters) => `${meters} м`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "позитив",
+          mixed: "змішаний",
+          disruption_risk: "будівництво",
+          supply_pressure: "тиск пропозиції",
+        },
+      },
     },
     fields: {
       title: "Назва",
@@ -5591,6 +5759,40 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       guides: "Guides",
       readyHtml: "Ready HTML",
     },
+    futureImpact: {
+      title: "Future infrastructure impact",
+      sections: {
+        narrative: "Impact narrative",
+        catalysts: "Positive catalysts",
+        checks: "Disruption and supply checks",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "Within 2 km",
+        nearest: "Nearest project",
+        confidence: "Nearest confidence",
+      },
+      labels: {
+        status: "Status",
+        expected: "Expected",
+        distance: "Distance",
+        effects: "Effects",
+        risks: "Checks",
+      },
+      values: {
+        noData: "No data.",
+        noYear: "year unknown",
+        projects: (count) => `${count} project${count === 1 ? "" : "s"}`,
+        meters: (meters) => `${meters} m`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "positive",
+          mixed: "mixed",
+          disruption_risk: "disruption",
+          supply_pressure: "supply pressure",
+        },
+      },
+    },
     metrics: {
       verdict: "Verdict",
       price: "Price",
@@ -5712,6 +5914,40 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       guides: "Poradniki",
       readyHtml: "Gotowy HTML",
     },
+    futureImpact: {
+      title: "Wpływ przyszłej infrastruktury",
+      sections: {
+        narrative: "Narracja wpływu",
+        catalysts: "Pozytywne katalizatory",
+        checks: "Ryzyka budowy i podaży",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "W promieniu 2 km",
+        nearest: "Najbliższy projekt",
+        confidence: "Pewność najbliższego",
+      },
+      labels: {
+        status: "Status",
+        expected: "Termin",
+        distance: "Odległość",
+        effects: "Efekty",
+        risks: "Do sprawdzenia",
+      },
+      values: {
+        noData: "Brak danych.",
+        noYear: "rok nieznany",
+        projects: (count) => `${count} ${pluralPl(count, "projekt", "projekty", "projektów")}`,
+        meters: (meters) => `${meters} m`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "pozytywny",
+          mixed: "mieszany",
+          disruption_risk: "utrudnienia",
+          supply_pressure: "presja podaży",
+        },
+      },
+    },
     metrics: {
       verdict: "Werdykt",
       price: "Cena",
@@ -5832,6 +6068,40 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       areaNews: "Новости района",
       guides: "Гайды",
       readyHtml: "Готовый HTML",
+    },
+    futureImpact: {
+      title: "Влияние будущей инфраструктуры",
+      sections: {
+        narrative: "Нарратив влияния",
+        catalysts: "Позитивные катализаторы",
+        checks: "Риски стройки и нового предложения",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "В радиусе 2 км",
+        nearest: "Ближайший проект",
+        confidence: "Уверенность по ближайшему",
+      },
+      labels: {
+        status: "Статус",
+        expected: "Срок",
+        distance: "Расстояние",
+        effects: "Эффекты",
+        risks: "Проверки",
+      },
+      values: {
+        noData: "Нет данных.",
+        noYear: "год неизвестен",
+        projects: (count) => `${count} ${pluralRu(count, "проект", "проекта", "проектов")}`,
+        meters: (meters) => `${meters} м`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "позитив",
+          mixed: "смешанный",
+          disruption_risk: "стройка",
+          supply_pressure: "давление предложения",
+        },
+      },
     },
     metrics: {
       verdict: "Вердикт",
@@ -5955,6 +6225,40 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       areaNews: "Новини району",
       guides: "Гайди",
       readyHtml: "Готовий HTML",
+    },
+    futureImpact: {
+      title: "Вплив майбутньої інфраструктури",
+      sections: {
+        narrative: "Наратив впливу",
+        catalysts: "Позитивні каталізатори",
+        checks: "Ризики будівництва і пропозиції",
+      },
+      metrics: {
+        score: "Impact score",
+        within2km: "У радіусі 2 км",
+        nearest: "Найближчий проект",
+        confidence: "Впевненість щодо найближчого",
+      },
+      labels: {
+        status: "Статус",
+        expected: "Термін",
+        distance: "Відстань",
+        effects: "Ефекти",
+        risks: "Перевірки",
+      },
+      values: {
+        noData: "Немає даних.",
+        noYear: "рік невідомий",
+        projects: (count) => `${count} ${pluralUk(count, "проект", "проекти", "проектів")}`,
+        meters: (meters) => `${meters} м`,
+        expectedYear: (year) => `${year}`,
+        categories: {
+          positive_catalyst: "позитив",
+          mixed: "змішаний",
+          disruption_risk: "будівництво",
+          supply_pressure: "тиск пропозиції",
+        },
+      },
     },
     metrics: {
       verdict: "Вердикт",

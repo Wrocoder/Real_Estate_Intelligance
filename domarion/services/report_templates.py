@@ -451,24 +451,7 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
             f"предложение 90d {area.supply_change_90d_pct:+.1f}%."
         ),
     ]
-    if analysis.future_area_impact is not None:
-        impact = analysis.future_area_impact
-        items.append(
-            f"Future impact score: {impact.impact_score}/100. {impact.summary}"
-        )
-        if impact.nearest_investments:
-            nearest = "; ".join(
-                (
-                    f"{item.investment.name} ({item.investment.investment_type}, "
-                    f"{item.distance_m} m, confidence {item.investment.confidence_score}/100)"
-                )
-                for item in impact.nearest_investments[:3]
-            )
-            items.append(f"Ближайшие planned investments: {nearest}.")
-        if impact.growth_signals:
-            items.append(f"Growth signals: {'; '.join(impact.growth_signals[:3])}.")
-        if impact.risk_signals:
-            items.append(f"Future-area risks/checks: {'; '.join(impact.risk_signals[:3])}.")
+    items.extend(_future_impact_report_items(analysis))
     if analysis.growth_analysis is not None:
         growth = analysis.growth_analysis
         items.append(
@@ -498,6 +481,47 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
         title="Жизнь, аренда и развитие района",
         items=_deduplicate(items),
     )
+
+
+def _future_impact_report_items(analysis: ListingAnalysis) -> list[str]:
+    if analysis.future_area_impact is None:
+        return []
+
+    impact = analysis.future_area_impact
+    items = [
+        f"Future impact score: {impact.impact_score}/100. {impact.summary}",
+    ]
+    if impact.impact_narrative:
+        items.append(f"Impact narrative: {'; '.join(impact.impact_narrative[:2])}.")
+    if impact.positive_catalysts:
+        catalysts = "; ".join(
+            f"{item.name}: {', '.join(item.positive_effects) or item.category}"
+            for item in impact.positive_catalysts[:3]
+        )
+        items.append(f"Positive catalysts: {catalysts}.")
+    if impact.negative_or_supply_projects:
+        checks = "; ".join(
+            (
+                f"{item.name}: "
+                f"{'; '.join([*item.disruption_risks, *item.supply_pressure_risks])}"
+            )
+            for item in impact.negative_or_supply_projects[:3]
+        )
+        items.append(f"Disruption/supply checks: {checks}.")
+    if impact.nearest_investments:
+        nearest = "; ".join(
+            (
+                f"{item.investment.name} ({item.investment.investment_type}, "
+                f"{item.distance_m} m, confidence {item.investment.confidence_score}/100)"
+            )
+            for item in impact.nearest_investments[:3]
+        )
+        items.append(f"Ближайшие planned investments: {nearest}.")
+    if impact.growth_signals:
+        items.append(f"Growth signals: {'; '.join(impact.growth_signals[:3])}.")
+    if impact.risk_signals:
+        items.append(f"Future-area risks/checks: {'; '.join(impact.risk_signals[:3])}.")
+    return items
 
 
 def _price_market_section(analysis: ListingAnalysis | None) -> ReportSection:
@@ -797,6 +821,7 @@ def _investor_liquidity_growth_section(analysis: ListingAnalysis | None) -> Repo
         thesis.append("Risk thesis: предложение быстро растет; проверьте риск oversupply.")
     else:
         thesis.append("Growth thesis: нейтральный сценарий, решение зависит от цены входа.")
+    thesis.extend(_future_impact_report_items(analysis))
     if analysis.growth_analysis is not None:
         growth = analysis.growth_analysis
         thesis.append(

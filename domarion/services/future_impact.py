@@ -4,6 +4,8 @@ from math import asin, cos, radians, sin, sqrt
 
 from domarion.repositories.base import RealEstateRepository
 from domarion.schemas import (
+    FutureImpactNarrativeCategory,
+    FutureImpactNarrativeItem,
     FutureImpactRadiusBucket,
     Listing,
     ListingFutureImpact,
@@ -43,8 +45,9 @@ def build_listing_future_impact(
     )
     buckets = [_radius_bucket(radius_m, impact_items) for radius_m in radii_m]
     impact_score = _impact_score(impact_items)
+    narrative_items = [_narrative_item(item) for item in impact_items[:6]]
     growth_signals = _growth_signals(impact_items)
-    risk_signals = _risk_signals(impact_items, buckets)
+    risk_signals = _risk_signals(impact_items, buckets, narrative_items)
 
     return ListingFutureImpact(
         listing_id=listing.id,
@@ -54,6 +57,15 @@ def build_listing_future_impact(
         nearest_investments=impact_items[:6],
         impact_score=impact_score,
         summary=_summary(impact_score, impact_items, buckets),
+        impact_narrative=[item.narrative for item in narrative_items],
+        positive_catalysts=[
+            item for item in narrative_items if item.category == "positive_catalyst"
+        ],
+        negative_or_supply_projects=[
+            item
+            for item in narrative_items
+            if item.category in {"mixed", "disruption_risk", "supply_pressure"}
+        ],
         growth_signals=growth_signals,
         risk_signals=risk_signals,
         methodology_note=METHODOLOGY_NOTE,
@@ -149,6 +161,7 @@ def _growth_signals(impact_items: list[PlannedInvestmentImpactItem]) -> list[str
 def _risk_signals(
     impact_items: list[PlannedInvestmentImpactItem],
     buckets: list[FutureImpactRadiusBucket],
+    narrative_items: list[FutureImpactNarrativeItem],
 ) -> list[str]:
     signals: list[str] = []
     near_items = [item for item in impact_items if item.distance_m <= 1000]
@@ -162,9 +175,159 @@ def _risk_signals(
     ]
     if low_confidence_near:
         signals.append("Some nearby projects have limited confidence; verify source freshness.")
+    for item in narrative_items:
+        signals.extend(item.disruption_risks[:1])
+        signals.extend(item.supply_pressure_risks[:1])
     if buckets and buckets[-1].count == 0:
         signals.append("No known planned-investment catalyst within 10 km in current data.")
-    return signals
+    return _deduplicate(signals)
+
+
+def _narrative_item(item: PlannedInvestmentImpactItem) -> FutureImpactNarrativeItem:
+    investment = item.investment
+    positive_effects = _positive_effects(investment)
+    disruption_risks = _disruption_risks(item)
+    supply_pressure_risks = _supply_pressure_risks(investment)
+    category = _narrative_category(
+        positive_effects,
+        disruption_risks,
+        supply_pressure_risks,
+    )
+    return FutureImpactNarrativeItem(
+        investment_id=investment.id,
+        name=investment.name,
+        investment_type=investment.investment_type,
+        category=category,
+        distance_m=item.distance_m,
+        status=investment.status,
+        expected_year=investment.expected_year,
+        confidence_score=investment.confidence_score,
+        positive_effects=positive_effects,
+        disruption_risks=disruption_risks,
+        supply_pressure_risks=supply_pressure_risks,
+        narrative=_investment_narrative(
+            item,
+            positive_effects=positive_effects,
+            disruption_risks=disruption_risks,
+            supply_pressure_risks=supply_pressure_risks,
+        ),
+    )
+
+
+def _positive_effects(investment: PlannedInvestment) -> list[str]:
+    normalized = _investment_text(investment)
+    effects: list[str] = []
+    if any(token in normalized for token in ("tram", "bus", "transport", "tat")):
+        effects.append("commute access and renter/buyer catchment may improve")
+    if "school" in normalized or "kindergarten" in normalized:
+        effects.append("family infrastructure may improve")
+    if any(token in normalized for token in ("park", "green", "greenery")):
+        effects.append("greenery and daily-living appeal may improve")
+    if any(token in normalized for token in ("public", "services", "healthcare")):
+        effects.append("public-service access may improve")
+    if "road" in normalized:
+        effects.append("car access may improve")
+    return effects
+
+
+def _disruption_risks(item: PlannedInvestmentImpactItem) -> list[str]:
+    investment = item.investment
+    normalized = _investment_text(investment)
+    risks: list[str] = []
+    if item.distance_m <= 1000 and _status_is_pre_completion(investment.status):
+        risks.append(
+            f"{investment.name}: construction/access disruption risk before completion "
+            f"at {item.distance_m} m."
+        )
+    if item.distance_m <= 1000 and any(token in normalized for token in ("road", "rail")):
+        risks.append(
+            f"{investment.name}: road/rail project may add noise or traffic exposure."
+        )
+    if investment.expected_year is None:
+        risks.append(f"{investment.name}: expected year is unknown.")
+    if investment.confidence_score < 60:
+        risks.append(
+            f"{investment.name}: confidence {investment.confidence_score}/100 needs source check."
+        )
+    return risks
+
+
+def _supply_pressure_risks(investment: PlannedInvestment) -> list[str]:
+    normalized = _investment_text(investment)
+    if any(
+        token in normalized
+        for token in ("housing", "residential", "apartments", "estate", "mieszkan")
+    ):
+        return [
+            f"{investment.name}: nearby new housing supply may compete with resale/rental demand."
+        ]
+    return []
+
+
+def _narrative_category(
+    positive_effects: list[str],
+    disruption_risks: list[str],
+    supply_pressure_risks: list[str],
+) -> FutureImpactNarrativeCategory:
+    if supply_pressure_risks:
+        return "supply_pressure"
+    if positive_effects and disruption_risks:
+        return "mixed"
+    if disruption_risks:
+        return "disruption_risk"
+    return "positive_catalyst"
+
+
+def _investment_narrative(
+    item: PlannedInvestmentImpactItem,
+    *,
+    positive_effects: list[str],
+    disruption_risks: list[str],
+    supply_pressure_risks: list[str],
+) -> str:
+    investment = item.investment
+    expected = (
+        f"expected around {investment.expected_year}"
+        if investment.expected_year is not None
+        else "expected year unknown"
+    )
+    positive = "; ".join(positive_effects) if positive_effects else "no clear positive catalyst"
+    risks = [*disruption_risks, *supply_pressure_risks]
+    risk_text = "; ".join(risks) if risks else "no specific disruption/supply risk flagged"
+    return (
+        f"{investment.name} is {item.distance_m} m away, status {investment.status}, "
+        f"{expected}, confidence {investment.confidence_score}/100. "
+        f"Positive effects: {positive}. Checks: {risk_text}."
+    )
+
+
+def _status_is_pre_completion(status: str) -> bool:
+    normalized = status.lower()
+    return not any(token in normalized for token in ("completed", "done", "finished", "oddane"))
+
+
+def _investment_text(investment: PlannedInvestment) -> str:
+    return " ".join(
+        item
+        for item in (
+            investment.name,
+            investment.investment_type,
+            investment.status,
+            investment.notes,
+        )
+        if item
+    ).lower()
+
+
+def _deduplicate(items: list[str]) -> list[str]:
+    result: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        key = item.casefold()
+        if key not in seen:
+            seen.add(key)
+            result.append(item)
+    return result
 
 
 def _summary(
@@ -183,9 +346,16 @@ def _summary(
         posture = "moderate future-area signal"
     else:
         posture = "limited future-area signal"
+    expected = (
+        f"expected {nearest.investment.expected_year}"
+        if nearest.investment.expected_year is not None
+        else "expected year unknown"
+    )
     return (
         f"{posture}: {count_2km} planned investments within 2 km; nearest is "
-        f"{nearest.investment.name} at {nearest.distance_m} m."
+        f"{nearest.investment.name} at {nearest.distance_m} m "
+        f"({nearest.investment.status}, {expected}, "
+        f"confidence {nearest.investment.confidence_score}/100)."
     )
 
 

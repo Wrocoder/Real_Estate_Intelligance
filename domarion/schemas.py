@@ -112,6 +112,12 @@ IngestionSourceHealthStatus = Literal["healthy", "warning", "failing"]
 ProductionReadinessStatus = Literal["ready", "degraded", "blocked"]
 ProductionReadinessCheckStatus = Literal["pass", "warn", "fail"]
 ProductionReadinessCheckSeverity = Literal["info", "warning", "critical"]
+FutureImpactNarrativeCategory = Literal[
+    "positive_catalyst",
+    "mixed",
+    "disruption_risk",
+    "supply_pressure",
+]
 SourceLegalStatus = Literal["unknown", "approved", "review_required", "blocked"]
 SourceCheckType = Literal[
     "robots_txt",
@@ -803,6 +809,21 @@ class FutureImpactRadiusBucket(BaseModel):
     nearest_distance_m: int | None = Field(default=None, ge=0)
 
 
+class FutureImpactNarrativeItem(BaseModel):
+    investment_id: str
+    name: str
+    investment_type: str
+    category: FutureImpactNarrativeCategory
+    distance_m: int = Field(ge=0)
+    status: str
+    expected_year: int | None = None
+    confidence_score: int = Field(ge=0, le=100)
+    positive_effects: list[str] = Field(default_factory=list)
+    disruption_risks: list[str] = Field(default_factory=list)
+    supply_pressure_risks: list[str] = Field(default_factory=list)
+    narrative: str
+
+
 class ListingFutureImpact(BaseModel):
     listing_id: str
     max_radius_m: int = Field(ge=0)
@@ -811,6 +832,9 @@ class ListingFutureImpact(BaseModel):
     nearest_investments: list[PlannedInvestmentImpactItem] = Field(default_factory=list)
     impact_score: int = Field(ge=0, le=100)
     summary: str
+    impact_narrative: list[str] = Field(default_factory=list)
+    positive_catalysts: list[FutureImpactNarrativeItem] = Field(default_factory=list)
+    negative_or_supply_projects: list[FutureImpactNarrativeItem] = Field(default_factory=list)
     growth_signals: list[str] = Field(default_factory=list)
     risk_signals: list[str] = Field(default_factory=list)
     methodology_note: str

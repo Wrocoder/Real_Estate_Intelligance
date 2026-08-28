@@ -1553,16 +1553,14 @@ git push -u origin feature/mvp-api-foundation
 4. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
    comparable, DOM thresholds, planned investment status, developer signal and
    negotiation opportunity.
-5. Усилить future infrastructure impact narrative: expected year, status,
-   confidence, positive effects, construction disruption and supply pressure.
-6. Провести source-specific legal review и зафиксировать approved/blocked matrix
+5. Провести source-specific legal review и зафиксировать approved/blocked matrix
    перед любым scheduled ingestion за пределами partner/open-data/manual flows.
-7. Подключить production auth вместо MVP header/demo identity.
-8. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
+6. Подключить production auth вместо MVP header/demo identity.
+7. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
    пройти restore drill перед paid traffic.
-9. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
-10. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
+8. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
+9. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
    user-submitted one-off анализа.
-11. Заморозить expansion/enterprise/news/investor tooling до выполнения
+10. Заморозить expansion/enterprise/news/investor tooling до выполнения
    validation gate; расширять partner/open-data coverage на новые города только
    по checklist из `docs/poland_city_expansion_checklist.md`.
