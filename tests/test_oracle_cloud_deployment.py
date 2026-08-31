@@ -36,6 +36,12 @@ def test_oracle_compose_defines_single_vm_topology() -> None:
     assert db["build"]["dockerfile"] == "deploy/oracle/postgis.Dockerfile"
     assert db["image"] == "${POSTGIS_IMAGE:-domarion-postgis:16-3}"
     assert "/var/lib/postgresql/data" in db["volumes"][0]
+    assert "max_connections=${POSTGRES_MAX_CONNECTIONS:-50}" in db["command"]
+    assert "shared_buffers=${POSTGRES_SHARED_BUFFERS:-1GB}" in db["command"]
+    assert "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-6GB}" in db["command"]
+    assert "maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-256MB}" in db["command"]
+    assert "work_mem=${POSTGRES_WORK_MEM:-16MB}" in db["command"]
+    assert "wal_compression=on" in db["command"]
 
     caddy_ports = {str(port).split(":")[-1] for port in services["caddy"]["ports"]}
     assert {"80", "443"} <= caddy_ports

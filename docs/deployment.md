@@ -94,6 +94,11 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now domarion-postgres-backup.timer
 ```
 
+The OCI compose file sets conservative default PostgreSQL values for a 2 OCPU,
+12 GB RAM VM: 50 connections, 1 GB shared buffers, 6 GB effective cache,
+256 MB maintenance work memory and 16 MB work memory. Override them in
+`/srv/domarion/env/oracle.env` only after observing real memory pressure.
+
 ## Staging через Docker Compose
 
 Файл: `compose.staging.yaml`.

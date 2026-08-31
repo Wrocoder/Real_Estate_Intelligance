@@ -102,8 +102,8 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [ ] Run `python -m alembic upgrade head` before first API start.
 - [ ] Run `python scripts/verify_postgres_staging.py --database-url $DATABASE_URL`.
 - [ ] Decide whether demo seed is allowed in OCI staging and forbidden in production.
-- [ ] Configure Postgres memory settings conservatively for 12 GB RAM.
-- [ ] Define manual DB maintenance commands: backup, restore, vacuum/analyze, disk usage.
+- [x] Configure Postgres memory settings conservatively for 12 GB RAM.
+- [x] Define manual DB maintenance commands: backup, restore, vacuum/analyze, disk usage.
 
 ### 8. Backups And Restore
 
@@ -239,6 +239,17 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now domarion-postgres-backup.timer
 sudo systemctl start domarion-postgres-backup.service
 sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
+```
+
+Manual database maintenance on the VM:
+
+```bash
+cd /srv/domarion/app
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "VACUUM (ANALYZE);"'
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "SELECT pg_size_pretty(pg_database_size(current_database()));"'
+du -sh /srv/domarion/postgres /srv/domarion/backups/postgres /srv/domarion/artifacts/reports
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py backup
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py restore /srv/domarion/backups/postgres/domarion-postgres-YYYYMMDDTHHMMSSZ.dump --database-url "$RESTORE_DATABASE_URL" --clean
 ```
 
 Run public smoke checks from a workstation:
