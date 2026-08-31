@@ -68,6 +68,7 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [x] Add an arm64-compatible PostGIS Dockerfile for OCI Ampere A1.
 - [x] Add a systemd unit template for starting the Compose stack after reboot.
 - [x] Add a systemd timer template for logical Postgres backups.
+- [x] Add a VM bootstrap script for Docker, firewall, fail2ban and directory setup.
 - [x] Add `scripts/deploy_oracle_cloud.ps1` or `scripts/deploy_oracle_cloud.sh`.
 - [x] Add `scripts/oracle_cloud_preflight.py` for OCI env/domain/compose guardrails.
 - [x] Document exact server bootstrap commands.
@@ -170,15 +171,22 @@ Run these commands on the OCI VM after DNS points to the VM public IP and ports
 `80` and `443` are open in the OCI network rules.
 
 ```bash
-sudo mkdir -p /srv/domarion/{app,env,postgres,redis,artifacts/reports,backups/postgres,caddy/data,caddy/config}
-sudo chown -R "$USER:$USER" /srv/domarion
+sudo apt-get update
+sudo apt-get install -y git
+git clone git@github.com:Wrocoder/Real_Estate_Intelligance.git ~/domarion-bootstrap
+cd ~/domarion-bootstrap
+sudo scripts/bootstrap_oracle_vm.sh
 
-git clone git@github.com:Wrocoder/Real_Estate_Intelligance.git /srv/domarion/app
+sudo -u domarion git clone git@github.com:Wrocoder/Real_Estate_Intelligance.git /srv/domarion/app
 cd /srv/domarion/app
 
-cp .env.oracle.example /srv/domarion/env/oracle.env
-chmod 600 /srv/domarion/env/oracle.env
+sudo -u domarion cp .env.oracle.example /srv/domarion/env/oracle.env
+sudo chmod 600 /srv/domarion/env/oracle.env
 ```
+
+For a private repository, configure the `domarion` user's deploy key before the
+`sudo -u domarion git clone` command. If you bootstrap with a temporary checkout,
+it can be removed after `/srv/domarion/app` is ready.
 
 Edit `/srv/domarion/env/oracle.env` before starting the stack:
 

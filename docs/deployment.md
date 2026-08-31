@@ -99,6 +99,10 @@ The OCI compose file sets conservative default PostgreSQL values for a 2 OCPU,
 256 MB maintenance work memory and 16 MB work memory. Override them in
 `/srv/domarion/env/oracle.env` only after observing real memory pressure.
 
+On a fresh Ubuntu OCI VM, use `sudo scripts/bootstrap_oracle_vm.sh` after copying
+or cloning the repo. Pass `--harden-ssh` only after key-based SSH access is
+verified.
+
 ## Staging через Docker Compose
 
 Файл: `compose.staging.yaml`.

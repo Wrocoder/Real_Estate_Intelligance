@@ -126,6 +126,22 @@ def test_oracle_backup_systemd_timer_runs_containerized_backup() -> None:
     assert "Persistent=true" in backup_timer
 
 
+def test_oracle_vm_bootstrap_script_sets_runtime_guardrails() -> None:
+    bootstrap_script = (ROOT / "scripts" / "bootstrap_oracle_vm.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "docker-compose-plugin" in bootstrap_script
+    assert "fail2ban" in bootstrap_script
+    assert "unattended-upgrades" in bootstrap_script
+    assert "ufw allow 80/tcp" in bootstrap_script
+    assert "ufw allow 443/tcp" in bootstrap_script
+    assert '"max-size": "50m"' in bootstrap_script
+    assert "--harden-ssh" in bootstrap_script
+    assert "PasswordAuthentication no" in bootstrap_script
+    assert "$DATA_DIR/backups/postgres" in bootstrap_script
+
+
 def test_ci_workflow_can_publish_arm64_oci_images() -> None:
     yaml = pytest.importorskip("yaml")
     workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
