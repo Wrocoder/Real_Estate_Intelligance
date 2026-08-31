@@ -1,0 +1,256 @@
+name: domarion-oci
+
+x-api-env: &api-env
+  APP_NAME: ${APP_NAME:-Domarion Analytics API}
+  ENVIRONMENT: ${ENVIRONMENT:-staging}
+  DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the OCI env file}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in the OCI env file}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  SENTRY_DSN: ${SENTRY_DSN:-}
+  SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0}
+  DATA_REPOSITORY_BACKEND: ${DATA_REPOSITORY_BACKEND:-postgres}
+  REPORT_STORE_BACKEND: ${REPORT_STORE_BACKEND:-postgres}
+  REPORT_ORDER_STORE_BACKEND: ${REPORT_ORDER_STORE_BACKEND:-postgres}
+  USER_STORE_BACKEND: ${USER_STORE_BACKEND:-postgres}
+  AUTH_STORE_BACKEND: ${AUTH_STORE_BACKEND:-postgres}
+  AGENCY_STORE_BACKEND: ${AGENCY_STORE_BACKEND:-postgres}
+  CRM_STORE_BACKEND: ${CRM_STORE_BACKEND:-postgres}
+  INGESTION_ADMIN_STORE_BACKEND: ${INGESTION_ADMIN_STORE_BACKEND:-postgres}
+  USER_SUBMITTED_LISTING_STORE_BACKEND: ${USER_SUBMITTED_LISTING_STORE_BACKEND:-postgres}
+  PARTNER_REFERRAL_STORE_BACKEND: ${PARTNER_REFERRAL_STORE_BACKEND:-postgres}
+  AI_INSIGHT_STORE_BACKEND: ${AI_INSIGHT_STORE_BACKEND:-postgres}
+  NEWS_STORE_BACKEND: ${NEWS_STORE_BACKEND:-postgres}
+  CUSTOM_DASHBOARD_STORE_BACKEND: ${CUSTOM_DASHBOARD_STORE_BACKEND:-postgres}
+  REPORT_ARTIFACT_STORAGE_BACKEND: ${REPORT_ARTIFACT_STORAGE_BACKEND:-local}
+  REPORT_ARTIFACT_LOCAL_DIR: ${REPORT_ARTIFACT_LOCAL_DIR:-/srv/domarion/artifacts/reports}
+  REPORT_ARTIFACT_PUBLIC_BASE_URL: ${REPORT_ARTIFACT_PUBLIC_BASE_URL:-}
+  REPORT_ARTIFACT_S3_ENDPOINT_URL: ${REPORT_ARTIFACT_S3_ENDPOINT_URL:-}
+  REPORT_ARTIFACT_S3_REGION: ${REPORT_ARTIFACT_S3_REGION:-eu-frankfurt-1}
+  REPORT_ARTIFACT_S3_BUCKET: ${REPORT_ARTIFACT_S3_BUCKET:-}
+  REPORT_ARTIFACT_S3_PREFIX: ${REPORT_ARTIFACT_S3_PREFIX:-production/reports}
+  REPORT_ARTIFACT_S3_ACCESS_KEY_ID: ${REPORT_ARTIFACT_S3_ACCESS_KEY_ID:-}
+  REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY: ${REPORT_ARTIFACT_S3_SECRET_ACCESS_KEY:-}
+  PAYMENT_PROVIDER: ${PAYMENT_PROVIDER:-mock}
+  PAYMENT_CHECKOUT_BASE_URL: ${PAYMENT_CHECKOUT_BASE_URL:-}
+  PAYMENT_SUCCESS_URL: ${PAYMENT_SUCCESS_URL:-}
+  PAYMENT_CANCEL_URL: ${PAYMENT_CANCEL_URL:-}
+  PAYMENT_CHECKOUT_TIMEOUT_SECONDS: ${PAYMENT_CHECKOUT_TIMEOUT_SECONDS:-10}
+  STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+  STRIPE_API_BASE_URL: ${STRIPE_API_BASE_URL:-https://api.stripe.com}
+  PAYMENT_WEBHOOK_TOLERANCE_SECONDS: ${PAYMENT_WEBHOOK_TOLERANCE_SECONDS:-300}
+  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+  PAYU_API_BASE_URL: ${PAYU_API_BASE_URL:-https://secure.snd.payu.com}
+  PAYU_CLIENT_ID: ${PAYU_CLIENT_ID:-}
+  PAYU_CLIENT_SECRET: ${PAYU_CLIENT_SECRET:-}
+  PAYU_MERCHANT_POS_ID: ${PAYU_MERCHANT_POS_ID:-}
+  PAYU_NOTIFY_URL: ${PAYU_NOTIFY_URL:-}
+  PAYU_CUSTOMER_IP: ${PAYU_CUSTOMER_IP:-127.0.0.1}
+  PAYU_SECOND_KEY: ${PAYU_SECOND_KEY:-}
+  ALERT_EMAIL_ENABLED: ${ALERT_EMAIL_ENABLED:-false}
+  ALERT_EMAIL_SENDER: ${ALERT_EMAIL_SENDER:-alerts@example.com}
+  ALERT_SMTP_HOST: ${ALERT_SMTP_HOST:-}
+  ALERT_SMTP_PORT: ${ALERT_SMTP_PORT:-587}
+  ALERT_SMTP_USERNAME: ${ALERT_SMTP_USERNAME:-}
+  ALERT_SMTP_PASSWORD: ${ALERT_SMTP_PASSWORD:-}
+  ALERT_SMTP_USE_TLS: ${ALERT_SMTP_USE_TLS:-true}
+  ALERT_DELIVERY_TIMEOUT_SECONDS: ${ALERT_DELIVERY_TIMEOUT_SECONDS:-10}
+  ALERT_TELEGRAM_ENABLED: ${ALERT_TELEGRAM_ENABLED:-false}
+  ALERT_TELEGRAM_BOT_NAME: ${ALERT_TELEGRAM_BOT_NAME:-DomarionBot}
+  ALERT_TELEGRAM_BOT_TOKEN: ${ALERT_TELEGRAM_BOT_TOKEN:-}
+  ALERT_TELEGRAM_API_BASE_URL: ${ALERT_TELEGRAM_API_BASE_URL:-https://api.telegram.org}
+  WORKER_TASKS: ${WORKER_TASKS:-daily-email-alerts,area-market-snapshots,price-history-rebuild}
+  WORKER_INTERVAL_SECONDS: ${WORKER_INTERVAL_SECONDS:-3600}
+  WORKER_RUN_ONCE: ${WORKER_RUN_ONCE:-false}
+  WORKER_APPLY: ${WORKER_APPLY:-false}
+  WORKER_FORCE: ${WORKER_FORCE:-false}
+  ALERT_WORKER_SEND: ${ALERT_WORKER_SEND:-false}
+  ALERT_WORKER_MAX_MATCHES: ${ALERT_WORKER_MAX_MATCHES:-10}
+  ALERT_WORKER_LIMIT: ${ALERT_WORKER_LIMIT:-500}
+  BACKUP_OUTPUT_DIR: ${BACKUP_OUTPUT_DIR:-/srv/domarion/backups/postgres}
+  BACKUP_PREFIX: ${BACKUP_PREFIX:-domarion-postgres}
+  BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+  BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+  BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-production/postgres}
+  BACKUP_S3_ENDPOINT_URL: ${BACKUP_S3_ENDPOINT_URL:-}
+  BACKUP_S3_REGION: ${BACKUP_S3_REGION:-eu-frankfurt-1}
+  PG_DUMP_BIN: ${PG_DUMP_BIN:-pg_dump}
+  PG_RESTORE_BIN: ${PG_RESTORE_BIN:-pg_restore}
+  UPTIME_MONITOR_URL: ${UPTIME_MONITOR_URL:-}
+  JOB_FAILURE_ALERT_TARGET: ${JOB_FAILURE_ALERT_TARGET:-}
+  SOURCE_FRESHNESS_ALERT_TARGET: ${SOURCE_FRESHNESS_ALERT_TARGET:-}
+  PAYMENT_WEBHOOK_ALERT_TARGET: ${PAYMENT_WEBHOOK_ALERT_TARGET:-}
+  COST_ALERTS_CONFIGURED: ${COST_ALERTS_CONFIGURED:-false}
+  API_LITE_KEYS_JSON: ${API_LITE_KEYS_JSON:-}
+  API_LITE_DEFAULT_MONTHLY_QUOTA: ${API_LITE_DEFAULT_MONTHLY_QUOTA:-1000}
+  API_LITE_DEFAULT_RATE_LIMIT_PER_MINUTE: ${API_LITE_DEFAULT_RATE_LIMIT_PER_MINUTE:-60}
+  SCORING_WEIGHTS_JSON: ${SCORING_WEIGHTS_JSON:-}
+  DEMO_USER_ID: ${DEMO_USER_ID:-demo-user}
+  DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-demo@example.com}
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: deploy/oracle/postgis.Dockerfile
+    image: ${POSTGIS_IMAGE:-domarion-postgis:16-3}
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-domarion}
+      POSTGRES_USER: ${POSTGRES_USER:-domarion}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the OCI env file}
+    volumes:
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-domarion} -d ${POSTGRES_DB:-domarion}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --save 60 1 --loglevel warning
+    volumes:
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - internal
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-domarion-api:oracle}
+    environment: *api-env
+    command: python -m alembic upgrade head
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - internal
+
+  seed:
+    image: ${API_IMAGE:-domarion-api:oracle}
+    environment: *api-env
+    command: domarion seed-demo
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+    profiles:
+      - seed
+    networks:
+      - internal
+
+  api:
+    image: ${API_IMAGE:-domarion-api:oracle}
+    environment: *api-env
+    expose:
+      - "8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?set NEXT_PUBLIC_API_BASE_URL in the OCI env file}
+        NEXT_PUBLIC_OWNER_ID: ${NEXT_PUBLIC_OWNER_ID:-demo-user}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL in the OCI env file}
+    image: ${FRONTEND_IMAGE:-domarion-frontend:oracle}
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-1}
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+    expose:
+      - "3000"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    networks:
+      - internal
+
+  worker:
+    image: ${API_IMAGE:-domarion-api:oracle}
+    environment: *api-env
+    command:
+      - domarion
+      - worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMARION_FRONTEND_DOMAIN: ${DOMARION_FRONTEND_DOMAIN:?set DOMARION_FRONTEND_DOMAIN in the OCI env file}
+      DOMARION_API_DOMAIN: ${DOMARION_API_DOMAIN:?set DOMARION_API_DOMAIN in the OCI env file}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/oracle/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/caddy/data:/data
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/caddy/config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - internal
+      - edge
+
+networks:
+  internal:
+    internal: true
+  edge:

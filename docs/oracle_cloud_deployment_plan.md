@@ -62,12 +62,14 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 
 ### 4. Repo Changes
 
-- [ ] Add `compose.oracle.yaml` for production-like single-VM deployment.
-- [ ] Add `.env.oracle.example` with OCI-specific required variables and safe placeholders.
-- [ ] Add reverse-proxy config, preferably Caddy for automatic TLS.
-- [ ] Add `scripts/deploy_oracle_cloud.ps1` or `scripts/deploy_oracle_cloud.sh`.
-- [ ] Add `scripts/oracle_cloud_preflight.py` if generic `production-preflight` needs OCI-specific checks.
-- [ ] Document exact server bootstrap commands.
+- [x] Add `compose.oracle.yaml` for production-like single-VM deployment.
+- [x] Add `.env.oracle.example` with OCI-specific required variables and safe placeholders.
+- [x] Add reverse-proxy config, preferably Caddy for automatic TLS.
+- [x] Add an arm64-compatible PostGIS Dockerfile for OCI Ampere A1.
+- [x] Add a systemd unit template for starting the Compose stack after reboot.
+- [x] Add `scripts/deploy_oracle_cloud.ps1` or `scripts/deploy_oracle_cloud.sh`.
+- [x] Add `scripts/oracle_cloud_preflight.py` for OCI env/domain/compose guardrails.
+- [x] Document exact server bootstrap commands.
 - [ ] Keep Render files until OCI deployment is verified end-to-end.
 
 ### 5. Images And CI/CD
@@ -160,6 +162,64 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - Add `compose.oracle.yaml`.
 - Deploy with `PAYMENT_PROVIDER=mock`, `ALERT_WORKER_SEND=false`.
 - Run migrations, smoke checks and restore drill.
+
+## First VM Bootstrap
+
+Run these commands on the OCI VM after DNS points to the VM public IP and ports
+`80` and `443` are open in the OCI network rules.
+
+```bash
+sudo mkdir -p /srv/domarion/{app,env,postgres,redis,artifacts/reports,backups/postgres,caddy/data,caddy/config}
+sudo chown -R "$USER:$USER" /srv/domarion
+
+git clone git@github.com:Wrocoder/Real_Estate_Intelligance.git /srv/domarion/app
+cd /srv/domarion/app
+
+cp .env.oracle.example /srv/domarion/env/oracle.env
+chmod 600 /srv/domarion/env/oracle.env
+```
+
+Edit `/srv/domarion/env/oracle.env` before starting the stack:
+
+- replace `app.example.com` and `api.example.com`;
+- replace `POSTGRES_PASSWORD` and make `DATABASE_URL` match it;
+- keep `ENVIRONMENT=staging` for the first OCI smoke deploy;
+- keep `PAYMENT_PROVIDER=mock` and `ALERT_WORKER_SEND=false` until paid-beta release gates pass.
+
+Run the OCI-specific preflight before the first deploy:
+
+```bash
+python3 scripts/oracle_cloud_preflight.py --env-file /srv/domarion/env/oracle.env --compose-file compose.oracle.yaml
+```
+
+Start the first staging stack with demo seed:
+
+```bash
+scripts/deploy_oracle_cloud.sh --seed
+```
+
+After the first seed is complete, normal restarts should omit the `seed` profile:
+
+```bash
+scripts/deploy_oracle_cloud.sh
+```
+
+Install the systemd unit after the manual run is healthy:
+
+```bash
+sudo cp deploy/oracle/domarion-compose.service /etc/systemd/system/domarion-compose.service
+sudo systemctl daemon-reload
+sudo systemctl enable domarion-compose
+sudo systemctl start domarion-compose
+```
+
+Run public smoke checks from a workstation:
+
+```powershell
+$env:API_BASE_URL = "https://api.example.com"
+$env:FRONTEND_BASE_URL = "https://app.example.com"
+python scripts\smoke_deployment.py
+```
 
 ### Milestone B: Production Candidate
 

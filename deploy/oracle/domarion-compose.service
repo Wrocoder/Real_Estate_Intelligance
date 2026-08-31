@@ -1,0 +1,17 @@
+[Unit]
+Description=Domarion OCI Docker Compose stack
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/domarion/app
+Environment=DOMARION_ENV_FILE=/srv/domarion/env/oracle.env
+RemainAfterExit=yes
+ExecStart=/usr/bin/docker compose --env-file ${DOMARION_ENV_FILE} -f compose.oracle.yaml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose --env-file ${DOMARION_ENV_FILE} -f compose.oracle.yaml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
