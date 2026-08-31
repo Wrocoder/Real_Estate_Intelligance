@@ -142,6 +142,21 @@ def test_oracle_vm_bootstrap_script_sets_runtime_guardrails() -> None:
     assert "$DATA_DIR/backups/postgres" in bootstrap_script
 
 
+def test_oci_staging_runbook_covers_manual_setup_gates() -> None:
+    runbook = (ROOT / "docs" / "oci_staging_setup_runbook.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "oci-staging" in runbook
+    assert "OCI_ENV_FILE" in runbook
+    assert "OCI_SSH_KNOWN_HOSTS" in runbook
+    assert "scripts/bootstrap_oracle_vm.sh" in runbook
+    assert "deploy_oci=true" in runbook
+    assert "scripts/deploy_oracle_cloud.sh --pull-images" in runbook
+    assert "python scripts\\smoke_deployment.py" in runbook
+    assert "/srv/domarion/env/snapshots" in runbook
+
+
 def test_ci_workflow_can_publish_arm64_oci_images() -> None:
     yaml = pytest.importorskip("yaml")
     workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(

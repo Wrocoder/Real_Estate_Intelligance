@@ -7,6 +7,8 @@ staging/demo окружению. Это не production playbook для банк
 
 GitHub Actions workflow: `.github/workflows/ci.yml`.
 
+OCI-specific post-push setup lives in `docs/oci_staging_setup_runbook.md`.
+
 Jobs:
 
 - `Backend`: Python 3.12, `ruff`, `pytest` с coverage report, performance smoke,

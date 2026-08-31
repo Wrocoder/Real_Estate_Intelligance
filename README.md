@@ -42,6 +42,8 @@ restore drill must be completed before selling at scale.
 - `README.md` - quick start, локальный запуск и практические API/CLI examples.
 - `docs/api_surface.md` - актуальная карта API surface, сверенная с OpenAPI.
 - `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
+- `docs/oci_staging_setup_runbook.md` - post-push OCI staging setup: GitHub
+  Environment, VM bootstrap, manual deploy, checks and rollback.
 - `docs/production_ops_runbook.md` - production preflight, managed services,
   backups, S3 artifacts and worker deployment.
 - `docs/source_compliance_policy.md` - legal/data guardrails для источников,
