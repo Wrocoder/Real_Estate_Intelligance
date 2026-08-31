@@ -117,6 +117,24 @@ def test_ci_workflow_can_publish_arm64_oci_images() -> None:
     assert "domarion-postgis" in workflow_text
 
 
+def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
+    yaml = pytest.importorskip("yaml")
+    workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    workflow = yaml.safe_load(workflow_text)
+    deploy_job = workflow["jobs"]["deploy-oci"]
+
+    assert deploy_job["needs"] == ["docker-publish"]
+    assert deploy_job["environment"]["name"] == "oci-staging"
+    assert "inputs.deploy_oci == true" in deploy_job["if"]
+    assert "OCI_SSH_PRIVATE_KEY" in workflow_text
+    assert "OCI_SSH_KNOWN_HOSTS" in workflow_text
+    assert "OCI_ENV_FILE" in workflow_text
+    assert "/srv/domarion/env/snapshots" in workflow_text
+    assert "scripts/deploy_oracle_cloud.sh --pull-images" in workflow_text
+
+
 def test_oracle_preflight_blocks_example_placeholders() -> None:
     result = _run_oracle_preflight(ROOT / ".env.oracle.example")
 

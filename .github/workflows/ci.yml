@@ -12,6 +12,11 @@ on:
         required: false
         default: false
         type: boolean
+      deploy_oci:
+        description: "Deploy the freshly published images to the protected OCI staging environment."
+        required: false
+        default: false
+        type: boolean
       next_public_api_base_url:
         description: "Frontend build-time public API URL, for example https://api.example.com."
         required: false
@@ -144,7 +149,8 @@ jobs:
       (github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
         vars.OCI_IMAGE_PUBLISH_ENABLED == 'true') ||
-      (github.event_name == 'workflow_dispatch' && inputs.publish_images == true)
+      (github.event_name == 'workflow_dispatch' &&
+        (inputs.publish_images == true || inputs.deploy_oci == true))
     permissions:
       contents: read
       packages: write
@@ -235,3 +241,102 @@ jobs:
           tags: |
             ${{ env.OCI_POSTGIS_IMAGE }}:${{ env.OCI_IMAGE_TAG }}
             ${{ env.OCI_POSTGIS_IMAGE }}:latest-arm64
+
+  deploy-oci:
+    name: Deploy OCI Staging
+    runs-on: ubuntu-latest
+    needs:
+      - docker-publish
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/main' &&
+      inputs.deploy_oci == true
+    environment:
+      name: oci-staging
+    steps:
+      - name: Prepare OCI deploy settings
+        env:
+          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '22' }}
+          OCI_DEPLOY_USER: ${{ vars.OCI_DEPLOY_USER || 'domarion' }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OCI_DEPLOY_HOST"
+          test -n "$OCI_DEPLOY_PORT"
+          test -n "$OCI_DEPLOY_USER"
+
+          image_namespace="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          image_tag="sha-${GITHUB_SHA}"
+
+          {
+            echo "OCI_DEPLOY_PORT=$OCI_DEPLOY_PORT"
+            echo "OCI_DEPLOY_USER=$OCI_DEPLOY_USER"
+            echo "OCI_IMAGE_TAG=$image_tag"
+            echo "OCI_API_IMAGE=$image_namespace/domarion-api"
+            echo "OCI_FRONTEND_IMAGE=$image_namespace/domarion-frontend"
+            echo "OCI_POSTGIS_IMAGE=$image_namespace/domarion-postgis"
+          } >> "$GITHUB_ENV"
+
+      - name: Configure SSH
+        env:
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OCI_SSH_PRIVATE_KEY"
+          test -n "$OCI_SSH_KNOWN_HOSTS"
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" > "$HOME/.ssh/oci_deploy_key"
+          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/oci_deploy_key"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      - name: Deploy over SSH
+        env:
+          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          OCI_ENV_FILE: ${{ secrets.OCI_ENV_FILE }}
+          OCI_GHCR_READ_TOKEN: ${{ secrets.OCI_GHCR_READ_TOKEN }}
+          OCI_GHCR_USERNAME: ${{ secrets.OCI_GHCR_USERNAME }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OCI_ENV_FILE"
+          if [[ -n "$OCI_GHCR_READ_TOKEN" && -z "$OCI_GHCR_USERNAME" ]]; then
+            echo "Set OCI_GHCR_USERNAME when OCI_GHCR_READ_TOKEN is configured." >&2
+            exit 1
+          fi
+
+          ssh_target="${OCI_DEPLOY_USER}@${OCI_DEPLOY_HOST}"
+          ssh_common=(
+            -i "$HOME/.ssh/oci_deploy_key"
+            -p "$OCI_DEPLOY_PORT"
+            -o IdentitiesOnly=yes
+          )
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'set -eu;
+             mkdir -p /srv/domarion/env/snapshots;
+             if [ -f /srv/domarion/env/oracle.env ]; then
+               cp /srv/domarion/env/oracle.env "/srv/domarion/env/snapshots/oracle.env.$(date -u +%Y%m%dT%H%M%SZ)";
+             fi;
+             chmod 700 /srv/domarion/env/snapshots'
+
+          {
+            printf '%s\n' "$OCI_ENV_FILE" | awk '!/^(API_IMAGE|FRONTEND_IMAGE|POSTGIS_IMAGE)=/'
+            printf '\nAPI_IMAGE=%s:%s\n' "$OCI_API_IMAGE" "$OCI_IMAGE_TAG"
+            printf 'FRONTEND_IMAGE=%s:%s\n' "$OCI_FRONTEND_IMAGE" "$OCI_IMAGE_TAG"
+            printf 'POSTGIS_IMAGE=%s:%s\n' "$OCI_POSTGIS_IMAGE" "$OCI_IMAGE_TAG"
+          } | ssh "${ssh_common[@]}" "$ssh_target" \
+            'umask 077; cat > /srv/domarion/env/oracle.env'
+
+          if [[ -n "$OCI_GHCR_READ_TOKEN" ]]; then
+            printf '%s' "$OCI_GHCR_READ_TOKEN" | ssh "${ssh_common[@]}" "$ssh_target" \
+              "docker login ghcr.io -u '$OCI_GHCR_USERNAME' --password-stdin"
+          fi
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && scripts/deploy_oracle_cloud.sh --pull-images'

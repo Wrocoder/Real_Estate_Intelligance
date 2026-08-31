@@ -77,9 +77,9 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [x] Decide image source: build on VM for first bootstrap, then GHCR linux/arm64 images.
 - [x] Prefer registry-based deploy after first bootstrap.
 - [x] Update GitHub Actions to build and push linux/arm64 images after CI passes.
-- [ ] Add deploy job gated by manual approval or protected environment.
-- [ ] Deploy by SSH: pull images, write env file, run migrations, restart services, run smoke checks.
-- [ ] Keep rollback path: previous image tags and previous `.env` snapshot.
+- [x] Add deploy job gated by manual approval or protected environment.
+- [x] Deploy by SSH: pull images, write env file, run migrations, restart services, run smoke checks.
+- [x] Keep rollback path: previous image tags and previous `.env` snapshot.
 
 ### 6. Secrets And Environment
 

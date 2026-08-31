@@ -71,6 +71,20 @@ The published tags are `sha-<commit>` and `latest-arm64` for:
 - `ghcr.io/<owner>/domarion-frontend`
 - `ghcr.io/<owner>/domarion-postgis`
 
+OCI staging deploy is a protected `workflow_dispatch` path. Configure GitHub
+Environment `oci-staging` with manual approval, then set:
+
+- Secrets: `OCI_DEPLOY_HOST`, `OCI_SSH_PRIVATE_KEY`, `OCI_SSH_KNOWN_HOSTS`,
+  `OCI_ENV_FILE`.
+- Optional secrets for private GHCR packages: `OCI_GHCR_USERNAME`,
+  `OCI_GHCR_READ_TOKEN`.
+- Variables: `OCI_DEPLOY_USER` default `domarion`, `OCI_DEPLOY_PORT` default `22`.
+
+Manual deploy with `deploy_oci=true` publishes fresh `sha-<commit>` arm64
+images, snapshots the previous remote env file under
+`/srv/domarion/env/snapshots`, writes the new env file and runs
+`scripts/deploy_oracle_cloud.sh --pull-images` on the VM.
+
 ## Staging через Docker Compose
 
 Файл: `compose.staging.yaml`.
