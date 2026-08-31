@@ -45,6 +45,12 @@ def test_oracle_compose_defines_single_vm_topology() -> None:
     assert "NEXT_PUBLIC_API_BASE_URL" in frontend_args
     assert "NEXT_PUBLIC_SITE_URL" in frontend_args
 
+    api_volumes = services["api"]["volumes"]
+    worker_volumes = services["worker"]["volumes"]
+    assert "/srv/domarion/artifacts/reports" in api_volumes[0]
+    assert "/srv/domarion/backups/postgres" in api_volumes[1]
+    assert worker_volumes == api_volumes
+
 
 def test_oracle_env_example_is_staging_safe_by_default() -> None:
     env = _read_env_example(ROOT / ".env.oracle.example")
@@ -68,6 +74,7 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
     postgis = (ROOT / "deploy" / "oracle" / "postgis.Dockerfile").read_text(
         encoding="utf-8"
     )
+    backend_dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     deploy_script = (ROOT / "scripts" / "deploy_oracle_cloud.sh").read_text(
         encoding="utf-8"
     )
@@ -83,6 +90,7 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
     assert "FROM postgres:16-bookworm" in postgis
     assert "postgresql-16-postgis-3" in postgis
     assert "postgresql-16-postgis-3-scripts" in postgis
+    assert "COPY scripts ./scripts" in backend_dockerfile
 
     assert "docker compose --env-file" in deploy_script
     assert "scripts/oracle_cloud_preflight.py" in deploy_script
@@ -94,6 +102,22 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
 
     assert "WorkingDirectory=/srv/domarion/app" in systemd_unit
     assert "compose.oracle.yaml up -d --remove-orphans" in systemd_unit
+
+
+def test_oracle_backup_systemd_timer_runs_containerized_backup() -> None:
+    backup_service = (
+        ROOT / "deploy" / "oracle" / "domarion-postgres-backup.service"
+    ).read_text(encoding="utf-8")
+    backup_timer = (
+        ROOT / "deploy" / "oracle" / "domarion-postgres-backup.timer"
+    ).read_text(encoding="utf-8")
+
+    assert "WorkingDirectory=/srv/domarion/app" in backup_service
+    assert "docker compose --env-file /srv/domarion/env/oracle.env" in backup_service
+    assert "run --rm --no-deps api python scripts/postgres_backup.py backup" in backup_service
+    assert "OnCalendar=*-*-* 03:15:00" in backup_timer
+    assert "RandomizedDelaySec=30m" in backup_timer
+    assert "Persistent=true" in backup_timer
 
 
 def test_ci_workflow_can_publish_arm64_oci_images() -> None:

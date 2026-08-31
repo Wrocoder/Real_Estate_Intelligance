@@ -67,6 +67,7 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [x] Add reverse-proxy config, preferably Caddy for automatic TLS.
 - [x] Add an arm64-compatible PostGIS Dockerfile for OCI Ampere A1.
 - [x] Add a systemd unit template for starting the Compose stack after reboot.
+- [x] Add a systemd timer template for logical Postgres backups.
 - [x] Add `scripts/deploy_oracle_cloud.ps1` or `scripts/deploy_oracle_cloud.sh`.
 - [x] Add `scripts/oracle_cloud_preflight.py` for OCI env/domain/compose guardrails.
 - [x] Document exact server bootstrap commands.
@@ -111,7 +112,7 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [ ] Set retention policy for local and offsite backups.
 - [ ] Run restore drill into an empty test database before paid traffic.
 - [ ] Add backup health check to monitoring.
-- [ ] Keep DB and artifact backup prefixes separate.
+- [x] Keep DB and artifact backup prefixes separate.
 
 ### 9. Domain, TLS, And Routing
 
@@ -226,6 +227,18 @@ sudo cp deploy/oracle/domarion-compose.service /etc/systemd/system/domarion-comp
 sudo systemctl daemon-reload
 sudo systemctl enable domarion-compose
 sudo systemctl start domarion-compose
+```
+
+Install the logical Postgres backup timer after S3-compatible backup settings are
+configured in `/srv/domarion/env/oracle.env`:
+
+```bash
+sudo cp deploy/oracle/domarion-postgres-backup.service /etc/systemd/system/domarion-postgres-backup.service
+sudo cp deploy/oracle/domarion-postgres-backup.timer /etc/systemd/system/domarion-postgres-backup.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now domarion-postgres-backup.timer
+sudo systemctl start domarion-postgres-backup.service
+sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
 ```
 
 Run public smoke checks from a workstation:

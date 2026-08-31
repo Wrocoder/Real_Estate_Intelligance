@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Domarion PostgreSQL logical backup daily
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=domarion-postgres-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -85,6 +85,15 @@ images, snapshots the previous remote env file under
 `/srv/domarion/env/snapshots`, writes the new env file and runs
 `scripts/deploy_oracle_cloud.sh --pull-images` on the VM.
 
+OCI logical Postgres backups can be scheduled on the VM with:
+
+```bash
+sudo cp deploy/oracle/domarion-postgres-backup.service /etc/systemd/system/domarion-postgres-backup.service
+sudo cp deploy/oracle/domarion-postgres-backup.timer /etc/systemd/system/domarion-postgres-backup.timer
+sudo systemctl daemon-reload
+sudo systemctl enable --now domarion-postgres-backup.timer
+```
+
 ## Staging через Docker Compose
 
 Файл: `compose.staging.yaml`.

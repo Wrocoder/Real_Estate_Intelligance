@@ -1,0 +1,10 @@
+[Unit]
+Description=Domarion PostgreSQL logical backup
+Requires=docker.service
+After=docker.service network-online.target domarion-compose.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/srv/domarion/app
+ExecStart=/usr/bin/docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py backup

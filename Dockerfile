@@ -9,6 +9,7 @@ COPY pyproject.toml README.md ./
 COPY alembic.ini ./alembic.ini
 COPY alembic ./alembic
 COPY domarion ./domarion
+COPY scripts ./scripts
 COPY main.py ./main.py
 
 RUN pip install --no-cache-dir --upgrade pip && \

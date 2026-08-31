@@ -159,6 +159,9 @@ services:
     environment: *api-env
     expose:
       - "8000"
+    volumes:
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/artifacts/reports:/srv/domarion/artifacts/reports
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/backups/postgres:/srv/domarion/backups/postgres
     depends_on:
       db:
         condition: service_healthy
@@ -214,6 +217,9 @@ services:
   worker:
     image: ${API_IMAGE:-domarion-api:oracle}
     environment: *api-env
+    volumes:
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/artifacts/reports:/srv/domarion/artifacts/reports
+      - ${DOMARION_DATA_DIR:-/srv/domarion}/backups/postgres:/srv/domarion/backups/postgres
     command:
       - domarion
       - worker
