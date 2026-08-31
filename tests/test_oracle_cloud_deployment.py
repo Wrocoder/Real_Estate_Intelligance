@@ -86,11 +86,35 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
 
     assert "docker compose --env-file" in deploy_script
     assert "scripts/oracle_cloud_preflight.py" in deploy_script
+    assert "--pull-images" in deploy_script
+    assert "compose pull db redis api frontend caddy" in deploy_script
+    assert "compose build db api frontend" in deploy_script
     assert "--exit-code-from migrate" in deploy_script
     assert "domarion production-preflight" in deploy_script
 
     assert "WorkingDirectory=/srv/domarion/app" in systemd_unit
     assert "compose.oracle.yaml up -d --remove-orphans" in systemd_unit
+
+
+def test_ci_workflow_can_publish_arm64_oci_images() -> None:
+    yaml = pytest.importorskip("yaml")
+    workflow_text = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+    workflow = yaml.safe_load(workflow_text)
+    publish_job = workflow["jobs"]["docker-publish"]
+
+    assert publish_job["needs"] == ["backend", "docker-build", "frontend"]
+    assert publish_job["permissions"]["packages"] == "write"
+    assert "vars.OCI_IMAGE_PUBLISH_ENABLED == 'true'" in publish_job["if"]
+    assert "inputs.publish_images == true" in publish_job["if"]
+    assert "ghcr.io" in workflow_text
+    assert "linux/arm64" in workflow_text
+    assert "deploy/oracle/postgis.Dockerfile" in workflow_text
+    assert "NEXT_PUBLIC_API_BASE_URL" in workflow_text
+    assert "domarion-api" in workflow_text
+    assert "domarion-frontend" in workflow_text
+    assert "domarion-postgis" in workflow_text
 
 
 def test_oracle_preflight_blocks_example_placeholders() -> None:

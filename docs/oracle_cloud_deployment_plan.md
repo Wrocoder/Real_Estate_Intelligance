@@ -74,9 +74,9 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 
 ### 5. Images And CI/CD
 
-- [ ] Decide image source: build on VM from git checkout, GitHub Container Registry, or OCI Container Registry.
-- [ ] Prefer registry-based deploy after first bootstrap.
-- [ ] Update GitHub Actions to build and push linux/arm64 images after CI passes.
+- [x] Decide image source: build on VM for first bootstrap, then GHCR linux/arm64 images.
+- [x] Prefer registry-based deploy after first bootstrap.
+- [x] Update GitHub Actions to build and push linux/arm64 images after CI passes.
 - [ ] Add deploy job gated by manual approval or protected environment.
 - [ ] Deploy by SSH: pull images, write env file, run migrations, restart services, run smoke checks.
 - [ ] Keep rollback path: previous image tags and previous `.env` snapshot.
@@ -202,6 +202,21 @@ After the first seed is complete, normal restarts should omit the `seed` profile
 
 ```bash
 scripts/deploy_oracle_cloud.sh
+```
+
+After GHCR publishing is enabled, set registry image tags in
+`/srv/domarion/env/oracle.env`:
+
+```bash
+API_IMAGE=ghcr.io/<owner>/domarion-api:sha-<commit>
+FRONTEND_IMAGE=ghcr.io/<owner>/domarion-frontend:sha-<commit>
+POSTGIS_IMAGE=ghcr.io/<owner>/domarion-postgis:sha-<commit>
+```
+
+Then deploy by pulling the published arm64 images:
+
+```bash
+scripts/deploy_oracle_cloud.sh --pull-images
 ```
 
 Install the systemd unit after the manual run is healthy:

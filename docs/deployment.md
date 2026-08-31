@@ -14,6 +14,10 @@ Jobs:
 - `Frontend`: Node 22, `npm ci`, `lint`, `typecheck`, frontend smoke,
   `npm audit --audit-level=moderate`, `next build`.
 - `Docker Build`: сборка backend image и frontend image без публикации registry.
+- `Publish OCI Images`: условная публикация linux/arm64 images в GHCR после
+  backend/frontend checks. По push в `main` job запускается только если
+  `OCI_IMAGE_PUBLISH_ENABLED=true`; вручную запускается через `workflow_dispatch`
+  с `publish_images=true`.
 
 Локальный эквивалент:
 
@@ -53,6 +57,19 @@ docker build `
 
 Важно: `NEXT_PUBLIC_API_BASE_URL` в Next.js вшивается в frontend bundle на этапе build.
 Для staging/prod нужно собирать frontend image с публичным URL API конкретного окружения.
+
+OCI/GHCR image publishing expects GitHub Actions variables:
+
+- `OCI_IMAGE_PUBLISH_ENABLED=true` to publish after `main` CI passes.
+- `OCI_NEXT_PUBLIC_API_BASE_URL`, for example `https://api.example.com`.
+- `OCI_NEXT_PUBLIC_SITE_URL`, for example `https://app.example.com`.
+- `OCI_NEXT_PUBLIC_OWNER_ID`, optional, defaults to `demo-user`.
+
+The published tags are `sha-<commit>` and `latest-arm64` for:
+
+- `ghcr.io/<owner>/domarion-api`
+- `ghcr.io/<owner>/domarion-frontend`
+- `ghcr.io/<owner>/domarion-postgis`
 
 ## Staging через Docker Compose
 

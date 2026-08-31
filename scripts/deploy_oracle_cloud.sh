@@ -8,19 +8,22 @@ BRANCH="${DOMARION_BRANCH:-main}"
 RUN_SEED=0
 SKIP_GIT_PULL=0
 SKIP_SMOKE=0
+PULL_IMAGES="${DOMARION_PULL_IMAGES:-0}"
 
 usage() {
   cat <<'EOF'
-Usage: scripts/deploy_oracle_cloud.sh [--seed] [--skip-git-pull] [--skip-smoke]
+Usage: scripts/deploy_oracle_cloud.sh [--seed] [--pull-images] [--skip-git-pull] [--skip-smoke]
 
 Environment:
   DOMARION_APP_DIR       default /srv/domarion/app
   DOMARION_ENV_FILE      default /srv/domarion/env/oracle.env
   DOMARION_COMPOSE_FILE  default compose.oracle.yaml
   DOMARION_BRANCH        default main
+  DOMARION_PULL_IMAGES   set to 1/true to pull registry images instead of building
 
 Options:
   --seed           Run the demo seed service after migrations.
+  --pull-images    Pull registry images instead of building on the VM.
   --skip-git-pull  Deploy the currently checked out source.
   --skip-smoke     Skip in-container health checks after startup.
 EOF
@@ -30,6 +33,9 @@ while (($#)); do
   case "$1" in
     --seed)
       RUN_SEED=1
+      ;;
+    --pull-images)
+      PULL_IMAGES=1
       ;;
     --skip-git-pull)
       SKIP_GIT_PULL=1
@@ -74,7 +80,11 @@ fi
 
 python3 scripts/oracle_cloud_preflight.py --env-file "$ENV_FILE" --compose-file "$COMPOSE_FILE"
 compose config >/dev/null
-compose build db api frontend
+if [[ "$PULL_IMAGES" == "1" || "$PULL_IMAGES" == "true" ]]; then
+  compose pull db redis api frontend caddy
+else
+  compose build db api frontend
+fi
 compose up -d db redis
 compose up --no-deps --force-recreate --abort-on-container-exit --exit-code-from migrate migrate
 
