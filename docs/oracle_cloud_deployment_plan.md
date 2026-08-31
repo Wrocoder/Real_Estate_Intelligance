@@ -112,7 +112,7 @@ Use a single OCI Always Free Arm VM first, not Kubernetes.
 - [ ] Upload logical backups to S3-compatible storage.
 - [ ] Set retention policy for local and offsite backups.
 - [ ] Run restore drill into an empty test database before paid traffic.
-- [ ] Add backup health check to monitoring.
+- [x] Add backup health check to monitoring.
 - [x] Keep DB and artifact backup prefixes separate.
 
 ### 9. Domain, TLS, And Routing

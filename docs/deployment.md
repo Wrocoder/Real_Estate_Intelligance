@@ -270,6 +270,7 @@ Backups and production preflight markers:
 | `BACKUP_OUTPUT_DIR` | local logical backup output dir | `.domarion/backups/postgres` |
 | `BACKUP_PREFIX` | filename prefix for dumps | `domarion-postgres` |
 | `BACKUP_RETENTION_DAYS` | local backup retention | `14` |
+| `BACKUP_MAX_AGE_HOURS` | freshness window for `/ready`/preflight backup check | `30` |
 | `BACKUP_S3_BUCKET` | offsite backup bucket, required by production preflight | пусто |
 | `BACKUP_S3_PREFIX` | offsite backup prefix | `domarion/postgres` |
 | `BACKUP_S3_ENDPOINT_URL` | S3-compatible backup endpoint | пусто |

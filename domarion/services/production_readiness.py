@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from domarion.core.config import Settings, get_settings
@@ -74,6 +76,7 @@ def build_production_readiness_report(
             _check_notification_transports(settings),
             _check_worker_configuration(settings, env_values),
             _check_backup_storage(env_values),
+            _check_backup_freshness(env_values),
             _check_monitoring(settings, env_values),
             _check_cost_controls(env_values),
         ]
@@ -391,6 +394,50 @@ def _check_backup_storage(env: Mapping[str, str]) -> ProductionReadinessCheck:
     )
 
 
+def _check_backup_freshness(env: Mapping[str, str]) -> ProductionReadinessCheck:
+    output_dir = Path(env.get("BACKUP_OUTPUT_DIR") or ".domarion/backups/postgres")
+    prefix = env.get("BACKUP_PREFIX") or "domarion-postgres"
+    max_age_hours = _env_int(env.get("BACKUP_MAX_AGE_HOURS"), default=30)
+    try:
+        backups = [
+            path for path in output_dir.glob(f"{prefix}-*.dump") if path.is_file()
+        ]
+    except OSError as exc:
+        return _make_check(
+            name="backup_freshness",
+            status="warn",
+            message=f"Cannot inspect local backup directory {output_dir}: {exc}.",
+            remediation="Verify the logical backup timer and local backup volume on the VM.",
+        )
+
+    if not backups:
+        return _make_check(
+            name="backup_freshness",
+            status="warn",
+            message=f"No local logical backup found in {output_dir}.",
+            remediation="Run scripts/postgres_backup.py backup and verify offsite upload.",
+        )
+
+    latest = max(backups, key=lambda path: path.stat().st_mtime)
+    latest_at = datetime.fromtimestamp(latest.stat().st_mtime, tz=UTC)
+    age = datetime.now(UTC) - latest_at
+    if age > timedelta(hours=max_age_hours):
+        return _make_check(
+            name="backup_freshness",
+            status="warn",
+            message=(
+                f"Latest local logical backup {latest.name} is older than "
+                f"{max_age_hours} hours."
+            ),
+            remediation="Check domarion-postgres-backup.timer and offsite backup upload.",
+        )
+    return _make_check(
+        name="backup_freshness",
+        status="pass",
+        message=f"Latest local logical backup {latest.name} is fresh.",
+    )
+
+
 def _check_monitoring(
     settings: Settings,
     env: Mapping[str, str],
@@ -514,6 +561,16 @@ def _env_list(raw: str | None) -> list[str]:
     if raw is None:
         return []
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _env_int(raw: str | None, *, default: int) -> int:
+    if raw is None or not raw.strip():
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
 
 
 def _env_bool(raw: str | None, *, default: bool) -> bool:

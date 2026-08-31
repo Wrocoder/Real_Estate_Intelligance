@@ -1,5 +1,6 @@
 import json
 import sys
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -41,25 +42,30 @@ def test_production_readiness_blocks_unsafe_defaults() -> None:
     } <= failed_checks
 
 
-def test_production_readiness_accepts_full_production_shape() -> None:
+def test_production_readiness_accepts_full_production_shape(tmp_path: Path) -> None:
+    backup_path = tmp_path / "domarion-postgres-20260831T120000Z.dump"
+    backup_path.write_text("custom-format-dump-placeholder", encoding="utf-8")
+
     report = build_production_readiness_report(
         _production_settings(),
-        env={
-            "WORKER_TASKS": "daily-email-alerts,area-market-snapshots,price-history-rebuild",
-            "WORKER_APPLY": "true",
-            "ALERT_WORKER_SEND": "true",
-            "BACKUP_S3_BUCKET": "domarion-backups",
-            "UPTIME_MONITOR_URL": "https://uptime.example.test/domarion",
-            "JOB_FAILURE_ALERT_TARGET": "ops@example.test",
-            "SOURCE_FRESHNESS_ALERT_TARGET": "ops@example.test",
-            "PAYMENT_WEBHOOK_ALERT_TARGET": "ops@example.test",
-            "COST_ALERTS_CONFIGURED": "true",
-        },
+        env=_production_env(tmp_path),
     )
 
     assert report.status == "ready"
     assert report.failed_count == 0
     assert report.warning_count == 0
+
+
+def test_production_readiness_warns_when_backup_is_missing(tmp_path: Path) -> None:
+    report = build_production_readiness_report(
+        _production_settings(),
+        env=_production_env(tmp_path),
+    )
+
+    backup_check = next(check for check in report.checks if check.name == "backup_freshness")
+    assert report.status == "degraded"
+    assert backup_check.status == "warn"
+    assert "No local logical backup found" in backup_check.message
 
 
 def test_production_preflight_cli_exits_nonzero_on_blockers(monkeypatch, capsys) -> None:
@@ -120,3 +126,18 @@ def _production_settings() -> Settings:
         alert_smtp_password="secret",
         sentry_dsn="https://public@example.invalid/1",
     )
+
+
+def _production_env(backup_output_dir: Path) -> dict[str, str]:
+    return {
+        "BACKUP_OUTPUT_DIR": str(backup_output_dir),
+        "WORKER_TASKS": "daily-email-alerts,area-market-snapshots,price-history-rebuild",
+        "WORKER_APPLY": "true",
+        "ALERT_WORKER_SEND": "true",
+        "BACKUP_S3_BUCKET": "domarion-backups",
+        "UPTIME_MONITOR_URL": "https://uptime.example.test/domarion",
+        "JOB_FAILURE_ALERT_TARGET": "ops@example.test",
+        "SOURCE_FRESHNESS_ALERT_TARGET": "ops@example.test",
+        "PAYMENT_WEBHOOK_ALERT_TARGET": "ops@example.test",
+        "COST_ALERTS_CONFIGURED": "true",
+    }

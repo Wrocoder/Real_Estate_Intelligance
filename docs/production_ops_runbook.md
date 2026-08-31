@@ -105,6 +105,8 @@ python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-po
 Minimum policy:
 
 - Local retention: 14 days.
+- Freshness gate: latest local logical backup should be no older than
+  `BACKUP_MAX_AGE_HOURS`, default 30 hours.
 - Offsite retention: 90 days.
 - Restore drill: before paid beta, then monthly.
 - Never run restore against production without first taking a fresh backup.
