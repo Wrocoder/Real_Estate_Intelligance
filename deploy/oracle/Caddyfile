@@ -1,7 +1,3 @@
-{
-	auto_https on
-}
-
 {$DOMARION_FRONTEND_DOMAIN} {
 	encode zstd gzip
 	header {

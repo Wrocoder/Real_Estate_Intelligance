@@ -25,12 +25,15 @@ def test_oracle_compose_defines_single_vm_topology() -> None:
     }
 
     assert compose["networks"]["internal"]["internal"] is True
+    assert "egress" in compose["networks"]
     assert "ports" not in services["db"]
     assert "ports" not in services["redis"]
     assert "ports" not in services["api"]
     assert "ports" not in services["frontend"]
     assert services["api"]["expose"] == ["8000"]
     assert services["frontend"]["expose"] == ["3000"]
+    assert services["api"]["networks"] == ["internal", "egress"]
+    assert services["worker"]["networks"] == ["internal", "egress"]
 
     db = services["db"]
     assert db["build"]["dockerfile"] == "deploy/oracle/postgis.Dockerfile"
