@@ -1,7 +1,47 @@
 # OCI Staging Setup Runbook
 
-Цель: поднять первый staging на одной OCI Ampere A1 VM после push в `main`.
-В репозиторий не добавляются реальные secrets, домены, SSH keys или tokens.
+Status: active Oracle Cloud deployment, verified working on 2026-09-01.
+
+Цель: поддерживать single-VM Oracle Cloud deployment на OCI Ampere A1 после push
+в `main`. В репозиторий не добавляются реальные secrets, домены, IP, SSH keys
+или tokens.
+
+## 0. Current Deployment Record
+
+Keep the real deployment values in the password manager or Oracle/GitHub
+dashboards, not in git.
+
+- Cloud: Oracle Cloud Infrastructure.
+- Runtime: Docker Compose on one VM.
+- App path: `/srv/domarion/app`.
+- Env file: `/srv/domarion/env/oracle.env`.
+- Compose file: `compose.oracle.yaml`.
+- Public frontend URL: store outside git.
+- Public API URL: store outside git.
+- Deploy source: GHCR linux/arm64 images or VM-local image build.
+- Systemd stack unit: `domarion-compose.service`.
+- Backup timer: `domarion-postgres-backup.timer`.
+
+Daily operations on the VM:
+
+```bash
+cd /srv/domarion/app
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml ps
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml logs --tail=200 api
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml logs --tail=200 frontend
+sudo journalctl -u domarion-compose.service -n 100 --no-pager
+sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
+```
+
+Health checks from a workstation:
+
+```powershell
+$env:API_BASE_URL = "https://api.example.com"
+$env:FRONTEND_BASE_URL = "https://app.example.com"
+python scripts\smoke_deployment.py
+```
+
+Use the real URLs from the deployment record before running the smoke script.
 
 ## 1. GitHub Environment
 
@@ -104,9 +144,63 @@ sudo systemctl start domarion-postgres-backup.service
 sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
 ```
 
-## 5. Rollback
+After every deploy, record the deployed commit SHA, image tags and smoke result
+outside git. If `/ready` is `degraded`, capture the warning list and decide
+whether it is acceptable for staging; do not treat `blocked` as healthy.
 
-Rollback is manual until staging proves stable.
+## 5. Routine Updates
+
+Use GitHub Actions deploy for the normal path:
+
+1. Push to `main` and wait for CI.
+2. Run workflow with `deploy_oci=true`.
+3. Approve the `oci-staging` Environment deployment.
+4. Confirm the remote command completed with `scripts/deploy_oracle_cloud.sh --pull-images`.
+5. Run public smoke checks.
+
+Manual update on the VM:
+
+```bash
+cd /srv/domarion/app
+git pull --ff-only
+python3 scripts/oracle_cloud_preflight.py --env-file /srv/domarion/env/oracle.env --compose-file compose.oracle.yaml
+scripts/deploy_oracle_cloud.sh --pull-images
+```
+
+For emergency restart without changing code or images:
+
+```bash
+sudo systemctl restart domarion-compose.service
+docker compose --env-file /srv/domarion/env/oracle.env -f /srv/domarion/app/compose.oracle.yaml ps
+```
+
+## 6. Backup And Restore
+
+Backups run through the systemd timer once installed:
+
+```bash
+sudo systemctl status domarion-postgres-backup.timer --no-pager
+sudo systemctl start domarion-postgres-backup.service
+sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
+```
+
+Manual backup:
+
+```bash
+cd /srv/domarion/app
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py backup
+```
+
+Restore only into an empty/staging database unless a fresh production backup was
+taken and the target was explicitly confirmed:
+
+```bash
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py restore /srv/domarion/backups/postgres/domarion-postgres-YYYYMMDDTHHMMSSZ.dump --database-url "$RESTORE_DATABASE_URL" --clean
+```
+
+## 7. Rollback
+
+Rollback is manual.
 
 1. Restore the previous `/srv/domarion/env/snapshots/oracle.env.<timestamp>` to
    `/srv/domarion/env/oracle.env`.

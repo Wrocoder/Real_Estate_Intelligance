@@ -326,12 +326,16 @@ end-to-end и включать delivery только после настройк
 
 ## Deployment Target
 
-MVP hosting decision зафиксирован в `docs/mvp_hosting_decision.md`: текущая
-целевая схема для paid beta - Render Blueprint в Frankfurt region.
+Current hosted environment: Oracle Cloud Infrastructure single-VM Docker Compose
+deployment. The deployment is live and working as of 2026-09-01; keep real
+domains, IPs, SSH keys and secrets outside git.
 
-Альтернативный план миграции на Oracle Cloud Infrastructure описан в
-`docs/oracle_cloud_deployment_plan.md`. Он ориентирован на single-VM Docker
-Compose deployment на OCI Always Free Ampere A1, с self-managed Postgres/PostGIS.
+OCI setup and operations are documented in `docs/oci_staging_setup_runbook.md`.
+The original planning checklist is in `docs/oracle_cloud_deployment_plan.md`.
+
+The previous Render MVP hosting decision is retained in
+`docs/mvp_hosting_decision.md` as a fallback/reference path. `render.yaml`
+remains in the repo, but it is not the active hosted environment.
 
 `render.yaml` описывает:
 

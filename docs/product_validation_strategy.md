@@ -11,7 +11,7 @@ object-check flow, reports, pricing, lead capture, admin queue, source registry,
 developer reputation, alerts, карты и score explanations. Главный риск теперь
 не в том, что MVP нечего показать, а в том, что продукт может слишком долго
 оставаться инженерным демо без валидации спроса, юридического допуска источников
-и production deployment.
+и paid-production операционной дисциплины.
 
 Текущая оценка:
 
@@ -175,9 +175,10 @@ Trust moat:
 
 ### Months 1-2: Paid Beta Readiness
 
-- Render Blueprint, staging compose, production preflight, worker model,
-  API-lite, market intelligence, reports, payments, alerts, developer CRUD/import
-  and SEO pages are already implemented as product/technical surface.
+- Oracle Cloud deployment, Render fallback Blueprint, staging compose,
+  production preflight, worker model, API-lite, market intelligence, reports,
+  payments, alerts, developer CRUD/import and SEO pages are already implemented
+  as product/technical surface.
 - Freeze new large modules until the validation gate is met.
 - Reframe `/check`, `/beta`, `/pricing` and buyer reports around
   `buy / negotiate / avoid / verify first`.

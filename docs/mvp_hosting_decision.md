@@ -1,9 +1,12 @@
 # MVP Hosting Decision
 
 Decision date: 2026-07-20
+Status update: superseded by the live Oracle Cloud deployment on 2026-09-01.
 
-This project is not deployed to production yet. For paid beta preparation, the
-selected MVP deployment target is:
+This document records the original MVP hosting decision. It is retained as a
+Render fallback/reference path; it is not the active hosted environment.
+
+For paid beta preparation, the original selected MVP deployment target was:
 
 - Platform: Render Blueprint in the Frankfurt region.
 - Runtime services: `domarion-api`, `domarion-frontend`, `domarion-worker`.
@@ -13,9 +16,11 @@ selected MVP deployment target is:
 - Error monitoring: Sentry DSN through env var.
 - Readiness gate: `GET /ready` and `domarion production-preflight`.
 
-The repo now includes `render.yaml` as the first production IaC artifact. It is
-intentionally not a live deploy: secrets, public domains and payment redirects are
-left as `sync: false` placeholders.
+The repo includes `render.yaml` as the first Render IaC artifact. It remains
+intentionally not a live Render deploy: secrets, public domains and payment
+redirects are left as `sync: false` placeholders.
+
+Active hosting is now documented in `docs/oci_staging_setup_runbook.md`.
 
 ## Why Render First
 

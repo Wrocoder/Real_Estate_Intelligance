@@ -1,19 +1,22 @@
 # Production Ops Runbook
 
-Domarion is not deployed to production yet. This runbook defines the deploy-ready
-operational baseline to use before a paid beta: managed Postgres/PostGIS, managed
+Domarion has a working Oracle Cloud deployment as of 2026-09-01. This runbook
+defines the remaining paid-production operational baseline: Postgres/PostGIS,
 Redis, offsite backups, report artifact bucket and background workers.
 
-The selected MVP hosting target is documented in `docs/mvp_hosting_decision.md`.
-The first infrastructure-as-code artifact is `render.yaml`.
+The active OCI runbook is `docs/oci_staging_setup_runbook.md`. The previous
+Render decision is retained in `docs/mvp_hosting_decision.md` as a fallback path.
+The Render infrastructure-as-code artifact is `render.yaml`.
 
 ## Service Topology
 
 - API: Docker image from root `Dockerfile`, `uvicorn main:app`.
 - Frontend: Docker image from `frontend/Dockerfile`, Next standalone server.
 - Worker: same API image, command `domarion worker`.
-- Database: managed PostgreSQL with PostGIS enabled.
-- Cache/queue foundation: managed Redis.
+- Database: PostgreSQL with PostGIS enabled; current OCI deployment uses a
+  self-managed PostGIS container on the VM.
+- Cache/queue foundation: Redis; current OCI deployment uses a containerized
+  Redis service on the VM.
 - Object storage: S3-compatible private bucket for report artifacts and database backups.
 
 Use staging compose locally to verify the same process model:
@@ -22,8 +25,9 @@ Use staging compose locally to verify the same process model:
 docker compose -f compose.staging.yaml up --build
 ```
 
-For the first Render Blueprint sync, do not switch paid traffic until every
-`sync: false` value in `render.yaml` is populated and `/ready` is not `blocked`.
+For OCI, do not switch paid traffic until `/ready` is not `blocked`, public smoke
+passes, backups are fresh and restore has been tested. For the Render fallback,
+every `sync: false` value in `render.yaml` must be populated first.
 
 ## Managed Postgres/PostGIS
 
@@ -190,7 +194,6 @@ COST_ALERTS_CONFIGURED=true
 
 ## Remaining Before Production Traffic
 
-- Pick the actual hosting provider and domain.
 - Configure production secrets outside git.
 - Run Alembic, staging verifier, production preflight, deployment smoke and restore drill.
 - Connect the listed monitoring and cost alert targets to the chosen hosting provider.

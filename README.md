@@ -30,20 +30,21 @@ S3-compatible report artifacts и worker-процессы.
 - frontend routes for buyer/realtor beta, search, maps, check/drafts, reports,
   pricing, alerts, account/CRM, admin, areas, guides, market, news and developers;
 - CI/deployment baseline: tests, lint/typecheck/smoke, Docker images,
-  staging compose, Render Blueprint, `/ready` production preflight, backups and
-  production ops runbook.
+  staging compose, Oracle Cloud single-VM deployment, Render Blueprint fallback,
+  `/ready` production preflight, backups and production ops runbook.
 
-Production traffic is intentionally gated: real auth, live payment secrets,
-production domains, source legal review, monitoring targets, offsite backups and
-restore drill must be completed before selling at scale.
+Oracle Cloud deployment is live and working as of 2026-09-01. Paid production
+traffic is still gated: real auth, live payment secrets, source legal review,
+monitoring targets, offsite backups and restore drill must be completed before
+selling at scale.
 
 ## Основная документация
 
 - `README.md` - quick start, локальный запуск и практические API/CLI examples.
 - `docs/api_surface.md` - актуальная карта API surface, сверенная с OpenAPI.
 - `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
-- `docs/oci_staging_setup_runbook.md` - post-push OCI staging setup: GitHub
-  Environment, VM bootstrap, manual deploy, checks and rollback.
+- `docs/oci_staging_setup_runbook.md` - active Oracle Cloud runbook: GitHub
+  Environment, VM bootstrap, deploy, checks, operations and rollback.
 - `docs/production_ops_runbook.md` - production preflight, managed services,
   backups, S3 artifacts and worker deployment.
 - `docs/source_compliance_policy.md` - legal/data guardrails для источников,
@@ -414,6 +415,10 @@ docker compose -f compose.staging.yaml up --build
 python scripts\smoke_deployment.py
 python scripts\performance_smoke.py --base-url http://127.0.0.1:8000 --repeat 3
 ```
+
+Oracle Cloud deployment is the active hosted environment. Operational commands,
+post-deploy checks, backup timer setup and rollback are documented in
+`docs/oci_staging_setup_runbook.md`.
 
 ## Импорт партнерского CSV
 
@@ -1508,6 +1513,7 @@ python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-po
 ```
 
 Full production operations checklist: `docs/production_ops_runbook.md`.
+Active Oracle Cloud operations runbook: `docs/oci_staging_setup_runbook.md`.
 MVP hosting decision and Render Blueprint notes: `docs/mvp_hosting_decision.md`.
 Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist.md`.
 

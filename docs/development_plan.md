@@ -540,16 +540,16 @@ P3 trust and monetization tasks:
 
 ## 16. Deployment
 
-- [x] Выбрать MVP hosting: Render Blueprint, managed Postgres/PostGIS, Render Key Value,
-  Cloudflare R2 for artifacts/backups.
+- [x] Выбрать MVP hosting: Oracle Cloud single-VM Docker Compose; Render Blueprint
+  сохранен как fallback/reference path.
 - [x] Добавить production Docker build.
 - [x] Добавить environment variable documentation.
 - [x] Добавить managed Postgres/PostGIS deployment spec в `render.yaml`.
-- [ ] Provision real managed Postgres/PostGIS resource in production account.
+- [x] Provision working PostgreSQL/PostGIS runtime in Oracle Cloud deployment.
 - [x] Добавить Redis.
 - [x] Добавить backup strategy.
 - [x] Добавить staging environment.
-- [ ] Добавить production deploy.
+- [x] Добавить Oracle Cloud deploy.
 - [ ] Добавить S3-compatible bucket для отчетов и generated artifacts.
 - [x] Добавить background worker deployment для alerts, ingestion и report generation.
 - [x] Добавить production readiness endpoint и preflight CLI: stores, Redis/Postgres, S3,
@@ -831,8 +831,9 @@ P3 trust and monetization tasks:
 - [x] Добавить partner referral lead scoring: admin priority queue, mortgage/broker fit, estimated deal value, routing tags and next actions.
 - [x] Добавить production readiness endpoint и CLI preflight для stores, Postgres/Redis,
   artifacts, payments, workers, backups, monitoring and cost guardrails.
-- [x] Выбрать MVP hosting stack и добавить `render.yaml` для API, frontend, worker,
-  managed Postgres/PostGIS и managed Redis-compatible store.
+- [x] Выбрать MVP hosting stack: Oracle Cloud single-VM deployment; добавить
+  `render.yaml` как fallback для API, frontend, worker, managed Postgres/PostGIS
+  и managed Redis-compatible store.
 - [x] Подготовить Poland city expansion checklist: readiness gates, data-source
   checklist, city scoring card and definition of done.
 - [x] Добавить multilingual/i18n roadmap в план: English, Polski, Русский,
