@@ -107,7 +107,7 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
     assert "scripts/oracle_cloud_preflight.py" in deploy_script
     assert "--pull-images" in deploy_script
     assert "compose pull db redis api frontend caddy" in deploy_script
-    assert "compose build db api frontend" in deploy_script
+    assert "compose build db migrate frontend" in deploy_script
     assert "--exit-code-from migrate" in deploy_script
     assert "domarion production-preflight" in deploy_script
 

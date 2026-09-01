@@ -83,7 +83,7 @@ compose config >/dev/null
 if [[ "$PULL_IMAGES" == "1" || "$PULL_IMAGES" == "true" ]]; then
   compose pull db redis api frontend caddy
 else
-  compose build db api frontend
+  compose build db migrate frontend
 fi
 compose up -d db redis
 compose up --no-deps --force-recreate --abort-on-container-exit --exit-code-from migrate migrate
