@@ -125,7 +125,8 @@ def test_oracle_backup_systemd_timer_runs_containerized_backup() -> None:
 
     assert "WorkingDirectory=/srv/domarion/app" in backup_service
     assert "docker compose --env-file /srv/domarion/env/oracle.env" in backup_service
-    assert "run --rm --no-deps api python scripts/postgres_backup.py backup" in backup_service
+    assert '--user "$(id -u domarion):$(id -g domarion)"' in backup_service
+    assert "api python scripts/postgres_backup.py backup" in backup_service
     assert "OnCalendar=*-*-* 03:15:00" in backup_timer
     assert "RandomizedDelaySec=30m" in backup_timer
     assert "Persistent=true" in backup_timer

@@ -191,6 +191,13 @@ cd /srv/domarion/app
 docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py backup
 ```
 
+If the backup directory is owned by the deploy user, run the manual backup with
+the host deploy UID/GID:
+
+```bash
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps --user "$(id -u):$(id -g)" api python scripts/postgres_backup.py backup
+```
+
 Restore only into an empty/staging database unless a fresh production backup was
 taken and the target was explicitly confirmed:
 

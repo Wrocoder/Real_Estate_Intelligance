@@ -7,4 +7,4 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/srv/domarion/app
-ExecStart=/usr/bin/docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py backup
+ExecStart=/bin/sh -lc '/usr/bin/docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps --user "$(id -u domarion):$(id -g domarion)" api python scripts/postgres_backup.py backup'

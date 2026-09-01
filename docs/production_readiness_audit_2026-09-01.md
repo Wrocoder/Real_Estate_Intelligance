@@ -79,6 +79,13 @@ ls -lh /srv/domarion/backups/postgres
 sudo journalctl -u domarion-postgres-backup.service -n 100 --no-pager
 ```
 
+If the manual backup hits a bind-mount write permission error, run it with the
+host deploy UID/GID:
+
+```bash
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps --user "$(id -u):$(id -g)" api python scripts/postgres_backup.py backup
+```
+
 Restore drill command:
 
 ```bash
