@@ -8,6 +8,9 @@ The active OCI runbook is `docs/oci_staging_setup_runbook.md`. The previous
 Render decision is retained in `docs/mvp_hosting_decision.md` as a fallback path.
 The Render infrastructure-as-code artifact is `render.yaml`.
 
+Current paid-beta readiness audit:
+`docs/production_readiness_audit_2026-09-01.md`.
+
 ## Service Topology
 
 - API: Docker image from root `Dockerfile`, `uvicorn main:app`.

@@ -45,6 +45,8 @@ selling at scale.
 - `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
 - `docs/oci_staging_setup_runbook.md` - active Oracle Cloud runbook: GitHub
   Environment, VM bootstrap, deploy, checks, operations and rollback.
+- `docs/production_readiness_audit_2026-09-01.md` - paid-beta readiness audit
+  for the active Oracle Cloud deployment.
 - `docs/production_ops_runbook.md` - production preflight, managed services,
   backups, S3 artifacts and worker deployment.
 - `docs/source_compliance_policy.md` - legal/data guardrails для источников,
@@ -1514,6 +1516,7 @@ python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-po
 
 Full production operations checklist: `docs/production_ops_runbook.md`.
 Active Oracle Cloud operations runbook: `docs/oci_staging_setup_runbook.md`.
+Paid-beta readiness audit: `docs/production_readiness_audit_2026-09-01.md`.
 MVP hosting decision and Render Blueprint notes: `docs/mvp_hosting_decision.md`.
 Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist.md`.
 
