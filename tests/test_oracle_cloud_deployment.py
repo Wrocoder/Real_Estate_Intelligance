@@ -99,6 +99,8 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
     assert "FROM postgres:16-bookworm" in postgis
     assert "postgresql-16-postgis-3" in postgis
     assert "postgresql-16-postgis-3-scripts" in postgis
+    assert "FROM python:3.12-slim-bookworm" in backend_dockerfile
+    assert "postgresql-client-16" in backend_dockerfile
     assert "COPY scripts ./scripts" in backend_dockerfile
 
     assert "docker compose --env-file" in deploy_script
