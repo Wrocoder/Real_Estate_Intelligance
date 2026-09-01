@@ -551,6 +551,9 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ maxPrice: event.target.value })}
             />
           </label>
+          <details className="advanced-filters">
+            <summary>{copy.filters.advancedFilters}</summary>
+            <div className="advanced-filter-grid">
           <label className="field">
             <span>{copy.filters.buildingType}</span>
             <select
@@ -955,6 +958,8 @@ export default function ExplorerPage() {
               <option value="20">20</option>
             </select>
           </label>
+            </div>
+          </details>
           <button className="button primary" type="button" onClick={() => setPage(1)}>
             <Search size={16} /> {copy.actions.apply}
           </button>

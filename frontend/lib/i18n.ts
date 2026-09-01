@@ -105,6 +105,7 @@ export type ExplorerCopy = {
     standardMode: string;
     sort: string;
     pageSize: string;
+    advancedFilters: string;
   };
   optionLabels: {
     buildingType: OptionLabelMap;
@@ -7035,6 +7036,7 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         standardMode: "Standard search",
         sort: "Sort",
         pageSize: "Per page",
+        advancedFilters: "Advanced filters",
       },
       status: {
         loading: "Loading analytics...",
@@ -7138,6 +7140,7 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         standardMode: "Zwykłe wyszukiwanie",
         sort: "Sortowanie",
         pageSize: "Na stronie",
+        advancedFilters: "Filtry zaawansowane",
       },
       status: {
         loading: "Ładowanie analityki...",
@@ -7242,6 +7245,7 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         standardMode: "Обычный поиск",
         sort: "Сортировка",
         pageSize: "На странице",
+        advancedFilters: "Дополнительные фильтры",
       },
       status: {
         loading: "Загрузка аналитики...",
@@ -7346,6 +7350,7 @@ function buildExplorerCopy(locale: Locale): ExplorerCopy {
         standardMode: "Звичайний пошук",
         sort: "Сортування",
         pageSize: "На сторінці",
+        advancedFilters: "Додаткові фільтри",
       },
       status: {
         loading: "Завантаження аналітики...",

@@ -1,22 +1,11 @@
 "use client";
 
 import {
-  BadgeCheck,
-  BarChart3,
-  Bell,
   BookOpen,
-  Building2,
-  Calculator,
   ClipboardCheck,
-  Columns3,
   CreditCard,
-  Database,
   FileText,
-  Handshake,
-  MapPinned,
-  Newspaper,
   Search,
-  TrendingUp,
   UserCircle,
   type LucideIcon,
 } from "lucide-react";
@@ -33,23 +22,12 @@ type NavigationItem = {
 };
 
 const NAVIGATION_ITEMS: NavigationItem[] = [
-  { href: "/beta", labelKey: "beta", icon: BadgeCheck },
-  { href: "/realtors", labelKey: "realtors", icon: Handshake },
-  { href: "/guides", labelKey: "guides", icon: BookOpen },
-  { href: "/", labelKey: "explorer", icon: Search },
   { href: "/check", labelKey: "check", icon: ClipboardCheck },
+  { href: "/", labelKey: "explorer", icon: Search },
   { href: "/reports", labelKey: "reports", icon: FileText },
-  { href: "/compare", labelKey: "compare", icon: Columns3 },
-  { href: "/areas", labelKey: "areas", icon: MapPinned },
-  { href: "/developers", labelKey: "developers", icon: Building2 },
-  { href: "/news", labelKey: "news", icon: Newspaper },
-  { href: "/market", labelKey: "market", icon: TrendingUp },
-  { href: "/mortgage", labelKey: "mortgage", icon: Calculator },
   { href: "/pricing", labelKey: "pricing", icon: CreditCard },
-  { href: "/alerts", labelKey: "alerts", icon: Bell },
+  { href: "/guides", labelKey: "guides", icon: BookOpen },
   { href: "/account", labelKey: "account", icon: UserCircle },
-  { href: "/admin", labelKey: "admin", icon: Database },
-  { href: "http://127.0.0.1:8000/docs", labelKey: "api", icon: BarChart3, external: true },
 ];
 
 export function LocalizedNavigation({ initialLocale }: { initialLocale: Locale }) {
