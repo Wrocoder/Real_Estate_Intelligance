@@ -6,9 +6,9 @@ import { SEO_GUIDES } from "@/lib/seoGuides";
 import { siteUrl } from "@/lib/seoAreas";
 
 export const metadata: Metadata = {
-  title: "Гайды по покупке недвижимости в Польше | Domarion",
+  title: "Przewodniki po zakupie mieszkania w Polsce | Domarion",
   description:
-    "SEO-гайды Domarion: цена за m2 Wrocław, районы, ипотека, checklist покупки, księga wieczysta и total purchase cost.",
+    "Praktyczne materiały Domarion: cena za m2, dzielnice, kredyt hipoteczny, lista kontroli, księga wieczysta i całkowity koszt zakupu.",
   alternates: {
     canonical: `${siteUrl()}/guides`,
   },
@@ -19,18 +19,18 @@ export default function GuidesPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Гайды по покупке недвижимости</h1>
+          <h1>Przewodniki po zakupie mieszkania</h1>
           <p>
-            Практичные SEO-страницы, которые связывают рыночную аналитику,
-            районные страницы, проверку квартиры и paid reports.
+            Praktyczne materiały dla kupującego mieszkanie w Polsce: cena, dzielnica,
+            dokumenty, kredyt, ryzyka i negocjacje.
           </p>
         </div>
         <div className="toolbar">
           <Link className="button" href="/areas">
-            <MapPinned size={16} /> Районы
+            <MapPinned size={16} /> Dzielnice
           </Link>
           <Link className="button primary" href="/check">
-            <ClipboardCheck size={16} /> Проверить квартиру
+            <ClipboardCheck size={16} /> Sprawdź mieszkanie
           </Link>
         </div>
       </header>
@@ -51,7 +51,7 @@ export default function GuidesPage() {
               ))}
             </ul>
             <Link className="button" href={`/guides/${guide.slug}`}>
-              Читать <ArrowRight size={16} />
+              Czytaj <ArrowRight size={16} />
             </Link>
           </article>
         ))}

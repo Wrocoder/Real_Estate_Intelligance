@@ -19,7 +19,7 @@ def test_render_object_report_html_contains_printable_report() -> None:
     html = generate_object_report_html(repository, "wr-001")
 
     assert "<!doctype html>" in html
-    assert "Domarion Analytics" in html
+    assert "Domarion" in html
     assert "Buyer decision report v1" in html
     assert "Investment" in html
     assert "Ипотека и бюджет покупки" in html
@@ -93,7 +93,7 @@ def test_write_object_report_html(tmp_path: Path) -> None:
 
     assert path == output_path
     assert path.exists()
-    assert "Domarion Analytics" in path.read_text(encoding="utf-8")
+    assert "Domarion" in path.read_text(encoding="utf-8")
 
 
 def test_object_report_html_endpoint() -> None:
@@ -103,7 +103,7 @@ def test_object_report_html_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "Domarion Analytics" in response.text
+    assert "Domarion" in response.text
     assert "Инвестиционная оценка" in response.text
     assert "Арендная доходность" in response.text
     assert "Сравнение с альтернативами" in response.text

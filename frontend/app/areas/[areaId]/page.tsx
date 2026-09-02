@@ -67,39 +67,39 @@ export default async function AreaPage({ params }: PageProps) {
       <header className="page-header">
         <div>
           <Link className="button" href="/areas">
-            <ArrowLeft size={16} /> Районы
+            <ArrowLeft size={16} /> Dzielnice
           </Link>
           <h1 style={{ marginTop: 14 }}>{area.title}</h1>
           <p>{area.description}</p>
         </div>
         <div className="toolbar">
           <Link className="button primary" href={`/?district=${encodeURIComponent(area.name)}`}>
-            <Search size={16} /> Подбор
+            <Search size={16} /> Znajdź mieszkania
           </Link>
           <Link className="button" href="/alerts">
-            <Bell size={16} /> Alert
+            <Bell size={16} /> Śledź
           </Link>
           <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
-            <Newspaper size={16} /> News
+            <Newspaper size={16} /> Aktualności
           </Link>
         </div>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Медианная цена</span>
+          <span>Mediana ceny</span>
           <strong>{money(area.medianPricePerM2)}/m2</strong>
         </div>
         <div className="metric">
-          <span>Средняя цена</span>
+          <span>Średnia cena</span>
           <strong>{money(area.averagePricePerM2)}/m2</strong>
         </div>
         <div className="metric">
-          <span>Активных объявлений</span>
+          <span>Aktywne ogłoszenia</span>
           <strong>{numberValue(area.activeListings)}</strong>
         </div>
         <div className="metric">
-          <span>Цена за 90 дней</span>
+          <span>Zmiana ceny w 90 dni</span>
           <strong>{percent(area.priceChange90dPct)}</strong>
         </div>
       </section>
@@ -107,31 +107,32 @@ export default async function AreaPage({ params }: PageProps) {
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>Практический вывод</h2>
+            <h2>Praktyczny wniosek</h2>
             <span className="status-pill info">{area.district}</span>
           </div>
           <div className="panel-body seo-content">
             <p>
-              {area.name} нужно оценивать не только по средней цене. Для решения о покупке
-              важны экспозиция объекта, история цены, инфраструктура в радиусе 500 м - 2 км
-              и planned investments, которые могут изменить ликвидность улицы.
+                {area.name} warto oceniać nie tylko po średniej cenie. Przy decyzji
+              o zakupie liczy się czas ekspozycji oferty, historia ceny, infrastruktura
+              w promieniu 500 m - 2 km oraz miejskie inwestycje, które mogą zmienić
+              płynność konkretnej ulicy.
             </p>
 
-            <h2>Кому район подходит</h2>
+            <h2>Dla kogo dzielnica pasuje</h2>
             <ul className="section-list">
               {area.buyerFit.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
 
-            <h2>Инвестиционный контекст</h2>
+            <h2>Kontekst inwestycyjny</h2>
             <ul className="section-list">
               {area.investorFit.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
 
-            <h2>Риски</h2>
+            <h2>Ryzyka</h2>
             <ul className="section-list">
               {area.risks.map((item) => (
                 <li key={item}>{item}</li>
@@ -142,24 +143,24 @@ export default async function AreaPage({ params }: PageProps) {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Рыночные сигналы</h2>
+            <h2>Sygnały rynkowe</h2>
             <FileText size={18} />
           </div>
           <div className="panel-body">
             <ul className="section-list">
-              <li>Средняя экспозиция: {area.averageDaysOnMarket} дней.</li>
-              <li>Предложение за 90 дней: {percent(area.supplyChange90dPct)}.</li>
-              <li>Активных объявлений в MVP-выборке: {numberValue(area.activeListings)}.</li>
+              <li>Średni czas ekspozycji: {area.averageDaysOnMarket} dni.</li>
+              <li>Zmiana podaży w 90 dni: {percent(area.supplyChange90dPct)}.</li>
+              <li>Aktywne ogłoszenia w aktualnej bazie: {numberValue(area.activeListings)}.</li>
             </ul>
 
-            <h2>Planned investments</h2>
+            <h2>Planowane zmiany</h2>
             <ul className="section-list compact">
               {area.plannedInvestments.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
 
-            <h2>Гайды</h2>
+            <h2>Przewodniki</h2>
             <ul className="section-list compact">
               {relatedGuides.map((guide) => (
                 <li key={guide.slug}>
@@ -169,10 +170,10 @@ export default async function AreaPage({ params }: PageProps) {
               ))}
             </ul>
 
-            <h2>Дальше</h2>
+            <h2>Dalej</h2>
             <div className="area-link-list">
               <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
-                Новости района
+                Aktualności dzielnicy
               </Link>
               {area.internalLinks.map((link) => (
                 <Link className="button" key={link.href} href={link.href}>

@@ -1596,6 +1596,10 @@ export type ListingSort =
   | "risk_score_desc"
   | "negotiation_score_desc"
   | "negotiation_score_asc"
+  | "liquidity_score_desc"
+  | "liquidity_score_asc"
+  | "rental_potential_score_desc"
+  | "rental_potential_score_asc"
   | "developer_reputation_score_desc"
   | "developer_reputation_score_asc"
   | "developer_confidence_score_desc"
@@ -3054,7 +3058,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (caught) {
     const detail = caught instanceof Error ? caught.message : "network error";
     throw new Error(
-      `Backend API недоступен: ${apiBaseUrl}. Проверь, что backend запущен и ` +
+      `Сервис временно недоступен: ${apiBaseUrl}. Проверь, что сервер запущен и ` +
         `NEXT_PUBLIC_API_BASE_URL указывает на правильный порт. Детали: ${detail}`,
     );
   }

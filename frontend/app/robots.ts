@@ -9,7 +9,20 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/admin"],
+      disallow: [
+        "/account",
+        "/admin",
+        "/alerts",
+        "/beta",
+        "/check/drafts",
+        "/compare",
+        "/developers",
+        "/market",
+        "/mortgage",
+        "/pricing",
+        "/realtors",
+        "/reports",
+      ],
     },
     sitemap: `${baseUrl}/sitemap.xml`,
   };

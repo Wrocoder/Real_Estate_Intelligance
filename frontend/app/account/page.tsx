@@ -2,19 +2,24 @@
 
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import {
+  Bell,
   Building2,
   Clipboard,
   CreditCard,
   FileText,
+  FolderOpen,
+  Lock,
   MessageSquare,
   RefreshCw,
   Share2,
   ShieldCheck,
+  Search,
   Trash2,
   UserCircle,
   UserPlus,
   Users,
 } from "lucide-react";
+import Link from "next/link";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -50,11 +55,222 @@ const CRM_CLIENT_STATUS_OPTIONS: CrmClientStatus[] = [
   "archived",
 ];
 const CRM_NOTE_VISIBILITY_OPTIONS: CrmNoteVisibility[] = ["internal", "client_shareable"];
+const CONSUMER_PLANS: SubscriptionPlan[] = ["free", "buyer_pro", "investor"];
+const PROFESSIONAL_PLANS: SubscriptionPlan[] = ["realtor", "agency", "enterprise"];
 const ACCOUNT_INTL_LOCALES: Record<Locale, string> = {
   en: "en-US",
   pl: "pl-PL",
   ru: "ru-RU",
   uk: "uk-UA",
+};
+
+const BUYER_ACCOUNT_COPY: Record<
+  Locale,
+  {
+    title: string;
+    subtitle: string;
+    actions: {
+      checkApartment: string;
+      myApartments: string;
+      trackChanges: string;
+      findApartments: string;
+      openProfessionalTools: string;
+    };
+    descriptions: {
+      checkApartment: string;
+      myApartments: string;
+      trackChanges: string;
+      findApartments: string;
+      professionalTools: string;
+    };
+    sections: {
+      nextActions: string;
+      buyerPlan: string;
+      searchProgress: string;
+      availableTools: string;
+      professionalTools: string;
+    };
+    metrics: {
+      savedApartments: string;
+      trackedApartments: string;
+      reportsThisMonth: string;
+    };
+    tools: {
+      saveApartments: string;
+      trackPrices: string;
+      downloadReports: string;
+    };
+    values: {
+      compareLimit: (count: string) => string;
+      proOnly: string;
+      noOrders: string;
+    };
+  }
+> = {
+  en: {
+    title: "Your apartment search",
+    subtitle: "Manage checked apartments, price tracking and reports in one quiet profile.",
+    actions: {
+      checkApartment: "Check an apartment",
+      myApartments: "My apartments",
+      trackChanges: "Track changes",
+      findApartments: "Find apartments",
+      openProfessionalTools: "Open professional tools",
+    },
+    descriptions: {
+      checkApartment: "Paste an Otodom or OLX link and get a buyer verdict.",
+      myApartments: "Return to apartments you have already checked.",
+      trackChanges: "Follow price reductions and important listing updates.",
+      findApartments: "Search for apartments that fit your buying goal.",
+      professionalTools:
+        "Agency workspace and CRM are kept separate from your buyer profile. Open them only when you need professional workflows.",
+    },
+    sections: {
+      nextActions: "Next actions",
+      buyerPlan: "Buyer plan",
+      searchProgress: "Search progress",
+      availableTools: "Available tools",
+      professionalTools: "Domarion Pro tools",
+    },
+    metrics: {
+      savedApartments: "Saved apartments",
+      trackedApartments: "Tracked apartments",
+      reportsThisMonth: "Reports this month",
+    },
+    tools: {
+      saveApartments: "Save apartments",
+      trackPrices: "Track prices",
+      downloadReports: "Download reports",
+    },
+    values: {
+      compareLimit: (count) => `${count} apartments in comparison`,
+      proOnly: "Professional account",
+      noOrders: "Purchased reports will appear here after checkout.",
+    },
+  },
+  pl: {
+    title: "Twoje poszukiwanie mieszkania",
+    subtitle: "Zarządzaj sprawdzonymi mieszkaniami, śledzeniem cen i raportami w spokojnym profilu.",
+    actions: {
+      checkApartment: "Sprawdź mieszkanie",
+      myApartments: "Moje mieszkania",
+      trackChanges: "Śledź zmiany",
+      findApartments: "Szukaj mieszkań",
+      openProfessionalTools: "Otwórz narzędzia profesjonalne",
+    },
+    descriptions: {
+      checkApartment: "Wklej link z Otodom lub OLX i zobacz werdykt dla kupującego.",
+      myApartments: "Wróć do mieszkań, które już zostały sprawdzone.",
+      trackChanges: "Obserwuj obniżki cen i ważne zmiany w ogłoszeniach.",
+      findApartments: "Szukaj mieszkań pasujących do celu zakupu.",
+      professionalTools:
+        "Widok agencji i CRM jest oddzielony od profilu kupującego. Otwieraj go tylko wtedy, gdy potrzebujesz pracy profesjonalnej.",
+    },
+    sections: {
+      nextActions: "Następne działania",
+      buyerPlan: "Plan dla kupującego",
+      searchProgress: "Postęp poszukiwań",
+      availableTools: "Dostępne narzędzia",
+      professionalTools: "Narzędzia Domarion Pro",
+    },
+    metrics: {
+      savedApartments: "Zapisane mieszkania",
+      trackedApartments: "Śledzone mieszkania",
+      reportsThisMonth: "Raporty w tym miesiącu",
+    },
+    tools: {
+      saveApartments: "Zapisywanie mieszkań",
+      trackPrices: "Śledzenie cen",
+      downloadReports: "Pobieranie raportów",
+    },
+    values: {
+      compareLimit: (count) => `${count} mieszkań w porównaniu`,
+      proOnly: "Konto profesjonalne",
+      noOrders: "Kupione raporty pojawią się tutaj po płatności.",
+    },
+  },
+  ru: {
+    title: "Ваш поиск квартиры",
+    subtitle: "Управляйте проверенными квартирами, отслеживанием цен и отчетами в спокойном профиле.",
+    actions: {
+      checkApartment: "Проверить квартиру",
+      myApartments: "Мои квартиры",
+      trackChanges: "Отслеживать изменения",
+      findApartments: "Искать квартиры",
+      openProfessionalTools: "Открыть профессиональные инструменты",
+    },
+    descriptions: {
+      checkApartment: "Вставьте ссылку Otodom или OLX и получите вывод для покупателя.",
+      myApartments: "Вернитесь к квартирам, которые вы уже проверяли.",
+      trackChanges: "Следите за снижением цены и важными изменениями объявлений.",
+      findApartments: "Ищите квартиры под вашу цель покупки.",
+      professionalTools:
+        "Рабочее пространство агентства и CRM отделены от профиля покупателя. Открывайте их только для профессиональных задач.",
+    },
+    sections: {
+      nextActions: "Следующие действия",
+      buyerPlan: "Тариф покупателя",
+      searchProgress: "Прогресс поиска",
+      availableTools: "Доступные инструменты",
+      professionalTools: "Инструменты Domarion Pro",
+    },
+    metrics: {
+      savedApartments: "Сохраненные квартиры",
+      trackedApartments: "Отслеживаемые квартиры",
+      reportsThisMonth: "Отчеты за месяц",
+    },
+    tools: {
+      saveApartments: "Сохранение квартир",
+      trackPrices: "Отслеживание цен",
+      downloadReports: "Скачивание отчетов",
+    },
+    values: {
+      compareLimit: (count) => `${count} квартир в сравнении`,
+      proOnly: "Профессиональный аккаунт",
+      noOrders: "Купленные отчеты появятся здесь после оплаты.",
+    },
+  },
+  uk: {
+    title: "Ваш пошук квартири",
+    subtitle: "Керуйте перевіреними квартирами, відстеженням цін і звітами в спокійному профілі.",
+    actions: {
+      checkApartment: "Перевірити квартиру",
+      myApartments: "Мої квартири",
+      trackChanges: "Відстежувати зміни",
+      findApartments: "Шукати квартири",
+      openProfessionalTools: "Відкрити професійні інструменти",
+    },
+    descriptions: {
+      checkApartment: "Вставте посилання Otodom або OLX і отримайте висновок для покупця.",
+      myApartments: "Поверніться до квартир, які ви вже перевіряли.",
+      trackChanges: "Стежте за зниженням ціни та важливими змінами оголошень.",
+      findApartments: "Шукайте квартири під вашу мету купівлі.",
+      professionalTools:
+        "Робочий простір агентства і CRM відокремлені від профілю покупця. Відкривайте їх лише для професійних задач.",
+    },
+    sections: {
+      nextActions: "Наступні дії",
+      buyerPlan: "Тариф покупця",
+      searchProgress: "Прогрес пошуку",
+      availableTools: "Доступні інструменти",
+      professionalTools: "Інструменти Domarion Pro",
+    },
+    metrics: {
+      savedApartments: "Збережені квартири",
+      trackedApartments: "Відстежувані квартири",
+      reportsThisMonth: "Звіти за місяць",
+    },
+    tools: {
+      saveApartments: "Збереження квартир",
+      trackPrices: "Відстеження цін",
+      downloadReports: "Завантаження звітів",
+    },
+    values: {
+      compareLimit: (count) => `${count} квартир у порівнянні`,
+      proOnly: "Професійний акаунт",
+      noOrders: "Куплені звіти з'являться тут після оплати.",
+    },
+  },
 };
 
 export default function AccountPage() {
@@ -65,6 +281,7 @@ export default function AccountPage() {
   const [orders, setOrders] = useState<ReportOrder[]>([]);
   const [agencies, setAgencies] = useState<AgencyWorkspaceSummary[]>([]);
   const [selectedAgency, setSelectedAgency] = useState<AgencyWorkspace | null>(null);
+  const [showProTools, setShowProTools] = useState(false);
   const [agencyBusy, setAgencyBusy] = useState(false);
   const [agencyForm, setAgencyForm] = useState({
     name: "",
@@ -135,35 +352,50 @@ export default function AccountPage() {
     [copy],
   );
 
-  const load = useCallback(async (preferredAgencyId?: string | null) => {
+  const load = useCallback(async () => {
     setError("");
     setStatus(copy.statuses.loadingAccount);
     try {
-      const [accountData, planData, orderData, agencyData] = await Promise.all([
+      const [accountData, planData, orderData] = await Promise.all([
         api.getMe(),
         api.listPlans(),
         api.listReportOrders(),
-        api.listAgencies(),
       ]);
       setAccount(accountData);
       setPlans(planData);
       setOrders(orderData);
-      setAgencies(agencyData);
-      if (agencyData.length > 0) {
-        const selectedId =
-          preferredAgencyId && agencyData.some((agency) => agency.id === preferredAgencyId)
-            ? preferredAgencyId
-            : agencyData[0].id;
-        setSelectedAgency(await api.getAgency(selectedId));
-      } else {
-        setSelectedAgency(null);
-      }
       setStatus(copy.statuses.accountUpdated);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
       setStatus(copy.statuses.backendUnavailable);
     }
   }, [copy]);
+
+  const loadAgencyWorkspace = useCallback(
+    async (preferredAgencyId?: string | null) => {
+      setAgencyBusy(true);
+      setStatus(copy.statuses.loadingWorkspace);
+      try {
+        const agencyData = await api.listAgencies();
+        setAgencies(agencyData);
+        if (agencyData.length > 0) {
+          const selectedId =
+            preferredAgencyId && agencyData.some((agency) => agency.id === preferredAgencyId)
+              ? preferredAgencyId
+              : agencyData[0].id;
+          setSelectedAgency(await api.getAgency(selectedId));
+        } else {
+          setSelectedAgency(null);
+        }
+        setStatus(copy.statuses.workspaceSelected);
+      } catch (caught) {
+        setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingWorkspaceError);
+      } finally {
+        setAgencyBusy(false);
+      }
+    },
+    [copy],
+  );
 
   useEffect(() => {
     void load();
@@ -510,6 +742,13 @@ export default function AccountPage() {
   }
 
   const currentPlan = account?.subscription.plan ?? "free";
+  const buyerCopy = BUYER_ACCOUNT_COPY[locale];
+  const isProfessionalAccount =
+    account !== null &&
+    (PROFESSIONAL_PLANS.includes(currentPlan) ||
+      account.user.role === "realtor" ||
+      account.user.role === "agency_admin" ||
+      account.user.role === "admin");
   const canCreateAgency = currentPlan === "agency" || currentPlan === "enterprise";
   const selectedCanManage =
     selectedAgency?.current_user_status === "active" &&
@@ -518,8 +757,8 @@ export default function AccountPage() {
     () =>
       [...plans].sort(
         (left, right) => planWeight(left.plan) - planWeight(right.plan),
-      ),
-    [plans],
+      ).filter((plan) => CONSUMER_PLANS.includes(plan.plan) || plan.plan === currentPlan),
+    [currentPlan, plans],
   );
 
   if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
@@ -529,10 +768,17 @@ export default function AccountPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>{copy.title}</h1>
-          <p>{copy.subtitle}</p>
+          <h1>{buyerCopy.title}</h1>
+          <p>{buyerCopy.subtitle}</p>
         </div>
-        <button className="button" type="button" onClick={() => void load(selectedAgency?.id)}>
+        <button
+          className="button"
+          type="button"
+          onClick={() => {
+            void load();
+            if (showProTools) void loadAgencyWorkspace(selectedAgency?.id);
+          }}
+        >
           <RefreshCw size={16} /> {copy.actions.refresh}
         </button>
       </header>
@@ -543,33 +789,60 @@ export default function AccountPage() {
           <strong>{copy.labels.plan[currentPlan]}</strong>
         </div>
         <div className="metric">
-          <span>{copy.metrics.role}</span>
-          <strong>{copy.labels.userRole[account.user.role] ?? account.user.role}</strong>
+          <span>{buyerCopy.metrics.savedApartments}</span>
+          <strong>{numberValue(account.usage.favorites, locale)}</strong>
         </div>
         <div className="metric">
-          <span>{copy.metrics.reports}</span>
-          <strong>
-            {numberValue(account.usage.reports_this_month, locale)}/
-            {numberValue(account.limits.monthly_reports, locale)}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.credits}</span>
-          <strong>{numberValue(account.usage.report_credits_available, locale)}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.alerts}</span>
+          <span>{buyerCopy.metrics.trackedApartments}</span>
           <strong>
             {numberValue(account.usage.alerts, locale)}/
             {numberValue(account.limits.max_alerts, locale)}
           </strong>
         </div>
+        <div className="metric">
+          <span>{buyerCopy.metrics.reportsThisMonth}</span>
+          <strong>
+            {numberValue(account.usage.reports_this_month, locale)}/
+            {numberValue(account.limits.monthly_reports, locale)}
+          </strong>
+        </div>
+      </section>
+
+      <section className="account-action-grid" aria-label={buyerCopy.sections.nextActions}>
+        <Link className="account-action-card primary" href="/check">
+          <Clipboard size={18} />
+          <span>
+            <strong>{buyerCopy.actions.checkApartment}</strong>
+            <small>{buyerCopy.descriptions.checkApartment}</small>
+          </span>
+        </Link>
+        <Link className="account-action-card" href="/check/drafts">
+          <FolderOpen size={18} />
+          <span>
+            <strong>{buyerCopy.actions.myApartments}</strong>
+            <small>{buyerCopy.descriptions.myApartments}</small>
+          </span>
+        </Link>
+        <Link className="account-action-card" href="/alerts">
+          <Bell size={18} />
+          <span>
+            <strong>{buyerCopy.actions.trackChanges}</strong>
+            <small>{buyerCopy.descriptions.trackChanges}</small>
+          </span>
+        </Link>
+        <Link className="account-action-card" href="/">
+          <Search size={18} />
+          <span>
+            <strong>{buyerCopy.actions.findApartments}</strong>
+            <small>{buyerCopy.descriptions.findApartments}</small>
+          </span>
+        </Link>
       </section>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>{copy.sections.plans}</h2>
+            <h2>{buyerCopy.sections.buyerPlan}</h2>
             <span className="status-line">{status}</span>
           </div>
           <div className="panel-body plan-grid">
@@ -588,11 +861,7 @@ export default function AccountPage() {
                   <li>{copy.values.favorites(numberValue(plan.max_favorites, locale))}</li>
                   <li>{copy.values.alerts(numberValue(plan.max_alerts, locale))}</li>
                   <li>{copy.values.monthlyReports(numberValue(plan.monthly_reports, locale))}</li>
-                  <li>
-                    {plan.can_white_label
-                      ? copy.values.whiteLabelReports
-                      : copy.values.noWhiteLabel}
-                  </li>
+                  <li>{buyerCopy.values.compareLimit(numberValue(plan.max_compare_items, locale))}</li>
                 </ul>
                 <button
                   className={plan.plan === currentPlan ? "button" : "button primary"}
@@ -616,9 +885,6 @@ export default function AccountPage() {
           <div className="panel-body">
             <ul className="section-list">
               <li>
-                {copy.fields.id}: {account.user.id}
-              </li>
-              <li>
                 {copy.fields.email}: {account.user.email ?? copy.values.noValue}
               </li>
               <li>
@@ -626,26 +892,23 @@ export default function AccountPage() {
                 {copy.labels.subscriptionStatus[account.subscription.status] ??
                   account.subscription.status}
               </li>
-              <li>
-                {copy.fields.planId}: {account.subscription.id}
-              </li>
             </ul>
 
-            <h2>{copy.sections.usage}</h2>
+            <h2>{buyerCopy.sections.searchProgress}</h2>
             <UsageBar
-              label={copy.labels.capability.favorites}
+              label={buyerCopy.metrics.savedApartments}
               value={account.usage.favorites}
               limit={account.limits.max_favorites}
               locale={locale}
             />
             <UsageBar
-              label={copy.metrics.alerts}
+              label={buyerCopy.metrics.trackedApartments}
               value={account.usage.alerts}
               limit={account.limits.max_alerts}
               locale={locale}
             />
             <UsageBar
-              label={copy.metrics.reports}
+              label={buyerCopy.metrics.reportsThisMonth}
               value={account.usage.reports_this_month}
               limit={account.limits.monthly_reports}
               locale={locale}
@@ -656,25 +919,53 @@ export default function AccountPage() {
               )}
             </p>
 
-            <h2>{copy.sections.capabilities}</h2>
+            <h2>{buyerCopy.sections.availableTools}</h2>
             <div className="capability-list">
-              <Capability label={copy.labels.capability.export} enabled={account.limits.can_export} />
-              <Capability label={copy.labels.capability.api} enabled={account.limits.can_use_api} />
-              <Capability
-                label={copy.labels.capability.white_label}
-                enabled={account.limits.can_white_label}
-              />
+              <Capability label={buyerCopy.tools.saveApartments} enabled />
+              <Capability label={buyerCopy.tools.trackPrices} enabled={account.limits.max_alerts > 0} />
+              <Capability label={buyerCopy.tools.downloadReports} enabled={account.limits.can_export} />
             </div>
           </div>
         </aside>
       </div>
 
-      <section className="panel" style={{ marginTop: 16 }}>
-        <div className="panel-header">
+      {isProfessionalAccount ? (
+        <section className="panel account-pro-panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <h2 className="icon-title">
+              <Lock size={17} />
+              {buyerCopy.sections.professionalTools}
+            </h2>
+            <span className="muted">{buyerCopy.values.proOnly}</span>
+          </div>
+          <div className="panel-body">
+            <p className="muted">{buyerCopy.descriptions.professionalTools}</p>
+            {!showProTools ? (
+              <button
+                className="button"
+                type="button"
+                disabled={agencyBusy}
+                onClick={() => {
+                  setShowProTools(true);
+                  void loadAgencyWorkspace(selectedAgency?.id);
+                }}
+              >
+                <Building2 size={16} />
+                {buyerCopy.actions.openProfessionalTools}
+              </button>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {isProfessionalAccount && showProTools ? (
+        <>
+          <section className="panel" style={{ marginTop: 16 }}>
+            <div className="panel-header">
             <h2>{copy.sections.agencyWorkspace}</h2>
             <span className="muted">{copy.values.workspaces(agencies.length)}</span>
-        </div>
-        <div className="panel-body">
+            </div>
+            <div className="panel-body">
           <form className="form-grid compact" onSubmit={(event) => void createAgency(event)}>
             <label className="field">
               <span>{copy.fields.name}</span>
@@ -948,8 +1239,8 @@ export default function AccountPage() {
               </div>
             </div>
           ) : null}
-        </div>
-      </section>
+            </div>
+          </section>
 
       {selectedAgency ? (
         <section className="panel" style={{ marginTop: 16 }}>
@@ -1469,6 +1760,8 @@ export default function AccountPage() {
           </div>
         </section>
       ) : null}
+        </>
+      ) : null}
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
@@ -1476,43 +1769,100 @@ export default function AccountPage() {
           <span className="muted">{copy.values.orders(orders.length)}</span>
         </div>
         <div className="panel-body">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>{copy.tables.product}</th>
-                <th>{copy.tables.object}</th>
-                <th>{copy.tables.status}</th>
-                <th>{copy.tables.report}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map((order) => (
-                <tr key={order.id}>
-                  <td>{order.product_code}</td>
-                  <td>{order.listing_id}</td>
-                  <td>{copy.labels.reportOrderStatus[order.status] ?? order.status}</td>
-                  <td>
-                    {order.generated_report_id ? (
-                      <a
-                        className="button"
-                        href={reportContentUrl(order.generated_report_id)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {copy.actions.open}
-                      </a>
-                    ) : (
-                      <span className="muted">{copy.values.noValue}</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          {orders.length === 0 ? (
+            <p className="empty-state">{buyerCopy.values.noOrders}</p>
+          ) : (
+            <div className="table-scroll">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>{copy.tables.product}</th>
+                    <th>{copy.tables.object}</th>
+                    <th>{copy.tables.status}</th>
+                    <th>{copy.tables.report}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id}>
+                      <td>{reportProductLabel(order.product_code, locale)}</td>
+                      <td>{reportSubject(order.listing_id, locale)}</td>
+                      <td>{copy.labels.reportOrderStatus[order.status] ?? order.status}</td>
+                      <td>
+                        {order.generated_report_id ? (
+                          <a
+                            className="button"
+                            href={reportContentUrl(order.generated_report_id)}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {copy.actions.open}
+                          </a>
+                        ) : (
+                          <span className="muted">{copy.values.noValue}</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </section>
     </>
   );
+}
+
+function reportProductLabel(productCode: string, locale: Locale) {
+  const labels: Record<Locale, Record<string, string>> = {
+    en: {
+      object_report: "Property report",
+      area_report: "Area report",
+      report_bundle_5: "Report bundle",
+    },
+    pl: {
+      object_report: "Raport mieszkania",
+      area_report: "Raport dzielnicy",
+      report_bundle_5: "Pakiet raportów",
+    },
+    ru: {
+      object_report: "Отчет по квартире",
+      area_report: "Отчет по району",
+      report_bundle_5: "Пакет отчетов",
+    },
+    uk: {
+      object_report: "Звіт по квартирі",
+      area_report: "Звіт по району",
+      report_bundle_5: "Пакет звітів",
+    },
+  };
+  return labels[locale][productCode] ?? productCode;
+}
+
+function reportSubject(reference: string, locale: Locale) {
+  if (reference.startsWith("area:")) {
+    return {
+      en: "Area",
+      pl: "Dzielnica",
+      ru: "Район",
+      uk: "Район",
+    }[locale];
+  }
+  if (reference.startsWith("bundle:")) {
+    return {
+      en: "Several apartments",
+      pl: "Kilka mieszkań",
+      ru: "Несколько квартир",
+      uk: "Кілька квартир",
+    }[locale];
+  }
+  return {
+    en: "Apartment",
+    pl: "Mieszkanie",
+    ru: "Квартира",
+    uk: "Квартира",
+  }[locale];
 }
 
 function UsageBar({

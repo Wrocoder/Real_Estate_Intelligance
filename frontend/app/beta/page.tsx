@@ -16,38 +16,38 @@ import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
-  title: "Проверка квартиры перед покупкой | Domarion Analytics",
+  title: "Проверка квартиры перед покупкой | Domarion",
   description:
-    "Paid beta Domarion: не переплатить за квартиру, не купить проблему и подготовиться к торгу перед zadatek.",
+    "Domarion помогает не переплатить за квартиру, увидеть риски и подготовиться к торгу перед задатком.",
 };
 
 const reportChecks = [
   {
     icon: TrendingUp,
     title: "Не переплатить",
-    text: "Показываем fair range, переплату, opening offer и максимальную цену, выше которой нужен сильный аргумент.",
+    text: "Показываем рыночный диапазон, возможную переплату, стартовое предложение и максимальную разумную цену.",
   },
   {
     icon: MapPinned,
     title: "Район и будущие планы",
-    text: "Проверяем транспорт, школы, парки, planned investments и факторы, которые могут улучшить или ухудшить локацию.",
+    text: "Проверяем транспорт, школы, парки, планируемые инвестиции и факторы, которые могут улучшить или ухудшить локацию.",
   },
   {
     icon: ShieldCheck,
     title: "Не купить проблему",
-    text: "Выносим legal/technical unknowns, шумовые и промышленные proxy, слабые данные, developer risk и checklist до zadatek.",
+    text: "Показываем юридические и технические неизвестные, шум, промышленные зоны, слабые данные и вопросы до задатка.",
   },
   {
     icon: WalletCards,
     title: "Подготовиться к торгу",
-    text: "Собираем seller questions, аргументы по цене, walk-away level и список того, что проверить на просмотре.",
+    text: "Собираем вопросы продавцу, аргументы по цене, разумный предел и список проверки на просмотре.",
   },
 ];
 
-const workflow = [
+const processSteps = [
   "Вставьте ссылку Otodom/OLX или заполните адрес, цену, площадь и комнаты вручную.",
   "Подтвердите извлеченные параметры: мы не сохраняем фото, контакты и полный текст объявления.",
-  "Получите buyer report: fair price, риски, район, вопросы продавцу и решение, стоит ли идти дальше.",
+  "Получите отчет покупателя: рыночный диапазон, риски, район, вопросы продавцу и решение, стоит ли идти дальше.",
 ];
 
 export default function BuyerBetaPage() {
@@ -57,7 +57,7 @@ export default function BuyerBetaPage() {
         <LandingMapScene variant="buyer" />
         <div className="landing-hero-shade" />
         <div className="landing-hero-content">
-          <span className="landing-eyebrow">Paid beta · Wrocław i okolice</span>
+          <span className="landing-eyebrow">Wrocław i okolice</span>
           <h1>Проверка квартиры перед покупкой</h1>
           <p>
             Введите адрес или ссылку на объект, а Domarion ответит: покупать,
@@ -74,14 +74,14 @@ export default function BuyerBetaPage() {
         </div>
       </section>
 
-      <section className="landing-proof-strip" aria-label="Paid beta metrics">
+      <section className="landing-proof-strip" aria-label="Domarion buyer report details">
         <div>
-          <strong>49-149 PLN</strong>
-          <span>гипотеза цены за buyer reports</span>
+          <strong>29-49 PLN</strong>
+          <span>ориентир для полного отчета по квартире</span>
         </div>
         <div>
           <strong>15 минут</strong>
-          <span>быстрый object-check flow в MVP</span>
+          <span>быстрая проверка найденной квартиры</span>
         </div>
         <div>
           <strong>0 фото</strong>
@@ -89,7 +89,7 @@ export default function BuyerBetaPage() {
         </div>
         <div>
           <strong>Wrocław+</strong>
-          <span>стартовый coverage с suburban fallback</span>
+          <span>Вроцлав и ближайшие окрестности</span>
         </div>
       </section>
 
@@ -98,8 +98,8 @@ export default function BuyerBetaPage() {
           <span className="landing-eyebrow">Что внутри отчета</span>
           <h2>Не еще одно объявление, а решение по объекту</h2>
           <p>
-            Buyer report должен быстро показать, где можно сэкономить, где объект
-            может стать проблемой и какие аргументы использовать до offer.
+            Отчет покупателя должен быстро показать, где можно сэкономить, где квартира
+            может стать проблемой и какие аргументы использовать до предложения.
           </p>
         </div>
         <div className="landing-card-grid">
@@ -118,11 +118,11 @@ export default function BuyerBetaPage() {
 
       <section className="landing-section landing-section-muted">
         <div className="landing-section-header">
-          <span className="landing-eyebrow">Как работает beta</span>
-          <h2>От ссылки к отчету без зависимости от спорного scraping</h2>
+          <span className="landing-eyebrow">Как это работает</span>
+          <h2>От ссылки к отчету с прозрачным использованием данных</h2>
         </div>
         <ol className="landing-steps">
-          {workflow.map((step, index) => (
+          {processSteps.map((step, index) => (
             <li key={step}>
               <span>{index + 1}</span>
               <p>{step}</p>
@@ -135,17 +135,17 @@ export default function BuyerBetaPage() {
 
       <section className="landing-section landing-compliance">
         <div>
-          <span className="landing-eyebrow">Data policy</span>
+          <span className="landing-eyebrow">Данные и доверие</span>
           <h2>Минимум данных, максимум пользы для решения</h2>
         </div>
         <ul className="section-list">
           <li>
             <LockKeyhole size={16} />
-            Source URL хранится как приватный reference и не показывается публично.
+            Ссылка на объявление хранится приватно и не показывается публично.
           </li>
           <li>
             <CheckCircle2 size={16} />
-            Сравнение строится на нашей базе, партнерских snapshots и open-data слоях.
+            Сравнение строится на базе Domarion, партнерских данных и открытых городских источниках.
           </li>
           <li>
             <ShieldCheck size={16} />

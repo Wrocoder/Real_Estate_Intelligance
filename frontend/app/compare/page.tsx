@@ -44,6 +44,53 @@ type ShortlistStatusState =
   | { key: "shortlistCount"; count: number }
   | { key: "shortlistUnavailable" };
 
+const COMPARE_PRODUCT_COPY = {
+  en: {
+    bestOverall: "Best overall option",
+    why: "Why",
+    tradeoffs: "Trade-offs",
+    fairPrice: "fair price",
+    lowerRisk: "lower risk",
+    liquidity: "strong liquidity",
+    smaller: "smaller apartment",
+    farther: "farther from the city center",
+    loadingSteps: ["Loading selected apartments", "Calculating total purchase costs", "Preparing recommendation"],
+  },
+  pl: {
+    bestOverall: "Najlepsza opcja ogólnie",
+    why: "Dlaczego",
+    tradeoffs: "Kompromisy",
+    fairPrice: "względem ceny rynkowej",
+    lowerRisk: "niższe ryzyko",
+    liquidity: "dobra płynność",
+    smaller: "mniejsze mieszkanie",
+    farther: "dalej od centrum",
+    loadingSteps: ["Ładujemy wybrane mieszkania", "Liczymy całkowity koszt zakupu", "Przygotowujemy rekomendację"],
+  },
+  ru: {
+    bestOverall: "Лучший вариант в целом",
+    why: "Почему",
+    tradeoffs: "Компромиссы",
+    fairPrice: "относительно рыночной цены",
+    lowerRisk: "ниже риск",
+    liquidity: "хорошая ликвидность",
+    smaller: "меньшая площадь",
+    farther: "дальше от центра",
+    loadingSteps: ["Загружаем выбранные квартиры", "Считаем полную стоимость покупки", "Готовим рекомендацию"],
+  },
+  uk: {
+    bestOverall: "Найкращий варіант загалом",
+    why: "Чому",
+    tradeoffs: "Компроміси",
+    fairPrice: "відносно ринкової ціни",
+    lowerRisk: "нижчий ризик",
+    liquidity: "добра ліквідність",
+    smaller: "менша площа",
+    farther: "далі від центру",
+    loadingSteps: ["Завантажуємо вибрані квартири", "Рахуємо повну вартість купівлі", "Готуємо рекомендацію"],
+  },
+} as const;
+
 export default function ComparePage() {
   const { locale } = useLocalePreference();
   const copy = COMPARE_PAGE_COPY[locale];
@@ -77,7 +124,7 @@ export default function ComparePage() {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .slice(0, 5);
+      .slice(0, 4);
 
     async function loadInitial() {
       setError("");
@@ -152,7 +199,7 @@ export default function ComparePage() {
       if (current.includes(listingId)) {
         return current.filter((item) => item !== listingId);
       }
-      if (current.length >= 5) {
+      if (current.length >= 4) {
         setStatus({ key: "compareLimit" });
         return current;
       }
@@ -240,7 +287,7 @@ export default function ComparePage() {
         </div>
         <div className="panel-body compare-selector">
           {available.length === 0 && !error ? (
-            <LoadingBlock />
+            <LoadingBlock label={compareStatusText(copy, status)} steps={COMPARE_PRODUCT_COPY[locale].loadingSteps} />
           ) : (
             available.map((analysis) => (
               <label key={analysis.listing.id} className="compare-option">
@@ -277,9 +324,19 @@ export default function ComparePage() {
       ) : selectedIds.length < 2 ? (
         <EmptyBlock label={copy.empty.selectMin} />
       ) : comparison === null || items.length === 0 ? (
-        <LoadingBlock />
+        <LoadingBlock label={compareStatusText(copy, status)} steps={COMPARE_PRODUCT_COPY[locale].loadingSteps} />
       ) : (
         <>
+          <section className="metric-grid" style={{ marginBottom: 16 }}>
+            <RecommendationSummary
+              copy={COMPARE_PRODUCT_COPY[locale]}
+              items={items}
+              metrics={comparison.metrics}
+              bestListingId={comparison.summary.best_listing_id}
+              locale={locale}
+            />
+          </section>
+
           <section className="metric-grid" style={{ marginBottom: 16 }}>
             <Metric
               label={copy.metrics.bestChoice}
@@ -307,7 +364,7 @@ export default function ComparePage() {
             />
           </section>
 
-          <section className="panel" style={{ marginBottom: 16 }}>
+          <section className="panel pro-only" style={{ marginBottom: 16 }}>
             <div className="panel-header">
               <h2 className="icon-title">
                 <Brain size={16} /> {copy.sections.aiVerdict}
@@ -382,16 +439,14 @@ export default function ComparePage() {
                         {aiAnswer.citations.slice(0, 5).map((citation, index) => (
                           <div className="ai-citation" key={`${citation.source_id}-${index}`}>
                             <strong>{citation.title}</strong>
-                            <small>
-                              {citation.source_type} · {citation.excerpt}
-                            </small>
+                            <small>{citation.excerpt}</small>
                           </div>
                         ))}
                       </div>
                       <div className="meta-row">
                         {aiAnswer.guardrails.map((guardrail, index) => (
                           <span className="status-pill" key={`${guardrail.code}-${index}`}>
-                            {guardrail.code}
+                            {guardrail.message}
                           </span>
                         ))}
                       </div>
@@ -405,7 +460,7 @@ export default function ComparePage() {
             </div>
           </section>
 
-          <section className="panel" style={{ marginBottom: 16 }}>
+          <section className="panel pro-only" style={{ marginBottom: 16 }}>
             <div className="panel-header">
               <h2 className="icon-title">
                 <FileText size={16} /> {copy.sections.clientShortlist}
@@ -619,6 +674,70 @@ function InsightColumn({
         </ul>
       )}
     </div>
+  );
+}
+
+function RecommendationSummary({
+  copy,
+  items,
+  metrics,
+  bestListingId,
+  locale,
+}: {
+  copy: (typeof COMPARE_PRODUCT_COPY)[keyof typeof COMPARE_PRODUCT_COPY];
+  items: ListingAnalysis[];
+  metrics: CompareItemMetrics[];
+  bestListingId: string;
+  locale: Parameters<typeof money>[1];
+}) {
+  const item = items.find((analysis) => analysis.listing.id === bestListingId) ?? items[0];
+  const metric = metrics.find((candidate) => candidate.listing_id === item?.listing.id);
+  if (!item || !metric) return null;
+
+  return (
+    <article className="compare-recommendation">
+      <div>
+        <span className="status-pill healthy">{copy.bestOverall}</span>
+        <h2>{item.listing.title}</h2>
+        <p>
+          {item.listing.district} · {money(item.listing.price, locale)} ·{" "}
+          {metric.decision_score}/100
+        </p>
+      </div>
+      <div className="compare-recommendation-grid">
+        <div>
+          <h3>{copy.why}</h3>
+          <ul className="section-list compact">
+            <li>
+              {money(Math.abs(metric.estimated_discount_to_fair_mid_pln), locale)}{" "}
+              {copy.fairPrice}
+            </li>
+            <li>{metric.risk_score}/100 · {copy.lowerRisk}</li>
+            <li>{metric.liquidity_score}/100 · {copy.liquidity}</li>
+            {metric.reasons.slice(0, 2).map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3>{copy.tradeoffs}</h3>
+          <ul className="section-list compact">
+            {metric.warnings.length > 0 ? (
+              metric.warnings.slice(0, 4).map((warning) => <li key={warning}>{warning}</li>)
+            ) : (
+              <>
+                <li>
+                  {numberValue(item.listing.area_m2, locale)} m2 · {copy.smaller}
+                </li>
+                <li>
+                  {numberValue(item.listing.distance_to_center_km, locale)} km · {copy.farther}
+                </li>
+              </>
+            )}
+          </ul>
+        </div>
+      </div>
+    </article>
   );
 }
 
@@ -977,7 +1096,7 @@ function shortlistStatusText(copy: ComparePageCopy, state: ShortlistStatusState)
 
 function developerSummary(reputation: DeveloperReputation | null, copy: ComparePageCopy) {
   if (!reputation) return copy.empty.noDeveloper;
-  return `${reputation.developer.name} · ${reputation.reputation_score}/100 · confidence ${reputation.confidence_score}/100`;
+  return `${reputation.developer.name} · ${reputation.reputation_score}/100`;
 }
 
 function developerRiskSummary(reputation: DeveloperReputation | null, copy: ComparePageCopy) {

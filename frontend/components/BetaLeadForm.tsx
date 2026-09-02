@@ -24,18 +24,18 @@ type LeadFormState = {
 
 const CONFIG = {
   buyer_beta: {
-    title: "Оставить заявку на beta-отчет",
+    title: "Оставить заявку на отчет",
     subtitle: "Подойдет, если у вас уже есть конкретный объект, ссылка или адрес.",
     referenceLabel: "Ссылка или адрес объекта",
     messagePlaceholder: "Когда нужно принять решение, какой бюджет, что больше всего беспокоит?",
-    success: "Заявка сохранена. Мы видим ее в admin queue.",
+    success: "Заявка сохранена. Мы свяжемся с вами по указанному контакту.",
   },
   realtor_beta: {
     title: "Заявка для риелтора или агентства",
     subtitle: "Подойдет для пилота на 1-5 отчетов с реальными клиентскими объектами.",
-    referenceLabel: "Agency / company",
+    referenceLabel: "Агентство или компания",
     messagePlaceholder: "Сколько агентов, какие объекты сейчас в работе, какой формат отчета нужен?",
-    success: "Заявка сохранена. Она попала в beta/admin queue.",
+    success: "Заявка сохранена. Мы свяжемся с вами по указанному контакту.",
   },
 } as const;
 
@@ -93,7 +93,7 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
       setStatus(config.success);
       setForm(DEFAULT_FORM);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(caught instanceof Error ? caught.message : "Не удалось отправить заявку");
       setStatus("Ошибка заявки");
     }
   }
@@ -105,7 +105,7 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
   return (
     <section className="landing-section landing-lead-panel" id="beta-lead">
       <div className="landing-section-header">
-        <span className="landing-eyebrow">Beta lead</span>
+        <span className="landing-eyebrow">Заявка</span>
         <h2>{config.title}</h2>
         <p>{config.subtitle}</p>
       </div>
@@ -113,7 +113,7 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
       <form className="landing-lead-form" onSubmit={(event) => void submit(event)}>
         <div className="form-grid compact">
           <LeadField
-            label="Name"
+            label="Имя"
             value={form.contactName}
             onChange={(value) => update("contactName", value)}
           />
@@ -124,17 +124,17 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
             onChange={(value) => update("contactEmail", value)}
           />
           <LeadField
-            label="Phone"
+            label="Телефон"
             value={form.contactPhone}
             onChange={(value) => update("contactPhone", value)}
           />
           <LeadField
-            label="City"
+            label="Город"
             value={form.city}
             onChange={(value) => update("city", value)}
           />
           <LeadField
-            label="District"
+            label="Район"
             value={form.district}
             onChange={(value) => update("district", value)}
           />
@@ -153,7 +153,7 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
           )}
         </div>
         <label className="field">
-          <span>Message</span>
+          <span>Сообщение</span>
           <textarea
             className="textarea"
             placeholder={config.messagePlaceholder}
@@ -168,7 +168,7 @@ export function BetaLeadForm({ segment, entryPoint }: Props) {
               checked={form.consentToContact}
               onChange={(event) => update("consentToContact", event.target.checked)}
             />
-            <span>Zgadzam się na kontakt w sprawie beta raportu.</span>
+            <span>Согласен на контакт по поводу отчета.</span>
           </label>
           <button
             className="button primary landing-button"

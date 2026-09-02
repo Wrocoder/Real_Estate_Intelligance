@@ -12,22 +12,22 @@ export default function MarketDashboardPage() {
   const [city, setCity] = useState("Wrocław");
   const [district, setDistrict] = useState("");
   const [dashboard, setDashboard] = useState<MarketDashboard | null>(null);
-  const [status, setStatus] = useState("Загрузка рынка...");
+  const [status, setStatus] = useState("Ładowanie danych rynku...");
   const [error, setError] = useState("");
 
   async function load() {
     setError("");
-    setStatus("Загрузка рынка...");
+    setStatus("Ładowanie danych rynku...");
     try {
       const payload = await api.getMarketDashboard({
         city: city || undefined,
         district: district || undefined,
       });
       setDashboard(payload);
-      setStatus("Готово");
+      setStatus("Gotowe");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Backend API недоступен");
+      setError(caught instanceof Error ? caught.message : "Nie udało się pobrać danych rynku");
+      setStatus("Dane rynku są chwilowo niedostępne");
     }
   }
 
@@ -43,39 +43,39 @@ export default function MarketDashboardPage() {
   }, [dashboard, district]);
 
   if (error) return <ErrorBlock message={error} />;
-  if (!dashboard) return <LoadingBlock label="Загрузка market dashboard" />;
+  if (!dashboard) return <LoadingBlock label="Ładowanie danych rynku" />;
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>Market dashboard</h1>
-          <p>Распределения цен, экспозиция, supply signals и сравнение районов MVP-рынка.</p>
+          <h1>Rynek nieruchomości</h1>
+          <p>Ceny, czas ekspozycji, podaż i porównanie dzielnic w jednym widoku.</p>
         </div>
         <button className="button primary" type="button" onClick={() => void load()}>
-          <RefreshCw size={16} /> Обновить
+          <RefreshCw size={16} /> Odśwież
         </button>
       </header>
 
       <section className="panel">
         <div className="panel-header">
-          <h2>Фильтр рынка</h2>
+          <h2>Filtr rynku</h2>
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body">
           <div className="form-grid compact">
             <label className="field">
-              <span>City</span>
+              <span>Miasto</span>
               <input className="input" value={city} onChange={(event) => setCity(event.target.value)} />
             </label>
             <label className="field">
-              <span>District</span>
+              <span>Dzielnica</span>
               <select
                 className="select"
                 value={district}
                 onChange={(event) => setDistrict(event.target.value)}
               >
-                <option value="">Все районы</option>
+                <option value="">Wszystkie dzielnice</option>
                 {districtOptions.map((name) => (
                   <option key={name} value={name}>
                     {name}
@@ -84,9 +84,9 @@ export default function MarketDashboardPage() {
               </select>
             </label>
             <div className="field">
-              <span>Action</span>
+              <span>Akcja</span>
               <button className="button" type="button" onClick={() => void load()}>
-                <BarChart3 size={16} /> Рассчитать
+                <BarChart3 size={16} /> Przelicz
               </button>
             </div>
           </div>
@@ -94,45 +94,45 @@ export default function MarketDashboardPage() {
       </section>
 
       <section className="metric-grid" style={{ marginTop: 16 }}>
-        <Metric label="Listings" value={numberValue(dashboard.listings_count)} />
-        <Metric label="Median price" value={formatNullableMoney(dashboard.median_price)} />
-        <Metric label="Median PLN/m2" value={formatNullableMoney(dashboard.median_price_per_m2)} />
-        <Metric label="Avg days" value={`${dashboard.average_days_on_market} d`} />
-        <Metric label="New 30d" value={numberValue(dashboard.new_listings_30d)} />
-        <Metric label="Removed 30d" value={numberValue(dashboard.removed_listings_30d)} />
-        <Metric label="Price 90d" value={formatNullablePercent(dashboard.price_change_90d_pct)} />
-        <Metric label="Supply 90d" value={formatNullablePercent(dashboard.supply_change_90d_pct)} />
+        <Metric label="Oferty" value={numberValue(dashboard.listings_count)} />
+        <Metric label="Mediana ceny" value={formatNullableMoney(dashboard.median_price)} />
+        <Metric label="Mediana PLN/m2" value={formatNullableMoney(dashboard.median_price_per_m2)} />
+        <Metric label="Śr. dni na rynku" value={`${dashboard.average_days_on_market} d`} />
+        <Metric label="Nowe 30 dni" value={numberValue(dashboard.new_listings_30d)} />
+        <Metric label="Zdjęte 30 dni" value={numberValue(dashboard.removed_listings_30d)} />
+        <Metric label="Cena 90 dni" value={formatNullablePercent(dashboard.price_change_90d_pct)} />
+        <Metric label="Podaż 90 dni" value={formatNullablePercent(dashboard.supply_change_90d_pct)} />
       </section>
 
       <section className="grid-2" style={{ marginTop: 16 }}>
-        <DistributionPanel title="Цена объекта" buckets={dashboard.price_distribution} />
-        <DistributionPanel title="Цена за m2" buckets={dashboard.price_per_m2_distribution} />
+        <DistributionPanel title="Cena mieszkania" buckets={dashboard.price_distribution} />
+        <DistributionPanel title="Cena za m2" buckets={dashboard.price_per_m2_distribution} />
       </section>
 
       <section className="grid-2" style={{ marginTop: 16 }}>
-        <DistributionPanel title="Комнаты" buckets={dashboard.rooms_distribution} />
-        <DistributionPanel title="Площадь" buckets={dashboard.area_distribution} />
+        <DistributionPanel title="Pokoje" buckets={dashboard.rooms_distribution} />
+        <DistributionPanel title="Powierzchnia" buckets={dashboard.area_distribution} />
       </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Сравнение районов</h2>
-          <span className="muted">{dashboard.areas.length} areas</span>
+          <h2>Porównanie dzielnic</h2>
+          <span className="muted">{dashboard.areas.length} obsz.</span>
         </div>
         <div className="panel-body">
           {dashboard.areas.length > 0 ? (
             <table className="table">
               <thead>
                 <tr>
-                  <th>Район</th>
-                  <th>Median m2</th>
-                  <th>Active</th>
+                  <th>Dzielnica</th>
+                  <th>Mediana m2</th>
+                  <th>Aktywne</th>
                   <th>DOM</th>
-                  <th>Price 90d</th>
-                  <th>Liquidity</th>
-                  <th>Buyer market</th>
-                  <th>Seller market</th>
-                  <th>Overheated</th>
+                  <th>Cena 90 dni</th>
+                  <th>Płynność</th>
+                  <th>Rynek kupującego</th>
+                  <th>Rynek sprzedającego</th>
+                  <th>Ryzyko przegrzania</th>
                 </tr>
               </thead>
               <tbody>
@@ -155,7 +155,7 @@ export default function MarketDashboardPage() {
               </tbody>
             </table>
           ) : (
-            <div className="empty-state">Нет районной статистики для выбранного фильтра.</div>
+            <div className="empty-state">Brak statystyk dzielnic dla wybranego filtra.</div>
           )}
         </div>
       </section>
@@ -205,7 +205,7 @@ function DistributionPanel({
             </div>
           </div>
         ) : (
-          <div className="empty-state">Нет данных для распределения.</div>
+          <div className="empty-state">Brak danych dla tego rozkładu.</div>
         )}
       </div>
     </section>

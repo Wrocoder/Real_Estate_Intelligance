@@ -15,7 +15,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
     scores = analysis.scores
     buyer_decision = report.buyer_decision or analysis.buyer_decision
     branding = report.branding
-    brand_name = branding.agency_name if branding and branding.agency_name else "Domarion Analytics"
+    brand_name = branding.agency_name if branding and branding.agency_name else "Domarion"
     branding_html = _render_branding(branding)
     footer_html = _render_report_footer(report.disclaimer, branding)
     primary_color = _brand_color(branding.primary_color if branding else None, "#0f766e")
@@ -63,7 +63,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{escape(listing.title)} - Domarion Analytics</title>
+  <title>{escape(listing.title)} - Domarion</title>
   <style>
     :root {{
       color-scheme: light;
@@ -385,7 +385,7 @@ def render_area_report_html(area: AreaStatistics, dashboard: MarketDashboard, su
   <main class="page">
     <section class="topline">
       <div>
-        <div class="brand">Domarion Analytics</div>
+        <div class="brand">Domarion</div>
         <h1>Area Market Report: {escape(area.name)}</h1>
         <p class="muted">{escape(area.city)} · Area ID: {escape(area.area_id)}</p>
       </div>
@@ -482,7 +482,7 @@ def _render_buyer_verdict(buyer_decision) -> str:
     )
     return f"""
     <section class="verdict">
-      <h2>DOMARION VERDICT</h2>
+      <h2>Domarion VERDICT</h2>
       <div class="verdict-title">
         <div>
           <h1>{escape(verdict.headline)}</h1>
@@ -603,7 +603,7 @@ def _render_report_footer(disclaimer: str, branding) -> str:
     rows.append(
         escape(branding.footer_text)
         if branding and branding.footer_text
-        else "Powered by Domarion Analytics"
+        else "Powered by Domarion"
     )
     return '<div class="footer">' + "".join(f"<p>{row}</p>" for row in rows if row) + "</div>"
 

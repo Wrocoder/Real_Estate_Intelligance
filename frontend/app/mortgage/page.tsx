@@ -11,6 +11,8 @@ import {
   type PartnerReferralType,
 } from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
+import type { Locale } from "@/lib/i18n";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type MortgageFormState = {
   property_price_pln: string;
@@ -68,34 +70,362 @@ const DEFAULT_REFERRAL_FORM: ReferralFormState = {
   contact_name: "",
   contact_email: "",
   contact_phone: "",
-  message: "Chcę porozmawiać o finansowaniu i kosztach tej transakcji.",
+  message: "",
   consent_to_contact: false,
 };
 
+const COPY = {
+  en: {
+    title: "Mortgage and purchase cost",
+    subtitle: "Estimate the down payment, loan, taxes, fees, renovation reserve and monthly burden.",
+    calculate: "Calculate",
+    refresh: "Update",
+    ready: "Ready to calculate",
+    calculating: "Calculating...",
+    calculated: "Calculation ready",
+    calculateError: "Could not calculate the mortgage",
+    referralReady: "Request not sent",
+    referralSending: "Sending request...",
+    referralCreated: (id: string) => `Request created: ${id}`,
+    referralError: "Could not send the request",
+    metrics: {
+      cashNeeded: "Cash needed",
+      loan: "Mortgage",
+      monthly: "Monthly payment",
+      affordability: "Affordability",
+    },
+    affordability: {
+      unknown: "income not provided",
+      comfortable: "comfortable",
+      stretched: "stretched",
+      high_risk: "high risk",
+    },
+    form: {
+      title: "Deal assumptions",
+      propertyPrice: "Apartment price",
+      downPayment: "Down payment",
+      years: "Loan term, years",
+      rate: "Interest rate, %",
+      rateType: "Rate type",
+      market: "Market",
+      income: "Net income/month",
+      debts: "Other debt/month",
+      housingCosts: "Monthly housing costs",
+      insurance: "Insurance/month",
+      notary: "Notary",
+      court: "Court fees",
+      bankCommission: "Bank commission, %",
+      agentCommission: "Agent commission, %",
+      renovation: "Renovation/furniture",
+      include: "include",
+      exclude: "exclude",
+    },
+    options: {
+      fixed: "Fixed",
+      variable: "Variable",
+      primary: "Primary",
+      secondary: "Secondary",
+    },
+    result: {
+      title: "Result",
+      downPayment: "Down payment",
+      ltv: "LTV",
+      dti: "DTI",
+      buffer: "Buffer after payment",
+      empty: "Enter assumptions and run the calculation.",
+      scenarios: "Rate scenarios",
+      scenario: "Scenario",
+      rate: "Rate",
+      payment: "Payment",
+      overpayment: "Interest cost",
+      cashBreakdown: "Cash breakdown",
+      totalCash: "Total cash",
+      loan: "Loan",
+    },
+    referral: {
+      title: "Partner request",
+      type: "Service",
+      mortgage: "Mortgage",
+      legal: "Legal check",
+      renovation: "Renovation",
+      city: "City",
+      district: "District",
+      name: "Name",
+      phone: "Phone",
+      message: "Message",
+      consent: "I agree to be contacted",
+      send: "Send",
+    },
+  },
+  pl: {
+    title: "Kredyt i koszt zakupu",
+    subtitle: "Oszacuj wkład, kredyt, podatki, opłaty, rezerwę remontową i miesięczne obciążenie.",
+    calculate: "Oblicz",
+    refresh: "Aktualizuj",
+    ready: "Gotowe do obliczenia",
+    calculating: "Liczymy...",
+    calculated: "Kalkulacja gotowa",
+    calculateError: "Nie udało się obliczyć kredytu",
+    referralReady: "Zgłoszenie nie zostało wysłane",
+    referralSending: "Wysyłanie zgłoszenia...",
+    referralCreated: (id: string) => `Zgłoszenie utworzone: ${id}`,
+    referralError: "Nie udało się wysłać zgłoszenia",
+    metrics: {
+      cashNeeded: "Gotówka na start",
+      loan: "Kredyt",
+      monthly: "Rata miesięczna",
+      affordability: "Obciążenie budżetu",
+    },
+    affordability: {
+      unknown: "brak dochodu",
+      comfortable: "komfortowe",
+      stretched: "na granicy",
+      high_risk: "wysokie ryzyko",
+    },
+    form: {
+      title: "Założenia transakcji",
+      propertyPrice: "Cena mieszkania",
+      downPayment: "Wkład własny",
+      years: "Okres kredytu, lata",
+      rate: "Oprocentowanie, %",
+      rateType: "Typ oprocentowania",
+      market: "Rynek",
+      income: "Dochód netto/mies.",
+      debts: "Inne zobowiązania/mies.",
+      housingCosts: "Miesięczne koszty mieszkania",
+      insurance: "Ubezpieczenie/mies.",
+      notary: "Notariusz",
+      court: "Opłaty sądowe",
+      bankCommission: "Prowizja banku, %",
+      agentCommission: "Prowizja pośrednika, %",
+      renovation: "Remont/meble",
+      include: "uwzględnij",
+      exclude: "nie uwzględniaj",
+    },
+    options: {
+      fixed: "Stałe",
+      variable: "Zmienne",
+      primary: "Pierwotny",
+      secondary: "Wtórny",
+    },
+    result: {
+      title: "Wynik",
+      downPayment: "Wkład własny",
+      ltv: "LTV",
+      dti: "DTI",
+      buffer: "Bufor po racie",
+      empty: "Wpisz założenia i uruchom kalkulację.",
+      scenarios: "Scenariusze oprocentowania",
+      scenario: "Scenariusz",
+      rate: "Oprocentowanie",
+      payment: "Rata",
+      overpayment: "Koszt odsetek",
+      cashBreakdown: "Struktura gotówki",
+      totalCash: "Gotówka razem",
+      loan: "Kredyt",
+    },
+    referral: {
+      title: "Zgłoszenie do partnera",
+      type: "Usługa",
+      mortgage: "Kredyt",
+      legal: "Kontrola prawna",
+      renovation: "Remont",
+      city: "Miasto",
+      district: "Dzielnica",
+      name: "Imię",
+      phone: "Telefon",
+      message: "Wiadomość",
+      consent: "Zgadzam się na kontakt",
+      send: "Wyślij",
+    },
+  },
+  ru: {
+    title: "Ипотека и стоимость покупки",
+    subtitle: "Оцените взнос, кредит, налоги, сборы, ремонтный резерв и нагрузку на бюджет.",
+    calculate: "Рассчитать",
+    refresh: "Обновить",
+    ready: "Готово к расчету",
+    calculating: "Расчет...",
+    calculated: "Расчет готов",
+    calculateError: "Не удалось рассчитать ипотеку",
+    referralReady: "Заявка не отправлена",
+    referralSending: "Отправка заявки...",
+    referralCreated: (id: string) => `Заявка создана: ${id}`,
+    referralError: "Не удалось отправить заявку",
+    metrics: {
+      cashNeeded: "Нужно на старте",
+      loan: "Кредит",
+      monthly: "Платеж в месяц",
+      affordability: "Нагрузка на бюджет",
+    },
+    affordability: {
+      unknown: "доход не указан",
+      comfortable: "комфортно",
+      stretched: "на границе",
+      high_risk: "высокий риск",
+    },
+    form: {
+      title: "Параметры сделки",
+      propertyPrice: "Цена квартиры",
+      downPayment: "Собственный взнос",
+      years: "Срок кредита, лет",
+      rate: "Ставка, %",
+      rateType: "Тип ставки",
+      market: "Рынок",
+      income: "Доход нетто/мес.",
+      debts: "Другие долги/мес.",
+      housingCosts: "Расходы на жилье/мес.",
+      insurance: "Страховка/мес.",
+      notary: "Нотариус",
+      court: "Судовые сборы",
+      bankCommission: "Комиссия банка, %",
+      agentCommission: "Комиссия посредника, %",
+      renovation: "Ремонт/мебель",
+      include: "учитывать",
+      exclude: "не учитывать",
+    },
+    options: {
+      fixed: "Фиксированная",
+      variable: "Переменная",
+      primary: "Первичный",
+      secondary: "Вторичный",
+    },
+    result: {
+      title: "Вывод",
+      downPayment: "Собственный взнос",
+      ltv: "LTV",
+      dti: "DTI",
+      buffer: "Буфер после платежа",
+      empty: "Введите параметры и запустите расчет.",
+      scenarios: "Сценарии ставки",
+      scenario: "Сценарий",
+      rate: "Ставка",
+      payment: "Платеж",
+      overpayment: "Стоимость процентов",
+      cashBreakdown: "Структура наличных расходов",
+      totalCash: "Всего наличными",
+      loan: "Кредит",
+    },
+    referral: {
+      title: "Заявка партнеру",
+      type: "Услуга",
+      mortgage: "Ипотека",
+      legal: "Юридическая проверка",
+      renovation: "Ремонт",
+      city: "Город",
+      district: "Район",
+      name: "Имя",
+      phone: "Телефон",
+      message: "Сообщение",
+      consent: "Согласен на контакт",
+      send: "Отправить",
+    },
+  },
+  uk: {
+    title: "Іпотека і вартість купівлі",
+    subtitle: "Оцініть внесок, кредит, податки, збори, ремонтний резерв і навантаження на бюджет.",
+    calculate: "Розрахувати",
+    refresh: "Оновити",
+    ready: "Готово до розрахунку",
+    calculating: "Розрахунок...",
+    calculated: "Розрахунок готовий",
+    calculateError: "Не вдалося розрахувати іпотеку",
+    referralReady: "Заявку не надіслано",
+    referralSending: "Надсилання заявки...",
+    referralCreated: (id: string) => `Заявку створено: ${id}`,
+    referralError: "Не вдалося надіслати заявку",
+    metrics: {
+      cashNeeded: "Потрібно на старті",
+      loan: "Кредит",
+      monthly: "Платіж на місяць",
+      affordability: "Навантаження на бюджет",
+    },
+    affordability: {
+      unknown: "дохід не вказано",
+      comfortable: "комфортно",
+      stretched: "на межі",
+      high_risk: "високий ризик",
+    },
+    form: {
+      title: "Параметри угоди",
+      propertyPrice: "Ціна квартири",
+      downPayment: "Власний внесок",
+      years: "Строк кредиту, років",
+      rate: "Ставка, %",
+      rateType: "Тип ставки",
+      market: "Ринок",
+      income: "Дохід нетто/міс.",
+      debts: "Інші борги/міс.",
+      housingCosts: "Витрати на житло/міс.",
+      insurance: "Страхування/міс.",
+      notary: "Нотаріус",
+      court: "Судові збори",
+      bankCommission: "Комісія банку, %",
+      agentCommission: "Комісія посередника, %",
+      renovation: "Ремонт/меблі",
+      include: "враховувати",
+      exclude: "не враховувати",
+    },
+    options: {
+      fixed: "Фіксована",
+      variable: "Змінна",
+      primary: "Первинний",
+      secondary: "Вторинний",
+    },
+    result: {
+      title: "Висновок",
+      downPayment: "Власний внесок",
+      ltv: "LTV",
+      dti: "DTI",
+      buffer: "Буфер після платежу",
+      empty: "Введіть параметри і запустіть розрахунок.",
+      scenarios: "Сценарії ставки",
+      scenario: "Сценарій",
+      rate: "Ставка",
+      payment: "Платіж",
+      overpayment: "Вартість відсотків",
+      cashBreakdown: "Структура готівкових витрат",
+      totalCash: "Усього готівкою",
+      loan: "Кредит",
+    },
+    referral: {
+      title: "Заявка партнеру",
+      type: "Послуга",
+      mortgage: "Іпотека",
+      legal: "Юридична перевірка",
+      renovation: "Ремонт",
+      city: "Місто",
+      district: "Район",
+      name: "Ім'я",
+      phone: "Телефон",
+      message: "Повідомлення",
+      consent: "Згоден на контакт",
+      send: "Надіслати",
+    },
+  },
+} as const;
+
 export default function MortgagePage() {
+  const { locale } = useLocalePreference();
+  const copy = COPY[locale];
   const [form, setForm] = useState<MortgageFormState>(DEFAULT_FORM);
   const [referralForm, setReferralForm] =
     useState<ReferralFormState>(DEFAULT_REFERRAL_FORM);
   const [result, setResult] = useState<MortgageCalculationResult | null>(null);
   const [referralResult, setReferralResult] = useState<PartnerReferral | null>(null);
-  const [status, setStatus] = useState("Готово к расчету");
-  const [referralStatus, setReferralStatus] = useState("Заявка не отправлена");
+  const [status, setStatus] = useState<string>(copy.ready);
+  const [referralStatus, setReferralStatus] = useState<string>(copy.referralReady);
   const [error, setError] = useState("");
   const [referralError, setReferralError] = useState("");
 
   const affordabilityLabel = useMemo(() => {
     if (!result) return "—";
-    return {
-      unknown: "нет дохода",
-      comfortable: "комфортно",
-      stretched: "на границе",
-      high_risk: "высокий риск",
-    }[result.affordability.status];
-  }, [result]);
+    return copy.affordability[result.affordability.status];
+  }, [copy, result]);
 
   async function calculate() {
     setError("");
-    setStatus("Расчет...");
+    setStatus(copy.calculating);
     try {
       const payload = await api.calculateMortgage({
         property_price_pln: toNumber(form.property_price_pln),
@@ -116,10 +446,10 @@ export default function MortgagePage() {
         include_pcc: form.include_pcc,
       });
       setResult(payload);
-      setStatus("Расчет готов");
+      setStatus(copy.calculated);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus("Ошибка расчета");
+      setError(caught instanceof Error ? caught.message : copy.calculateError);
+      setStatus(copy.calculateError);
     }
   }
 
@@ -141,7 +471,7 @@ export default function MortgagePage() {
 
   async function submitPartnerReferral() {
     setReferralError("");
-    setReferralStatus("Отправка заявки...");
+    setReferralStatus(copy.referralSending);
     try {
       const referral = await api.createPartnerReferral({
         referral_type: referralForm.referral_type,
@@ -165,10 +495,10 @@ export default function MortgagePage() {
         },
       });
       setReferralResult(referral);
-      setReferralStatus(`Заявка создана: ${referral.id}`);
+      setReferralStatus(copy.referralCreated(referral.id));
     } catch (caught) {
-      setReferralError(caught instanceof Error ? caught.message : "unknown error");
-      setReferralStatus("Ошибка отправки заявки");
+      setReferralError(caught instanceof Error ? caught.message : copy.referralError);
+      setReferralStatus(copy.referralError);
     }
   }
 
@@ -176,11 +506,11 @@ export default function MortgagePage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Ипотечный калькулятор</h1>
-          <p>Первичный бюджет покупки: взнос, кредит, PCC, комиссии, ремонт и нагрузка на доход.</p>
+          <h1>{copy.title}</h1>
+          <p>{copy.subtitle}</p>
         </div>
         <button className="button primary" type="button" onClick={() => void calculate()}>
-          <Calculator size={16} /> Рассчитать
+          <Calculator size={16} /> {copy.calculate}
         </button>
       </header>
 
@@ -188,19 +518,19 @@ export default function MortgagePage() {
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Нужные cash upfront</span>
-          <strong>{result ? money(result.costs.upfront_cash_needed_pln) : "—"}</strong>
+          <span>{copy.metrics.cashNeeded}</span>
+          <strong>{result ? money(result.costs.upfront_cash_needed_pln, locale) : "—"}</strong>
         </div>
         <div className="metric">
-          <span>Сумма кредита</span>
-          <strong>{result ? money(result.costs.loan_amount_pln) : "—"}</strong>
+          <span>{copy.metrics.loan}</span>
+          <strong>{result ? money(result.costs.loan_amount_pln, locale) : "—"}</strong>
         </div>
         <div className="metric">
-          <span>Платеж в месяц</span>
-          <strong>{result ? money(result.base_scenario.monthly_total_payment_pln) : "—"}</strong>
+          <span>{copy.metrics.monthly}</span>
+          <strong>{result ? money(result.base_scenario.monthly_total_payment_pln, locale) : "—"}</strong>
         </div>
         <div className="metric">
-          <span>Доступность</span>
+          <span>{copy.metrics.affordability}</span>
           <strong>{affordabilityLabel}</strong>
         </div>
       </section>
@@ -208,36 +538,36 @@ export default function MortgagePage() {
       <section className="grid-2" style={{ marginTop: 16 }}>
         <div className="panel">
           <div className="panel-header">
-            <h2>Параметры сделки</h2>
+            <h2>{copy.form.title}</h2>
             <button className="button" type="button" onClick={() => void calculate()}>
-              <RefreshCw size={16} /> Обновить
+              <RefreshCw size={16} /> {copy.refresh}
             </button>
           </div>
           <div className="panel-body">
             <div className="form-grid">
               <NumberField
-                label="Цена объекта"
+                label={copy.form.propertyPrice}
                 value={form.property_price_pln}
                 onChange={(value) => updateField("property_price_pln", value)}
               />
               <NumberField
-                label="Собственный взнос"
+                label={copy.form.downPayment}
                 value={form.down_payment_pln}
                 onChange={(value) => updateField("down_payment_pln", value)}
               />
               <NumberField
-                label="Срок, лет"
+                label={copy.form.years}
                 value={form.loan_years}
                 onChange={(value) => updateField("loan_years", value)}
               />
               <NumberField
-                label="Ставка, %"
+                label={copy.form.rate}
                 value={form.annual_interest_rate_pct}
                 step="0.1"
                 onChange={(value) => updateField("annual_interest_rate_pct", value)}
               />
               <label className="field">
-                <span>Тип ставки</span>
+                <span>{copy.form.rateType}</span>
                 <select
                   className="select"
                   value={form.rate_type}
@@ -245,12 +575,12 @@ export default function MortgagePage() {
                     updateField("rate_type", event.target.value as MortgageFormState["rate_type"])
                   }
                 >
-                  <option value="fixed">fixed</option>
-                  <option value="variable">variable</option>
+                  <option value="fixed">{copy.options.fixed}</option>
+                  <option value="variable">{copy.options.variable}</option>
                 </select>
               </label>
               <label className="field">
-                <span>Рынок</span>
+                <span>{copy.form.market}</span>
                 <select
                   className="select"
                   value={form.market_type}
@@ -261,57 +591,57 @@ export default function MortgagePage() {
                     )
                   }
                 >
-                  <option value="secondary">secondary</option>
-                  <option value="primary">primary</option>
+                  <option value="secondary">{copy.options.secondary}</option>
+                  <option value="primary">{copy.options.primary}</option>
                 </select>
               </label>
             </div>
 
             <div className="form-grid" style={{ marginTop: 12 }}>
               <NumberField
-                label="Доход netto/мес."
+                label={copy.form.income}
                 value={form.monthly_income_pln}
                 onChange={(value) => updateField("monthly_income_pln", value)}
               />
               <NumberField
-                label="Другие долги/мес."
+                label={copy.form.debts}
                 value={form.monthly_existing_debt_pln}
                 onChange={(value) => updateField("monthly_existing_debt_pln", value)}
               />
               <NumberField
-                label="Czynsz/расходы"
+                label={copy.form.housingCosts}
                 value={form.monthly_housing_costs_pln}
                 onChange={(value) => updateField("monthly_housing_costs_pln", value)}
               />
               <NumberField
-                label="Страховка/мес."
+                label={copy.form.insurance}
                 value={form.insurance_monthly_pln}
                 onChange={(value) => updateField("insurance_monthly_pln", value)}
               />
               <NumberField
-                label="Нотариус"
+                label={copy.form.notary}
                 value={form.notary_fee_pln}
                 onChange={(value) => updateField("notary_fee_pln", value)}
               />
               <NumberField
-                label="Судовые сборы"
+                label={copy.form.court}
                 value={form.court_fees_pln}
                 onChange={(value) => updateField("court_fees_pln", value)}
               />
               <NumberField
-                label="Комиссия банка, %"
+                label={copy.form.bankCommission}
                 value={form.bank_commission_pct}
                 step="0.1"
                 onChange={(value) => updateField("bank_commission_pct", value)}
               />
               <NumberField
-                label="Комиссия агента, %"
+                label={copy.form.agentCommission}
                 value={form.agent_commission_pct}
                 step="0.1"
                 onChange={(value) => updateField("agent_commission_pct", value)}
               />
               <NumberField
-                label="Ремонт/мебель"
+                label={copy.form.renovation}
                 value={form.renovation_budget_pln}
                 onChange={(value) => updateField("renovation_budget_pln", value)}
               />
@@ -324,8 +654,8 @@ export default function MortgagePage() {
                 value={form.include_pcc ? "yes" : "no"}
                 onChange={(event) => updateField("include_pcc", event.target.value === "yes")}
               >
-                <option value="yes">учитывать</option>
-                <option value="no">не учитывать</option>
+                <option value="yes">{copy.form.include}</option>
+                <option value="no">{copy.form.exclude}</option>
               </select>
             </label>
             <p className="status-line">{status}</p>
@@ -334,28 +664,28 @@ export default function MortgagePage() {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Вывод</h2>
+            <h2>{copy.result.title}</h2>
           </div>
           <div className="panel-body">
             {result ? (
               <>
                 <ul className="section-list compact">
                   <li>
-                    <span>Down payment</span>
-                    <strong>{formatPlainPct(result.costs.down_payment_pct)}</strong>
+                    <span>{copy.result.downPayment}</span>
+                    <strong>{formatPlainPct(result.costs.down_payment_pct, locale)}</strong>
                   </li>
                   <li>
                     <span>LTV</span>
-                    <strong>{formatPlainPct(result.costs.loan_to_value_pct)}</strong>
+                    <strong>{formatPlainPct(result.costs.loan_to_value_pct, locale)}</strong>
                   </li>
                   <li>
                     <span>DTI</span>
-                    <strong>{formatNullablePct(result.affordability.base_debt_to_income_pct)}</strong>
+                    <strong>{formatNullablePct(result.affordability.base_debt_to_income_pct, locale)}</strong>
                   </li>
                   <li>
-                    <span>Буфер после платежа</span>
+                    <span>{copy.result.buffer}</span>
                     <strong>
-                      {formatNullableMoney(result.affordability.monthly_buffer_after_payment_pln)}
+                      {formatNullableMoney(result.affordability.monthly_buffer_after_payment_pln, locale)}
                     </strong>
                   </li>
                 </ul>
@@ -369,7 +699,7 @@ export default function MortgagePage() {
                 </p>
               </>
             ) : (
-              <div className="empty-state">Введите параметры и запустите расчет.</div>
+              <div className="empty-state">{copy.result.empty}</div>
             )}
           </div>
         </aside>
@@ -378,27 +708,27 @@ export default function MortgagePage() {
       {result ? (
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
-            <h2>Сценарии ставки</h2>
+            <h2>{copy.result.scenarios}</h2>
           </div>
           <div className="panel-body">
             <table className="table">
               <thead>
                 <tr>
-                  <th>Сценарий</th>
-                  <th>Ставка</th>
-                  <th>Платеж</th>
+                  <th>{copy.result.scenario}</th>
+                  <th>{copy.result.rate}</th>
+                  <th>{copy.result.payment}</th>
                   <th>DTI</th>
-                  <th>Переплата</th>
+                  <th>{copy.result.overpayment}</th>
                 </tr>
               </thead>
               <tbody>
                 {result.scenarios.map((scenario) => (
                   <tr key={scenario.scenario_code}>
                     <td>{scenario.label}</td>
-                    <td>{formatPlainPct(scenario.annual_interest_rate_pct)}</td>
-                    <td>{money(scenario.monthly_total_payment_pln)}</td>
-                    <td>{formatNullablePct(scenario.debt_to_income_pct)}</td>
-                    <td>{money(scenario.total_interest_pln)}</td>
+                    <td>{formatPlainPct(scenario.annual_interest_rate_pct, locale)}</td>
+                    <td>{money(scenario.monthly_total_payment_pln, locale)}</td>
+                    <td>{formatNullablePct(scenario.debt_to_income_pct, locale)}</td>
+                    <td>{money(scenario.total_interest_pln, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -410,23 +740,23 @@ export default function MortgagePage() {
       {result ? (
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-header">
-            <h2>Cash breakdown</h2>
+            <h2>{copy.result.cashBreakdown}</h2>
           </div>
           <div className="panel-body">
             <div className="metric-grid">
-              <CostMetric label="PCC" value={result.costs.pcc_tax_pln} />
-              <CostMetric label="Нотариус" value={result.costs.notary_fee_pln} />
-              <CostMetric label="Сборы суда" value={result.costs.court_fees_pln} />
-              <CostMetric label="Комиссия банка" value={result.costs.bank_commission_pln} />
-              <CostMetric label="Комиссия агента" value={result.costs.agent_commission_pln} />
-              <CostMetric label="Ремонт" value={result.costs.renovation_budget_pln} />
+              <CostMetric label="PCC" locale={locale} value={result.costs.pcc_tax_pln} />
+              <CostMetric label={copy.form.notary} locale={locale} value={result.costs.notary_fee_pln} />
+              <CostMetric label={copy.form.court} locale={locale} value={result.costs.court_fees_pln} />
+              <CostMetric label={copy.form.bankCommission} locale={locale} value={result.costs.bank_commission_pln} />
+              <CostMetric label={copy.form.agentCommission} locale={locale} value={result.costs.agent_commission_pln} />
+              <CostMetric label={copy.form.renovation} locale={locale} value={result.costs.renovation_budget_pln} />
               <div className="metric">
-                <span>Всего cash</span>
-                <strong>{money(result.costs.upfront_cash_needed_pln)}</strong>
+                <span>{copy.result.totalCash}</span>
+                <strong>{money(result.costs.upfront_cash_needed_pln, locale)}</strong>
               </div>
               <div className="metric">
-                <span>Кредит</span>
-                <strong>{money(result.costs.loan_amount_pln)}</strong>
+                <span>{copy.result.loan}</span>
+                <strong>{money(result.costs.loan_amount_pln, locale)}</strong>
               </div>
             </div>
           </div>
@@ -435,14 +765,14 @@ export default function MortgagePage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Заявка партнеру</h2>
+          <h2>{copy.referral.title}</h2>
           <span className="status-line">{referralStatus}</span>
         </div>
         <div className="panel-body">
           {referralError ? <ErrorBlock message={referralError} /> : null}
           <div className="form-grid">
             <label className="field">
-              <span>Направление</span>
+              <span>{copy.referral.type}</span>
               <select
                 className="select"
                 value={referralForm.referral_type}
@@ -453,23 +783,23 @@ export default function MortgagePage() {
                   )
                 }
               >
-                <option value="mortgage">Mortgage</option>
-                <option value="legal">Legal</option>
-                <option value="renovation">Renovation</option>
+                <option value="mortgage">{copy.referral.mortgage}</option>
+                <option value="legal">{copy.referral.legal}</option>
+                <option value="renovation">{copy.referral.renovation}</option>
               </select>
             </label>
             <ReferralField
-              label="City"
+              label={copy.referral.city}
               value={referralForm.city}
               onChange={(value) => updateReferralField("city", value)}
             />
             <ReferralField
-              label="District"
+              label={copy.referral.district}
               value={referralForm.district}
               onChange={(value) => updateReferralField("district", value)}
             />
             <ReferralField
-              label="Name"
+              label={copy.referral.name}
               value={referralForm.contact_name}
               onChange={(value) => updateReferralField("contact_name", value)}
             />
@@ -479,13 +809,13 @@ export default function MortgagePage() {
               onChange={(value) => updateReferralField("contact_email", value)}
             />
             <ReferralField
-              label="Phone"
+              label={copy.referral.phone}
               value={referralForm.contact_phone}
               onChange={(value) => updateReferralField("contact_phone", value)}
             />
           </div>
           <label className="field" style={{ marginTop: 12 }}>
-            <span>Message</span>
+            <span>{copy.referral.message}</span>
             <textarea
               className="textarea"
               value={referralForm.message}
@@ -501,7 +831,7 @@ export default function MortgagePage() {
                   updateReferralField("consent_to_contact", event.target.checked)
                 }
               />
-              Zgadzam się na kontakt
+              {copy.referral.consent}
             </label>
             <button
               className="button primary"
@@ -509,7 +839,7 @@ export default function MortgagePage() {
               disabled={!referralForm.consent_to_contact}
               onClick={() => void submitPartnerReferral()}
             >
-              <Send size={16} /> Отправить
+              <Send size={16} /> {copy.referral.send}
             </button>
             {referralResult ? (
               <span className={`status-pill ${referralResult.status}`}>
@@ -550,11 +880,11 @@ function NumberField({
   );
 }
 
-function CostMetric({ label, value }: { label: string; value: number }) {
+function CostMetric({ label, locale, value }: { label: string; locale: Locale; value: number }) {
   return (
     <div className="metric">
       <span>{label}</span>
-      <strong>{money(value)}</strong>
+      <strong>{money(value, locale)}</strong>
     </div>
   );
 }
@@ -589,14 +919,14 @@ function toOptionalText(value: string) {
   return trimmed ? trimmed : null;
 }
 
-function formatPlainPct(value: number) {
-  return `${numberValue(value)}%`;
+function formatPlainPct(value: number, locale: Locale) {
+  return `${numberValue(value, locale)}%`;
 }
 
-function formatNullablePct(value: number | null) {
-  return value === null ? "—" : formatPlainPct(value);
+function formatNullablePct(value: number | null, locale: Locale) {
+  return value === null ? "—" : formatPlainPct(value, locale);
 }
 
-function formatNullableMoney(value: number | null) {
-  return value === null ? "—" : money(value);
+function formatNullableMoney(value: number | null, locale: Locale) {
+  return value === null ? "—" : money(value, locale);
 }

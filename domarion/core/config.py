@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "Domarion Analytics API"
+    app_name: str = "Domarion API"
     environment: str = "local"
     database_url: str = "postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
     redis_url: str = "redis://localhost:6379/0"

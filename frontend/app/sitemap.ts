@@ -6,25 +6,15 @@ import { SEO_GUIDES } from "@/lib/seoGuides";
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = siteUrl();
   const now = new Date();
-  const staticRoutes = [
+  const publicDiscoveryRoutes = [
     "",
-    "/beta",
-    "/realtors",
+    "/check",
     "/guides",
     "/areas",
-    "/areas/compare",
-    "/compare",
-    "/developers",
-    "/news",
-    "/market",
-    "/mortgage",
-    "/pricing",
-    "/reports",
-    "/alerts",
   ];
 
   return [
-    ...staticRoutes.map((route) => ({
+    ...publicDiscoveryRoutes.map((route) => ({
       url: `${baseUrl}${route}`,
       lastModified: now,
       changeFrequency: "weekly" as const,

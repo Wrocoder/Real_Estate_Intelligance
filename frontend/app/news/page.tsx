@@ -134,7 +134,7 @@ export default function NewsPage() {
         <div className="toolbar">
           <input
             className="input"
-            placeholder={copy.placeholders.areaId}
+            placeholder={copy.placeholders.area}
             value={areaId}
             onChange={(event) => setAreaId(event.target.value)}
           />
@@ -191,7 +191,7 @@ export default function NewsPage() {
                       {article.affected_districts.join(", ") || copy.values.allAreas}
                     </small>
                     {article.affected_area_ids.length > 0 ? (
-                      <small>{copy.values.areaIds(article.affected_area_ids.join(", "))}</small>
+                      <small>{copy.values.relatedAreas(article.affected_area_ids.length)}</small>
                     ) : null}
                   </span>
                 </button>
@@ -324,7 +324,7 @@ export default function NewsPage() {
                     <div className="meta-row">
                       {aiSummary.guardrails.map((guardrail, index) => (
                         <span className="status-pill" key={`${guardrail.code}-${index}`}>
-                          {guardrail.code}
+                          {guardrail.message}
                         </span>
                       ))}
                     </div>

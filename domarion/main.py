@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title=settings.app_name,
         version=__version__,
-        description="API foundation for Domarion Analytics real estate intelligence.",
+        description="API foundation for Domarion real estate decision support.",
     )
 
     app.add_middleware(

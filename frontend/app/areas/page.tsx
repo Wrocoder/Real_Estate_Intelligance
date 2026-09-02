@@ -7,9 +7,9 @@ import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 
 export const metadata: Metadata = {
-  title: "Районы Вроцлава: цены квартир, риски и потенциал | Domarion",
+  title: "Dzielnice Wrocławia: ceny mieszkań, ryzyka i potencjał | Domarion",
   description:
-    "SEO-справочник Domarion по районам Вроцлава: цена за m2, активное предложение, динамика рынка, инфраструктура и риски покупки квартиры.",
+    "Przewodnik Domarion po dzielnicach Wrocławia: cena za m2, aktywna podaż, dynamika rynku, infrastruktura i ryzyka zakupu mieszkania.",
   alternates: {
     canonical: `${siteUrl()}/areas`,
   },
@@ -20,18 +20,18 @@ export default function AreasPage() {
     <>
       <header className="page-header">
         <div>
-          <h1>Районы Вроцлава</h1>
+          <h1>Dzielnice Wrocławia</h1>
           <p>
-            Статические SEO-страницы с рыночными метриками, рисками и практичными
-            выводами для покупки квартиры.
+            Porównaj dzielnice pod kątem ceny, płynności, transportu,
+            infrastruktury i ryzyk przed zakupem mieszkania.
           </p>
         </div>
         <div className="toolbar">
           <Link className="button" href="/areas/compare">
-            <BarChart3 size={16} /> Сравнить
+            <BarChart3 size={16} /> Porównaj
           </Link>
           <Link className="button primary" href="/">
-            <MapPinned size={16} /> Открыть подбор
+            <MapPinned size={16} /> Znajdź mieszkania
           </Link>
         </div>
       </header>
@@ -46,20 +46,20 @@ export default function AreasPage() {
             </div>
             <div className="area-metrics">
               <span>
-                <small>Медиана</small>
+                <small>Mediana</small>
                 <strong>{money(area.medianPricePerM2)}/m2</strong>
               </span>
               <span>
-                <small>Объявлений</small>
+                <small>Ogłoszeń</small>
                 <strong>{numberValue(area.activeListings)}</strong>
               </span>
               <span>
-                <small>90 дней</small>
+                <small>90 dni</small>
                 <strong>{percent(area.priceChange90dPct)}</strong>
               </span>
             </div>
             <Link className="button" href={`/areas/${area.slug}`}>
-              Подробнее <ArrowRight size={16} />
+              Szczegóły <ArrowRight size={16} />
             </Link>
           </article>
         ))}
@@ -67,9 +67,9 @@ export default function AreasPage() {
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>Гайды для выбора района</h2>
+          <h2>Przewodniki po wyborze dzielnicy</h2>
           <Link className="button" href="/guides">
-            Все гайды
+            Wszystkie przewodniki
           </Link>
         </div>
         <div className="panel-body guide-related-grid">

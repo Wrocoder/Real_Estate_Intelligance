@@ -17,39 +17,39 @@ import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
-  title: "Аналитика и отчеты для риелторов | Domarion Analytics",
+  title: "Аналитика и отчеты для риелторов | Domarion",
   description:
-    "Domarion для риелторов: branded reports, сравнение объектов, аргументы по цене, районная аналитика и paid beta для агентств.",
+    "Domarion для риелторов: клиентские отчеты, сравнение объектов, аргументы по цене и районная аналитика для агентств.",
 };
 
 const realtorUseCases = [
   {
     icon: Presentation,
     title: "Отчет для клиента",
-    text: "Готовьте buyer/realtor PDF с ценой, comparables, картой района, рисками и вопросами продавцу.",
+    text: "Готовьте клиентский PDF с ценой, похожими объектами, картой района, рисками и вопросами продавцу.",
   },
   {
     icon: BarChart3,
     title: "Аргументы по цене",
-    text: "Показывайте fair price, price history, дни на рынке и negotiation anchor без ручной сборки таблиц.",
+    text: "Показывайте рыночный диапазон, историю цены, дни на рынке и аргумент для торга без ручной сборки таблиц.",
   },
   {
     icon: Layers3,
     title: "Районная аналитика",
-    text: "Сравнивайте районы, инфраструктуру, planned investments и market snapshots для презентации клиенту.",
+    text: "Сравнивайте районы, инфраструктуру, планируемые инвестиции и состояние рынка для презентации клиенту.",
   },
   {
     icon: UsersRound,
     title: "Команда агентства",
-    text: "Workspace, роли owner/admin/agent, white-label поля и история отчетов для повторяемого процесса.",
+    text: "Рабочее пространство агентства, роли команды, брендирование и история отчетов для повторяемого процесса.",
   },
 ];
 
 const packages = [
-  "Object report для клиента перед просмотром или offer.",
-  "Area report для выбора района и объяснения бюджета.",
-  "Realtor branded report с логотипом, цветами и disclaimer.",
-  "Hidden gems shortlist для инвестора или активного покупателя.",
+  "Отчет по квартире для клиента перед просмотром или предложением.",
+  "Отчет по району для выбора локации и объяснения бюджета.",
+  "Брендированный отчет риелтора с логотипом, цветами и оговорками.",
+  "Подборка сильных вариантов для инвестора или активного покупателя.",
 ];
 
 export default function RealtorsPage() {
@@ -59,15 +59,15 @@ export default function RealtorsPage() {
         <LandingMapScene variant="realtor" />
         <div className="landing-hero-shade" />
         <div className="landing-hero-content">
-          <span className="landing-eyebrow">Paid beta · Agencies and solo agents</span>
+          <span className="landing-eyebrow">Agencies and solo agents</span>
           <h1>Аналитика и отчеты для риелторов</h1>
           <p>
             Быстро превращайте объект, район и историю цены в клиентский отчет:
-            аргументы для торга, сравнение с рынком и понятный next step.
+            аргументы для торга, сравнение с рынком и понятный следующий шаг.
           </p>
           <div className="landing-cta-row">
             <Link className="button primary landing-button" href="/pricing?source=realtor-beta">
-              <Handshake size={18} /> Запустить beta workflow
+              <Handshake size={18} /> Подключить отчеты
             </Link>
             <Link className="button landing-button" href="/reports?source=realtor-beta">
               <FileText size={18} /> Открыть отчеты
@@ -76,14 +76,14 @@ export default function RealtorsPage() {
         </div>
       </section>
 
-      <section className="landing-proof-strip" aria-label="Realtor beta metrics">
+      <section className="landing-proof-strip" aria-label="Realtor report details">
         <div>
           <strong>5 отчетов</strong>
           <span>пакет для первой клиентской проверки</span>
         </div>
         <div>
           <strong>White-label</strong>
-          <span>логотип, цвета и агентский disclaimer</span>
+          <span>логотип, цвета и оговорки агентства</span>
         </div>
         <div>
           <strong>Client-ready</strong>
@@ -91,7 +91,7 @@ export default function RealtorsPage() {
         </div>
         <div>
           <strong>Wrocław</strong>
-          <span>фокус на рынке и районах MVP</span>
+          <span>фокус на рынке и районах города</span>
         </div>
       </section>
 
@@ -120,7 +120,7 @@ export default function RealtorsPage() {
 
       <section className="landing-section landing-section-muted">
         <div className="landing-section-header">
-          <span className="landing-eyebrow">Paid beta offer</span>
+          <span className="landing-eyebrow">Пакеты отчетов</span>
           <h2>Что можно продавать или тестировать уже сейчас</h2>
         </div>
         <ul className="landing-offer-list">
@@ -137,25 +137,25 @@ export default function RealtorsPage() {
 
       <section className="landing-section landing-compliance">
         <div>
-          <span className="landing-eyebrow">Trust layer</span>
+          <span className="landing-eyebrow">Доверие</span>
           <h2>Отчеты не подменяют эксперта, но дают сильную базу для клиента</h2>
         </div>
         <ul className="section-list">
           <li>
             <ShieldCheck size={16} />
-            В отчетах есть disclaimers и source-grounded объяснения.
+            В отчетах есть оговорки и объяснения с привязкой к источникам.
           </li>
           <li>
             <Building2 size={16} />
-            Developer reputation block добавляется, если застройщик распознан.
+            Блок репутации застройщика добавляется, если застройщик распознан.
           </li>
           <li>
             <BarChart3 size={16} />
-            Экспорт CSV/JSON доступен на realtor/investor планах.
+            Экспорт CSV/JSON доступен на профессиональных планах.
           </li>
         </ul>
         <Link className="button primary landing-button" href="/pricing?source=realtor-beta-bottom">
-          <ArrowRight size={18} /> Посмотреть paid reports
+          <ArrowRight size={18} /> Посмотреть отчеты
         </Link>
       </section>
     </div>

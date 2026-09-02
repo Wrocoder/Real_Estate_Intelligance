@@ -11,8 +11,8 @@ import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Domarion Analytics",
-  description: "Real estate intelligence for Wrocław property decisions.",
+  title: "Domarion",
+  description: "Check an apartment before buying in Poland.",
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -25,10 +25,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <div className="app-shell">
           <aside className="sidebar">
             <Link href="/" className="brand">
-              <span className="brand-mark">D</span>
+              <span className="brand-mark">W</span>
               <span>
                 <strong>Domarion</strong>
-                <small>Analytics</small>
+                <small>Sprawdzenie mieszkania</small>
               </span>
             </Link>
             <LocalizedNavigation initialLocale={initialLocale} />

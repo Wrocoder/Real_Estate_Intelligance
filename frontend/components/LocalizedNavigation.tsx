@@ -1,10 +1,9 @@
 "use client";
 
 import {
-  BookOpen,
+  Building2,
   ClipboardCheck,
-  CreditCard,
-  FileText,
+  MapPinned,
   Search,
   UserCircle,
   type LucideIcon,
@@ -24,9 +23,8 @@ type NavigationItem = {
 const NAVIGATION_ITEMS: NavigationItem[] = [
   { href: "/check", labelKey: "check", icon: ClipboardCheck },
   { href: "/", labelKey: "explorer", icon: Search },
-  { href: "/reports", labelKey: "reports", icon: FileText },
-  { href: "/pricing", labelKey: "pricing", icon: CreditCard },
-  { href: "/guides", labelKey: "guides", icon: BookOpen },
+  { href: "/check/drafts", labelKey: "myApartments", icon: Building2 },
+  { href: "/areas", labelKey: "areas", icon: MapPinned },
   { href: "/account", labelKey: "account", icon: UserCircle },
 ];
 

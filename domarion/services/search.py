@@ -364,6 +364,10 @@ def _sort_key(analysis: ListingAnalysis, sort: ListingSort) -> tuple[Any, str]:
             value = scores.risk_score
         case "negotiation_score_asc" | "negotiation_score_desc":
             value = scores.negotiation_score
+        case "liquidity_score_asc" | "liquidity_score_desc":
+            value = scores.liquidity_score
+        case "rental_potential_score_asc" | "rental_potential_score_desc":
+            value = scores.rental_potential_score
         case "developer_reputation_score_desc":
             value = (
                 developer_reputation.reputation_score if developer_reputation is not None else -1
@@ -394,6 +398,8 @@ def _sort_descending(sort: ListingSort) -> bool:
         "investment_score_desc",
         "risk_score_desc",
         "negotiation_score_desc",
+        "liquidity_score_desc",
+        "rental_potential_score_desc",
         "developer_reputation_score_desc",
         "developer_confidence_score_desc",
         "days_on_market_desc",

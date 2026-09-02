@@ -34,7 +34,7 @@ def test_request_logging_emits_structured_json(caplog) -> None:
     assert payload["path"] == "/health"
     assert payload["status_code"] == 200
     assert payload["duration_ms"] >= 0
-    assert payload["service"] == "Domarion Analytics API"
+    assert payload["service"] == "Domarion API"
     assert payload["environment"] == "local"
 
 

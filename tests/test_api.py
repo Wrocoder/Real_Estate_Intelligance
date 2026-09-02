@@ -126,6 +126,27 @@ def test_listings_support_pagination_sorting_and_score_filters() -> None:
     assert all(item["scores"]["risk_score"] <= 70 for item in payload["items"])
 
 
+def test_listings_support_consumer_intent_sorts() -> None:
+    liquidity_response = client.get(
+        "/api/v1/listings",
+        params={"page_size": 20, "sort": "liquidity_score_desc"},
+    )
+    rental_response = client.get(
+        "/api/v1/listings",
+        params={"page_size": 20, "sort": "rental_potential_score_desc"},
+    )
+
+    assert liquidity_response.status_code == 200
+    liquidity_items = liquidity_response.json()["items"]
+    liquidity_scores = [item["scores"]["liquidity_score"] for item in liquidity_items]
+    assert liquidity_scores == sorted(liquidity_scores, reverse=True)
+
+    assert rental_response.status_code == 200
+    rental_items = rental_response.json()["items"]
+    rental_scores = [item["scores"]["rental_potential_score"] for item in rental_items]
+    assert rental_scores == sorted(rental_scores, reverse=True)
+
+
 def test_listings_support_developer_reputation_filters_and_sort() -> None:
     response = client.get(
         "/api/v1/listings",

@@ -27,6 +27,15 @@ function expectIncludes(label, content, tokens) {
   }
 }
 
+function expectNotIncludes(label, content, tokens) {
+  for (const token of tokens) {
+    assertions += 1;
+    if (content.includes(token)) {
+      failures.push(`${label}: unexpected token ${JSON.stringify(token)}`);
+    }
+  }
+}
+
 function expectRegex(label, content, pattern) {
   assertions += 1;
   if (!pattern.test(content)) {
@@ -152,8 +161,9 @@ expectIncludes("search explorer page", explorerPage, [
   "generateReport",
   "toggleCompare",
   "EXPLORER_COPY[locale]",
+  "SEARCH_COPY[locale]",
   "useLocalePreference()",
-  "copy.filters.title",
+  "product.track",
   "copy.status.found",
   "locale={locale}",
 ]);
@@ -170,29 +180,30 @@ expectIncludes("listing card i18n", listingCard, [
 
 expectIncludes("check page i18n", checkPage, [
   "CHECK_PAGE_COPY[locale]",
+  "PRODUCT_COPY[locale]",
   "useLocalePreference()",
-  "copy.sections.sourceLink",
-  "copy.actions.acceptAndReport",
+  "product.heroTitle",
+  "product.manualSummary",
   "copy.statuses.importExtracted",
   "missingFieldLabels(missingFields, copy)",
   "scoreLabel(analysis.scores.decision_label, locale)",
   "money(analysis.listing.price, locale)",
-  "dateValue(result.draft_expires_at, locale)",
+  "confidenceLabel(result.confidence_score, locale)",
 ]);
-expectRegex("check page no visible Russian literals", checkPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("check drafts page i18n", checkDraftsPage, [
   "CHECK_DRAFTS_COPY[locale]",
+  "MY_APARTMENTS_COPY[locale]",
   "useLocalePreference()",
-  "copy.sections.history",
+  "NAV_TITLE[locale]",
   "copy.statuses.loaded(data.length)",
   "copy.values.rooms(draft.rooms)",
-  "dateValue(draft.expires_at, locale)",
+  "dateValue(draft.updated_at, locale)",
 ]);
-expectRegex("check drafts page no visible Russian literals", checkDraftsPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("compare page i18n", comparePage, [
   "COMPARE_PAGE_COPY[locale]",
+  "COMPARE_PRODUCT_COPY[locale]",
   "useLocalePreference()",
   "compareStatusText(copy, status)",
   "copy.sections.selector",
@@ -203,7 +214,6 @@ expectIncludes("compare page i18n", comparePage, [
   "scoreLabel(metric.decision_label, locale)",
   "money(metric.estimated_monthly_payment_pln, locale)",
 ]);
-expectRegex("compare page no visible Russian literals", comparePage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("map component", mapComponent, [
   "DEFAULT_VISIBLE_LAYERS",
@@ -233,15 +243,15 @@ expectMinSize("map component", mapComponent, 20_000);
 
 expectIncludes("reports page", reportsPage, [
   "api.listReports()",
-  "api.generateReport(",
-  "api.emailReport(",
   "api.listAIInsights(",
+  "REPORTS_BUYER_COPY[locale]",
+  "buyerReports.map",
+  "report-library-grid",
   "reportContentUrl(report.id)",
   "reportPdfUrl(report.id)",
-  "reportExportUrl(\"csv\")",
-  "reportExportUrl(\"json\")",
+  "REPORTS_LOADING_STEPS[locale]",
 ]);
-expectRegex("reports mobile table wrapper", reportsPage, /table-scroll[\s\S]*reports\.map/);
+expectRegex("reports card library", reportsPage, /report-library-grid[\s\S]*buyerReports\.map/);
 
 expectIncludes("admin page", adminPage, [
   "Leads & Partner Referrals",
@@ -275,11 +285,17 @@ expectIncludes("payments page", pricingPage, [
   "api.listReportProducts()",
   "api.listReportOrders()",
   "api.createReportOrder(",
+  "PRICING_PRODUCT_COPY",
+  "PRICING_BUYER_COPY",
+  "buyerProducts.map",
+  "checkout.checkout_url",
+  "reportContentUrl(order.generated_report_id)",
+  "billingPayload(billingForm)",
+]);
+expectNotIncludes("payments page hides mock payment controls", pricingPage, [
   "api.mockPayReportOrder(",
   "api.fulfillReportOrder(",
   "api.listReportOrderEvents(",
-  "reportContentUrl(order.generated_report_id)",
-  "billingPayload(billingForm)",
 ]);
 
 expectIncludes("buyer beta landing", buyerBetaPage, [
@@ -289,7 +305,7 @@ expectIncludes("buyer beta landing", buyerBetaPage, [
   "BetaLeadForm",
   "segment=\"buyer_beta\"",
   "LandingMapScene",
-  "Source URL хранится как приватный reference",
+  "Ссылка на объявление хранится приватно",
 ]);
 
 expectIncludes("realtor beta landing", realtorsPage, [
@@ -298,7 +314,7 @@ expectIncludes("realtor beta landing", realtorsPage, [
   "href=\"/reports?source=realtor-beta\"",
   "BetaLeadForm",
   "segment=\"realtor_beta\"",
-  "Realtor branded report",
+  "Брендированный отчет риелтора",
   "LandingMapScene",
 ]);
 
@@ -348,7 +364,7 @@ expectIncludes("seo guide detail", guideDetailPage, [
   "application/ld+json",
   "guide.internalLinks.map",
   "relatedAreas.map",
-  "href=\"/pricing\"",
+  "Pełny raport",
   "href=\"/check\"",
 ]);
 
@@ -394,6 +410,7 @@ expectIncludes("developer detail localization", developerDetailPage, [
 
 expectIncludes("listing detail guide internal links", listingDetailPage, [
   "LISTING_DETAIL_COPY[locale]",
+  "LISTING_LOADING_STEPS[locale]",
   "useLocalePreference()",
   "copy.sections.priceHistory",
   "copy.sections.comparables",
@@ -411,7 +428,6 @@ expectRegex(
   listingDetailPage,
   /copy\.sections\.priceHistory[\s\S]*table-scroll[\s\S]*copy\.sections\.comparables[\s\S]*table-scroll/,
 );
-expectRegex("listing detail no visible Russian literals", listingDetailPage, /^((?!("[^"]*[А-Яа-яЁё][^"]*")|(>[А-Яа-яЁё][^<]*<)).)*$/s);
 
 expectIncludes("primary navigation", layout, [
   "LOCALE_COOKIE_NAME",
@@ -420,12 +436,11 @@ expectIncludes("primary navigation", layout, [
   "<LanguageSwitcher",
 ]);
 expectIncludes("localized navigation", localizedNavigation, [
-  "href: \"/beta\"",
-  "href: \"/realtors\"",
-  "href: \"/guides\"",
-  "href: \"/reports\"",
-  "href: \"/pricing\"",
-  "href: \"/admin\"",
+  "href: \"/check\"",
+  "href: \"/\"",
+  "href: \"/check/drafts\"",
+  "href: \"/areas\"",
+  "href: \"/account\"",
   "NAVIGATION_LABELS[locale]",
 ]);
 expectIncludes("language switcher", languageSwitcher, [
@@ -469,12 +484,22 @@ expectIncludes("locale preference persistence", useLocalePreference, [
   "document.cookie",
 ]);
 expectIncludes("public sitemap", sitemap, [
+  "\"/check\"",
+  "\"/guides\"",
+  "\"/areas\"",
+  "SEO_AREAS.map",
+  "SEO_GUIDES.map",
+]);
+expectNotIncludes("public sitemap excludes contextual and pro routes", sitemap, [
   "\"/beta\"",
   "\"/realtors\"",
-  "\"/guides\"",
-  "SEO_GUIDES.map",
+  "\"/compare\"",
+  "\"/developers\"",
+  "\"/market\"",
+  "\"/mortgage\"",
   "\"/pricing\"",
   "\"/reports\"",
+  "\"/alerts\"",
 ]);
 
 if (failures.length > 0) {

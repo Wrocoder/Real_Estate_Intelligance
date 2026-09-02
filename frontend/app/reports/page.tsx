@@ -1,45 +1,181 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, ExternalLink, FileText, Mail, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { CreditCard, Download, ExternalLink, RefreshCw, Search } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
-  reportExportUrl,
   reportContentUrl,
   reportPdfUrl,
   type AccountSummary,
   type AIInsightListItem,
   type GeneratedReportListItem,
-  type ReportAudience,
-  type ReportBranding,
 } from "@/lib/api";
 import { dateValue } from "@/lib/format";
-import { REPORTS_PAGE_COPY, type ReportsPageCopy } from "@/lib/i18n";
+import { REPORTS_PAGE_COPY, type Locale, type ReportsPageCopy } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
+
+const REPORTS_BUYER_COPY: Record<
+  Locale,
+  {
+    title: string;
+    subtitle: string;
+    metrics: {
+      savedReports: string;
+      reportsThisMonth: string;
+      credits: string;
+    };
+    actions: {
+      checkApartment: string;
+      buyReport: string;
+      openHtml: string;
+      openPdf: string;
+    };
+    sections: {
+      nextStep: string;
+      library: string;
+    };
+    descriptions: {
+      checkApartment: string;
+      buyReport: string;
+      empty: string;
+    };
+    values: {
+      noInsight: string;
+      created: (date: string) => string;
+    };
+  }
+> = {
+  en: {
+    title: "My property reports",
+    subtitle: "Saved apartment reports, verdicts and supporting evidence for your buying decisions.",
+    metrics: {
+      savedReports: "Saved reports",
+      reportsThisMonth: "Reports this month",
+      credits: "Report credits",
+    },
+    actions: {
+      checkApartment: "Check an apartment",
+      buyReport: "Buy full report",
+      openHtml: "Open report",
+      openPdf: "Download PDF",
+    },
+    sections: {
+      nextStep: "Next step",
+      library: "Report library",
+    },
+    descriptions: {
+      checkApartment: "Paste an Otodom or OLX link and get a buyer verdict first.",
+      buyReport: "Open pricing after choosing an apartment to unlock the full report.",
+      empty: "Reports appear here after you buy or prepare one from a checked apartment.",
+    },
+    values: {
+      noInsight: "Summary will appear when available",
+      created: (date) => `Created ${date}`,
+    },
+  },
+  pl: {
+    title: "Moje raporty mieszkań",
+    subtitle: "Zapisane raporty, werdykty i uzasadnienia pomagające podjąć decyzję o zakupie.",
+    metrics: {
+      savedReports: "Zapisane raporty",
+      reportsThisMonth: "Raporty w tym miesiącu",
+      credits: "Kredyty raportów",
+    },
+    actions: {
+      checkApartment: "Sprawdź mieszkanie",
+      buyReport: "Kup pełny raport",
+      openHtml: "Otwórz raport",
+      openPdf: "Pobierz PDF",
+    },
+    sections: {
+      nextStep: "Następny krok",
+      library: "Biblioteka raportów",
+    },
+    descriptions: {
+      checkApartment: "Wklej link z Otodom lub OLX i najpierw zobacz werdykt dla kupującego.",
+      buyReport: "Otwórz płatności po wyborze mieszkania, aby odblokować pełny raport.",
+      empty: "Raporty pojawią się tutaj po zakupie albo przygotowaniu ich ze sprawdzonego mieszkania.",
+    },
+    values: {
+      noInsight: "Podsumowanie pojawi się, gdy będzie dostępne",
+      created: (date) => `Utworzono ${date}`,
+    },
+  },
+  ru: {
+    title: "Мои отчеты по квартирам",
+    subtitle: "Сохраненные отчеты, выводы и обоснования для решений о покупке.",
+    metrics: {
+      savedReports: "Сохраненные отчеты",
+      reportsThisMonth: "Отчеты за месяц",
+      credits: "Кредиты отчетов",
+    },
+    actions: {
+      checkApartment: "Проверить квартиру",
+      buyReport: "Купить полный отчет",
+      openHtml: "Открыть отчет",
+      openPdf: "Скачать PDF",
+    },
+    sections: {
+      nextStep: "Следующий шаг",
+      library: "Библиотека отчетов",
+    },
+    descriptions: {
+      checkApartment: "Вставьте ссылку Otodom или OLX и сначала получите вывод для покупателя.",
+      buyReport: "Откройте оплату после выбора квартиры, чтобы разблокировать полный отчет.",
+      empty: "Отчеты появятся здесь после покупки или подготовки из проверенной квартиры.",
+    },
+    values: {
+      noInsight: "Резюме появится, когда будет доступно",
+      created: (date) => `Создан ${date}`,
+    },
+  },
+  uk: {
+    title: "Мої звіти по квартирах",
+    subtitle: "Збережені звіти, висновки й обґрунтування для рішень про купівлю.",
+    metrics: {
+      savedReports: "Збережені звіти",
+      reportsThisMonth: "Звіти за місяць",
+      credits: "Кредити звітів",
+    },
+    actions: {
+      checkApartment: "Перевірити квартиру",
+      buyReport: "Купити повний звіт",
+      openHtml: "Відкрити звіт",
+      openPdf: "Завантажити PDF",
+    },
+    sections: {
+      nextStep: "Наступний крок",
+      library: "Бібліотека звітів",
+    },
+    descriptions: {
+      checkApartment: "Вставте посилання Otodom або OLX і спочатку отримайте висновок для покупця.",
+      buyReport: "Відкрийте оплату після вибору квартири, щоб розблокувати повний звіт.",
+      empty: "Звіти з'являться тут після купівлі або підготовки з перевіреної квартири.",
+    },
+    values: {
+      noInsight: "Резюме з'явиться, коли буде доступне",
+      created: (date) => `Створено ${date}`,
+    },
+  },
+};
+
+const REPORTS_LOADING_STEPS: Record<Locale, string[]> = {
+  en: ["Loading saved reports", "Finding report insights", "Checking available credits"],
+  pl: ["Ładujemy zapisane raporty", "Szukamy podsumowań raportów", "Sprawdzamy dostępne kredyty"],
+  ru: ["Загружаем сохраненные отчеты", "Ищем выводы из отчетов", "Проверяем доступные кредиты"],
+  uk: ["Завантажуємо збережені звіти", "Шукаємо висновки зі звітів", "Перевіряємо доступні кредити"],
+};
 
 export default function ReportsPage() {
   const { locale } = useLocalePreference();
   const copy = REPORTS_PAGE_COPY[locale];
+  const buyerCopy = REPORTS_BUYER_COPY[locale];
   const [reports, setReports] = useState<GeneratedReportListItem[]>([]);
   const [insights, setInsights] = useState<AIInsightListItem[]>([]);
   const [account, setAccount] = useState<AccountSummary | null>(null);
-  const [listingId, setListingId] = useState("wr-001");
-  const [audience, setAudience] = useState<ReportAudience>("buyer");
-  const [branding, setBranding] = useState<ReportBranding>({
-    agency_name: "Domarion Realty",
-    agent_name: "Anna Kowalska",
-    agent_email: "anna@example.com",
-    agent_phone: "+48 500 000 000",
-    website_url: "https://example.com",
-    note: "Prepared for client discussion.",
-    logo_url: "https://example.com/logo.png",
-    primary_color: "#0F766E",
-    accent_color: "#B42318",
-    footer_text: "Prepared by Domarion Realty for client review.",
-    agency_disclaimer: "Agency materials are informational and require independent diligence.",
-  });
   const [status, setStatus] = useState(copy.statuses.loading);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -70,244 +206,126 @@ export default function ReportsPage() {
     void load();
   }, [load]);
 
-  async function generateReport() {
-    setError("");
-    setStatus(copy.statuses.generating);
-    try {
-      const report = await api.generateReport(
-        listingId,
-        audience,
-        audience === "realtor"
-          ? cleanBranding(branding, account?.limits.can_white_label ?? false)
-          : undefined,
-      );
-      const insightData = await api.listAIInsights({ limit: 200 });
-      setReports((current) => [report, ...current]);
-      setInsights(insightData);
-      setStatus(copy.statuses.reportSaved(report.id));
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
-    }
-  }
-
-  const canWhiteLabel = account?.limits.can_white_label ?? false;
+  const buyerReports = reports.filter((report) => report.audience === "buyer");
 
   return (
     <>
       <header className="page-header">
         <div>
-          <h1>{copy.title}</h1>
-          <p>{copy.subtitle}</p>
+          <h1>{buyerCopy.title}</h1>
+          <p>{buyerCopy.subtitle}</p>
         </div>
         <div className="button-row">
-          {account?.limits.can_export ? (
-            <>
-              <a className="button" href={reportExportUrl("csv")}>
-                <Download size={16} /> {copy.actions.csv}
-              </a>
-              <a className="button" href={reportExportUrl("json")}>
-                <Download size={16} /> {copy.actions.json}
-              </a>
-            </>
-          ) : (
-            <span className="muted">{copy.values.exportUnavailable}</span>
-          )}
           <button className="button" type="button" onClick={() => void load()}>
             <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
         </div>
       </header>
 
-      <section className="panel">
-        <div className="panel-header">
-          <h2>{copy.sections.create}</h2>
-          <span className="status-line">{status}</span>
+      <section className="metric-grid">
+        <div className="metric">
+          <span>{buyerCopy.metrics.savedReports}</span>
+          <strong>{buyerReports.length}</strong>
         </div>
-        <div className="panel-body form-grid">
-          <label className="field">
-            <span>{copy.fields.listingId}</span>
-            <input
-              className="input"
-              value={listingId}
-              onChange={(event) => setListingId(event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>{copy.fields.audience}</span>
-            <select
-              className="select"
-              value={audience}
-              onChange={(event) => setAudience(event.target.value as ReportAudience)}
-            >
-              <option value="buyer">{copy.values.audienceLabels.buyer}</option>
-              <option value="realtor">{copy.values.audienceLabels.realtor}</option>
-              <option value="investor">{copy.values.audienceLabels.investor}</option>
-            </select>
-          </label>
-          <button className="button primary" type="button" onClick={() => void generateReport()}>
-            <FileText size={16} /> {copy.actions.generate}
-          </button>
-          {audience === "realtor" ? (
-            <>
-              <BrandingField
-                label={copy.fields.agency}
-                value={branding.agency_name ?? ""}
-                onChange={(value) => setBranding({ ...branding, agency_name: value })}
-              />
-              <BrandingField
-                label={copy.fields.agent}
-                value={branding.agent_name ?? ""}
-                onChange={(value) => setBranding({ ...branding, agent_name: value })}
-              />
-              <BrandingField
-                label={copy.fields.email}
-                value={branding.agent_email ?? ""}
-                onChange={(value) => setBranding({ ...branding, agent_email: value })}
-              />
-              <BrandingField
-                label={copy.fields.phone}
-                value={branding.agent_phone ?? ""}
-                onChange={(value) => setBranding({ ...branding, agent_phone: value })}
-              />
-              <BrandingField
-                label={copy.fields.website}
-                value={branding.website_url ?? ""}
-                onChange={(value) => setBranding({ ...branding, website_url: value })}
-              />
-              <BrandingField
-                label={copy.fields.note}
-                value={branding.note ?? ""}
-                onChange={(value) => setBranding({ ...branding, note: value })}
-              />
-              {canWhiteLabel ? (
-                <>
-                  <BrandingField
-                    label={copy.fields.logoUrl}
-                    value={branding.logo_url ?? ""}
-                    onChange={(value) => setBranding({ ...branding, logo_url: value })}
-                  />
-                  <ColorField
-                    label={copy.fields.primaryColor}
-                    value={branding.primary_color ?? "#0F766E"}
-                    onChange={(value) => setBranding({ ...branding, primary_color: value })}
-                  />
-                  <ColorField
-                    label={copy.fields.accentColor}
-                    value={branding.accent_color ?? "#B42318"}
-                    onChange={(value) => setBranding({ ...branding, accent_color: value })}
-                  />
-                  <BrandingField
-                    label={copy.fields.footer}
-                    value={branding.footer_text ?? ""}
-                    onChange={(value) => setBranding({ ...branding, footer_text: value })}
-                  />
-                  <BrandingField
-                    label={copy.fields.disclaimer}
-                    value={branding.agency_disclaimer ?? ""}
-                    onChange={(value) => setBranding({ ...branding, agency_disclaimer: value })}
-                  />
-                </>
-              ) : (
-                <div className="field">
-                  <span>{copy.fields.whiteLabel}</span>
-                  <small className="muted">{copy.values.whiteLabelHint}</small>
-                </div>
-              )}
-            </>
-          ) : null}
+        <div className="metric">
+          <span>{buyerCopy.metrics.reportsThisMonth}</span>
+          <strong>
+            {account
+              ? `${account.usage.reports_this_month}/${account.limits.monthly_reports}`
+              : copy.values.noInsight}
+          </strong>
         </div>
+        <div className="metric">
+          <span>{buyerCopy.metrics.credits}</span>
+          <strong>{account ? account.usage.report_credits_available : 0}</strong>
+        </div>
+        <div className="metric">
+          <span>{copy.table.date}</span>
+          <strong>{status}</strong>
+        </div>
+      </section>
+
+      <section className="account-action-grid" aria-label={buyerCopy.sections.nextStep}>
+        <Link className="account-action-card primary" href="/check">
+          <Search size={18} />
+          <span>
+            <strong>{buyerCopy.actions.checkApartment}</strong>
+            <small>{buyerCopy.descriptions.checkApartment}</small>
+          </span>
+        </Link>
+        <Link className="account-action-card" href="/pricing">
+          <CreditCard size={18} />
+          <span>
+            <strong>{buyerCopy.actions.buyReport}</strong>
+            <small>{buyerCopy.descriptions.buyReport}</small>
+          </span>
+        </Link>
       </section>
 
       <section className="panel" style={{ marginTop: 16 }}>
         <div className="panel-header">
-          <h2>{copy.sections.history}</h2>
-          <span className="muted">{copy.values.items(reports.length)}</span>
+          <h2>{buyerCopy.sections.library}</h2>
+          <span className="muted">{copy.values.items(buyerReports.length)}</span>
         </div>
         <div className="panel-body">
           {error ? (
             <ErrorBlock message={error} prefix={copy.errorPrefix} />
-          ) : reports.length === 0 && isLoading ? (
-            <LoadingBlock label={copy.empty.loading} />
-          ) : reports.length === 0 ? (
-            <EmptyBlock label={copy.empty.noReports} />
+          ) : buyerReports.length === 0 && isLoading ? (
+            <LoadingBlock label={copy.empty.loading} steps={REPORTS_LOADING_STEPS[locale]} />
+          ) : buyerReports.length === 0 ? (
+            <EmptyBlock label={buyerCopy.descriptions.empty} />
           ) : (
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>{copy.table.report}</th>
-                    <th>{copy.table.object}</th>
-                    <th>{copy.table.audience}</th>
-                    <th>{copy.table.insight}</th>
-                    <th>{copy.table.date}</th>
-                    <th>{copy.table.content}</th>
-                    <th>{copy.table.pdf}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((report) => {
-                    const insight = insightForReport(insights, report.id);
-                    return (
-                      <tr key={report.id}>
-                        <td>{report.title}</td>
-                        <td>{report.listing_id}</td>
-                        <td>{copy.values.audienceLabels[report.audience] ?? report.audience}</td>
-                        <td>
-                          {insight ? (
-                            <>
-                              <strong>{insightLabel(insight, copy)}</strong>
-                              <small>{insight.summary}</small>
-                            </>
-                          ) : (
-                            <span className="muted">{copy.values.noInsight}</span>
-                          )}
-                        </td>
-                        <td>{dateValue(report.created_at, locale)}</td>
-                        <td>
-                          <a
-                            className="button"
-                            href={reportContentUrl(report.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <ExternalLink size={16} /> {copy.actions.open}
-                          </a>
-                          <button
-                            className="button"
-                            type="button"
-                            onClick={() => void emailReport(report.id)}
-                            style={{ marginLeft: 8 }}
-                          >
-                            <Mail size={16} /> {copy.actions.email}
-                          </button>
-                        </td>
-                        <td>
-                          <a
-                            className="button"
-                            href={reportPdfUrl(report.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            <Download size={16} /> {copy.actions.pdf}
-                          </a>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="report-library-grid">
+              {buyerReports.map((report) => {
+                const insight = insightForReport(insights, report.id);
+                return (
+                  <article className="report-library-card" key={report.id}>
+                    <div className="panel-header inline">
+                      <div>
+                        <h3>{report.title}</h3>
+                        <p className="muted">{reportSubject(report.listing_id, locale)}</p>
+                      </div>
+                      <span className="status-pill info">
+                        {copy.values.audienceLabels[report.audience] ?? report.audience}
+                      </span>
+                    </div>
+
+                    <div className="report-insight">
+                      <strong>{insight ? insightLabel(insight, copy) : buyerCopy.values.noInsight}</strong>
+                      {insight ? <p>{insight.summary}</p> : null}
+                    </div>
+
+                    <div className="meta-row">
+                      <span>{buyerCopy.values.created(dateValue(report.created_at, locale))}</span>
+                    </div>
+
+                    <div className="button-row">
+                      <a
+                        className="button primary"
+                        href={reportContentUrl(report.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <ExternalLink size={16} /> {buyerCopy.actions.openHtml}
+                      </a>
+                      <a
+                        className="button"
+                        href={reportPdfUrl(report.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        <Download size={16} /> {buyerCopy.actions.openPdf}
+                      </a>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
     </>
   );
-}
-
-async function emailReport(reportId: string) {
-  const result = await api.emailReport(reportId, { dry_run: true });
-  window.alert(result.message);
 }
 
 function insightForReport(insights: AIInsightListItem[], reportId: string) {
@@ -323,56 +341,19 @@ function insightLabel(insight: AIInsightListItem, copy: ReportsPageCopy) {
   return copy.values.insightLabels[insight.insight_type] ?? copy.values.insightLabels.report_summary;
 }
 
-function BrandingField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input className="input" value={value} onChange={(event) => onChange(event.target.value)} />
-    </label>
-  );
+function reportSubject(reference: string, locale: Locale) {
+  if (reference.startsWith("area:")) {
+    return {
+      en: "Area report",
+      pl: "Raport obszaru",
+      ru: "Отчет по району",
+      uk: "Звіт по району",
+    }[locale];
+  }
+  return {
+    en: "Apartment report",
+    pl: "Raport mieszkania",
+    ru: "Отчет по квартире",
+    uk: "Звіт по квартирі",
+  }[locale];
 }
-
-function ColorField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <label className="field">
-      <span>{label}</span>
-      <input
-        className="input"
-        type="color"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    </label>
-  );
-}
-
-function cleanBranding(branding: ReportBranding, canWhiteLabel: boolean): ReportBranding {
-  const entries = Object.entries(branding)
-    .filter(([key]) => canWhiteLabel || !WHITE_LABEL_BRANDING_FIELDS.has(key))
-    .map(([key, value]) => [key, value?.trim() || null]);
-  return Object.fromEntries(entries) as ReportBranding;
-}
-
-const WHITE_LABEL_BRANDING_FIELDS = new Set([
-  "logo_url",
-  "primary_color",
-  "accent_color",
-  "footer_text",
-  "agency_disclaimer",
-]);

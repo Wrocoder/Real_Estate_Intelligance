@@ -26,7 +26,7 @@ def test_generate_and_list_saved_html_report() -> None:
     assert payload["listing_id"] == "wr-001"
     assert payload["report_format"] == "html"
     assert payload["content_type"].startswith("text/html")
-    assert "Domarion Analytics" in payload["content"]
+    assert "Domarion" in payload["content"]
     assert payload["report_metadata"]["investment_score"] >= 0
     assert payload["report_metadata"]["decision_label"]
     assert payload["report_metadata"]["price_label"]

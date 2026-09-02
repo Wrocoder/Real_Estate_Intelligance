@@ -65,12 +65,22 @@ type BuyerDecisionCopy = {
     monthlyPayment: string;
     renovationCondition: string;
     budgetSource: string;
+    purchasePrice: string;
+    pccTax: string;
+    notary: string;
+    bankCosts: string;
     upfrontCash: string;
     renovation: string;
     furniture: string;
     readyAlternative: string;
     gap: string;
     empty: string;
+    aboveRange: (value: string) => string;
+    belowRange: (value: string) => string;
+    withinRange: string;
+    confidenceHigh: string;
+    confidenceMedium: string;
+    confidenceLow: string;
   };
   statuses: Record<BuyerVerdictStatus, string>;
   intents: Record<string, string>;
@@ -86,19 +96,19 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       fairPrice: "Fair price",
       recommendedOffer: "Recommended offer",
       maxOffer: "Max reasonable",
-      moveInCost: "Move-in cost",
-      completeness: "Check completeness",
+      moveInCost: "Estimated total",
+      completeness: "Data quality",
     },
     sections: {
       reasons: "Why it works",
       risks: "Main risks",
       unknowns: "Not verified",
       negotiation: "Negotiation assistant",
-      dueDiligence: "Property due diligence",
+      dueDiligence: "Viewing checklist",
       totalCost: "Total acquisition cost",
       knowledge: "What we know",
       preViewing: "Before viewing",
-      watch: "Object watch",
+      watch: "Track this apartment",
       sources: "Sources and confidence",
       intent: "Fit by buyer intent",
     },
@@ -107,7 +117,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Realistic deal",
       walkAway: "Do not exceed",
       posture: "Posture",
-      score: "Score",
+      score: "Domarion Score",
       documents: "Documents",
       sellerQuestions: "Seller questions",
       photos: "Photos",
@@ -120,18 +130,28 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       updated: "Updated",
       confidence: "Confidence",
       selectedIntent: "Goal",
-      monthlyPayment: "Monthly baseline",
+      monthlyPayment: "Estimated monthly payment",
       renovationCondition: "Condition",
       budgetSource: "Budget source",
-      upfrontCash: "Upfront cash",
+      purchasePrice: "Apartment",
+      pccTax: "PCC",
+      notary: "Notary and court",
+      bankCosts: "Bank costs",
+      upfrontCash: "Down payment and fees",
       renovation: "Renovation",
       furniture: "Furniture",
       readyAlternative: "Ready alternative",
       gap: "Post-renovation gap",
       empty: "No data.",
+      aboveRange: (value) => `${value} above the estimated market range`,
+      belowRange: (value) => `${value} below the estimated market range`,
+      withinRange: "Within the estimated market range",
+      confidenceHigh: "High",
+      confidenceMedium: "Medium",
+      confidenceLow: "Low",
     },
     statuses: {
-      buy: "BUY",
+      buy: "WORTH CONSIDERING",
       negotiate: "NEGOTIATE",
       avoid: "AVOID",
       verify_first: "VERIFY FIRST",
@@ -150,22 +170,22 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     metrics: {
       forYou: "Dla Ciebie",
       sellerPrice: "Cena sprzedającego",
-      fairPrice: "Fair price",
+      fairPrice: "Szacowany zakres ceny",
       recommendedOffer: "Rekomendowana oferta",
       maxOffer: "Rozsądny sufit",
-      moveInCost: "Koszt wejścia",
-      completeness: "Pełność sprawdzenia",
+      moveInCost: "Szacowany koszt całkowity",
+      completeness: "Pokrycie danych",
     },
     sections: {
       reasons: "Dlaczego warto",
       risks: "Główne ryzyka",
       unknowns: "Niezweryfikowane",
       negotiation: "Asystent negocjacji",
-      dueDiligence: "Property due diligence",
+      dueDiligence: "Lista do sprawdzenia",
       totalCost: "Całkowity koszt zakupu",
       knowledge: "Co wiemy",
       preViewing: "Przed oględzinami",
-      watch: "Object watch",
+      watch: "Śledź to mieszkanie",
       sources: "Źródła i pewność",
       intent: "Dopasowanie do celu",
     },
@@ -174,7 +194,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Realna transakcja",
       walkAway: "Nie przekraczać",
       posture: "Pozycja",
-      score: "Score",
+      score: "Ocena Domarion",
       documents: "Dokumenty",
       sellerQuestions: "Pytania do sprzedającego",
       photos: "Zdjęcia",
@@ -189,16 +209,26 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       selectedIntent: "Cel",
       monthlyPayment: "Rata bazowa",
       renovationCondition: "Stan",
-      budgetSource: "Źródło budżetu",
-      upfrontCash: "Gotówka na start",
+      budgetSource: "Źródło szacunku",
+      purchasePrice: "Mieszkanie",
+      pccTax: "PCC",
+      notary: "Notariusz i sąd",
+      bankCosts: "Koszty bankowe",
+      upfrontCash: "Wkład i opłaty na start",
       renovation: "Remont",
       furniture: "Meble",
       readyAlternative: "Gotowa alternatywa",
       gap: "Różnica po remoncie",
       empty: "Brak danych.",
+      aboveRange: (value) => `${value} powyżej szacowanego zakresu rynkowego`,
+      belowRange: (value) => `${value} poniżej szacowanego zakresu rynkowego`,
+      withinRange: "W szacowanym zakresie rynkowym",
+      confidenceHigh: "Wysoka",
+      confidenceMedium: "Średnia",
+      confidenceLow: "Niska",
     },
     statuses: {
-      buy: "BUY",
+      buy: "WARTO ROZWAŻYĆ",
       negotiate: "NEGOCJUJ",
       avoid: "ODPUŚĆ",
       verify_first: "NAJPIERW SPRAWDŹ",
@@ -217,18 +247,18 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     metrics: {
       forYou: "Для вас",
       sellerPrice: "Цена продавца",
-      fairPrice: "Справедливая цена",
-      recommendedOffer: "Рекомендуемый offer",
+      fairPrice: "Оценочный диапазон цены",
+      recommendedOffer: "Рекомендуемое предложение",
       maxOffer: "Разумный максимум",
       moveInCost: "Стоимость въезда",
-      completeness: "Полнота проверки",
+      completeness: "Покрытие данных",
     },
     sections: {
       reasons: "Почему стоит смотреть",
       risks: "Главные риски",
       unknowns: "Не проверено",
       negotiation: "Помощник торга",
-      dueDiligence: "Due diligence объекта",
+      dueDiligence: "Список проверки",
       totalCost: "Полная стоимость покупки",
       knowledge: "Что мы знаем",
       preViewing: "До просмотра",
@@ -237,11 +267,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       intent: "Подходит под цель",
     },
     labels: {
-      openingOffer: "Стартовый offer",
+      openingOffer: "Стартовое предложение",
       realisticDeal: "Реальная сделка",
       walkAway: "Не превышать",
       posture: "Позиция",
-      score: "Score",
+      score: "Оценка Domarion",
       documents: "Документы",
       sellerQuestions: "Вопросы продавцу",
       photos: "Фото",
@@ -254,15 +284,25 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       updated: "Обновлено",
       confidence: "Уверенность",
       selectedIntent: "Цель",
-      monthlyPayment: "Платеж baseline",
+      monthlyPayment: "Базовый платеж",
       renovationCondition: "Состояние",
       budgetSource: "Источник бюджета",
-      upfrontCash: "Наличные на старт",
+      purchasePrice: "Квартира",
+      pccTax: "PCC",
+      notary: "Нотариус и суд",
+      bankCosts: "Банковские расходы",
+      upfrontCash: "Первоначальный взнос и сборы",
       renovation: "Ремонт",
       furniture: "Мебель",
       readyAlternative: "Готовая альтернатива",
       gap: "Разница после ремонта",
       empty: "Нет данных.",
+      aboveRange: (value) => `${value} выше оценочного рыночного диапазона`,
+      belowRange: (value) => `${value} ниже оценочного рыночного диапазона`,
+      withinRange: "В пределах оценочного рыночного диапазона",
+      confidenceHigh: "Высокая",
+      confidenceMedium: "Средняя",
+      confidenceLow: "Низкая",
     },
     statuses: {
       buy: "ПОКУПАТЬ",
@@ -284,18 +324,18 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     metrics: {
       forYou: "Для вас",
       sellerPrice: "Ціна продавця",
-      fairPrice: "Справедлива ціна",
-      recommendedOffer: "Рекомендована offer",
+      fairPrice: "Оціночний діапазон ціни",
+      recommendedOffer: "Рекомендована пропозиція",
       maxOffer: "Розумна межа",
       moveInCost: "Вартість входу",
-      completeness: "Повнота перевірки",
+      completeness: "Покриття даних",
     },
     sections: {
       reasons: "Чому варто дивитися",
       risks: "Головні ризики",
       unknowns: "Не перевірено",
       negotiation: "Помічник торгу",
-      dueDiligence: "Due diligence об'єкта",
+      dueDiligence: "Список перевірки",
       totalCost: "Повна вартість купівлі",
       knowledge: "Що ми знаємо",
       preViewing: "До перегляду",
@@ -304,11 +344,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       intent: "Відповідність цілі",
     },
     labels: {
-      openingOffer: "Стартова offer",
+      openingOffer: "Стартова пропозиція",
       realisticDeal: "Реальна угода",
       walkAway: "Не перевищувати",
       posture: "Позиція",
-      score: "Score",
+      score: "Оцінка Domarion",
       documents: "Документи",
       sellerQuestions: "Питання продавцю",
       photos: "Фото",
@@ -321,15 +361,25 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       updated: "Оновлено",
       confidence: "Впевненість",
       selectedIntent: "Ціль",
-      monthlyPayment: "Платіж baseline",
+      monthlyPayment: "Базовий платіж",
       renovationCondition: "Стан",
       budgetSource: "Джерело бюджету",
-      upfrontCash: "Готівка на старт",
+      purchasePrice: "Квартира",
+      pccTax: "PCC",
+      notary: "Нотаріус і суд",
+      bankCosts: "Банківські витрати",
+      upfrontCash: "Перший внесок і збори",
       renovation: "Ремонт",
       furniture: "Меблі",
       readyAlternative: "Готова альтернатива",
       gap: "Різниця після ремонту",
       empty: "Немає даних.",
+      aboveRange: (value) => `${value} вище оціночного ринкового діапазону`,
+      belowRange: (value) => `${value} нижче оціночного ринкового діапазону`,
+      withinRange: "У межах оціночного ринкового діапазону",
+      confidenceHigh: "Висока",
+      confidenceMedium: "Середня",
+      confidenceLow: "Низька",
     },
     statuses: {
       buy: "КУПУВАТИ",
@@ -356,6 +406,14 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
   const dueDiligence = decision.due_diligence;
   const knowledge = decision.knowledge;
   const total = decision.total_acquisition;
+  const domarionScore = Math.round(verdict.score * 10);
+  const overpricingAbs = Math.abs(verdict.overpricing_pln);
+  const priceRelation =
+    verdict.overpricing_pln > 0
+      ? copy.labels.aboveRange(money(overpricingAbs, locale))
+      : verdict.overpricing_pln < 0
+        ? copy.labels.belowRange(money(overpricingAbs, locale))
+        : copy.labels.withinRange;
   const selectedIntentFit =
     decision.selected_intent_fit ??
     decision.intent_fit.find((fit) => fit.intent === decision.selected_intent) ??
@@ -380,8 +438,9 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
           </div>
           <h2>{verdict.headline}</h2>
           <p>{verdict.summary}</p>
+          <p className="buyer-price-relation">{priceRelation}</p>
         </div>
-        <strong className="buyer-decision-score">{verdict.score.toFixed(1)}/10</strong>
+        <strong className="buyer-decision-score">{domarionScore}/100</strong>
       </div>
 
       <div className="buyer-decision-metrics">
@@ -394,10 +453,10 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
         <Metric label={copy.metrics.sellerPrice} value={money(verdict.seller_price_pln, locale)} />
         <Metric
           label={copy.metrics.fairPrice}
-          value={`${money(verdict.fair_price_low_pln, locale)}-${money(
-            verdict.fair_price_high_pln,
-            locale,
-          )}`}
+            value={`${money(verdict.fair_price_low_pln, locale)}-${money(
+              verdict.fair_price_high_pln,
+              locale,
+            )}`}
         />
         <Metric
           label={copy.metrics.recommendedOffer}
@@ -504,8 +563,13 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
               label={copy.labels.budgetSource}
               value={humanizeCode(total.renovation_budget_source)}
             />
+            <Fact label={copy.labels.purchasePrice} value={money(total.purchase_price_pln, locale)} />
+            <Fact label={copy.labels.pccTax} value={money(total.pcc_tax_pln, locale)} />
+            <Fact label={copy.labels.notary} value={money(total.notary_and_court_pln, locale)} />
+            <Fact label={copy.labels.bankCosts} value={money(total.bank_costs_pln, locale)} />
             <Fact label={copy.labels.renovation} value={money(total.renovation_estimate_pln, locale)} />
             <Fact label={copy.labels.furniture} value={money(total.furniture_estimate_pln, locale)} />
+            <Fact label={copy.metrics.moveInCost} value={money(total.total_move_in_cost_pln, locale)} />
             <Fact label={copy.labels.upfrontCash} value={money(total.upfront_cash_needed_pln, locale)} />
             <Fact
               label={copy.labels.monthlyPayment}
@@ -685,7 +749,8 @@ function SourceEvidenceItem({
       <strong>{source.topic}</strong>
       <span>{source.basis}</span>
       <small>
-        {source.source_name} · {copy.labels.confidence} {source.confidence_score}/100
+        {source.source_name} · {copy.labels.confidence}{" "}
+        {confidenceLabel(source.confidence_score, copy)}
         {source.updated_at ? ` · ${copy.labels.updated} ${dateValue(source.updated_at, locale)}` : ""}
       </small>
       {source.note ? <small>{source.note}</small> : null}
@@ -702,4 +767,10 @@ function verdictStatusTone(status: BuyerVerdictStatus) {
 
 function humanizeCode(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function confidenceLabel(score: number, copy: BuyerDecisionCopy) {
+  if (score >= 75) return copy.labels.confidenceHigh;
+  if (score >= 50) return copy.labels.confidenceMedium;
+  return copy.labels.confidenceLow;
 }

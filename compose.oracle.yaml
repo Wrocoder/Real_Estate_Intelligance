@@ -1,7 +1,7 @@
 name: domarion-oci
 
 x-api-env: &api-env
-  APP_NAME: ${APP_NAME:-Domarion Analytics API}
+  APP_NAME: ${APP_NAME:-WartoMetr API}
   ENVIRONMENT: ${ENVIRONMENT:-staging}
   DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the OCI env file}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
@@ -56,7 +56,7 @@ x-api-env: &api-env
   ALERT_SMTP_USE_TLS: ${ALERT_SMTP_USE_TLS:-true}
   ALERT_DELIVERY_TIMEOUT_SECONDS: ${ALERT_DELIVERY_TIMEOUT_SECONDS:-10}
   ALERT_TELEGRAM_ENABLED: ${ALERT_TELEGRAM_ENABLED:-false}
-  ALERT_TELEGRAM_BOT_NAME: ${ALERT_TELEGRAM_BOT_NAME:-DomarionBot}
+  ALERT_TELEGRAM_BOT_NAME: ${ALERT_TELEGRAM_BOT_NAME:-WartoMetrBot}
   ALERT_TELEGRAM_BOT_TOKEN: ${ALERT_TELEGRAM_BOT_TOKEN:-}
   ALERT_TELEGRAM_API_BASE_URL: ${ALERT_TELEGRAM_API_BASE_URL:-https://api.telegram.org}
   WORKER_TASKS: ${WORKER_TASKS:-daily-email-alerts,area-market-snapshots,price-history-rebuild}

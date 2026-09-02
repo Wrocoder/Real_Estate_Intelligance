@@ -41,6 +41,13 @@ import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
+const LISTING_LOADING_STEPS = {
+  en: ["Loading apartment facts", "Checking market evidence", "Preparing verdict"],
+  pl: ["Ładujemy dane mieszkania", "Sprawdzamy dane rynkowe", "Przygotowujemy werdykt"],
+  ru: ["Загружаем данные квартиры", "Проверяем рыночные данные", "Готовим вывод"],
+  uk: ["Завантажуємо дані квартири", "Перевіряємо ринкові дані", "Готуємо висновок"],
+} as const;
+
 export default function ListingDetailPage() {
   const params = useParams<{ id: string }>();
   const listingId = params.id;
@@ -52,7 +59,7 @@ export default function ListingDetailPage() {
   const [postViewingResult, setPostViewingResult] =
     useState<PostViewingVerdictRecalculation | null>(null);
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
-  const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
+  const [aiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
   const [customAIQuestion, setCustomAIQuestion] = useState("");
   const [aiAnswer, setAiAnswer] = useState<AIListingAnswer | null>(null);
@@ -92,7 +99,7 @@ export default function ListingDetailPage() {
         const data = await api.listAIQuestions();
         setAIQuestions(data);
       } catch (caught) {
-        setAiError(caught instanceof Error ? caught.message : "AI questions unavailable");
+        setAiError(caught instanceof Error ? caught.message : copy.statuses.aiQuestionsUnavailable);
         setAiStatus(copy.statuses.aiQuestionsUnavailable);
       }
     }
@@ -104,6 +111,9 @@ export default function ListingDetailPage() {
     () => questionsForAudience(aiQuestions, aiAudience, copy),
     [aiQuestions, aiAudience, copy],
   );
+  const selectedAIQuestionLabel =
+    availableAIQuestions.find((question) => question.code === selectedAIQuestion)?.label ??
+    copy.fallbackQuestion.label;
 
   useEffect(() => {
     if (
@@ -156,7 +166,9 @@ export default function ListingDetailPage() {
   }
 
   if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
-  if (!analysis) return <LoadingBlock label={copy.empty.loadingAnalytics} />;
+  if (!analysis) {
+    return <LoadingBlock label={copy.empty.loadingAnalytics} steps={LISTING_LOADING_STEPS[locale]} />;
+  }
 
   const { listing, scores, area_statistics: areaStats } = analysis;
   const verdictTone = decisionTone(scores);
@@ -225,7 +237,9 @@ export default function ListingDetailPage() {
         </div>
         <div className="metric">
           <span>{copy.metrics.fairPriceMid}</span>
-          <strong>{money(scores.fair_price_mid, locale)}</strong>
+          <strong>
+            {money(scores.fair_price_low, locale)} - {money(scores.fair_price_high, locale)}
+          </strong>
         </div>
         <div className="metric">
           <span>{copy.metrics.fairPriceConfidence}</span>
@@ -294,15 +308,7 @@ export default function ListingDetailPage() {
           <div className="ai-verdict-controls listing-ai-controls">
             <div className="field">
               <span>{copy.fields.audience}</span>
-              <select
-                className="select"
-                value={aiAudience}
-                onChange={(event) => setAiAudience(event.target.value as ReportAudience)}
-              >
-                <option value="buyer">{copy.values.buyer}</option>
-                <option value="realtor">{copy.values.realtor}</option>
-                <option value="investor">{copy.values.investor}</option>
-              </select>
+              <span className="status-pill info">{copy.values.buyer}</span>
             </div>
             <div className="field">
               <span>{copy.fields.topic}</span>
@@ -346,7 +352,7 @@ export default function ListingDetailPage() {
                   <span className={`status-pill ${aiAnswer.refused ? "warning" : "healthy"}`}>
                     {aiAnswer.refused ? copy.values.refused : copy.values.sourceGrounded}
                   </span>
-                  <span className="status-pill info">{aiAnswer.question_code}</span>
+                  <span className="status-pill info">{selectedAIQuestionLabel}</span>
                 </div>
                 <p>{aiAnswer.refusal_reason ?? aiAnswer.answer}</p>
               </div>
@@ -365,9 +371,7 @@ export default function ListingDetailPage() {
                     {aiAnswer.citations.slice(0, 5).map((citation, index) => (
                       <div className="ai-citation" key={`${citation.source_id}-${index}`}>
                         <strong>{citation.title}</strong>
-                        <small>
-                          {citation.source_type} · {citation.excerpt}
-                        </small>
+                        <small>{citation.excerpt}</small>
                       </div>
                     ))}
                   </div>
@@ -377,7 +381,7 @@ export default function ListingDetailPage() {
                   <div className="meta-row">
                     {aiAnswer.guardrails.map((guardrail, index) => (
                       <span className="status-pill" key={`${guardrail.code}-${index}`}>
-                        {guardrail.code}
+                        {guardrail.message}
                       </span>
                     ))}
                   </div>

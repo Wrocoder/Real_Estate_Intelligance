@@ -58,7 +58,7 @@ export default async function GuidePage({ params }: PageProps) {
     description: guide.description,
     author: {
       "@type": "Organization",
-      name: "Domarion Analytics",
+      name: "Domarion",
     },
     about: guide.category,
     url: `${siteUrl()}/guides/${guide.slug}`,
@@ -74,44 +74,40 @@ export default async function GuidePage({ params }: PageProps) {
       <header className="page-header">
         <div>
           <Link className="button" href="/guides">
-            <ArrowLeft size={16} /> Гайды
+            <ArrowLeft size={16} /> Przewodniki
           </Link>
           <h1 style={{ marginTop: 14 }}>{guide.title}</h1>
           <p>{guide.heroSummary}</p>
         </div>
         <div className="toolbar">
           <Link className="button primary" href="/check">
-            <ClipboardCheck size={16} /> Проверить квартиру
+            <ClipboardCheck size={16} /> Sprawdź mieszkanie
           </Link>
           <Link className="button" href="/pricing">
-            <FileText size={16} /> Отчет
+            <FileText size={16} /> Pełny raport
           </Link>
         </div>
       </header>
 
       <section className="metric-grid">
         <div className="metric">
-          <span>Категория</span>
+          <span>Kategoria</span>
           <strong>{guide.category}</strong>
         </div>
         <div className="metric">
-          <span>Районы</span>
+          <span>Dzielnice</span>
           <strong>{numberValue(relatedAreas.length)}</strong>
         </div>
         <div className="metric">
-          <span>Internal links</span>
-          <strong>{numberValue(guide.internalLinks.length)}</strong>
-        </div>
-        <div className="metric">
-          <span>CTA</span>
-          <strong>Object report</strong>
+          <span>Następny krok</span>
+          <strong>Sprawdź mieszkanie</strong>
         </div>
       </section>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
           <div className="panel-header">
-            <h2>Главное</h2>
+            <h2>Najważniejsze</h2>
             <span className="status-pill info">{guide.category}</span>
           </div>
           <div className="panel-body guide-content">
@@ -137,7 +133,7 @@ export default async function GuidePage({ params }: PageProps) {
 
         <aside className="panel">
           <div className="panel-header">
-            <h2>Связанные страницы</h2>
+            <h2>Co sprawdzić dalej</h2>
             <MapPinned size={18} />
           </div>
           <div className="panel-body">
@@ -149,7 +145,7 @@ export default async function GuidePage({ params }: PageProps) {
               ))}
             </div>
 
-            <h2>Районы</h2>
+            <h2>Dzielnice</h2>
             <ul className="section-list compact">
               {relatedAreas.map((area) => (
                 <li key={area.slug}>
@@ -162,7 +158,7 @@ export default async function GuidePage({ params }: PageProps) {
               ))}
             </ul>
 
-            <h2>Еще гайды</h2>
+            <h2>Więcej przewodników</h2>
             <ul className="section-list compact">
               {relatedGuides.map((item) => (
                 <li key={item.slug}>
@@ -173,7 +169,7 @@ export default async function GuidePage({ params }: PageProps) {
             </ul>
 
             <Link className="button primary" href="/check">
-              Проверить конкретный объект <ArrowRight size={16} />
+              Sprawdź konkretne mieszkanie <ArrowRight size={16} />
             </Link>
           </div>
         </aside>

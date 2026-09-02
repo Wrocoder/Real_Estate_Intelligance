@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BarChart3, Bell, FileText, Gem, Heart, RefreshCw, Search } from "lucide-react";
+import { BarChart3, Bell, ClipboardCheck, Gem, Search } from "lucide-react";
 
 import { ListingCard } from "@/components/ListingCard";
 import { PropertyMap } from "@/components/PropertyMap";
@@ -24,10 +24,14 @@ import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type Filters = {
   mode: "standard" | "hidden_gems";
+  buyingPurpose: "living" | "investment";
   query: string;
   voivodeship: string;
   municipality: string;
   district: string;
+  marketType: "" | "primary" | "secondary";
+  minArea: string;
+  maxArea: string;
   buildingType: string;
   renovationState: string;
   hasBalcony: boolean;
@@ -85,10 +89,14 @@ const HEATING_TYPE_OPTIONS = ["municipal", "gas", "electric", "heat_pump"] as co
 
 const defaultFilters: Filters = {
   mode: "standard",
+  buyingPurpose: "living",
   query: "",
   voivodeship: "",
   municipality: "",
   district: "",
+  marketType: "",
+  minArea: "",
+  maxArea: "",
   buildingType: "",
   renovationState: "",
   hasBalcony: false,
@@ -123,13 +131,160 @@ const defaultFilters: Filters = {
   minMajorRoadM: "",
   minIndustrialZoneM: "",
   radiusKm: "",
-  sort: "investment_score_desc",
+  sort: "risk_score_asc",
   pageSize: "10",
 };
+
+const SEARCH_COPY = {
+  en: {
+    title: "Find apartments worth checking",
+    subtitle: "Start simple. Domarion ranks listings by value, risk, liquidity and negotiation potential.",
+    location: "Location",
+    purpose: "Buying purpose",
+    living: "For living",
+    investment: "For investment",
+    market: "Market",
+    anyMarket: "Any",
+    primary: "Primary",
+    secondary: "Secondary",
+    size: "Size",
+    minSize: "Min m2",
+    maxSize: "Max m2",
+    track: "Track apartments like these",
+    advanced: "Advanced filters",
+    bestOverall: "Best overall",
+    bestValue: "Best value",
+    lowestRisk: "Lowest risk",
+    bestForRent: "Best for rent",
+    liquid: "Most liquid",
+    negotiation: "Best negotiation opportunities",
+    loadingSteps: ["Checking matching apartments", "Ranking by value and risk", "Preparing the map"],
+  },
+  pl: {
+    title: "Znajdź mieszkania warte sprawdzenia",
+    subtitle: "Zacznij od podstaw. Domarion porządkuje oferty według wartości, ryzyka, płynności i potencjału negocjacji.",
+    location: "Lokalizacja",
+    purpose: "Cel zakupu",
+    living: "Do zamieszkania",
+    investment: "Na inwestycję",
+    market: "Rynek",
+    anyMarket: "Dowolny",
+    primary: "Pierwotny",
+    secondary: "Wtórny",
+    size: "Powierzchnia",
+    minSize: "Min. m2",
+    maxSize: "Maks. m2",
+    track: "Śledź podobne mieszkania",
+    advanced: "Filtry zaawansowane",
+    bestOverall: "Najlepsze ogólnie",
+    bestValue: "Najlepsza wartość",
+    lowestRisk: "Najniższe ryzyko",
+    bestForRent: "Najlepsze pod wynajem",
+    liquid: "Najbardziej płynne",
+    negotiation: "Najlepsze okazje do negocjacji",
+    loadingSteps: ["Sprawdzamy pasujące mieszkania", "Układamy wyniki według wartości i ryzyka", "Przygotowujemy mapę"],
+  },
+  ru: {
+    title: "Найдите квартиры, которые стоит проверить",
+    subtitle: "Начните с простых фильтров. Domarion ранжирует объявления по цене, рискам, ликвидности и потенциалу торга.",
+    location: "Локация",
+    purpose: "Цель покупки",
+    living: "Для жизни",
+    investment: "Для инвестиции",
+    market: "Рынок",
+    anyMarket: "Любой",
+    primary: "Первичный",
+    secondary: "Вторичный",
+    size: "Площадь",
+    minSize: "Мин. m2",
+    maxSize: "Макс. m2",
+    track: "Следить за похожими квартирами",
+    advanced: "Расширенные фильтры",
+    bestOverall: "Лучшие в целом",
+    bestValue: "Лучшая цена",
+    lowestRisk: "Самый низкий риск",
+    bestForRent: "Лучшие под аренду",
+    liquid: "Самые ликвидные",
+    negotiation: "Лучшие возможности для торга",
+    loadingSteps: ["Проверяем подходящие квартиры", "Сортируем по цене и рискам", "Готовим карту"],
+  },
+  uk: {
+    title: "Знайдіть квартири, які варто перевірити",
+    subtitle: "Почніть із простих фільтрів. Domarion ранжує оголошення за ціною, ризиками, ліквідністю та потенціалом торгу.",
+    location: "Локація",
+    purpose: "Ціль купівлі",
+    living: "Для життя",
+    investment: "Для інвестиції",
+    market: "Ринок",
+    anyMarket: "Будь-який",
+    primary: "Первинний",
+    secondary: "Вторинний",
+    size: "Площа",
+    minSize: "Мін. m2",
+    maxSize: "Макс. m2",
+    track: "Стежити за схожими квартирами",
+    advanced: "Розширені фільтри",
+    bestOverall: "Найкращі загалом",
+    bestValue: "Найкраща ціна",
+    lowestRisk: "Найнижчий ризик",
+    bestForRent: "Найкращі під оренду",
+    liquid: "Найліквідніші",
+    negotiation: "Найкращі можливості для торгу",
+    loadingSteps: ["Перевіряємо відповідні квартири", "Сортуємо за ціною і ризиками", "Готуємо карту"],
+  },
+} as const;
+
+const ONBOARDING_COPY = {
+  en: {
+    title: "What do you want to do?",
+    found: "I already found an apartment",
+    foundAction: "Check apartment",
+    search: "I'm still searching",
+    searchAction: "Find apartments",
+    compare: "I'm choosing between several",
+    compareAction: "Compare apartments",
+  },
+  pl: {
+    title: "Co chcesz zrobić?",
+    found: "Mam już znalezione mieszkanie",
+    foundAction: "Sprawdź mieszkanie",
+    search: "Nadal szukam",
+    searchAction: "Znajdź mieszkania",
+    compare: "Wybieram między kilkoma",
+    compareAction: "Porównaj mieszkania",
+  },
+  ru: {
+    title: "Что вы хотите сделать?",
+    found: "Я уже нашел квартиру",
+    foundAction: "Проверить квартиру",
+    search: "Я еще ищу",
+    searchAction: "Найти квартиры",
+    compare: "Выбираю между несколькими",
+    compareAction: "Сравнить квартиры",
+  },
+  uk: {
+    title: "Що ви хочете зробити?",
+    found: "Я вже знайшов квартиру",
+    foundAction: "Перевірити квартиру",
+    search: "Я ще шукаю",
+    searchAction: "Знайти квартири",
+    compare: "Обираю між кількома",
+    compareAction: "Порівняти квартири",
+  },
+} as const;
+
+const CHECK_LINK_LABEL = {
+  en: "Check apartment",
+  pl: "Sprawdź mieszkanie",
+  ru: "Проверить квартиру",
+  uk: "Перевірити квартиру",
+} as const;
 
 export default function ExplorerPage() {
   const { locale } = useLocalePreference();
   const copy = EXPLORER_COPY[locale];
+  const product = SEARCH_COPY[locale];
+  const onboarding = ONBOARDING_COPY[locale];
   const [analyses, setAnalyses] = useState<ListingAnalysis[]>([]);
   const [hiddenGemItems, setHiddenGemItems] = useState<HiddenGemItem[]>([]);
   const [areas, setAreas] = useState<AreaStatistics[]>([]);
@@ -139,8 +294,8 @@ export default function ExplorerPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
-  const [status, setStatus] = useState(EXPLORER_COPY.ru.status.loading);
-  const [mapStatus, setMapStatus] = useState(EXPLORER_COPY.ru.status.mapLoading);
+  const [status, setStatus] = useState(EXPLORER_COPY.pl.status.loading);
+  const [mapStatus, setMapStatus] = useState(EXPLORER_COPY.pl.status.mapLoading);
   const [isLoading, setIsLoading] = useState(true);
   const [mapError, setMapError] = useState("");
   const [error, setError] = useState("");
@@ -219,6 +374,9 @@ export default function ExplorerPage() {
       district: filters.district || undefined,
       municipality: filters.municipality || undefined,
       rooms: filters.rooms ? Number(filters.rooms) : undefined,
+      market_type: filters.marketType || undefined,
+      min_area_m2: filters.minArea ? Number(filters.minArea) : undefined,
+      max_area_m2: filters.maxArea ? Number(filters.maxArea) : undefined,
       max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
       building_type: filters.buildingType || undefined,
       renovation_state: filters.renovationState || undefined,
@@ -301,7 +459,7 @@ export default function ExplorerPage() {
   const compareHref = `/compare?ids=${compareIds.join(",")}`;
 
   function updateFilters(next: Partial<Filters>) {
-    setFilters((current) => ({ ...current, ...next }));
+    setFilters((current) => applyIntentDefaults({ ...current, ...next }));
     setPage(1);
   }
 
@@ -331,7 +489,7 @@ export default function ExplorerPage() {
       if (current.includes(listingId)) {
         return current.filter((item) => item !== listingId);
       }
-      if (current.length >= 5) {
+      if (current.length >= 4) {
         setStatus(copy.status.compareLimit);
         return current;
       }
@@ -360,6 +518,7 @@ export default function ExplorerPage() {
         district: filters.district || null,
         rooms: filters.rooms ? Number(filters.rooms) : null,
         max_price: filters.maxPrice ? Number(filters.maxPrice) : null,
+        min_area_m2: filters.minArea ? Number(filters.minArea) : null,
         building_type: filters.buildingType || null,
         renovation_state: filters.renovationState || null,
         has_balcony: filters.hasBalcony || null,
@@ -398,22 +557,36 @@ export default function ExplorerPage() {
 
   return (
     <>
+      <section className="onboarding-panel">
+        <h1>{onboarding.title}</h1>
+        <div className="onboarding-actions">
+          <Link className="onboarding-action primary" href="/check">
+            <ClipboardCheck size={18} />
+            <span>{onboarding.found}</span>
+            <strong>{onboarding.foundAction}</strong>
+          </Link>
+          <a className="onboarding-action" href="#search-results">
+            <Search size={18} />
+            <span>{onboarding.search}</span>
+            <strong>{onboarding.searchAction}</strong>
+          </a>
+          <Link className="onboarding-action" href="/compare">
+            <BarChart3 size={18} />
+            <span>{onboarding.compare}</span>
+            <strong>{onboarding.compareAction}</strong>
+          </Link>
+        </div>
+      </section>
+
       <header className="page-header">
         <div>
-          <h1>{copy.title}</h1>
-          <p>{copy.subtitle}</p>
+          <h1>{product.title}</h1>
+          <p>{product.subtitle}</p>
         </div>
         <div className="toolbar">
-          <button className="button" type="button" onClick={() => void load(page)}>
-            <RefreshCw size={16} /> {copy.actions.refresh}
-          </button>
-          <button
-            className={filters.mode === "hidden_gems" ? "button primary" : "button"}
-            type="button"
-            onClick={enableHiddenGems}
-          >
-            <Gem size={16} /> {copy.actions.hiddenGems}
-          </button>
+          <Link className="button primary" href="/check">
+            <ClipboardCheck size={16} /> {CHECK_LINK_LABEL[locale]}
+          </Link>
           {compareIds.length >= 2 ? (
             <Link className="button" href={compareHref}>
               <BarChart3 size={16} /> {copy.actions.compare(compareIds.length)}
@@ -423,8 +596,8 @@ export default function ExplorerPage() {
               <BarChart3 size={16} /> {copy.actions.compare(compareIds.length)}
             </button>
           )}
-          <button className="button primary" type="button" onClick={() => void createAlert()}>
-            <Bell size={16} /> {copy.actions.alert}
+          <button className="button" type="button" onClick={() => void createAlert()}>
+            <Bell size={16} /> {product.track}
           </button>
         </div>
       </header>
@@ -466,7 +639,7 @@ export default function ExplorerPage() {
 
       <div className="panel" style={{ marginTop: 16, marginBottom: 16 }}>
         <div className="panel-header">
-          <h2>{copy.filters.title}</h2>
+          <h2>{product.location}</h2>
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body form-grid wide">
@@ -480,7 +653,7 @@ export default function ExplorerPage() {
             />
           </label>
           <label className="field">
-            <span>{copy.filters.municipality}</span>
+            <span>{product.location}</span>
             <select
               className="select"
               value={filters.municipality}
@@ -551,8 +724,57 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ maxPrice: event.target.value })}
             />
           </label>
+          <label className="field">
+            <span>{product.minSize}</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={filters.minArea}
+              placeholder="45"
+              onChange={(event) => updateFilters({ minArea: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>{product.maxSize}</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={filters.maxArea}
+              placeholder="75"
+              onChange={(event) => updateFilters({ maxArea: event.target.value })}
+            />
+          </label>
+          <label className="field">
+            <span>{product.market}</span>
+            <select
+              className="select"
+              value={filters.marketType}
+              onChange={(event) =>
+                updateFilters({ marketType: event.target.value as Filters["marketType"] })
+              }
+            >
+              <option value="">{product.anyMarket}</option>
+              <option value="secondary">{product.secondary}</option>
+              <option value="primary">{product.primary}</option>
+            </select>
+          </label>
+          <label className="field">
+            <span>{product.purpose}</span>
+            <select
+              className="select"
+              value={filters.buyingPurpose}
+              onChange={(event) =>
+                updateFilters({
+                  buyingPurpose: event.target.value as Filters["buyingPurpose"],
+                })
+              }
+            >
+              <option value="living">{product.living}</option>
+              <option value="investment">{product.investment}</option>
+            </select>
+          </label>
           <details className="advanced-filters">
-            <summary>{copy.filters.advancedFilters}</summary>
+            <summary>{product.advanced}</summary>
             <div className="advanced-filter-grid">
           <label className="field">
             <span>{copy.filters.buildingType}</span>
@@ -696,7 +918,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ maxBuildingYear: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.maxFairDelta}</span>
             <input
               className="input"
@@ -706,7 +928,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ maxFairDelta: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minInvestment}</span>
             <input
               className="input"
@@ -716,7 +938,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ minInvestment: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.maxRisk}</span>
             <input
               className="input"
@@ -726,7 +948,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ maxRisk: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minNegotiation}</span>
             <input
               className="input"
@@ -736,7 +958,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ minNegotiation: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minLiquidity}</span>
             <input
               className="input"
@@ -746,7 +968,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ minLiquidity: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minRental}</span>
             <input
               className="input"
@@ -756,7 +978,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ minRental: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minDataQuality}</span>
             <input
               className="input"
@@ -766,7 +988,7 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ minDataQuality: event.target.value })}
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minDeveloperReputation}</span>
             <input
               className="input"
@@ -778,7 +1000,7 @@ export default function ExplorerPage() {
               }
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minDeveloperConfidence}</span>
             <input
               className="input"
@@ -790,7 +1012,7 @@ export default function ExplorerPage() {
               }
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minDeveloperCompleted}</span>
             <input
               className="input"
@@ -802,7 +1024,7 @@ export default function ExplorerPage() {
               }
             />
           </label>
-          <label className="field">
+          <label className="field pro-only">
             <span>{copy.filters.minDeveloperActive}</span>
             <input
               className="input"
@@ -814,7 +1036,7 @@ export default function ExplorerPage() {
               }
             />
           </label>
-          <label className="field checkbox-field">
+          <label className="field checkbox-field pro-only">
             <input
               type="checkbox"
               checked={filters.requireDeveloper}
@@ -822,7 +1044,7 @@ export default function ExplorerPage() {
             />
             <span>{copy.filters.requireDeveloper}</span>
           </label>
-          <label className="field checkbox-field">
+          <label className="field checkbox-field pro-only">
             <input
               type="checkbox"
               checked={filters.excludeDeveloperRisk}
@@ -917,29 +1139,15 @@ export default function ExplorerPage() {
               onChange={(event) => updateFilters({ sort: event.target.value as ListingSort })}
             >
               <option value="investment_score_desc">
-                {copy.optionLabels.sort.investment_score_desc}
+                {product.bestOverall}
               </option>
+              <option value="price_per_m2_asc">{product.bestValue}</option>
+              <option value="risk_score_asc">{product.lowestRisk}</option>
+              <option value="rental_potential_score_desc">{product.bestForRent}</option>
+              <option value="liquidity_score_desc">{product.liquid}</option>
+              <option value="negotiation_score_desc">{product.negotiation}</option>
               <option value="price_asc">{copy.optionLabels.sort.price_asc}</option>
               <option value="price_desc">{copy.optionLabels.sort.price_desc}</option>
-              <option value="price_per_m2_asc">
-                {copy.optionLabels.sort.price_per_m2_asc}
-              </option>
-              <option value="risk_score_asc">{copy.optionLabels.sort.risk_score_asc}</option>
-              <option value="negotiation_score_desc">
-                {copy.optionLabels.sort.negotiation_score_desc}
-              </option>
-              <option value="developer_reputation_score_desc">
-                {copy.optionLabels.sort.developer_reputation_score_desc}
-              </option>
-              <option value="developer_reputation_score_asc">
-                {copy.optionLabels.sort.developer_reputation_score_asc}
-              </option>
-              <option value="developer_confidence_score_desc">
-                {copy.optionLabels.sort.developer_confidence_score_desc}
-              </option>
-              <option value="developer_confidence_score_asc">
-                {copy.optionLabels.sort.developer_confidence_score_asc}
-              </option>
               <option value="days_on_market_desc">
                 {copy.optionLabels.sort.days_on_market_desc}
               </option>
@@ -972,10 +1180,12 @@ export default function ExplorerPage() {
         </div>
       </div>
 
+      <div id="search-results" />
+
       {error ? (
         <ErrorBlock message={error} prefix={copy.state.errorPrefix} />
       ) : analyses.length === 0 && isLoading ? (
-        <LoadingBlock label={copy.state.loadingData} />
+        <LoadingBlock label={copy.state.loadingData} steps={product.loadingSteps} />
       ) : (
         <div className="grid-2">
           <section className="listing-list">
@@ -1046,19 +1256,6 @@ export default function ExplorerPage() {
               isLoading={!mapData && !mapError}
               error={mapError}
             />
-            <div className="panel-body">
-              <div className="toolbar">
-                <a className="button" href="/reports">
-                  <FileText size={16} /> {copy.actions.reports}
-                </a>
-                <a className="button" href="/alerts">
-                  <Bell size={16} /> {copy.actions.alert}
-                </a>
-                <button className="button" type="button" onClick={() => void addFavorite("wr-001")}>
-                  <Heart size={16} /> {copy.actions.favorite}
-                </button>
-              </div>
-            </div>
           </aside>
         </div>
       )}
@@ -1075,7 +1272,9 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     district: filters.district || undefined,
     municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
+    market_type: filters.marketType || undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    min_area_m2: filters.minArea ? Number(filters.minArea) : undefined,
     building_type: filters.buildingType || undefined,
     renovation_state: filters.renovationState || undefined,
     has_balcony: filters.hasBalcony || undefined,
@@ -1139,6 +1338,23 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
   };
 }
 
+function applyIntentDefaults(filters: Filters): Filters {
+  if (filters.buyingPurpose === "investment") {
+    return {
+      ...filters,
+      minInvestment: filters.minInvestment || "55",
+      minRental: filters.minRental || "45",
+      minLiquidity: filters.minLiquidity || "45",
+      sort: filters.sort === "risk_score_asc" ? filters.sort : "investment_score_desc",
+    };
+  }
+  return {
+    ...filters,
+    maxRisk: filters.maxRisk || "70",
+    sort: filters.sort === "investment_score_desc" ? "risk_score_asc" : filters.sort,
+  };
+}
+
 function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
   return {
     voivodeship: filters.voivodeship || undefined,
@@ -1147,7 +1363,9 @@ function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {
     district: filters.district || undefined,
     municipality: filters.municipality || undefined,
     rooms: filters.rooms ? Number(filters.rooms) : undefined,
+    market_type: filters.marketType || undefined,
     max_price: filters.maxPrice ? Number(filters.maxPrice) : undefined,
+    min_area_m2: filters.minArea ? Number(filters.minArea) : undefined,
     building_type: filters.buildingType || undefined,
     renovation_state: filters.renovationState || undefined,
     has_balcony: filters.hasBalcony || undefined,

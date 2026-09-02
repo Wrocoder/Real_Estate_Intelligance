@@ -418,7 +418,7 @@ def _render_report_bundle_receipt_html(order_id: str, credits: int, summary: str
 </head>
 <body>
   <main>
-    <p class="muted">Domarion Analytics</p>
+    <p class="muted">Domarion</p>
     <h1>{credits} Report Credits Bundle</h1>
     <p class="summary">{escape(summary)}</p>
     <div class="metric"><span>Credits granted</span><strong>{credits}</strong></div>
