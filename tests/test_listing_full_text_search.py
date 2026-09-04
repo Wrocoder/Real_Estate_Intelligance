@@ -4,7 +4,7 @@ from domarion.repositories.in_memory import InMemoryRealEstateRepository
 
 
 def test_repository_list_listings_supports_normalized_text_query() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
 
     listings = repository.list_listings(query="Nowy Dwor")
 

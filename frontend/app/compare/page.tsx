@@ -12,6 +12,7 @@ import {
   type CompareResponse,
   type DeveloperReputation,
   type ListingAnalysis,
+  type PurchaseIntent,
   type ReportAudience,
   type RealtorClientShortlist,
 } from "@/lib/api";
@@ -55,6 +56,7 @@ const COMPARE_PRODUCT_COPY = {
     smaller: "smaller apartment",
     farther: "farther from the city center",
     loadingSteps: ["Loading selected apartments", "Calculating total purchase costs", "Preparing recommendation"],
+    intentLabel: "Compare for",
   },
   pl: {
     bestOverall: "Najlepsza opcja ogólnie",
@@ -66,6 +68,7 @@ const COMPARE_PRODUCT_COPY = {
     smaller: "mniejsze mieszkanie",
     farther: "dalej od centrum",
     loadingSteps: ["Ładujemy wybrane mieszkania", "Liczymy całkowity koszt zakupu", "Przygotowujemy rekomendację"],
+    intentLabel: "Porównaj dla",
   },
   ru: {
     bestOverall: "Лучший вариант в целом",
@@ -77,6 +80,7 @@ const COMPARE_PRODUCT_COPY = {
     smaller: "меньшая площадь",
     farther: "дальше от центра",
     loadingSteps: ["Загружаем выбранные квартиры", "Считаем полную стоимость покупки", "Готовим рекомендацию"],
+    intentLabel: "Сравнить для",
   },
   uk: {
     bestOverall: "Найкращий варіант загалом",
@@ -88,6 +92,7 @@ const COMPARE_PRODUCT_COPY = {
     smaller: "менша площа",
     farther: "далі від центру",
     loadingSteps: ["Завантажуємо вибрані квартири", "Рахуємо повну вартість купівлі", "Готуємо рекомендацію"],
+    intentLabel: "Порівняти для",
   },
 } as const;
 
@@ -96,6 +101,7 @@ export default function ComparePage() {
   const copy = COMPARE_PAGE_COPY[locale];
   const [available, setAvailable] = useState<ListingAnalysis[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [intent, setIntent] = useState<PurchaseIntent>("self");
   const [comparison, setComparison] = useState<CompareResponse | null>(null);
   const [aiAudience, setAiAudience] = useState<ReportAudience>("buyer");
   const [aiQuestion, setAiQuestion] = useState("");
@@ -125,6 +131,10 @@ export default function ComparePage() {
       .map((item) => item.trim())
       .filter(Boolean)
       .slice(0, 4);
+    const initialIntent = params.get("intent") as PurchaseIntent | null;
+    if (["self", "family", "rental", "investment"].includes(initialIntent ?? "")) {
+      setIntent(initialIntent as PurchaseIntent);
+    }
 
     async function loadInitial() {
       setError("");
@@ -286,6 +296,15 @@ export default function ComparePage() {
           <span className="status-line">{compareStatusText(copy, status)}</span>
         </div>
         <div className="panel-body compare-selector">
+          <label className="field" style={{ maxWidth: 280 }}>
+            <span>{COMPARE_PRODUCT_COPY[locale].intentLabel}</span>
+            <select className="select" value={intent} onChange={(event) => setIntent(event.target.value as PurchaseIntent)}>
+              <option value="self">{locale === "pl" ? "Do zamieszkania" : locale === "ru" ? "Для жизни" : locale === "uk" ? "Для життя" : "For living"}</option>
+              <option value="family">{locale === "pl" ? "Dla rodziny" : locale === "ru" ? "Для семьи" : locale === "uk" ? "Для сім'ї" : "For family"}</option>
+              <option value="rental">{locale === "pl" ? "Na wynajem" : locale === "ru" ? "Для аренды" : locale === "uk" ? "Для оренди" : "For rental"}</option>
+              <option value="investment">{locale === "pl" ? "Inwestycyjnie" : locale === "ru" ? "Для инвестиции" : locale === "uk" ? "Для інвестиції" : "For investment"}</option>
+            </select>
+          </label>
           {available.length === 0 && !error ? (
             <LoadingBlock label={compareStatusText(copy, status)} steps={COMPARE_PRODUCT_COPY[locale].loadingSteps} />
           ) : (
@@ -302,6 +321,9 @@ export default function ComparePage() {
                     {analysis.listing.district} · {money(analysis.listing.price, locale)} · I{" "}
                     {analysis.scores.investment_score} / R {analysis.scores.risk_score} ·{" "}
                     {scoreLabel(analysis.scores.decision_label, locale)}
+                  </small>
+                  <small>
+                    {analysis.buyer_decision?.intent_fit.find((fit) => fit.intent === intent)?.label ?? "-"} · {analysis.buyer_decision?.intent_fit.find((fit) => fit.intent === intent)?.score ?? "-"}/100
                   </small>
                   {analysis.developer_reputation ? (
                     <small>

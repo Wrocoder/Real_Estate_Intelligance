@@ -51,7 +51,6 @@ Repository variables:
 
 - `OCI_NEXT_PUBLIC_API_BASE_URL`: public API URL, for example `https://api.example.com`.
 - `OCI_NEXT_PUBLIC_SITE_URL`: public frontend URL, for example `https://app.example.com`.
-- `OCI_NEXT_PUBLIC_OWNER_ID`: optional, default `demo-user`.
 - `OCI_DEPLOY_USER`: optional, default `domarion`.
 - `OCI_DEPLOY_PORT`: optional, default `22`.
 - `OCI_IMAGE_PUBLISH_ENABLED`: set to `true` only when automatic image publish on
@@ -65,6 +64,9 @@ Environment or repository secrets:
 - `OCI_ENV_FILE`: full contents of `/srv/domarion/env/oracle.env`.
 - `OCI_GHCR_USERNAME`: optional, required only for private GHCR packages.
 - `OCI_GHCR_READ_TOKEN`: optional, required only for private GHCR packages.
+
+`OCI_ENV_FILE` must contain a unique `AUTH_SESSION_SECRET` with at least 32 random
+characters. Do not reuse the example value or expose it as a frontend variable.
 
 ## 2. OCI VM Bootstrap
 

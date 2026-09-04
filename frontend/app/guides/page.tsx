@@ -6,9 +6,9 @@ import { SEO_GUIDES } from "@/lib/seoGuides";
 import { siteUrl } from "@/lib/seoAreas";
 
 export const metadata: Metadata = {
-  title: "Przewodniki po zakupie mieszkania w Polsce | Domarion",
+  title: "Przewodniki po zakupie mieszkania w Polsce | WartoMetr",
   description:
-    "Praktyczne materiały Domarion: cena za m2, dzielnice, kredyt hipoteczny, lista kontroli, księga wieczysta i całkowity koszt zakupu.",
+    "Praktyczne materiały WartoMetr: cena za m2, dzielnice, kredyt hipoteczny, lista kontroli, księga wieczysta i całkowity koszt zakupu.",
   alternates: {
     canonical: `${siteUrl()}/guides`,
   },

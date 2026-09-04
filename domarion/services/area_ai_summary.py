@@ -75,7 +75,7 @@ def build_area_impact_summary(
         guardrails=[
             AIAnswerGuardrail(
                 code="source_grounded_only",
-                message="Summary uses only structured Domarion area and open-data fields.",
+                message="Summary uses only structured WartoMetr area and open-data fields.",
             ),
             AIAnswerGuardrail(
                 code="no_price_forecast",
@@ -248,7 +248,7 @@ def _summary(
 ) -> str:
     posture_text = posture.replace("_", " ")
     return (
-        f"{area.name} is a {posture_text} area in current Domarion metrics. "
+        f"{area.name} is a {posture_text} area in current WartoMetr metrics. "
         f"{positive_signals[0]} Main caveat: {risk_signals[0]}"
     )
 

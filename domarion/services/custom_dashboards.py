@@ -20,7 +20,7 @@ from domarion.services.scoring import build_listing_analysis
 
 CUSTOM_DASHBOARD_DISCLAIMER = (
     "Custom dashboard preview is an enterprise screening view based on current normalized "
-    "listings, area statistics, Domarion scores and open-data layers. It is not financial, "
+    "listings, area statistics, WartoMetr scores and open-data layers. It is not financial, "
     "legal, valuation, underwriting or investment advice and does not guarantee demand, "
     "price, liquidity or future performance."
 )

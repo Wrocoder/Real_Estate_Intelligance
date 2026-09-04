@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from domarion import cli
 from domarion.core.config import Settings
-from domarion.main import app
+from domarion.main import app, create_app
 from domarion.services.production_readiness import build_production_readiness_report
 
 client = TestClient(app)
@@ -25,7 +25,9 @@ def test_readiness_endpoint_reports_local_ready() -> None:
 
 
 def test_production_readiness_blocks_unsafe_defaults() -> None:
-    report = build_production_readiness_report(Settings(environment="production"), env={})
+    report = build_production_readiness_report(
+        Settings(environment="production", demo_mode_enabled=False), env={}
+    )
 
     failed_checks = {check.name for check in report.checks if check.status == "fail"}
 
@@ -39,7 +41,18 @@ def test_production_readiness_blocks_unsafe_defaults() -> None:
         "report_artifacts",
         "payment_provider",
         "backup_storage",
+        "auth_session_security",
     } <= failed_checks
+
+
+def test_production_startup_rejects_default_session_secret() -> None:
+    with pytest.raises(RuntimeError, match="session secret"):
+        create_app(Settings(environment="production", demo_mode_enabled=False))
+
+
+def test_staging_startup_rejects_default_session_secret() -> None:
+    with pytest.raises(RuntimeError, match="session secret"):
+        create_app(Settings(environment="staging", demo_mode_enabled=False))
 
 
 def test_production_readiness_accepts_full_production_shape(tmp_path: Path) -> None:
@@ -75,7 +88,11 @@ def test_production_preflight_cli_exits_nonzero_on_blockers(monkeypatch, capsys)
         def model_dump_json(self, *, indent: int | None = None) -> str:
             return json.dumps({"status": self.status}, indent=indent)
 
-    monkeypatch.setattr(cli, "build_production_readiness_report", lambda: FakeReport())
+    monkeypatch.setattr(
+        cli,
+        "build_production_readiness_report",
+        lambda *args, **kwargs: FakeReport(),
+    )
     monkeypatch.setattr(sys, "argv", ["domarion", "production-preflight"])
 
     with pytest.raises(SystemExit) as exc:
@@ -107,9 +124,10 @@ def _production_settings() -> Settings:
     return Settings(
         **backend_overrides,
         environment="production",
+        demo_mode_enabled=False,
+        auth_session_secret="production-session-secret-from-secret-manager-123",
         database_url=(
-            "postgresql+psycopg://domarion:secret@db.example.test:5432/"
-            "domarion?sslmode=require"
+            "postgresql+psycopg://domarion:secret@db.example.test:5432/domarion?sslmode=require"
         ),
         redis_url="rediss://redis.example.test:6379/0",
         cors_origins=["https://app.domarion.test"],

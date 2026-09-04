@@ -33,9 +33,7 @@ from domarion.services.risk_profile import build_listing_risk_profile
 from domarion.services.scoring import build_listing_analysis, clamp
 
 PRIVATE_SOURCE_URL_PLACEHOLDER = "private:user-submitted-reference"
-COMPARABLES_BASIS = (
-    "legal-first listings, partner snapshots, area statistics and open-data layers"
-)
+COMPARABLES_BASIS = "legal-first listings, partner snapshots, area statistics and open-data layers"
 RETENTION_NOTE = (
     "User-submitted analysis is computed as a private draft; source URL is not exposed "
     "in public UI, SEO pages or generated listing analysis."
@@ -136,21 +134,11 @@ AREA_ALIASES = {
     ("wysoka", "powiat-wroclawski"): "wysoka-wysoka",
     ("wysoka", "wysoka"): "wysoka-wysoka",
     ("kobierzyce", "wysoka"): "wysoka-wysoka",
-    ("bielany-wroclawskie", "dolnoslaskie"): (
-        "bielany-wroclawskie-bielany-wroclawskie"
-    ),
-    ("bielany-wroclawskie", "wroclawski"): (
-        "bielany-wroclawskie-bielany-wroclawskie"
-    ),
-    ("bielany-wroclawskie", "powiat-wroclawski"): (
-        "bielany-wroclawskie-bielany-wroclawskie"
-    ),
-    ("bielany-wroclawskie", "bielany-wroclawskie"): (
-        "bielany-wroclawskie-bielany-wroclawskie"
-    ),
-    ("kobierzyce", "bielany-wroclawskie"): (
-        "bielany-wroclawskie-bielany-wroclawskie"
-    ),
+    ("bielany-wroclawskie", "dolnoslaskie"): ("bielany-wroclawskie-bielany-wroclawskie"),
+    ("bielany-wroclawskie", "wroclawski"): ("bielany-wroclawskie-bielany-wroclawskie"),
+    ("bielany-wroclawskie", "powiat-wroclawski"): ("bielany-wroclawskie-bielany-wroclawskie"),
+    ("bielany-wroclawskie", "bielany-wroclawskie"): ("bielany-wroclawskie-bielany-wroclawskie"),
+    ("kobierzyce", "bielany-wroclawskie"): ("bielany-wroclawskie-bielany-wroclawskie"),
     ("olawa", "dolnoslaskie"): "olawa-olawa",
     ("olawa", "olawski"): "olawa-olawa",
     ("olawa", "powiat-olawski"): "olawa-olawa",
@@ -251,7 +239,8 @@ def analyze_user_submitted_listing(
     defaulted_infrastructure = _has_missing_infrastructure(payload)
     if defaulted_infrastructure:
         warnings.append(
-            "Some infrastructure fields were not provided; district-level defaults were used."
+            "Some infrastructure fields were not provided; dependent signals are shown "
+            "with reduced confidence."
         )
 
     data_quality_score = _calculate_data_quality_score(
@@ -307,18 +296,10 @@ def analyze_user_submitted_listing(
     )
     data_quality_notes = [
         *analysis.data_quality_notes,
-        (
-            "User-submitted object was analyzed from confirmed fields "
-            "and legal-first comparables."
-        ),
+        ("User-submitted object was analyzed from confirmed fields and legal-first comparables."),
         "Source URL, if provided, is treated as a private reference only.",
         *(
-            [
-                (
-                    "Developer reputation matched: "
-                    f"{developer_reputation.developer.name}."
-                )
-            ]
+            [(f"Developer reputation matched: {developer_reputation.developer.name}.")]
             if developer_reputation is not None
             else []
         ),
@@ -430,9 +411,7 @@ def import_listing_from_source_url(
 
     fields = _extract_import_fields(fetched.body)
     extracted = _fields_extracted(fields)
-    missing_required = [
-        field for field in MANUAL_FIELDS_REQUIRED if getattr(fields, field) is None
-    ]
+    missing_required = [field for field in MANUAL_FIELDS_REQUIRED if getattr(fields, field) is None]
     warnings = [
         "Fetched a single user-submitted URL without bulk crawling or anti-bot bypass.",
         "Photos, contacts and full description are not retained.",
@@ -692,10 +671,7 @@ def _developer_match_score(
         score = max(
             score,
             max(
-                (
-                    _name_match_score(payload.developer_name, name)
-                    for name in developer_names
-                ),
+                (_name_match_score(payload.developer_name, name) for name in developer_names),
                 default=0,
             ),
         )
@@ -703,10 +679,7 @@ def _developer_match_score(
         score = max(
             score,
             max(
-                (
-                    _text_contains_name_score(developer_text, name, 58)
-                    for name in developer_names
-                ),
+                (_text_contains_name_score(developer_text, name, 58) for name in developer_names),
                 default=0,
             ),
         )
@@ -814,19 +787,13 @@ def _specific_project_tokens(project_name: str) -> set[str]:
 
 
 def _match_tokens(value: str) -> set[str]:
-    return {
-        token
-        for token in _normalized_match_text(value).split()
-        if len(token) > 2
-    }
+    return {token for token in _normalized_match_text(value).split() if len(token) > 2}
 
 
 def _normalized_match_text(*parts: str | None) -> str:
     text = " ".join(part for part in parts if part)
     normalized = (
-        unicodedata.normalize("NFKD", text.casefold())
-        .encode("ascii", "ignore")
-        .decode("ascii")
+        unicodedata.normalize("NFKD", text.casefold()).encode("ascii", "ignore").decode("ascii")
     )
     return re.sub(r"[^a-z0-9]+", " ", normalized).strip()
 
@@ -839,12 +806,11 @@ def _build_listing(
     geocoding: GeocodingResult | None,
 ) -> Listing:
     area_id = area_statistics.area_id
-    defaults = DISTRICT_DEFAULTS.get(area_id, {})
     today = date.today()
     listing_id = _listing_id(payload)
     price_per_m2 = round(payload.price / payload.area_m2)
-    lat = payload.lat if payload.lat is not None else geocoding.lat if geocoding else 0
-    lon = payload.lon if payload.lon is not None else geocoding.lon if geocoding else 0
+    lat = payload.lat if payload.lat is not None else geocoding.lat if geocoding else None
+    lon = payload.lon if payload.lon is not None else geocoding.lon if geocoding else None
     planned_investments = (
         []
         if payload.planned_investments_within_2km is not None
@@ -883,37 +849,17 @@ def _build_listing(
         relisted=False,
         lat=lat,
         lon=lon,
-        distance_to_center_km=_float_value(
-            payload.distance_to_center_km,
-            defaults,
-            "distance_to_center_km",
-            7.0,
-        ),
-        nearest_stop_m=_int_value(payload.nearest_stop_m, defaults, "nearest_stop_m", 700),
-        nearest_school_m=_int_value(payload.nearest_school_m, defaults, "nearest_school_m", 900),
-        nearest_major_road_m=_int_value(
-            payload.nearest_major_road_m,
-            defaults,
-            "nearest_major_road_m",
-            600,
-        ),
-        nearest_industrial_zone_m=_int_value(
-            payload.nearest_industrial_zone_m,
-            defaults,
-            "nearest_industrial_zone_m",
-            2200,
-        ),
-        parks_within_1km=_int_value(payload.parks_within_1km, defaults, "parks_within_1km", 1),
-        schools_within_1km=_int_value(
-            payload.schools_within_1km,
-            defaults,
-            "schools_within_1km",
-            1,
-        ),
+        distance_to_center_km=payload.distance_to_center_km,
+        nearest_stop_m=payload.nearest_stop_m,
+        nearest_school_m=payload.nearest_school_m,
+        nearest_major_road_m=payload.nearest_major_road_m,
+        nearest_industrial_zone_m=payload.nearest_industrial_zone_m,
+        parks_within_1km=payload.parks_within_1km,
+        schools_within_1km=payload.schools_within_1km,
         planned_investments_within_2km=(
             payload.planned_investments_within_2km
             if payload.planned_investments_within_2km is not None
-            else min(len(planned_investments), 5)
+            else (min(len(planned_investments), 5) if planned_investments else None)
         ),
         data_quality_score=data_quality_score,
     )
@@ -1703,11 +1649,7 @@ def _merge_import_fields(
 
 
 def _fields_extracted(fields: SourceUrlImportFields) -> list[str]:
-    return [
-        key
-        for key, value in fields.model_dump().items()
-        if value is not None
-    ]
+    return [key for key, value in fields.model_dump().items() if value is not None]
 
 
 def _first_text(values: dict[str, object], keys: tuple[str, ...]) -> str | None:
@@ -1924,11 +1866,7 @@ def _suggested_title(source_slug: str | None) -> str | None:
         return None
     without_id = re.sub(r"[-_]?ID[a-zA-Z0-9]+$", "", source_slug)
     words = re.split(r"[-_]+", without_id)
-    useful_words = [
-        word
-        for word in words
-        if word and not re.fullmatch(r"[A-Z0-9]{8,}", word)
-    ]
+    useful_words = [word for word in words if word and not re.fullmatch(r"[A-Z0-9]{8,}", word)]
     if not useful_words:
         return None
     return " ".join(useful_words[:10]).capitalize()

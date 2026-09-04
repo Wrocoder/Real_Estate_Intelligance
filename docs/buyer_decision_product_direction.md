@@ -9,7 +9,7 @@
 - Product readiness: 7/10.
 - Technical readiness: 9/10.
 
-Вывод: Domarion технически уже шире, чем нужно для первой проверки рынка.
+Вывод: WartoMetr технически уже шире, чем нужно для первой проверки рынка.
 Главный риск - не отсутствие endpoints, а то, что продукт останется сильным
 engineering demo без реальных пользователей, оплат и доверия.
 
@@ -45,7 +45,7 @@ Scores остаются доказательствами, но не являют
 ## Ideal Buyer Flow
 
 1. Пользователь вставляет ссылку или вводит параметры квартиры.
-2. Domarion показывает один понятный verdict:
+2. WartoMetr показывает один понятный verdict:
    `7.8/10 - хороший вариант, но не по текущей цене`.
 3. Пользователь видит:
    - fair price range;
@@ -53,7 +53,7 @@ Scores остаются доказательствами, но не являют
    - recommended opening offer;
    - realistic deal range;
    - max reasonable offer before extra due diligence.
-4. Domarion отвечает на семь вопросов:
+4. WartoMetr отвечает на семь вопросов:
    - сколько квартира реально стоит;
    - сколько предложить;
    - что с ней не так;
@@ -83,7 +83,7 @@ Scores остаются доказательствами, но не являют
 
 ### P1 - Decision Verdict
 
-- [x] Add `Domarion Verdict` object to analysis/report contract:
+- [x] Add `WartoMetr Verdict` object to analysis/report contract:
   `action`, `score_10`, `headline`, `seller_price`, `fair_price_range`,
   `opening_offer`, `realistic_deal_range`, `max_reasonable_offer`,
   `top_reasons`, `critical_unknowns`.
@@ -175,10 +175,10 @@ Scores остаются доказательствами, но не являют
 
 ### P3 - Expert Review
 
-- [ ] Add manual product/package: `Domarion Expert Review`, 299-499 PLN.
+- [ ] Add manual product/package: `WartoMetr Expert Review`, 299-499 PLN.
 - [ ] Workflow: automatic report plus analyst review of comparables, fair price,
   documents, risks, future infrastructure and negotiation strategy.
-- [ ] Output must be marked `Verified by Domarion analyst` only after human QA.
+- [ ] Output must be marked `Verified by WartoMetr analyst` only after human QA.
 - [ ] Track analyst time and refund/quality issues before automating more.
 
 ### P3 - Decision-Oriented Compare
@@ -204,7 +204,7 @@ Scores остаются доказательствами, но не являют
 - The first visible result answers "buy, negotiate, avoid or verify first".
 - User sees recommended opening offer and max reasonable offer before detailed
   score breakdown.
-- User sees what Domarion does not know.
+- User sees what WartoMetr does not know.
 - Paid report QA catches source URL leaks, unsupported guarantees and missing
   disclaimers.
 - Pricing/offers match the ladder above.

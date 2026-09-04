@@ -1,5 +1,5 @@
 [Unit]
-Description=Domarion OCI Docker Compose stack
+Description=WartoMetr OCI Docker Compose stack
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target

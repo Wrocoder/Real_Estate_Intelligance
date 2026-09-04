@@ -40,7 +40,7 @@ def _now() -> datetime:
 
 
 class InMemoryIngestionAdminStore(IngestionAdminStore):
-    def __init__(self) -> None:
+    def __init__(self, *, include_demo_data: bool = False) -> None:
         self._jobs: dict[str, IngestionJob] = {}
         self._logs: dict[str, DataQualityLog] = {}
         self._raw_listings: dict[str, RawListingSummary] = {}
@@ -49,7 +49,9 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
         self._source_errors: dict[str, SourceError] = {}
         self._admin_audit_logs: dict[str, AdminAuditLog] = {}
         self._data_deletion_requests: dict[str, DataDeletionRequest] = {}
-        self._seed_demo()
+        if include_demo_data:
+            self._seed_demo()
+        self._seed_system_sources(include_demo_records=include_demo_data)
 
     def clear(self) -> None:
         self._jobs.clear()
@@ -64,6 +66,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
     def reset_demo(self) -> None:
         self.clear()
         self._seed_demo()
+        self._seed_system_sources(include_demo_records=True)
 
     def create_job(self, payload: IngestionJobCreate) -> IngestionJob:
         now = _now()
@@ -327,6 +330,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             raw_payload_retention_days=payload.raw_payload_retention_days,
             private_url_retention_days=payload.private_url_retention_days,
             retention_notes=payload.retention_notes,
+            is_demo=payload.is_demo,
             is_active=payload.is_active,
             created_at=now,
             updated_at=now,
@@ -523,6 +527,7 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             raw_payload_retention_days=90,
             private_url_retention_days=None,
             retention_notes="Keep partner raw payloads for short-term QA, then prune.",
+            is_demo=True,
             is_active=True,
             created_at=now,
             updated_at=now,
@@ -543,10 +548,14 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
             raw_payload_retention_days=365,
             private_url_retention_days=None,
             retention_notes="Open-data payloads can be retained longer for reproducibility.",
+            is_demo=True,
             is_active=True,
             created_at=now,
             updated_at=now,
         )
+
+    def _seed_system_sources(self, *, include_demo_records: bool) -> None:
+        now = _now()
         for payload in system_source_payloads():
             self._sources[f"system-{payload.source_type}"] = SourceRegistryEntry(
                 id=f"system-{payload.source_type}",
@@ -564,10 +573,14 @@ class InMemoryIngestionAdminStore(IngestionAdminStore):
                 raw_payload_retention_days=payload.raw_payload_retention_days,
                 private_url_retention_days=payload.private_url_retention_days,
                 retention_notes=payload.retention_notes,
+                is_demo=payload.is_demo,
                 is_active=payload.is_active,
                 created_at=now,
                 updated_at=now,
             )
+
+        if not include_demo_records:
+            return
 
         job = IngestionJob(
             id="demo-ingestion-job-1",

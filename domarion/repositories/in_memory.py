@@ -12,6 +12,7 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DataProvenance,
     DeveloperAlias,
     DeveloperProfile,
     DeveloperProject,
@@ -42,9 +43,27 @@ from domarion.services.listing_text_search import listing_matches_query
 
 
 class InMemoryRealEstateRepository:
-    """Temporary repository for the first API slice before PostgreSQL/PostGIS wiring."""
+    """Ephemeral repository; demo fixtures are opt-in and isolated from live data."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, include_demo_data: bool = False) -> None:
+        if not include_demo_data:
+            self._areas: dict[str, AreaStatistics] = {}
+            self._listings: dict[str, Listing] = {}
+            self._developer_profiles: dict[str, DeveloperProfile] = {}
+            self._developer_projects: list[DeveloperProject] = []
+            self._developer_aliases: list[DeveloperAlias] = []
+            self._developer_quality_signals: list[DeveloperQualitySignal] = []
+            self._listing_developer_map: dict[str, str] = {}
+            self._planned_investments: dict[str, PlannedInvestment] = {}
+            self._transport_stops: list[TransportStopReference] = []
+            self._transport_routes: list[TransportRouteReference] = []
+            self._schools: list[SchoolReference] = []
+            self._kindergartens: list[KindergartenReference] = []
+            self._amenities: list[AmenityReference] = []
+            self._industrial_zones: list[IndustrialZoneReference] = []
+            self._history: dict[str, list[PriceHistoryPoint]] = {}
+            return
+
         self._areas = {
             "wroclaw-krzyki": AreaStatistics(
                 area_id="wroclaw-krzyki",
@@ -731,6 +750,20 @@ class InMemoryRealEstateRepository:
                 PriceHistoryPoint(observed_at=date(2026, 5, 30), price=775000, price_per_m2=10690),
                 PriceHistoryPoint(observed_at=date(2026, 6, 29), price=760000, price_per_m2=10483),
             ],
+        }
+
+        demo_provenance = DataProvenance(
+            mode="demo",
+            source_type="deterministic_fixture",
+            notice_code="demo_data_not_market_evidence",
+        )
+        self._listings = {
+            listing_id: listing.model_copy(update={"data_provenance": demo_provenance})
+            for listing_id, listing in self._listings.items()
+        }
+        self._areas = {
+            area_id: area.model_copy(update={"data_provenance": demo_provenance})
+            for area_id, area in self._areas.items()
         }
 
     def list_listings(

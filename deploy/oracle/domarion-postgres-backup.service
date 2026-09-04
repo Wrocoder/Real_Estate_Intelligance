@@ -1,5 +1,5 @@
 [Unit]
-Description=Domarion PostgreSQL logical backup
+Description=WartoMetr PostgreSQL logical backup
 Requires=docker.service
 After=docker.service network-online.target domarion-compose.service
 Wants=network-online.target

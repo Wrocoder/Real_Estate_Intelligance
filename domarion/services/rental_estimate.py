@@ -21,7 +21,9 @@ def build_listing_rental_estimate(
     scores: PropertyScores,
     *,
     comparable_count: int = 0,
-) -> ListingRentalEstimate:
+) -> ListingRentalEstimate | None:
+    if comparable_count < 1:
+        return None
     gross_yield_pct = _estimate_gross_yield_pct(listing, scores)
     monthly_rent_mid = round(listing.price * gross_yield_pct / 100 / 12)
     monthly_rent_low = round(monthly_rent_mid * 0.9)
@@ -38,11 +40,18 @@ def build_listing_rental_estimate(
 
     return ListingRentalEstimate(
         listing_id=listing.id,
+        source="sale-comparable-derived model",
+        method=(
+            "Screening heuristic using rental-potential signals and entry price; "
+            "not live rental comps."
+        ),
+        period="current listing snapshot",
         monthly_rent_low_pln=monthly_rent_low,
         monthly_rent_mid_pln=monthly_rent_mid,
         monthly_rent_high_pln=monthly_rent_high,
         rent_per_m2_mid_pln=round(monthly_rent_mid / listing.area_m2),
         gross_yield_pct=gross_yield_pct,
+        net_yield_on_cash_pct=round(net_operating_income * 12 / listing.price * 100, 2),
         vacancy_rate_pct=vacancy_rate_pct,
         operating_costs_monthly_pln=operating_costs,
         net_operating_income_monthly_pln=net_operating_income,
@@ -61,13 +70,18 @@ def build_listing_rental_estimate(
 
 
 def _estimate_gross_yield_pct(listing: Listing, scores: PropertyScores) -> float:
+    nearest_stop_m = listing.nearest_stop_m or 500
+    distance_to_center_km = (
+        listing.distance_to_center_km if listing.distance_to_center_km is not None else 6.0
+    )
+    planned_investments_within_2km = listing.planned_investments_within_2km or 0
     estimate = 4.0 + (scores.rental_potential_score - 50) * 0.035
     estimate -= max(scores.price_delta_to_fair_mid_pct, 0) * 0.015
-    if listing.nearest_stop_m <= 300:
+    if nearest_stop_m <= 300:
         estimate += 0.25
-    if listing.distance_to_center_km <= 4:
+    if distance_to_center_km <= 4:
         estimate += 0.2
-    if listing.planned_investments_within_2km > 0:
+    if planned_investments_within_2km > 0:
         estimate += 0.15
     if scores.risk_score >= 60:
         estimate -= 0.2
@@ -191,7 +205,10 @@ def _assumptions(listing: Listing, scores: PropertyScores) -> list[str]:
         "Cashflow is before income tax, depreciation/accounting effects and one-off repairs.",
         "Financed scenario assumes 20% down, 25 years and 7.5% annual variable rate.",
         f"Rental Potential Score: {scores.rental_potential_score}/100.",
-        f"Transport input: nearest stop {listing.nearest_stop_m} m.",
+        (
+            "Transport input: nearest stop "
+            f"{listing.nearest_stop_m if listing.nearest_stop_m is not None else 'unknown'} m."
+        ),
     ]
 
 
@@ -201,11 +218,12 @@ def _risk_notes(
     confidence_score: int,
 ) -> list[str]:
     notes: list[str] = []
+    nearest_stop_m = listing.nearest_stop_m or 500
     if confidence_score < 65:
         notes.append("Rental estimate confidence is limited; verify real rent comparables.")
     if scores.rental_potential_score < 55:
         notes.append("Rental potential is not strong enough to rely on rent as the main thesis.")
-    if listing.nearest_stop_m > 800:
+    if nearest_stop_m > 800:
         notes.append("Weak transport can increase vacancy and reduce rent resilience.")
     if scores.price_delta_to_fair_mid_pct > 7:
         notes.append("Higher entry price pressures yield and cashflow.")

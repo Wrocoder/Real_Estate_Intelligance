@@ -1,4 +1,4 @@
-# Domarion Analytics / Real Estate Intelligence Poland
+# WartoMetr Analytics / Real Estate Intelligence Poland
 
 SaaS-платформа аналитики недвижимости в Польше. Первый технический фокус:
 FastAPI backend для поиска объектов, сравнения, скоринга и подготовки отчетов.
@@ -20,8 +20,8 @@ S3-compatible report artifacts и worker-процессы.
   массового scraping, без фото/контактов/raw HTML и без публичного source URL leak;
 - HTML/PDF reports, saved report history, paid report orders, bundles, mock/Stripe/PayU
   checkout adapters и webhook fulfillment;
-- auth/subscription MVP через headers, plan limits, favorites, alerts, email/Telegram
-  delivery jobs и daily worker;
+- first-party email/password auth с подписанной HttpOnly-сессией, tenant-scoped
+  favorites, alerts и reports, plan limits, email/Telegram delivery jobs и daily worker;
 - agency workspaces, CRM-light, shared shortlists, API-lite, dataset exports,
   market intelligence и enterprise custom dashboards;
 - admin ingestion console: Source Registry, source checks/errors, data quality,
@@ -34,7 +34,7 @@ S3-compatible report artifacts и worker-процессы.
   `/ready` production preflight, backups and production ops runbook.
 
 Oracle Cloud deployment is live and working as of 2026-09-01. Paid production
-traffic is still gated: real auth, live payment secrets, source legal review,
+traffic is still gated: live payment secrets, source legal review,
 monitoring targets, offsite backups and restore drill must be completed before
 selling at scale.
 
@@ -178,11 +178,18 @@ selling at scale.
 
 ## Backend локально
 
+По умолчанию in-memory repository пуст и работает в live-режиме. Для локальной
+работы с однозначно маркированным deterministic demo dataset включите режим явно:
+
 ```powershell
+$env:DEMO_MODE_ENABLED="true"
 .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 .\.venv\Scripts\python.exe -m pytest
 .\.venv\Scripts\python.exe -m uvicorn main:app --reload --reload-dir domarion --reload-dir tests
 ```
+
+Не включайте `DEMO_MODE_ENABLED` в production/staging API. Startup guard разрешает
+demo-режим только для local/development/test с `DATA_REPOSITORY_BACKEND=memory`.
 
 Coverage report для backend:
 
@@ -317,8 +324,13 @@ Copy-Item .env.example .env.local
 
 ```env
 NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8010
-NEXT_PUBLIC_OWNER_ID=demo-user
 ```
+
+В обычном local/live режиме персональные API требуют регистрации или входа на
+`/account`. Для изолированного демонстрационного сценария включи
+`DEMO_MODE_ENABLED=true`; только в local/development/test тогда доступен общий
+demo-профиль и legacy identity headers. В production задай уникальный
+`AUTH_SESSION_SECRET` длиной не менее 32 символов через secret manager.
 
 Если frontend показывает `Failed to fetch` или `Backend API недоступен`, проверь
 `frontend/.env.local`: `NEXT_PUBLIC_API_BASE_URL` должен указывать на реально
@@ -367,9 +379,14 @@ Copy-Item .env.example .env
 (Get-Content .env) -replace 'DATA_REPOSITORY_BACKEND=memory', 'DATA_REPOSITORY_BACKEND=postgres' | Set-Content .env
 docker compose up -d db redis
 .\.venv\Scripts\python.exe -m alembic upgrade head
+$env:DEMO_MODE_ENABLED="true"
 .\.venv\Scripts\domarion.exe seed-demo
+$env:DEMO_MODE_ENABLED="false"
 .\.venv\Scripts\python.exe -m uvicorn main:app --reload --reload-dir domarion
 ```
+
+PostgreSQL demo records сохраняют `is_demo=true` и не попадают в live API.
+Контейнерный seed запускается только через явный Compose profile `demo`.
 
 Полезные DB-команды:
 
@@ -405,7 +422,6 @@ GitHub Actions проверяет backend, frontend, Alembic SQL generation и D
 docker build -t domarion-api:local .
 docker build `
   --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 `
-  --build-arg NEXT_PUBLIC_OWNER_ID=demo-user `
   -t domarion-frontend:local `
   .\frontend
 ```
@@ -1032,7 +1048,7 @@ Invoke-WebRequest "http://127.0.0.1:8000/api/v1/datasets/listings/export?format=
 
 Планы с `can_export=true` могут получить executive market report для трех B2B
 аудиторий: `bank`, `developer`, `fund`. Отчет строится на текущем market
-dashboard, area comparison и Domarion indexes: liquidity, buyer/seller market,
+dashboard, area comparison и WartoMetr indexes: liquidity, buyer/seller market,
 growth, overheating, price/supply momentum. Это аналитический screening report,
 не банковская оценка, не инвестиционная рекомендация и не прогноз.
 
@@ -1522,7 +1538,7 @@ Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist
 
 ## Закрыто по product review 2026-08-27
 
-- `Domarion Verdict` стал частью analysis/report contract: buy / negotiate /
+- `WartoMetr Verdict` стал частью analysis/report contract: buy / negotiate /
   avoid / verify first, score 0-10, fair range, recommended offer, realistic
   deal range, max reasonable offer, top reasons and critical unknowns.
 - `/check`, `/listings/[id]` and buyer HTML report теперь начинаются с
@@ -1566,12 +1582,11 @@ git push -u origin feature/mvp-api-foundation
    negotiation opportunity.
 4. Провести source-specific legal review и зафиксировать approved/blocked matrix
    перед любым scheduled ingestion за пределами partner/open-data/manual flows.
-5. Подключить production auth вместо MVP header/demo identity.
-6. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
+5. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
    пройти restore drill перед paid traffic.
-7. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
-8. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
+6. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
+7. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
    user-submitted one-off анализа.
-9. Заморозить expansion/enterprise/news/investor tooling до выполнения
+8. Заморозить expansion/enterprise/news/investor tooling до выполнения
    validation gate; расширять partner/open-data coverage на новые города только
    по checklist из `docs/poland_city_expansion_checklist.md`.

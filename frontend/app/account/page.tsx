@@ -9,6 +9,7 @@ import {
   FileText,
   FolderOpen,
   Lock,
+  LogOut,
   MessageSquare,
   RefreshCw,
   Share2,
@@ -22,7 +23,9 @@ import {
 import Link from "next/link";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { AuthForm } from "@/components/AuthForm";
 import {
+  ApiError,
   api,
   crmSharedShortlistUrl,
   reportContentUrl,
@@ -130,7 +133,7 @@ const BUYER_ACCOUNT_COPY: Record<
       buyerPlan: "Buyer plan",
       searchProgress: "Search progress",
       availableTools: "Available tools",
-      professionalTools: "Domarion Pro tools",
+      professionalTools: "WartoMetr Pro tools",
     },
     metrics: {
       savedApartments: "Saved apartments",
@@ -171,7 +174,7 @@ const BUYER_ACCOUNT_COPY: Record<
       buyerPlan: "Plan dla kupującego",
       searchProgress: "Postęp poszukiwań",
       availableTools: "Dostępne narzędzia",
-      professionalTools: "Narzędzia Domarion Pro",
+      professionalTools: "Narzędzia WartoMetr Pro",
     },
     metrics: {
       savedApartments: "Zapisane mieszkania",
@@ -212,7 +215,7 @@ const BUYER_ACCOUNT_COPY: Record<
       buyerPlan: "Тариф покупателя",
       searchProgress: "Прогресс поиска",
       availableTools: "Доступные инструменты",
-      professionalTools: "Инструменты Domarion Pro",
+      professionalTools: "Инструменты WartoMetr Pro",
     },
     metrics: {
       savedApartments: "Сохраненные квартиры",
@@ -253,7 +256,7 @@ const BUYER_ACCOUNT_COPY: Record<
       buyerPlan: "Тариф покупця",
       searchProgress: "Прогрес пошуку",
       availableTools: "Доступні інструменти",
-      professionalTools: "Інструменти Domarion Pro",
+      professionalTools: "Інструменти WartoMetr Pro",
     },
     metrics: {
       savedApartments: "Збережені квартири",
@@ -326,6 +329,7 @@ export default function AccountPage() {
   });
   const [status, setStatus] = useState(copy.statuses.loadingAccount);
   const [error, setError] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
 
   const loadCrmForAgency = useCallback(
     async (agencyId: string, preferredClientId?: string | null) => {
@@ -354,8 +358,22 @@ export default function AccountPage() {
 
   const load = useCallback(async () => {
     setError("");
+    setAuthRequired(false);
     setStatus(copy.statuses.loadingAccount);
     try {
+      const sessionResponse = await fetch("/api/auth/session-status", {
+        cache: "no-store",
+        credentials: "include",
+      });
+      if (!sessionResponse.ok) throw new Error(copy.statuses.backendUnavailable);
+      const sessionStatus = (await sessionResponse.json()) as { authenticated: boolean };
+      if (!sessionStatus.authenticated) {
+        setAccount(null);
+        setAuthRequired(true);
+        setStatus("");
+        return;
+      }
+
       const [accountData, planData, orderData] = await Promise.all([
         api.getMe(),
         api.listPlans(),
@@ -366,8 +384,14 @@ export default function AccountPage() {
       setOrders(orderData);
       setStatus(copy.statuses.accountUpdated);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAccount(null);
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     }
   }, [copy]);
 
@@ -761,6 +785,7 @@ export default function AccountPage() {
     [currentPlan, plans],
   );
 
+  if (authRequired) return <AuthForm onAuthenticated={load} />;
   if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
   if (!account) return <LoadingBlock label={copy.statuses.loadingAccountAndLimits} />;
 
@@ -771,16 +796,31 @@ export default function AccountPage() {
           <h1>{buyerCopy.title}</h1>
           <p>{buyerCopy.subtitle}</p>
         </div>
-        <button
-          className="button"
-          type="button"
-          onClick={() => {
-            void load();
-            if (showProTools) void loadAgencyWorkspace(selectedAgency?.id);
-          }}
-        >
-          <RefreshCw size={16} /> {copy.actions.refresh}
-        </button>
+        <div className="toolbar">
+          <button
+            className="button"
+            type="button"
+            onClick={() => {
+              void load();
+              if (showProTools) void loadAgencyWorkspace(selectedAgency?.id);
+            }}
+          >
+            <RefreshCw size={16} /> {copy.actions.refresh}
+          </button>
+          <button
+            className="button"
+            type="button"
+            onClick={async () => {
+              await api.logout();
+              setAccount(null);
+              setAuthRequired(true);
+              window.dispatchEvent(new Event("domarion:auth-changed"));
+            }}
+          >
+            <LogOut size={16} />
+            {{ pl: "Wyloguj", en: "Sign out", ru: "Выйти", uk: "Вийти" }[locale]}
+          </button>
+        </div>
       </header>
 
       <section className="metric-grid">

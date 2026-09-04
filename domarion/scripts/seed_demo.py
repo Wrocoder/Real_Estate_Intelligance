@@ -4,6 +4,7 @@ from decimal import Decimal
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from domarion.core import get_settings
 from domarion.db.models import (
     Amenity,
     AreaStatistic,
@@ -45,12 +46,17 @@ from domarion.schemas import (
 
 
 def seed_demo_data() -> dict[str, int]:
+    settings = get_settings()
+    if not settings.demo_mode_enabled:
+        raise RuntimeError(
+            "Demo seeding requires the explicit DEMO_MODE_ENABLED=true flag."
+        )
     with SessionLocal() as session:
         return seed_demo_data_in_session(session)
 
 
 def seed_demo_data_in_session(session: Session) -> dict[str, int]:
-    demo_repository = InMemoryRealEstateRepository()
+    demo_repository = InMemoryRealEstateRepository(include_demo_data=True)
     source = _get_or_create_demo_source(session)
 
     areas_seeded = 0
@@ -150,12 +156,14 @@ def _get_or_create_demo_source(session: Session) -> ListingSource:
         select(ListingSource).where(ListingSource.name == "Demo seed")
     )
     if source is not None:
+        source.is_demo = True
         return source
 
     source = ListingSource(
         name="Demo seed",
         base_url="https://example.com",
         source_type="seed",
+        is_demo=True,
     )
     session.add(source)
     session.flush()

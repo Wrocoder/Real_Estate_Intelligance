@@ -23,11 +23,11 @@ TITLE_WRAP_WIDTH = 58
 
 @dataclass(frozen=True)
 class ReportPdfBranding:
-    brand_name: str = "Domarion"
+    brand_name: str = "WartoMetr"
     logo_url: str | None = None
     primary_color: tuple[float, float, float] = (0.06, 0.46, 0.43)
     accent_color: tuple[float, float, float] = (0.70, 0.14, 0.09)
-    footer_text: str = "Powered by Domarion"
+    footer_text: str = "Powered by WartoMetr"
     agency_disclaimer: str | None = None
 
 
@@ -269,7 +269,7 @@ def _pdf_branding_from_metadata(metadata: dict) -> ReportPdfBranding:
     if not isinstance(raw, dict):
         return ReportPdfBranding()
 
-    brand_name = _first_string(raw.get("agency_name")) or "Domarion"
+    brand_name = _first_string(raw.get("agency_name")) or "WartoMetr"
     primary_color = _hex_color_to_rgb(_first_string(raw.get("primary_color"))) or (
         0.06,
         0.46,
@@ -285,7 +285,7 @@ def _pdf_branding_from_metadata(metadata: dict) -> ReportPdfBranding:
         logo_url=_first_string(raw.get("logo_url")),
         primary_color=primary_color,
         accent_color=accent_color,
-        footer_text=_first_string(raw.get("footer_text")) or "Powered by Domarion",
+        footer_text=_first_string(raw.get("footer_text")) or "Powered by WartoMetr",
         agency_disclaimer=_first_string(raw.get("agency_disclaimer")),
     )
 
@@ -367,7 +367,7 @@ class _PdfDocument:
             y -= LINE_HEIGHT if font_size == BODY_FONT_SIZE else LINE_HEIGHT + 4
         if current:
             pages.append(current)
-        return pages or [[("Domarion", TITLE_FONT_SIZE)]]
+        return pages or [[("WartoMetr", TITLE_FONT_SIZE)]]
 
     def _render_with_truetype(
         self,
@@ -402,7 +402,7 @@ class _PdfDocument:
             )
 
         assert catalog_id == 1
-        font_name = f"Domarion+{self.font.base_name}"
+        font_name = f"WartoMetr+{self.font.base_name}"
         objects[font_id - 1] = (
             f"<< /Type /Font /Subtype /Type0 /BaseFont /{font_name} "
             "/Encoding /Identity-H "
@@ -731,7 +731,7 @@ def _scale_metric(value: int, units_per_em: int) -> int:
 
 
 def _pdf_name(value: str) -> str:
-    return re.sub(r"[^A-Za-z0-9_-]+", "-", value).strip("-") or "DomarionFont"
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", value).strip("-") or "WartoMetrFont"
 
 
 def _u16(data: bytes, offset: int) -> int:

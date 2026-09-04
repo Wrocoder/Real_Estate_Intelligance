@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Domarion уже технически ближе к paid beta, чем к обычному прототипу: есть
+WartoMetr уже технически ближе к paid beta, чем к обычному прототипу: есть
 object-check flow, reports, pricing, lead capture, admin queue, source registry,
 developer reputation, alerts, карты и score explanations. Главный риск теперь
 не в том, что MVP нечего показать, а в том, что продукт может слишком долго
@@ -81,7 +81,7 @@ The B2C product name to test:
 | Technical complexity | 8.0 | GIS, dedup, ingestion, source quality and report artifacts are hard. | Narrow geography and legal-first ingestion. | Multi-source data and production ops. | CI + staging + monitoring under real data load. |
 | Legal complexity | 7.0 | Portals, database rights, GDPR/RODO and disclaimers matter. | Source compliance policy and partner feeds. | Aggressive scraping would raise risk. | Lawyer-approved source matrix. |
 | Source dependency risk | 8.0 | Current value needs active listing coverage. | Partner data, user-submitted flow, open-data moat. | Overreliance on one portal. | 3 independent listing sources. |
-| Competitive advantage | 7.5 | Combined reports, future infra, scoring and source policy are differentiated. | Historical snapshots and dedup over time. | Portals can copy simpler analytics. | Users cite Domarion-only insights as buying reason. |
+| Competitive advantage | 7.5 | Combined reports, future infra, scoring and source policy are differentiated. | Historical snapshots and dedup over time. | Portals can copy simpler analytics. | Users cite WartoMetr-only insights as buying reason. |
 | First sales in 3 months | 7.0 | Possible with manual/semi-auto report workflow. | `/beta`, `/realtors`, lead capture. | No real outreach/interviews yet. | 20 stranger-paid buyer reports or 3 realtor bundles. |
 | MRR 10,000 PLN | 6.5 | Realistic with agencies, harder through B2C alone. | Realtor bundles and agency workspace. | Sales cycle and trust. | 20-30 active pro seats or report bundles. |
 | Poland expansion | 7.0 | Replicable after source and geodata checklist. | Narrow playbook and modular sources. | Local data differences. | Second-city source checklist and pilot. |
@@ -99,7 +99,7 @@ Desk research checked public pages on 2026-07-18. Sources:
 - urban.one: https://urban.one/
 - Cenatorium: https://cenatorium.pl/
 
-| Competitor | What they do | Audience | Strengths | Weaknesses / gaps | Threat | Domarion angle |
+| Competitor | What they do | Audience | Strengths | Weaknesses / gaps | Threat | WartoMetr angle |
 | --- | --- | --- | --- | --- | --- | --- |
 | Otodom | Major real estate portal with listings and market content. | Buyers, sellers, agencies, developers. | Inventory, brand, SEO, user intent. | Portal UX still centered on listings, not independent object due diligence. | High. | Do not compete as portal; use user-submitted/private analysis, reports, future infra and risk explanation. |
 | OLX Nieruchomości | Classifieds marketplace with real estate category. | Broad consumer audience, private sellers, agencies. | Traffic, low-friction listings, broad reach. | Classified data quality and analytics depth vary. | Medium-high. | Build trust layer and decision report above raw classifieds. |
@@ -107,13 +107,13 @@ Desk research checked public pages on 2026-07-18. Sources:
 | Gratka | Classified/real estate listings marketplace. | Buyers/renters/sellers. | Long-running classified brand and listing breadth. | Similar portal limitation: discovery over due diligence. | Medium. | Win on specific object analysis and negotiation/risk sections. |
 | RynekPierwotny | Primary-market/developer listing portal. | New-build buyers, developers. | Developer/new-build inventory and primary-market focus. | Incentives can be closer to lead generation than independent due diligence. | High for primary market. | Developer reputation, quality/legal signal explanations and independent buyer checklist. |
 | SonarHome | Valuation, selling/buying services and data-backed property insight. | Owners, buyers, investors. | Clear valuation proposition, recognizable proptech brand. | Less broad as a buyer report/future infrastructure workspace. | High for valuation. | Use fair-price as one part of broader object decision report. |
-| urban.one | Automated property valuation / market data product. | Consumers and professional/financial users. | AVM positioning and data product angle. | Less workflow around user-submitted report, negotiation and local risks. | High for valuation/API. | Partner/supplier candidate; Domarion differentiates on workflow and due diligence report. |
-| Cenatorium | Property data, valuations and market analytics. | Banks, institutions, professionals. | Data depth, valuation credibility, enterprise fit. | Enterprise/data-provider orientation, not buyer UX. | High for enterprise/API. | Potential data provider or benchmark; avoid competing before Domarion has data rights and SLA. |
+| urban.one | Automated property valuation / market data product. | Consumers and professional/financial users. | AVM positioning and data product angle. | Less workflow around user-submitted report, negotiation and local risks. | High for valuation/API. | Partner/supplier candidate; WartoMetr differentiates on workflow and due diligence report. |
+| Cenatorium | Property data, valuations and market analytics. | Banks, institutions, professionals. | Data depth, valuation credibility, enterprise fit. | Enterprise/data-provider orientation, not buyer UX. | High for enterprise/API. | Potential data provider or benchmark; avoid competing before WartoMetr has data rights and SLA. |
 | Agency CRMs | Manage clients, listings, tasks and pipeline. | Agencies and agents. | Embedded daily workflow. | Usually not strong at independent market/risk/future-area analytics. | Medium. | CRM-light only after reports prove value; integrations/API-lite later. |
 
 Positioning rule:
 
-Domarion should not claim to be a better portal. The wedge is:
+WartoMetr should not claim to be a better portal. The wedge is:
 
 > independent property decision intelligence: price fairness, risk, future area
 > signals, developer reputation, buyer/realtor/investor reports and source-aware

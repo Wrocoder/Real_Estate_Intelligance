@@ -10,7 +10,9 @@ client = TestClient(app)
 
 
 def test_market_dashboard_builds_city_summary_and_distributions() -> None:
-    dashboard = build_market_dashboard(InMemoryRealEstateRepository(), city="Wrocław")
+    dashboard = build_market_dashboard(
+        InMemoryRealEstateRepository(include_demo_data=True), city="Wrocław"
+    )
 
     assert dashboard.city == "Wrocław"
     assert dashboard.listings_count >= 3
@@ -33,7 +35,7 @@ def test_market_dashboard_builds_city_summary_and_distributions() -> None:
 
 def test_market_dashboard_filters_by_district() -> None:
     dashboard = build_market_dashboard(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         city="Wrocław",
         district="Fabryczna",
     )
@@ -74,7 +76,7 @@ def test_market_dashboard_api_handles_empty_market() -> None:
 
 def test_area_comparison_builds_ranked_city_baseline() -> None:
     comparison = build_area_comparison(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         city="Wrocław",
         sort="value",
     )
@@ -99,7 +101,7 @@ def test_area_comparison_builds_ranked_city_baseline() -> None:
 
 def test_area_comparison_supports_price_sort_and_limit() -> None:
     comparison = build_area_comparison(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         city="Wrocław",
         sort="price_asc",
         limit=2,
@@ -113,7 +115,9 @@ def test_area_comparison_supports_price_sort_and_limit() -> None:
 
 def test_area_comparison_rejects_unknown_sort() -> None:
     with pytest.raises(ValueError, match="Unsupported area comparison sort"):
-        build_area_comparison(InMemoryRealEstateRepository(), sort="unknown")
+        build_area_comparison(
+            InMemoryRealEstateRepository(include_demo_data=True), sort="unknown"
+        )
 
 
 def test_area_comparison_api_returns_public_comparison() -> None:

@@ -88,7 +88,7 @@ type BuyerDecisionCopy = {
 
 const COPY: Record<Locale, BuyerDecisionCopy> = {
   en: {
-    eyebrow: "Domarion verdict",
+    eyebrow: "WartoMetr verdict",
     cta: "Prepare viewing and negotiation",
     metrics: {
       forYou: "For you",
@@ -117,7 +117,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Realistic deal",
       walkAway: "Do not exceed",
       posture: "Posture",
-      score: "Domarion Score",
+      score: "WartoMetr Score",
       documents: "Documents",
       sellerQuestions: "Seller questions",
       photos: "Photos",
@@ -165,7 +165,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
   },
   pl: {
-    eyebrow: "Werdykt Domarion",
+    eyebrow: "Werdykt WartoMetr",
     cta: "Przygotuj oględziny i negocjacje",
     metrics: {
       forYou: "Dla Ciebie",
@@ -194,7 +194,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Realna transakcja",
       walkAway: "Nie przekraczać",
       posture: "Pozycja",
-      score: "Ocena Domarion",
+      score: "Ocena WartoMetr",
       documents: "Dokumenty",
       sellerQuestions: "Pytania do sprzedającego",
       photos: "Zdjęcia",
@@ -242,7 +242,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
   },
   ru: {
-    eyebrow: "Вердикт Domarion",
+    eyebrow: "Вердикт WartoMetr",
     cta: "Подготовиться к просмотру и торгу",
     metrics: {
       forYou: "Для вас",
@@ -271,7 +271,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Реальная сделка",
       walkAway: "Не превышать",
       posture: "Позиция",
-      score: "Оценка Domarion",
+      score: "Оценка WartoMetr",
       documents: "Документы",
       sellerQuestions: "Вопросы продавцу",
       photos: "Фото",
@@ -319,7 +319,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
   },
   uk: {
-    eyebrow: "Вердикт Domarion",
+    eyebrow: "Вердикт WartoMetr",
     cta: "Підготувати перегляд і торг",
     metrics: {
       forYou: "Для вас",
@@ -348,7 +348,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       realisticDeal: "Реальна угода",
       walkAway: "Не перевищувати",
       posture: "Позиція",
-      score: "Оцінка Domarion",
+      score: "Оцінка WartoMetr",
       documents: "Документи",
       sellerQuestions: "Питання продавцю",
       photos: "Фото",

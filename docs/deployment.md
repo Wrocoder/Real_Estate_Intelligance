@@ -51,7 +51,6 @@ Frontend:
 ```powershell
 docker build `
   --build-arg NEXT_PUBLIC_API_BASE_URL=http://localhost:8000 `
-  --build-arg NEXT_PUBLIC_OWNER_ID=demo-user `
   --build-arg NEXT_PUBLIC_SITE_URL=http://localhost:3000 `
   -t domarion-frontend:local `
   .\frontend
@@ -65,7 +64,6 @@ OCI/GHCR image publishing expects GitHub Actions variables:
 - `OCI_IMAGE_PUBLISH_ENABLED=true` to publish after `main` CI passes.
 - `OCI_NEXT_PUBLIC_API_BASE_URL`, for example `https://api.example.com`.
 - `OCI_NEXT_PUBLIC_SITE_URL`, for example `https://app.example.com`.
-- `OCI_NEXT_PUBLIC_OWNER_ID`, optional, defaults to `demo-user`.
 
 The published tags are `sha-<commit>` and `latest-arm64` for:
 
@@ -166,7 +164,7 @@ Core runtime:
 
 | Переменная | Назначение | Local default |
 | --- | --- | --- |
-| `APP_NAME` | Название API | `Domarion Analytics API` |
+| `APP_NAME` | Название API | `WartoMetr Analytics API` |
 | `ENVIRONMENT` | `local`, `staging`, `production` | `local` |
 | `DATABASE_URL` | PostgreSQL/PostGIS connection string | local Docker Postgres |
 | `REDIS_URL` | Redis connection string | `redis://localhost:6379/0` |
@@ -243,7 +241,7 @@ Alerts and workers:
 | `ALERT_SMTP_USE_TLS` | включает STARTTLS | `true` |
 | `ALERT_DELIVERY_TIMEOUT_SECONDS` | timeout SMTP/Telegram delivery | `10` |
 | `ALERT_TELEGRAM_ENABLED` | включает Telegram Bot API delivery | `false` |
-| `ALERT_TELEGRAM_BOT_NAME` | имя Telegram bot для metadata | `DomarionBot` |
+| `ALERT_TELEGRAM_BOT_NAME` | имя Telegram bot для metadata | `WartoMetrBot` |
 | `ALERT_TELEGRAM_BOT_TOKEN` | token будущего Telegram bot | пусто |
 | `ALERT_TELEGRAM_API_BASE_URL` | Telegram API base URL | `https://api.telegram.org` |
 | `WORKER_TASKS` | comma-separated tasks: `daily-email-alerts`, `area-market-snapshots`, `price-history-rebuild` | `daily-email-alerts` |
@@ -316,12 +314,12 @@ Backend поддерживает optional Sentry integration. Она включ�
 | Переменная | Назначение |
 | --- | --- |
 | `NEXT_PUBLIC_API_BASE_URL` | Публичный URL backend API |
-| `NEXT_PUBLIC_OWNER_ID` | Временный MVP owner fallback |
 | `NEXT_PUBLIC_SITE_URL` | Публичный URL frontend для sitemap/canonical URLs |
 
-Для реального production нельзя оставлять demo identity как auth-модель. Перед
-публичным запуском нужно заменить header/demo auth на Auth.js/Clerk/custom JWT,
-задать live Stripe/PayU credentials и webhook secrets, проверить fulfillment
+Production API требует `AUTH_SESSION_SECRET` длиной не менее 32 символов из secret
+manager и `AUTH_STORE_BACKEND=postgres`. Header/demo identity разрешена только при
+явном `DEMO_MODE_ENABLED=true` в local/development/test. До публичного запуска также
+нужно задать live Stripe/PayU credentials и webhook secrets, проверить fulfillment
 end-to-end и включать delivery только после настройки SMTP/Telegram secrets.
 
 ## Deployment Target
@@ -358,7 +356,6 @@ python scripts\verify_postgres_staging.py --database-url $env:DATABASE_URL
 
 ## Что еще нужно до production
 
-- Подключить real auth вместо MVP header/demo identity.
 - Заполнить production domains, CORS, S3/R2, payment, Sentry and monitoring
   secrets outside git.
 - Провести legal review Source Registry entries до scheduled ingestion и paid data use.

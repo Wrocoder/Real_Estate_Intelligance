@@ -3,7 +3,7 @@ from domarion.services.area_snapshots import run_area_market_snapshot_job
 
 
 def test_area_market_snapshot_job_builds_current_area_snapshots() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
 
     result = run_area_market_snapshot_job(repository, dry_run=True)
 

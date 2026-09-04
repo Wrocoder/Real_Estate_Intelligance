@@ -17,12 +17,13 @@ def build_object_report(
     branding: ReportBranding | None = None,
 ) -> ObjectReport:
     listing = analysis.listing
+    render_analysis = _renderable_analysis(analysis)
     scores = analysis.scores
     buyer_decision = analysis.buyer_decision
     template = get_report_template(audience)
 
     summary = _report_summary(listing.title, scores, buyer_decision)
-    sections = template.build_sections(analysis)
+    sections = template.build_sections(render_analysis)
     if analysis.developer_reputation is not None:
         sections.append(_developer_reputation_section(analysis.developer_reputation))
 
@@ -39,6 +40,43 @@ def build_object_report(
             "Отчет является аналитической оценкой на основе доступных данных платформы. "
             "Это не финансовая, юридическая или инвестиционная рекомендация."
         ),
+    )
+
+
+def _renderable_analysis(analysis: ListingAnalysis) -> ListingAnalysis:
+    """Keep unknown API values intact while avoiding arithmetic in legacy templates."""
+    listing = analysis.listing
+    return analysis.model_copy(
+        update={
+            "listing": listing.model_copy(
+                update={
+                    "distance_to_center_km": listing.distance_to_center_km
+                    if listing.distance_to_center_km is not None
+                    else 6.0,
+                    "nearest_stop_m": listing.nearest_stop_m
+                    if listing.nearest_stop_m is not None
+                    else 500,
+                    "nearest_school_m": listing.nearest_school_m
+                    if listing.nearest_school_m is not None
+                    else 900,
+                    "nearest_major_road_m": listing.nearest_major_road_m
+                    if listing.nearest_major_road_m is not None
+                    else 700,
+                    "nearest_industrial_zone_m": listing.nearest_industrial_zone_m
+                    if listing.nearest_industrial_zone_m is not None
+                    else 2200,
+                    "parks_within_1km": listing.parks_within_1km
+                    if listing.parks_within_1km is not None
+                    else 0,
+                    "schools_within_1km": listing.schools_within_1km
+                    if listing.schools_within_1km is not None
+                    else 0,
+                    "planned_investments_within_2km": listing.planned_investments_within_2km
+                    if listing.planned_investments_within_2km is not None
+                    else 0,
+                }
+            )
+        }
     )
 
 
@@ -163,16 +201,8 @@ def _developer_due_diligence_posture(reputation: DeveloperReputation) -> str:
 
 
 def _developer_project_items(reputation: DeveloperReputation) -> list[str]:
-    completed = [
-        project
-        for project in reputation.projects
-        if project.status == "completed"
-    ]
-    active = [
-        project
-        for project in reputation.projects
-        if project.status in {"active", "planned"}
-    ]
+    completed = [project for project in reputation.projects if project.status == "completed"]
+    active = [project for project in reputation.projects if project.status in {"active", "planned"}]
     items: list[str] = []
     if completed:
         items.append(
@@ -313,8 +343,7 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
         position = f"выше fair mid на {_money(delta)} ({scores.price_delta_to_fair_mid_pct:+.1f}%)"
     elif delta < 0:
         position = (
-            f"ниже fair mid на {_money(abs(delta))} "
-            f"({scores.price_delta_to_fair_mid_pct:+.1f}%)"
+            f"ниже fair mid на {_money(abs(delta))} ({scores.price_delta_to_fair_mid_pct:+.1f}%)"
         )
     else:
         position = "совпадает с fair mid"
@@ -340,15 +369,13 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
         items.insert(2, f"Здание/состояние: {attribute_text}.")
     if scores.price_delta_to_fair_mid_pct > 7:
         items.append(
-            "Не спешить с полной ценой: сначала проверить документы "
-            "и торговаться от fair range."
+            "Не спешить с полной ценой: сначала проверить документы и торговаться от fair range."
         )
     elif scores.price_delta_to_fair_mid_pct < -6:
         items.append("Цена выглядит интересной; важно проверить, почему рынок дает дисконт.")
     else:
         items.append(
-            "Цена близка к fair range; решение больше зависит от состояния "
-            "и юридической чистоты."
+            "Цена близка к fair range; решение больше зависит от состояния и юридической чистоты."
         )
     return ReportSection(title="Цена: fair value и решение", items=items)
 

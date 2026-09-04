@@ -11,7 +11,7 @@ def deliver_report_email(
     request: ReportEmailRequest,
 ) -> ReportEmailResult:
     target = request.target_email or owner_email
-    subject = f"Domarion report: {report.title}"
+    subject = f"WartoMetr report: {report.title}"
 
     if request.dry_run:
         return ReportEmailResult(

@@ -51,6 +51,9 @@ export function ListingCard({
         <h3>
           <Link href={`/listings/${listing.id}`}>{listing.title}</Link>
         </h3>
+        {listing.data_provenance.mode === "demo" ? (
+          <span className="data-provenance-badge">{copy.demoData}</span>
+        ) : null}
         <div className="muted">
           <MapPin size={14} /> {listing.address}, {listing.district}
         </div>

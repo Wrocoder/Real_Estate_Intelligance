@@ -282,8 +282,8 @@ def _failed_result(
 
 def _delivery_subject(alert: Alert, preview: AlertPreview) -> str:
     if preview.watch_events:
-        return f"Domarion object watch: {alert.name} ({len(preview.watch_events)} events)"
-    return f"Domarion alert: {alert.name} ({preview.total_matches} matches)"
+        return f"WartoMetr object watch: {alert.name} ({len(preview.watch_events)} events)"
+    return f"WartoMetr alert: {alert.name} ({preview.total_matches} matches)"
 
 
 def _delivery_text(alert: Alert, preview: AlertPreview) -> str:

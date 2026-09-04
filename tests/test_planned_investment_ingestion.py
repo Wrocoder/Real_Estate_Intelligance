@@ -68,7 +68,7 @@ def test_import_planned_investments_is_idempotent_by_name_and_source(tmp_path) -
             }
         ],
     )
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
 
     first = import_planned_investments(path, repository, default_source_name="WPT")
     second = import_planned_investments(path, repository, default_source_name="WPT")

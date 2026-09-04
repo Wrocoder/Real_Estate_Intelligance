@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Bell, Building2, Eye, RefreshCw, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 
+import { AuthForm } from "@/components/AuthForm";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
+  ApiError,
   api,
   type Alert,
   type AlertChannel,
@@ -45,7 +47,7 @@ const ALERT_PRODUCT_COPY = {
     apartmentWatchDescription: "Open My apartments, choose a checked apartment and turn on tracking from its card.",
     searchWatchDescription: "Create a simple search watch for new apartments, price drops and better comparable options.",
     activeTracks: "Active tracking",
-    whatHappens: "What Domarion watches",
+    whatHappens: "What WartoMetr watches",
     previewTitle: "Matching apartments and signals",
     previewPrompt: "Choose a tracked search to see current matching apartments and changes.",
     noAlerts: "No tracking yet. Start from a checked apartment or create a search watch below.",
@@ -64,7 +66,7 @@ const ALERT_PRODUCT_COPY = {
     apartmentWatchDescription: "Otwórz Moje mieszkania, wybierz sprawdzone mieszkanie i włącz śledzenie z karty.",
     searchWatchDescription: "Utwórz proste śledzenie wyszukiwania dla nowych mieszkań, obniżek cen i lepszych podobnych ofert.",
     activeTracks: "Aktywne śledzenie",
-    whatHappens: "Co obserwuje Domarion",
+    whatHappens: "Co obserwuje WartoMetr",
     previewTitle: "Pasujące mieszkania i sygnały",
     previewPrompt: "Wybierz śledzone wyszukiwanie, aby zobaczyć aktualne mieszkania i zmiany.",
     noAlerts: "Nie masz jeszcze śledzenia. Zacznij od sprawdzonego mieszkania albo utwórz śledzenie wyszukiwania poniżej.",
@@ -83,7 +85,7 @@ const ALERT_PRODUCT_COPY = {
     apartmentWatchDescription: "Откройте Мои квартиры, выберите проверенную квартиру и включите отслеживание с карточки.",
     searchWatchDescription: "Создайте простое отслеживание поиска для новых квартир, снижений цены и лучших похожих вариантов.",
     activeTracks: "Активное отслеживание",
-    whatHappens: "Что отслеживает Domarion",
+    whatHappens: "Что отслеживает WartoMetr",
     previewTitle: "Подходящие квартиры и сигналы",
     previewPrompt: "Выберите отслеживаемый поиск, чтобы увидеть текущие квартиры и изменения.",
     noAlerts: "Отслеживания пока нет. Начните с проверенной квартиры или создайте отслеживание поиска ниже.",
@@ -102,7 +104,7 @@ const ALERT_PRODUCT_COPY = {
     apartmentWatchDescription: "Відкрийте Мої квартири, виберіть перевірену квартиру й увімкніть стеження з картки.",
     searchWatchDescription: "Створіть просте стеження пошуку для нових квартир, знижень ціни й кращих схожих варіантів.",
     activeTracks: "Активне стеження",
-    whatHappens: "Що відстежує Domarion",
+    whatHappens: "Що відстежує WartoMetr",
     previewTitle: "Відповідні квартири й сигнали",
     previewPrompt: "Виберіть відстежуваний пошук, щоб побачити поточні квартири й зміни.",
     noAlerts: "Стеження поки немає. Почніть із перевіреної квартири або створіть стеження пошуку нижче.",
@@ -123,6 +125,7 @@ export default function AlertsPage() {
   const [status, setStatus] = useState(copy.statuses.loading);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
   const [savingAlertId, setSavingAlertId] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: copy.values.alertNameDefault,
@@ -159,6 +162,7 @@ export default function AlertsPage() {
 
   const load = useCallback(async () => {
     setError("");
+    setAuthRequired(false);
     setIsLoading(true);
     setStatus(copy.statuses.loading);
     try {
@@ -166,8 +170,13 @@ export default function AlertsPage() {
       setAlerts(alertData);
       setStatus(copy.statuses.loaded(alertData.length));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -176,6 +185,14 @@ export default function AlertsPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  function requireSignIn(caught: unknown) {
+    if (!(caught instanceof ApiError) || caught.status !== 401) return false;
+    setError("");
+    setAuthRequired(true);
+    setStatus("");
+    return true;
+  }
 
   async function createAlert() {
     setError("");
@@ -228,8 +245,10 @@ export default function AlertsPage() {
       setAlerts((current) => [alert, ...current]);
       setStatus(copy.statuses.created(alert.id));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (!requireSignIn(caught)) {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     }
   }
 
@@ -240,8 +259,10 @@ export default function AlertsPage() {
       setPreview(data);
       setStatus(copy.statuses.previewLoaded(data.total_matches));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (!requireSignIn(caught)) {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     }
   }
 
@@ -258,8 +279,10 @@ export default function AlertsPage() {
       );
       setStatus(copy.statuses.updated(updated.name));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownAlertUpdateError);
-      setStatus(copy.statuses.updateError);
+      if (!requireSignIn(caught)) {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownAlertUpdateError);
+        setStatus(copy.statuses.updateError);
+      }
     } finally {
       setSavingAlertId(null);
     }
@@ -278,12 +301,16 @@ export default function AlertsPage() {
       setPreview((current) => (current?.alert.id === alert.id ? null : current));
       setStatus(copy.statuses.deleted(alert.name));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownAlertDeleteError);
-      setStatus(copy.statuses.deleteError);
+      if (!requireSignIn(caught)) {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownAlertDeleteError);
+        setStatus(copy.statuses.deleteError);
+      }
     } finally {
       setSavingAlertId(null);
     }
   }
+
+  if (authRequired) return <AuthForm onAuthenticated={load} />;
 
   return (
     <>

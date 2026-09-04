@@ -3,6 +3,7 @@ name: domarion-oci
 x-api-env: &api-env
   APP_NAME: ${APP_NAME:-WartoMetr API}
   ENVIRONMENT: ${ENVIRONMENT:-staging}
+  DEMO_MODE_ENABLED: ${DEMO_MODE_ENABLED:-false}
   DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in the OCI env file}
   REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
   CORS_ORIGINS: ${CORS_ORIGINS:?set CORS_ORIGINS in the OCI env file}
@@ -14,6 +15,7 @@ x-api-env: &api-env
   REPORT_ORDER_STORE_BACKEND: ${REPORT_ORDER_STORE_BACKEND:-postgres}
   USER_STORE_BACKEND: ${USER_STORE_BACKEND:-postgres}
   AUTH_STORE_BACKEND: ${AUTH_STORE_BACKEND:-postgres}
+  AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:?set AUTH_SESSION_SECRET in the OCI env file}
   AGENCY_STORE_BACKEND: ${AGENCY_STORE_BACKEND:-postgres}
   CRM_STORE_BACKEND: ${CRM_STORE_BACKEND:-postgres}
   INGESTION_ADMIN_STORE_BACKEND: ${INGESTION_ADMIN_STORE_BACKEND:-postgres}
@@ -159,7 +161,9 @@ services:
 
   seed:
     image: ${API_IMAGE:-domarion-api:oracle}
-    environment: *api-env
+    environment:
+      <<: *api-env
+      DEMO_MODE_ENABLED: "true"
     command: domarion seed-demo
     depends_on:
       migrate:
@@ -205,7 +209,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:?set NEXT_PUBLIC_API_BASE_URL in the OCI env file}
-        NEXT_PUBLIC_OWNER_ID: ${NEXT_PUBLIC_OWNER_ID:-demo-user}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:?set NEXT_PUBLIC_SITE_URL in the OCI env file}
     image: ${FRONTEND_IMAGE:-domarion-frontend:oracle}
     environment:

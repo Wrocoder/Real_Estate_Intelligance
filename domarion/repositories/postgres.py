@@ -38,6 +38,7 @@ from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
     AreaStatistics,
+    DataProvenance,
     DeveloperAlias,
     DeveloperProfile,
     DeveloperProject,
@@ -229,8 +230,9 @@ def _append_manual_listing_correction(
 
 
 class PostgresRealEstateRepository:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: Session, *, include_demo_data: bool = False) -> None:
         self.session = session
+        self.include_demo_data = include_demo_data
 
     def list_listings(
         self,
@@ -1106,7 +1108,19 @@ class PostgresRealEstateRepository:
             latest_snapshot = listing_snapshots[-1]
             if _is_removed_listing_payload(latest_snapshot.normalized_payload):
                 continue
-            listing = Listing.model_validate(latest_snapshot.normalized_payload)
+            source = latest_snapshot.property_source.source
+            if bool(source.is_demo) != self.include_demo_data:
+                continue
+            provenance = DataProvenance(
+                mode="demo" if source.is_demo else "live",
+                source_type=source.source_type,
+                notice_code=(
+                    "demo_data_not_market_evidence" if source.is_demo else None
+                ),
+            )
+            listing = Listing.model_validate(latest_snapshot.normalized_payload).model_copy(
+                update={"data_provenance": provenance}
+            )
             history = [
                 self._snapshot_to_price_history_point(snapshot)
                 for snapshot in listing_snapshots

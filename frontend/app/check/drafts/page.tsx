@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { BarChart3, Bell, FileText, RefreshCw, Trash2 } from "lucide-react";
 
+import { AuthForm } from "@/components/AuthForm";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
+  ApiError,
   api,
   type PropertyScores,
   type UserSubmittedListingDraft,
@@ -74,9 +76,11 @@ export default function CheckDraftsPage() {
   const [status, setStatus] = useState(copy.statuses.loading);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
+    setAuthRequired(false);
     setIsLoading(true);
     setStatus(copy.statuses.loading);
     try {
@@ -84,8 +88,13 @@ export default function CheckDraftsPage() {
       setDrafts(data);
       setStatus(copy.statuses.loaded(data.length));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : "unknown error");
+        setStatus(copy.statuses.backendUnavailable);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -100,6 +109,11 @@ export default function CheckDraftsPage() {
     setStatus(copy.statuses.deleting);
     const response = await api.deleteUserSubmittedListingDraft(draftId);
     if (!response.ok) {
+      if (response.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+        return;
+      }
       const body = await response.text();
       setError(`API ${response.status}: ${body}`);
       setStatus(copy.statuses.deleteError);
@@ -116,10 +130,17 @@ export default function CheckDraftsPage() {
       await api.createUserSubmittedDraftObjectWatch(draftId, {});
       setStatus(MY_APARTMENTS_COPY[locale].tracked);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
-      setStatus(copy.statuses.reportError);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : "unknown error");
+        setStatus(copy.statuses.reportError);
+      }
     }
   }
+
+  if (authRequired) return <AuthForm onAuthenticated={load} />;
 
   return (
     <>

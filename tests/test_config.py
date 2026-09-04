@@ -17,3 +17,11 @@ def test_settings_exposes_sqlalchemy_database_url_property() -> None:
     settings = Settings(database_url="postgresql://u:p@host/db")
 
     assert settings.sqlalchemy_database_url == "postgresql+psycopg://u:p@host/db"
+
+
+def test_demo_mode_requires_explicit_environment_flag(monkeypatch) -> None:
+    monkeypatch.delenv("DEMO_MODE_ENABLED", raising=False)
+
+    settings = Settings(_env_file=None)
+
+    assert settings.demo_mode_enabled is False

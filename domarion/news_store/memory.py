@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from domarion.schemas import (
+    DataProvenance,
     NewsArticle,
     NewsArticleCreate,
     NewsArticleListItem,
@@ -13,9 +14,11 @@ from domarion.schemas import (
 
 
 class InMemoryNewsStore:
-    def __init__(self) -> None:
+    def __init__(self, *, include_demo_data: bool = False) -> None:
+        self._include_demo_data = include_demo_data
         self._articles: dict[str, NewsArticle] = {}
-        self._seed()
+        if include_demo_data:
+            self._seed()
 
     def list_articles(
         self,
@@ -73,7 +76,8 @@ class InMemoryNewsStore:
 
     def clear(self) -> None:
         self._articles.clear()
-        self._seed()
+        if self._include_demo_data:
+            self._seed()
 
     def _seed(self) -> None:
         if self._articles:
@@ -94,7 +98,7 @@ class InMemoryNewsStore:
                     "street radius, not only the district label."
                 ),
                 category="transport",
-                source_name="Domarion open-data monitor",
+                source_name="WartoMetr open-data monitor",
                 source_url=None,
                 published_at=now - timedelta(days=2),
                 affected_area_ids=["wroclaw-fabryczna"],
@@ -118,13 +122,13 @@ class InMemoryNewsStore:
                     "cash needed and stress-tested interest assumptions."
                 ),
                 body=(
-                    "Domarion buyer reports now treat mortgage baseline and upfront cash "
+                    "WartoMetr buyer reports now treat mortgage baseline and upfront cash "
                     "as decision inputs. The same listing can look acceptable by price "
                     "per square meter but fail affordability once taxes, fees and renovation "
                     "reserve are included."
                 ),
                 category="mortgage",
-                source_name="Domarion market desk",
+                source_name="WartoMetr market desk",
                 source_url=None,
                 published_at=now - timedelta(days=5),
                 affected_area_ids=[],
@@ -144,7 +148,7 @@ class InMemoryNewsStore:
                 id="news-krzyki-supply-watch",
                 title="Krzyki supply watch: value depends on micro-location",
                 summary=(
-                    "Krzyki remains liquid in the MVP sample, but buyer value varies "
+                    "Krzyki remains liquid in the demonstration dataset, but buyer value varies "
                     "strongly by school, road and comparable-listing context."
                 ),
                 body=(
@@ -153,7 +157,7 @@ class InMemoryNewsStore:
                     "Investor screening should add rental yield and liquidity checks."
                 ),
                 category="market",
-                source_name="Domarion market desk",
+                source_name="WartoMetr market desk",
                 source_url=None,
                 published_at=now - timedelta(days=8),
                 affected_area_ids=["wroclaw-krzyki"],
@@ -170,7 +174,15 @@ class InMemoryNewsStore:
                 updated_at=now - timedelta(days=8),
             ),
         ]
-        self._articles = {article.id: article for article in seeded}
+        provenance = DataProvenance(
+            mode="demo",
+            source_type="deterministic_fixture",
+            notice_code="demo_data_not_market_evidence",
+        )
+        self._articles = {
+            article.id: article.model_copy(update={"data_provenance": provenance})
+            for article in seeded
+        }
 
 
 def _to_list_item(article: NewsArticle) -> NewsArticleListItem:

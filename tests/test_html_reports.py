@@ -15,11 +15,11 @@ from domarion.services.scoring import build_listing_analysis
 
 
 def test_render_object_report_html_contains_printable_report() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     html = generate_object_report_html(repository, "wr-001")
 
     assert "<!doctype html>" in html
-    assert "Domarion" in html
+    assert "WartoMetr" in html
     assert "Buyer decision report v1" in html
     assert "Investment" in html
     assert "Ипотека и бюджет покупки" in html
@@ -36,7 +36,7 @@ def test_render_object_report_html_contains_printable_report() -> None:
 
 
 def test_render_object_report_html_escapes_dynamic_fields() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
 
@@ -51,7 +51,7 @@ def test_render_object_report_html_escapes_dynamic_fields() -> None:
 
 
 def test_render_object_report_html_includes_realtor_branding() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
     analysis = build_listing_analysis(repository, listing)
@@ -86,14 +86,14 @@ def test_render_object_report_html_includes_realtor_branding() -> None:
 
 
 def test_write_object_report_html(tmp_path: Path) -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     output_path = tmp_path / "reports" / "wr-001.html"
 
     path = write_object_report_html(repository, "wr-001", output_path)
 
     assert path == output_path
     assert path.exists()
-    assert "Domarion" in path.read_text(encoding="utf-8")
+    assert "WartoMetr" in path.read_text(encoding="utf-8")
 
 
 def test_object_report_html_endpoint() -> None:
@@ -103,7 +103,7 @@ def test_object_report_html_endpoint() -> None:
 
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/html")
-    assert "Domarion" in response.text
+    assert "WartoMetr" in response.text
     assert "Инвестиционная оценка" in response.text
     assert "Арендная доходность" in response.text
     assert "Сравнение с альтернативами" in response.text
@@ -125,7 +125,7 @@ def test_object_report_pdf_endpoint() -> None:
 
 
 def test_object_report_uses_audience_templates() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
     analysis = build_listing_analysis(repository, listing)
@@ -135,10 +135,10 @@ def test_object_report_uses_audience_templates() -> None:
     investor_report = build_object_report(analysis, "investor")
 
     assert buyer_report.template_code == "buyer_object_report_v1"
-    assert buyer_report.sections[0].title == "Domarion Verdict"
+    assert buyer_report.sections[0].title == "WartoMetr Verdict"
     assert buyer_report.sections[1].title == "Краткое решение"
     buyer_section_titles = {section.title for section in buyer_report.sections}
-    assert "Domarion Verdict" in buyer_section_titles
+    assert "WartoMetr Verdict" in buyer_section_titles
     assert "Краткое решение" in buyer_section_titles
     assert "Total Acquisition Cost" in buyer_section_titles
     assert "Есть ли варианты лучше" in buyer_section_titles

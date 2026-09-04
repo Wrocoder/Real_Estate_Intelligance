@@ -4,6 +4,18 @@ from domarion.schemas import AuthIdentity, Subscription, SubscriptionUpdate, Use
 
 
 class AuthStore(Protocol):
+    def get_user(self, user_id: str) -> UserAccount | None:
+        raise NotImplementedError
+
+    def get_user_by_email(self, email: str) -> UserAccount | None:
+        raise NotImplementedError
+
+    def create_password_user(self, identity: AuthIdentity, password_hash: str) -> UserAccount:
+        raise NotImplementedError
+
+    def get_password_hash(self, user_id: str) -> str | None:
+        raise NotImplementedError
+
     def get_or_create_user(self, identity: AuthIdentity) -> UserAccount:
         raise NotImplementedError
 

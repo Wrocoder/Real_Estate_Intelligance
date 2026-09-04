@@ -12,7 +12,7 @@ from domarion.schemas import (
 from domarion.services.scoring import build_listing_analysis
 
 CRM_SHARE_DISCLAIMER = (
-    "This shared shortlist is informational and based on Domarion analytical data. "
+    "This shared shortlist is informational and based on WartoMetr analytical data. "
     "It is not financial, legal or investment advice. Confirm availability, legal "
     "status, building condition, fees and financing terms before making an offer."
 )

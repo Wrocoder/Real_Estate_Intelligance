@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    app_name: str = "Domarion API"
+    app_name: str = "WartoMetr API"
     environment: str = "local"
     database_url: str = "postgresql+psycopg://domarion:domarion@localhost:5432/domarion"
     redis_url: str = "redis://localhost:6379/0"
@@ -56,12 +56,16 @@ class Settings(BaseSettings):
     alert_smtp_use_tls: bool = True
     alert_delivery_timeout_seconds: float = 10.0
     alert_telegram_enabled: bool = False
-    alert_telegram_bot_name: str = "DomarionBot"
+    alert_telegram_bot_name: str = "WartoMetrBot"
     alert_telegram_bot_token: str | None = None
     alert_telegram_api_base_url: str = "https://api.telegram.org"
     scoring_weights_json: str | None = None
+    demo_mode_enabled: bool = False
     demo_user_id: str = "demo-user"
     demo_user_email: str = "demo@domarion.local"
+    auth_session_secret: str = "local-development-only-change-me"
+    auth_session_ttl_seconds: int = Field(default=604800, ge=300, le=2592000)
+    auth_session_cookie_name: str = "domarion_session"
     cors_origins: list[str] = Field(
         default_factory=lambda: ["http://localhost:3000", "http://127.0.0.1:3000"]
     )

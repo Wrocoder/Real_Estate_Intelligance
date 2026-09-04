@@ -97,6 +97,7 @@ type SourceForm = {
   raw_payload_retention_days: string;
   private_url_retention_days: string;
   retention_notes: string;
+  is_demo: boolean;
   is_active: boolean;
 };
 
@@ -261,6 +262,7 @@ const defaultSourceForm: SourceForm = {
   raw_payload_retention_days: "90",
   private_url_retention_days: "",
   retention_notes: "Prune raw payloads after QA window.",
+  is_demo: false,
   is_active: true,
 };
 
@@ -2410,6 +2412,9 @@ export default function AdminPage() {
                         </td>
                         <td>{source.owner}</td>
                         <td>
+                          {source.is_demo ? (
+                            <span className="status-pill warning">demo</span>
+                          ) : null}
                           <span className={`status-pill ${source.is_active ? "healthy" : "failed"}`}>
                             {source.is_active ? "active" : "paused"}
                           </span>
@@ -2501,6 +2506,16 @@ export default function AdminPage() {
                       setSourceForm({ ...sourceForm, private_url_retention_days: value })
                     }
                   />
+                  <label className="field checkbox-field">
+                    <span>Demo / sample source</span>
+                    <input
+                      type="checkbox"
+                      checked={sourceForm.is_demo}
+                      onChange={(event) =>
+                        setSourceForm({ ...sourceForm, is_demo: event.target.checked })
+                      }
+                    />
+                  </label>
                   <label className="field checkbox-field">
                     <span>Active</span>
                     <input
@@ -4219,6 +4234,7 @@ function sourcePayload(form: SourceForm): Required<SourceRegistryEntryPayload> {
     raw_payload_retention_days: numberOrNull(form.raw_payload_retention_days),
     private_url_retention_days: numberOrNull(form.private_url_retention_days),
     retention_notes: blankToNull(form.retention_notes),
+    is_demo: form.is_demo,
     is_active: form.is_active,
   };
 }
@@ -4241,6 +4257,7 @@ function formFromSource(source: SourceRegistryEntry): SourceForm {
     private_url_retention_days:
       source.private_url_retention_days === null ? "" : String(source.private_url_retention_days),
     retention_notes: source.retention_notes ?? "",
+    is_demo: source.is_demo,
     is_active: source.is_active,
   };
 }

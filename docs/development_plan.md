@@ -1,4 +1,4 @@
-# Domarion Analytics Development Plan
+# WartoMetr Analytics Development Plan
 
 Дата старта плана: 2026-07-10  
 Рабочая ветка: `main`  
@@ -66,7 +66,7 @@ Validation gate перед следующими крупными направл�
 
 P1 buyer decision tasks:
 
-- [x] Добавить `Domarion Verdict` contract: buy / negotiate / avoid / verify first,
+- [x] Добавить `WartoMetr Verdict` contract: buy / negotiate / avoid / verify first,
   score 0-10, headline, seller price, fair range, opening offer, realistic deal
   range, max reasonable offer, top reasons and critical unknowns.
 - [x] Перестроить `/check` result UI: сначала verdict, recommended offer,
@@ -123,7 +123,7 @@ P3 trust and monetization tasks:
 
 - [ ] Добавить Expert Review product plan: 299-499 PLN, analyst verifies
   comparables, fair price, documents, risks, future infrastructure and negotiation.
-- [ ] Добавить `Verified by Domarion analyst` only after human QA.
+- [ ] Добавить `Verified by WartoMetr analyst` only after human QA.
 - [ ] Track analyst time, refund reasons and quality misses before automating more.
 
 ## 1.1 Legal, Compliance и Data Governance

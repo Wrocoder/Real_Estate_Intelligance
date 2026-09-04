@@ -33,7 +33,7 @@ export const SEO_GUIDES: SeoGuide[] = [
     keyTakeaways: [
       "Porównuj mieszkanie z podobnymi ofertami w dzielnicy i promieniu 1-2 km, nie z całym miastem.",
       "Wyższa cena nie zawsze oznacza przepłacenie: piętro, budynek, wykończenie i transport mogą uzasadniać premię.",
-      "Domarion pokazuje szacowany zakres ceny i poziom pewności, żeby nie opierać decyzji na jednej średniej.",
+      "WartoMetr pokazuje szacowany zakres ceny i poziom pewności, żeby nie opierać decyzji na jednej średniej.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
     internalLinks: [
@@ -373,7 +373,7 @@ export const SEO_GUIDES: SeoGuide[] = [
     description:
       "Praktyczna lista kontroli księgi wieczystej: własność, działy, hipoteka, roszczenia, służebność i pytania do prawnika.",
     heroSummary:
-      "Księga wieczysta jest jednym z kluczowych dokumentów transakcji. Domarion może pomóc przygotować pytania, ale nie zastępuje prawnika ani notariusza.",
+      "Księga wieczysta jest jednym z kluczowych dokumentów transakcji. WartoMetr może pomóc przygotować pytania, ale nie zastępuje prawnika ani notariusza.",
     keyTakeaways: [
       "Sprawdź właściciela, prawa, ograniczenia i wpisy hipoteczne.",
       "Roszczenia lub służebności wymagają wyjaśnienia przez specjalistę.",

@@ -1,6 +1,7 @@
 x-api-env: &api-env
   APP_NAME: ${APP_NAME:-WartoMetr API}
   ENVIRONMENT: ${ENVIRONMENT:-staging}
+  DEMO_MODE_ENABLED: ${DEMO_MODE_ENABLED:-false}
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-domarion}:${POSTGRES_PASSWORD:-domarion}@db:5432/${POSTGRES_DB:-domarion}
   REDIS_URL: redis://redis:6379/0
   CORS_ORIGINS: '["http://localhost:3000","http://127.0.0.1:3000"]'
@@ -10,6 +11,7 @@ x-api-env: &api-env
   REPORT_ORDER_STORE_BACKEND: ${REPORT_ORDER_STORE_BACKEND:-postgres}
   USER_STORE_BACKEND: ${USER_STORE_BACKEND:-postgres}
   AUTH_STORE_BACKEND: ${AUTH_STORE_BACKEND:-postgres}
+  AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:?set AUTH_SESSION_SECRET}
   INGESTION_ADMIN_STORE_BACKEND: ${INGESTION_ADMIN_STORE_BACKEND:-postgres}
   USER_SUBMITTED_LISTING_STORE_BACKEND: ${USER_SUBMITTED_LISTING_STORE_BACKEND:-postgres}
   PARTNER_REFERRAL_STORE_BACKEND: ${PARTNER_REFERRAL_STORE_BACKEND:-postgres}
@@ -84,12 +86,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    environment: *api-env
+    environment:
+      <<: *api-env
+      DEMO_MODE_ENABLED: "true"
     command: domarion seed-demo
     depends_on:
       migrate:
         condition: service_completed_successfully
     restart: "no"
+    profiles:
+      - demo
 
   api:
     build:
@@ -104,8 +110,6 @@ services:
       redis:
         condition: service_healthy
       migrate:
-        condition: service_completed_successfully
-      seed:
         condition: service_completed_successfully
     healthcheck:
       test:
@@ -124,7 +128,6 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:8000}
-        NEXT_PUBLIC_OWNER_ID: ${NEXT_PUBLIC_OWNER_ID:-demo-user}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
@@ -156,8 +159,6 @@ services:
       redis:
         condition: service_healthy
       migrate:
-        condition: service_completed_successfully
-      seed:
         condition: service_completed_successfully
     restart: unless-stopped
 

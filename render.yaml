@@ -36,6 +36,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: DEMO_MODE_ENABLED
+        value: "false"
       - key: LOG_LEVEL
         value: INFO
       - key: DATABASE_URL
@@ -59,6 +61,8 @@ services:
         value: postgres
       - key: AUTH_STORE_BACKEND
         value: postgres
+      - key: AUTH_SESSION_SECRET
+        sync: false
       - key: AGENCY_STORE_BACKEND
         value: postgres
       - key: CRM_STORE_BACKEND
@@ -146,8 +150,6 @@ services:
         sync: false
       - key: NEXT_PUBLIC_SITE_URL
         sync: false
-      - key: NEXT_PUBLIC_OWNER_ID
-        value: demo-user
 
   - type: worker
     name: domarion-worker
@@ -162,6 +164,8 @@ services:
     envVars:
       - key: ENVIRONMENT
         value: production
+      - key: DEMO_MODE_ENABLED
+        value: "false"
       - key: LOG_LEVEL
         value: INFO
       - key: DATABASE_URL

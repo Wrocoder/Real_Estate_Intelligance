@@ -58,8 +58,13 @@ const checkPage = read("app/check/page.tsx");
 const checkDraftsPage = read("app/check/drafts/page.tsx");
 const comparePage = read("app/compare/page.tsx");
 const listingCard = read("components/ListingCard.tsx");
+const demoModeBanner = read("components/DemoModeBanner.tsx");
+const authForm = read("components/AuthForm.tsx");
+const authSessionNotice = read("components/AuthSessionNotice.tsx");
+const authSessionStatus = read("app/api/auth/session-status/route.ts");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
+const alertsPage = read("app/alerts/page.tsx");
 const adminPage = read("app/admin/page.tsx");
 const accountPage = read("app/account/page.tsx");
 const areasPage = read("app/areas/page.tsx");
@@ -103,6 +108,9 @@ expectIncludes("responsive guardrails", globalStyles, [
 ]);
 
 expectIncludes("api client contracts", apiClient, [
+  "DataProvenance",
+  "getRuntimeContext",
+  "/runtime-context",
   "listListings",
   "/api/v1/listings",
   "getMapFeatures",
@@ -140,11 +148,57 @@ expectIncludes("api client contracts", apiClient, [
   "/fulfill",
   "listingDatasetExportUrl",
   "/api/v1/datasets/listings/export",
+  'credentials: "include"',
+  "/api/v1/auth/register",
+  "/api/v1/auth/login",
+  "/api/v1/auth/logout",
 ]);
+expectNotIncludes("api client has no shared owner fallback", apiClient, ["NEXT_PUBLIC_OWNER_ID"]);
+
+expectIncludes("authentication flow", authForm, [
+  "api.register",
+  "api.login",
+  "domarion:auth-changed",
+  'showPassword ? "text" : "password"',
+  '"current-password"',
+  'requestedMode === "register"',
+  'mode === "register" ? copy.registerTitle : copy.title',
+  "Utwórz konto w WartoMetr",
+  "Создание аккаунта WartoMetr",
+]);
+expectIncludes("expired session handling", authSessionNotice, [
+  "domarion:auth-required",
+  'reason === "required"',
+  "notice.status === 403",
+  "/account?returnTo=",
+]);
+expectIncludes("navigation session status", authSessionStatus, [
+  "await cookies()",
+  "/api/v1/auth/session",
+  "response.status === 401",
+  "authenticated: false",
+]);
+expectIncludes("anonymous session handling", apiClient, [
+  "authenticatedFetch",
+  'credentials: "include"',
+  'path === "/api/v1/auth/login"',
+  'detail === "Sign in is required"',
+  "detail: { status: response.status, reason }",
+]);
+for (const [label, page] of [
+  ["my apartments auth boundary", checkDraftsPage],
+  ["alerts auth boundary", alertsPage],
+  ["reports auth boundary", reportsPage],
+  ["pricing auth boundary", pricingPage],
+]) {
+  expectIncludes(label, page, ["ApiError", "authRequired", "<AuthForm"]);
+}
 
 expectIncludes("account CRM workspace", accountPage, [
   "ACCOUNT_PAGE_COPY[locale]",
   "useLocalePreference()",
+  'fetch("/api/auth/session-status"',
+  "if (!sessionStatus.authenticated)",
   "createAgencyCrmClient",
   "createAgencyCrmShortlist",
   "previewAgencyCrmShortlistShare",
@@ -176,6 +230,20 @@ expectIncludes("listing card i18n", listingCard, [
   "money(listing.price, locale)",
   "copy.compareTitle",
   "copy.reportTitle",
+  "listing.data_provenance.mode === \"demo\"",
+  "copy.demoData",
+]);
+
+expectIncludes("demo mode banner", demoModeBanner, [
+  "data-testid=\"demo-mode-banner\"",
+  "api.getRuntimeContext()",
+  "context.data_mode === \"demo\"",
+  "Tryb demonstracyjny",
+  "Демонстрационный режим",
+  "Демонстраційний режим",
+  "checking",
+  "error",
+  "setAttempt",
 ]);
 
 expectIncludes("check page i18n", checkPage, [
@@ -422,6 +490,7 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "SEO_GUIDES.slice(0, 3)",
   "href={`/guides/${guide.slug}`}",
   "<BookOpen",
+  "listing.data_provenance.mode === \"demo\"",
 ]);
 expectRegex(
   "listing detail mobile table wrappers",
@@ -434,13 +503,19 @@ expectIncludes("primary navigation", layout, [
   "normalizeLocale",
   "<LocalizedNavigation",
   "<LanguageSwitcher",
+  "<DemoModeBanner",
+  "<AuthSessionNotice",
 ]);
 expectIncludes("localized navigation", localizedNavigation, [
   "href: \"/check\"",
   "href: \"/\"",
   "href: \"/check/drafts\"",
   "href: \"/areas\"",
-  "href: \"/account\"",
+  'href="/account?mode=login"',
+  'href="/account?mode=register"',
+  'className="nav-create-account"',
+  'fetch("/api/auth/session-status"',
+  'window.addEventListener("domarion:auth-changed"',
   "NAVIGATION_LABELS[locale]",
 ]);
 expectIncludes("language switcher", languageSwitcher, [

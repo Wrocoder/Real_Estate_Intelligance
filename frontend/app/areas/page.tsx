@@ -7,9 +7,9 @@ import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 
 export const metadata: Metadata = {
-  title: "Dzielnice Wrocławia: ceny mieszkań, ryzyka i potencjał | Domarion",
+  title: "Dzielnice Wrocławia: ceny mieszkań, ryzyka i potencjał | WartoMetr",
   description:
-    "Przewodnik Domarion po dzielnicach Wrocławia: cena za m2, aktywna podaż, dynamika rynku, infrastruktura i ryzyka zakupu mieszkania.",
+    "Przewodnik WartoMetr po dzielnicach Wrocławia: cena za m2, aktywna podaż, dynamika rynku, infrastruktura i ryzyka zakupu mieszkania.",
   alternates: {
     canonical: `${siteUrl()}/areas`,
   },

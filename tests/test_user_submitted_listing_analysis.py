@@ -3,7 +3,7 @@ import json
 import pytest
 from fastapi.testclient import TestClient
 
-from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
+from domarion.ingestion_admin_store.factory import get_memory_ingestion_admin_store
 from domarion.ingestion_admin_store.system_sources import (
     USER_SUBMITTED_REFERENCE_SOURCE_NAME,
     USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
@@ -15,6 +15,7 @@ from domarion.user_store.factory import memory_user_store
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
 client = TestClient(app)
+memory_ingestion_admin_store = get_memory_ingestion_admin_store(include_demo_data=True)
 
 
 def setup_function() -> None:
@@ -57,6 +58,11 @@ def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     assert payload["draft_id"]
     assert payload["draft_expires_at"]
     assert payload["analysis"]["comparables"]
+    listing_payload = payload["analysis"]["listing"]
+    assert listing_payload["nearest_stop_m"] is None
+    assert listing_payload["nearest_school_m"] is None
+    assert any("dependent signals" in item for item in payload["warnings"])
+    assert payload["analysis"]["scores"]["fair_price_confidence_score"] <= 55
     assert "not financial, legal or investment advice" in payload["analysis"]["disclaimer"]
     assert "legal-first" in payload["comparables_basis"]
     assert any("confirmed user-submitted fields" in item for item in payload["warnings"])
@@ -119,8 +125,7 @@ def test_user_submitted_listing_accepts_purchase_intent_for_personalized_verdict
     assert buyer_decision["selected_intent_fit"]["intent"] == "family"
     assert 0 <= buyer_decision["selected_intent_fit"]["score"] <= 100
     assert any(
-        "Selected buyer goal (family)" in item
-        for item in buyer_decision["verdict"]["top_reasons"]
+        "Selected buyer goal (family)" in item for item in buyer_decision["verdict"]["top_reasons"]
     )
 
 
@@ -146,10 +151,7 @@ def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
     ).json()
 
     response = client.post(
-        (
-            "/api/v1/user-submitted-listings/drafts/"
-            f"{created['draft_id']}/post-viewing-verdict"
-        ),
+        (f"/api/v1/user-submitted-listings/drafts/{created['draft_id']}/post-viewing-verdict"),
         headers=headers,
         json={
             "condition": "minor_issue",
@@ -164,9 +166,10 @@ def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
     assert payload["updated_decision"]["selected_intent"] == "family"
     assert payload["risk_adjustment_points"] > 0
     assert payload["offer_adjustment_pln"] > 0
-    assert payload["updated_decision"]["verdict"]["score"] < payload["original_decision"][
-        "verdict"
-    ]["score"]
+    assert (
+        payload["updated_decision"]["verdict"]["score"]
+        < payload["original_decision"]["verdict"]["score"]
+    )
     assert any("noise" in item for item in payload["applied_findings"])
 
 
@@ -309,9 +312,7 @@ def test_user_submitted_listing_reference_preview_for_otodom_url() -> None:
 def test_user_submitted_listing_reference_preview_for_olx_url() -> None:
     response = client.post(
         "/api/v1/user-submitted-listings/reference-preview",
-        json={
-            "source_url": "https://www.olx.pl/d/oferta/kawalerka-wroclaw-krzyki-IDabc987.html"
-        },
+        json={"source_url": "https://www.olx.pl/d/oferta/kawalerka-wroclaw-krzyki-IDabc987.html"},
     )
     payload = response.json()
 
@@ -834,9 +835,7 @@ def test_user_submitted_listing_analysis_uses_medlow_market_coverage() -> None:
     assert payload["analysis"]["area_statistics"]["area_id"] == "medlow-medlow"
     assert payload["analysis"]["listing"]["municipality"] == "Mędłów"
     assert payload["analysis"]["comparables"]
-    assert all(
-        comparable["city"] == "Mędłów" for comparable in payload["analysis"]["comparables"]
-    )
+    assert all(comparable["city"] == "Mędłów" for comparable in payload["analysis"]["comparables"])
     assert not any("nearest available market proxy" in item for item in payload["warnings"])
     assert any("normalized to a covered local market area" in item for item in payload["warnings"])
 

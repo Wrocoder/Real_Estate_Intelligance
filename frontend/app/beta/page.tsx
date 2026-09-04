@@ -16,9 +16,9 @@ import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
-  title: "Проверка квартиры перед покупкой | Domarion",
+  title: "Проверка квартиры перед покупкой | WartoMetr",
   description:
-    "Domarion помогает не переплатить за квартиру, увидеть риски и подготовиться к торгу перед задатком.",
+    "WartoMetr помогает не переплатить за квартиру, увидеть риски и подготовиться к торгу перед задатком.",
 };
 
 const reportChecks = [
@@ -60,7 +60,7 @@ export default function BuyerBetaPage() {
           <span className="landing-eyebrow">Wrocław i okolice</span>
           <h1>Проверка квартиры перед покупкой</h1>
           <p>
-            Введите адрес или ссылку на объект, а Domarion ответит: покупать,
+            Введите адрес или ссылку на объект, а WartoMetr ответит: покупать,
             торговаться, отказаться или сначала закрыть критичные неизвестные.
           </p>
           <div className="landing-cta-row">
@@ -74,7 +74,7 @@ export default function BuyerBetaPage() {
         </div>
       </section>
 
-      <section className="landing-proof-strip" aria-label="Domarion buyer report details">
+      <section className="landing-proof-strip" aria-label="WartoMetr buyer report details">
         <div>
           <strong>29-49 PLN</strong>
           <span>ориентир для полного отчета по квартире</span>
@@ -145,7 +145,7 @@ export default function BuyerBetaPage() {
           </li>
           <li>
             <CheckCircle2 size={16} />
-            Сравнение строится на базе Domarion, партнерских данных и открытых городских источниках.
+            Сравнение строится на базе WartoMetr, партнерских данных и открытых городских источниках.
           </li>
           <li>
             <ShieldCheck size={16} />

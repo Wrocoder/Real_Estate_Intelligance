@@ -123,7 +123,7 @@ Subject: `Szybki raport ceny i ryzyk mieszkania dla klienta`
 
 Message:
 
-> Cześć, budujemy Domarion - narzędzie do szybkich raportów dla mieszkań we
+> Cześć, budujemy WartoMetr - narzędzie do szybkich raportów dla mieszkań we
 > Wrocławiu: cena vs rynek, historia ceny, ryzyka lokalizacji, argumenty do
 > negocjacji i PDF dla klienta. Szukamy 5 agentów do paid beta. Czy mogę
 > przygotować przykładowy raport dla jednego z Twoich aktualnych obiektów?
@@ -136,7 +136,7 @@ Body:
 
 > Dzień dobry,
 >
-> testujemy Domarion Analytics dla małych agencji nieruchomości. Produkt tworzy
+> testujemy WartoMetr Analytics dla małych agencji nieruchomości. Produkt tworzy
 > raport HTML/PDF dla klienta: porównanie ceny z rynkiem, argumenty do oferty,
 > ryzyka lokalizacji, dane o okolicy i sekcję dewelopera, jeśli jest dostępna.
 >

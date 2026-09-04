@@ -17,9 +17,9 @@ import { BetaLeadForm } from "@/components/BetaLeadForm";
 import { LandingMapScene } from "@/components/LandingMapScene";
 
 export const metadata: Metadata = {
-  title: "Аналитика и отчеты для риелторов | Domarion",
+  title: "Аналитика и отчеты для риелторов | WartoMetr",
   description:
-    "Domarion для риелторов: клиентские отчеты, сравнение объектов, аргументы по цене и районная аналитика для агентств.",
+    "WartoMetr для риелторов: клиентские отчеты, сравнение объектов, аргументы по цене и районная аналитика для агентств.",
 };
 
 const realtorUseCases = [
@@ -100,7 +100,7 @@ export default function RealtorsPage() {
           <span className="landing-eyebrow">Для чего агенту</span>
           <h2>Меньше ручной аналитики, больше доказательных разговоров</h2>
           <p>
-            Domarion закрывает повторяемые вопросы клиента: цена, риски, район,
+            WartoMetr закрывает повторяемые вопросы клиента: цена, риски, район,
             похожие объекты, торг и стоит ли продолжать переговоры.
           </p>
         </div>

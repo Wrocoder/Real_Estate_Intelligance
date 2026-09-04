@@ -25,7 +25,7 @@ def test_document_upload_due_diligence_plan_covers_privacy_and_guardrails() -> N
         "not legal advice",
         "raw file bytes by default",
         "confirm_private_document_analysis=true",
-        "Verified by Domarion analyst",
+        "Verified by WartoMetr analyst",
         "No automatic output claims legal certainty",
     ):
         assert guardrail in document

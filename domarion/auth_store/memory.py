@@ -8,6 +8,31 @@ class InMemoryAuthStore:
     def __init__(self) -> None:
         self._users: dict[str, UserAccount] = {}
         self._subscriptions: dict[str, Subscription] = {}
+        self._password_hashes: dict[str, str] = {}
+
+    def get_user(self, user_id: str) -> UserAccount | None:
+        return self._users.get(user_id)
+
+    def get_user_by_email(self, email: str) -> UserAccount | None:
+        normalized_email = email.strip().casefold()
+        return next(
+            (
+                user
+                for user in self._users.values()
+                if user.email and user.email.casefold() == normalized_email
+            ),
+            None,
+        )
+
+    def create_password_user(self, identity: AuthIdentity, password_hash: str) -> UserAccount:
+        if self.get_user_by_email(identity.email or "") is not None:
+            raise ValueError("An account with this email already exists")
+        user = self.get_or_create_user(identity)
+        self._password_hashes[user.id] = password_hash
+        return user
+
+    def get_password_hash(self, user_id: str) -> str | None:
+        return self._password_hashes.get(user_id)
 
     def get_or_create_user(self, identity: AuthIdentity) -> UserAccount:
         user = self._users.get(identity.user_id)
@@ -67,6 +92,7 @@ class InMemoryAuthStore:
     def clear(self) -> None:
         self._users.clear()
         self._subscriptions.clear()
+        self._password_hashes.clear()
 
     @staticmethod
     def _build_subscription(user_id: str, plan: str, now: datetime) -> Subscription:

@@ -28,7 +28,7 @@ SCORING_PAYLOAD = {
 
 def test_scoring_service_evaluates_listing_without_persistence() -> None:
     result = evaluate_scoring_service_listing(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         ScoringServiceRequest(**SCORING_PAYLOAD),
     )
 

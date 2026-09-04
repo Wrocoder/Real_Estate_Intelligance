@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Backup or restore Domarion PostgreSQL/PostGIS via pg_dump/pg_restore.",
+        description="Backup or restore WartoMetr PostgreSQL/PostGIS via pg_dump/pg_restore.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 

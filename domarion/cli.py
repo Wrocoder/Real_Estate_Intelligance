@@ -15,6 +15,7 @@ from domarion.ingestion.developers import import_developer_feed
 from domarion.ingestion.infrastructure_references import import_infrastructure_references
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
+from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
 from domarion.repositories.factory import get_repository
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
 from domarion.schemas import AlertDeliveryBatchRequest
@@ -302,7 +303,10 @@ def main() -> None:
                 session.commit()
         _print_json(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "generate-report-html":
-        repository = InMemoryRealEstateRepository()
+        settings = get_settings()
+        repository = InMemoryRealEstateRepository(
+            include_demo_data=settings.demo_mode_enabled
+        )
         path = write_object_report_html(
             repository,
             args.listing_id,
@@ -453,7 +457,14 @@ def _run_worker_task(task: str, args: argparse.Namespace) -> dict:
 
 
 def _run_production_preflight(args: argparse.Namespace) -> None:
-    report = build_production_readiness_report()
+    settings = get_settings()
+    with contextmanager(get_ingestion_admin_store)() as store:
+        sources = (
+            store.list_sources()
+            if settings.environment.strip().casefold() == "production"
+            else []
+        )
+    report = build_production_readiness_report(settings, sources=sources)
     _print_json(report.model_dump_json(indent=2))
     if report.status == "blocked" or (args.strict and report.status != "ready"):
         raise SystemExit(1)

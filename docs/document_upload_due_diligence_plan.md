@@ -15,7 +15,7 @@ paid reports.
 - где нужна проверка юриста, агента, банка, нотариуса или технического эксперта;
 - какие противоречия требуют ручной проверки до zadatek/umowa rezerwacyjna.
 
-Вывод должен быть decision-support screening, not legal advice. Domarion не
+Вывод должен быть decision-support screening, not legal advice. WartoMetr не
 должен утверждать, что объект юридически или технически чист.
 
 ## First Slice
@@ -149,7 +149,7 @@ For paid Expert Review later:
 - allow explicit original-file retention;
 - show retention deadline;
 - show analyst status;
-- mark `Verified by Domarion analyst` only after human QA, never after automatic
+- mark `Verified by WartoMetr analyst` only after human QA, never after automatic
   extraction.
 
 ## Security And Retention

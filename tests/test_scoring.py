@@ -13,7 +13,7 @@ from domarion.services.scoring import (
 
 
 def test_scores_stay_in_expected_range() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
 
@@ -53,7 +53,7 @@ def test_scores_stay_in_expected_range() -> None:
 
 
 def test_long_listing_with_reductions_gets_negotiation_arguments() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-003")
     assert listing is not None
 
@@ -64,7 +64,7 @@ def test_long_listing_with_reductions_gets_negotiation_arguments() -> None:
 
 
 def test_scoring_weights_can_override_default_aggregation() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
     area = repository.get_area_statistics(listing.area_id)

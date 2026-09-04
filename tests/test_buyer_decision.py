@@ -88,6 +88,7 @@ def test_buyer_decision_personalizes_verdict_for_selected_purchase_intent() -> N
     assert decision.selected_intent == "family"
     assert decision.selected_intent_fit is not None
     assert decision.selected_intent_fit.intent == "family"
+    assert decision.decision_model_version == "buyer-decision-v2-intent"
     assert 0 <= decision.selected_intent_fit.score <= 100
     assert any("Selected buyer goal (family)" in item for item in decision.verdict.top_reasons)
 
@@ -128,7 +129,7 @@ def test_pre_viewing_and_watch_outputs_support_buyer_workflow() -> None:
 
 
 def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     listing = repository.get_listing("wr-001")
     assert listing is not None
     analysis = build_listing_analysis(repository, listing)
@@ -170,7 +171,7 @@ def _build_decision(
     relisted: bool = False,
     purchase_intent: PurchaseIntent = "unsure",
 ):
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
     base_listing = repository.get_listing("wr-001")
     assert base_listing is not None
     area = repository.get_area_statistics(base_listing.area_id)

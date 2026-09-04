@@ -148,6 +148,7 @@ export type ExplorerCopy = {
 };
 
 export type ListingCardCopy = {
+  demoData: string;
   compareTitle: string;
   compare: string;
   favoriteTitle: string;
@@ -1165,6 +1166,7 @@ export type DevelopersPageCopy = {
 };
 
 export type ListingDetailCopy = {
+  demoData: string;
   actions: {
     back: string;
     refresh: string;
@@ -1533,6 +1535,7 @@ export const LANGUAGE_SWITCHER_LABELS: Record<
 
 export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
   en: {
+    demoData: "Demo data",
     compareTitle: "Add to comparison",
     compare: "Compare",
     favoriteTitle: "Add to favorites",
@@ -1568,6 +1571,7 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     heating: (value) => `Heating: ${value}`,
   },
   pl: {
+    demoData: "Dane demonstracyjne",
     compareTitle: "Dodaj do porównania",
     compare: "Porównaj",
     favoriteTitle: "Dodaj do ulubionych",
@@ -1603,6 +1607,7 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     heating: (value) => `Ogrzewanie: ${value}`,
   },
   ru: {
+    demoData: "Демонстрационные данные",
     compareTitle: "Добавить в сравнение",
     compare: "Сравнить",
     favoriteTitle: "Добавить в избранное",
@@ -1638,6 +1643,7 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     heating: (value) => `Отопление: ${value}`,
   },
   uk: {
+    demoData: "Демонстраційні дані",
     compareTitle: "Додати до порівняння",
     compare: "Порівняти",
     favoriteTitle: "Додати в обране",
@@ -5765,6 +5771,7 @@ export const DEVELOPERS_PAGE_COPY: Record<Locale, DevelopersPageCopy> = {
 
 export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   en: {
+    demoData: "Demo data",
     actions: {
       back: "Back",
       refresh: "Refresh",
@@ -5920,6 +5927,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     errorPrefix: "Error",
   },
   pl: {
+    demoData: "Dane demonstracyjne",
     actions: {
       back: "Wstecz",
       refresh: "Odśwież",
@@ -6075,6 +6083,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     errorPrefix: "Błąd",
   },
   ru: {
+    demoData: "Демонстрационные данные",
     actions: {
       back: "Назад",
       refresh: "Обновить",
@@ -6232,6 +6241,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     errorPrefix: "Ошибка",
   },
   uk: {
+    demoData: "Демонстраційні дані",
     actions: {
       back: "Назад",
       refresh: "Оновити",

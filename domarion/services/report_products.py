@@ -12,7 +12,7 @@ REPORT_PRODUCTS: dict[ReportProductCode, ReportProduct] = {
             "разумный opening offer."
         ),
         features=[
-            "Domarion Verdict: buy / negotiate / avoid / verify first",
+            "WartoMetr Verdict: buy / negotiate / avoid / verify first",
             "Fair price range and overpayment estimate",
             "Opening offer and max reasonable offer",
             "Top risks, unknowns and seller questions",

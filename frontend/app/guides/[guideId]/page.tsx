@@ -58,7 +58,7 @@ export default async function GuidePage({ params }: PageProps) {
     description: guide.description,
     author: {
       "@type": "Organization",
-      name: "Domarion",
+      name: "WartoMetr",
     },
     about: guide.category,
     url: `${siteUrl()}/guides/${guide.slug}`,

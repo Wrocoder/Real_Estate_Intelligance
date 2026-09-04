@@ -51,7 +51,7 @@ DATA_CONTRACT = AIAssistantDataContract(
         "legal guarantees, tax advice, credit approval promises or price guarantees",
     ],
     citation_policy=(
-        "Every answer must include at least one citation to a structured Domarion "
+        "Every answer must include at least one citation to a structured WartoMetr "
         "source object used to produce the response."
     ),
     privacy_policy=(
@@ -164,7 +164,7 @@ def build_listing_ai_answer(
     base_guardrails = [
         AIAnswerGuardrail(
             code="source_grounded_only",
-            message="Answer uses only structured Domarion analysis fields and citations.",
+            message="Answer uses only structured WartoMetr analysis fields and citations.",
         ),
         AIAnswerGuardrail(
             code="no_professional_advice",
@@ -275,7 +275,7 @@ def build_compare_ai_answer(
     guardrails = [
         AIAnswerGuardrail(
             code="source_grounded_only",
-            message="Answer uses only Domarion compare metrics and listing analyses.",
+            message="Answer uses only WartoMetr compare metrics and listing analyses.",
         ),
         AIAnswerGuardrail(
             code="no_professional_advice",

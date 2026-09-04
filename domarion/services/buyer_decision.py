@@ -30,6 +30,7 @@ BUYER_DECISION_DISCLAIMER = (
     "financial, tax, valuation or investment advice and do not confirm that a property "
     "is legally or technically clean."
 )
+BUYER_DECISION_MODEL_VERSION = "buyer-decision-v2-intent"
 
 POST_VIEWING_FIELD_LABELS = {
     "condition": "overall condition",
@@ -128,6 +129,7 @@ def build_buyer_decision(
         knowledge=knowledge,
         total_acquisition=total_acquisition,
         selected_intent=purchase_intent,
+        decision_model_version=BUYER_DECISION_MODEL_VERSION,
         selected_intent_fit=selected_intent_fit,
         intent_fit=intent_fit,
         pre_viewing=pre_viewing,
@@ -163,9 +165,7 @@ def recalculate_post_viewing_verdict(
     risk_adjustment, offer_adjustment, findings, issue_findings, actions = (
         _post_viewing_adjustments(analysis.listing, answers)
     )
-    adjusted_listing = analysis.listing.model_copy(
-        update=_post_viewing_listing_updates(answers)
-    )
+    adjusted_listing = analysis.listing.model_copy(update=_post_viewing_listing_updates(answers))
     adjusted_scores = _post_viewing_scores(
         analysis.scores,
         adjusted_listing,
@@ -245,6 +245,7 @@ def recalculate_post_viewing_verdict(
         knowledge=knowledge,
         total_acquisition=total_acquisition,
         selected_intent=selected_intent,
+        decision_model_version=BUYER_DECISION_MODEL_VERSION,
         selected_intent_fit=selected_intent_fit,
         intent_fit=intent_fit,
         pre_viewing=pre_viewing,
@@ -662,7 +663,7 @@ def _due_diligence_red_flags(
         flags.append("Older building: verify roof, facade, pipes, electricity and heating.")
     if listing.floor == 0:
         flags.append("Ground floor: verify privacy, moisture, noise and security.")
-    if listing.nearest_major_road_m < 250:
+    if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 250:
         flags.append("Major road is close enough to require a real noise check inside the flat.")
     if developer_reputation is not None:
         flags.extend(developer_reputation.risk_signals[:3])
@@ -809,7 +810,7 @@ def _knowledge_matrix(
     if listing.building_year:
         known.append(f"Declared building year {listing.building_year}.")
     if comparables:
-        known.append(f"{len(comparables)} comparable properties in current Domarion sample.")
+        known.append(f"{len(comparables)} comparable properties in current WartoMetr sample.")
 
     estimated = [
         f"Fair price range {_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}.",
@@ -839,7 +840,7 @@ def _knowledge_matrix(
     source_evidence = [
         BuyerSourceEvidence(
             topic="asking price and object parameters",
-            basis="listing/user-submitted fields normalized into Domarion listing model",
+            basis="listing/user-submitted fields normalized into WartoMetr listing model",
             source_name=listing.source_name,
             source_type="listing_reference",
             updated_at=listing.last_seen_at,
@@ -849,7 +850,7 @@ def _knowledge_matrix(
         BuyerSourceEvidence(
             topic="fair price",
             basis=f"{len(comparables)} comparables plus area median for {area_statistics.name}",
-            source_name="Domarion comparables and area statistics",
+            source_name="WartoMetr comparables and area statistics",
             source_type="market_snapshot",
             confidence_score=scores.fair_price_confidence_score,
         ),
@@ -859,7 +860,7 @@ def _knowledge_matrix(
                 f"{area_statistics.active_listings} active listings, "
                 f"{area_statistics.average_days_on_market} average DOM"
             ),
-            source_name="Domarion area statistics",
+            source_name="WartoMetr area statistics",
             source_type="area_statistics",
             confidence_score=min(90, 55 + area_statistics.active_listings // 20),
         ),
@@ -869,7 +870,7 @@ def _knowledge_matrix(
             BuyerSourceEvidence(
                 topic="future infrastructure",
                 basis=f"{len(future_area_impact.nearest_investments)} nearest planned investments",
-                source_name="Domarion planned investments registry",
+                source_name="WartoMetr planned investments registry",
                 source_type="open_data_or_admin_verified",
                 confidence_score=_future_confidence(future_area_impact),
                 note=future_area_impact.methodology_note,
@@ -880,7 +881,7 @@ def _knowledge_matrix(
             BuyerSourceEvidence(
                 topic="rental estimate",
                 basis="rental heuristic from object, location and comparable-density signals",
-                source_name="Domarion rental estimate",
+                source_name="WartoMetr rental estimate",
                 source_type="derived_model",
                 confidence_score=rental_estimate.confidence_score,
             )
@@ -1010,8 +1011,7 @@ def _total_cost_notes(
 ) -> list[str]:
     if renovation_source == "custom_budget":
         renovation_note = (
-            "Renovation budget uses the buyer-provided custom budget: "
-            f"{_money(renovation)}."
+            f"Renovation budget uses the buyer-provided custom budget: {_money(renovation)}."
         )
     elif listing.renovation_state:
         renovation_note = (
@@ -1056,15 +1056,23 @@ def _intent_fit(
     family_score = _clamp(
         45
         + (18 if listing.rooms >= 3 else -8)
-        + (12 if listing.nearest_school_m <= 900 else -8)
-        + listing.parks_within_1km * 5
-        - (10 if listing.nearest_major_road_m < 250 else 0)
+        + (12 if listing.nearest_school_m is not None and listing.nearest_school_m <= 900 else -8)
+        + (listing.parks_within_1km or 0) * 5
+        - (
+            10
+            if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 250
+            else 0
+        )
     )
     self_score = _clamp(
         48
-        + (16 if listing.nearest_stop_m <= 600 else -8)
-        + (10 if listing.distance_to_center_km <= 8 else -6)
-        + listing.parks_within_1km * 4
+        + (16 if listing.nearest_stop_m is not None and listing.nearest_stop_m <= 600 else -8)
+        + (
+            10
+            if listing.distance_to_center_km is not None and listing.distance_to_center_km <= 8
+            else -6
+        )
+        + (listing.parks_within_1km or 0) * 4
         - (8 if listing.floor == 0 else 0)
     )
     rental_score = _clamp(
@@ -1214,9 +1222,7 @@ def _post_viewing_adjustments(
         findings.append(finding)
         issue_findings.append(finding)
         if level == "major_issue":
-            actions.append(
-                f"Pause before zadatek until {label} is inspected or fully priced in."
-            )
+            actions.append(f"Pause before zadatek until {label} is inspected or fully priced in.")
         else:
             actions.append(f"Keep a negotiation reserve for {label}.")
 
@@ -1272,9 +1278,7 @@ def _post_viewing_issue_delta(field: str, level: PostViewingIssueLevel) -> tuple
 def _post_viewing_listing_updates(answers: PostViewingChecklistAnswers) -> dict[str, object]:
     if answers.renovation_need == "unknown":
         return {}
-    _, _, renovation_state, _ = POST_VIEWING_RENOVATION_ADJUSTMENTS[
-        answers.renovation_need
-    ]
+    _, _, renovation_state, _ = POST_VIEWING_RENOVATION_ADJUSTMENTS[answers.renovation_need]
     return {"renovation_state": renovation_state}
 
 
@@ -1309,9 +1313,7 @@ def _post_viewing_scores(
             "warnings": _deduplicate([*scores.warnings, *issue_findings]),
             "breakdown": scores.breakdown.model_copy(
                 update={
-                    "risk_penalty": _clamp(
-                        scores.breakdown.risk_penalty + max(risk_adjustment, 0)
-                    )
+                    "risk_penalty": _clamp(scores.breakdown.risk_penalty + max(risk_adjustment, 0))
                 }
             ),
         }
@@ -1446,9 +1448,9 @@ def _surroundings_checks(listing: Listing) -> list[str]:
         ),
         "parking pressure in the evening",
     ]
-    if listing.nearest_major_road_m < 700:
+    if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 700:
         checks.append(f"traffic noise from major road at {listing.nearest_major_road_m} m")
-    if listing.nearest_industrial_zone_m < 1500:
+    if listing.nearest_industrial_zone_m is not None and listing.nearest_industrial_zone_m < 1500:
         checks.append(f"industrial-zone impact at {listing.nearest_industrial_zone_m} m")
     if listing.planned_investments_within_2km:
         checks.append("construction disruption and future infrastructure around the building")
@@ -1469,9 +1471,7 @@ def _watch_triggers(
         "new comparable appears below the recommended deal range",
         "listing crosses 120/150 days on market",
     ]
-    cheaper = [
-        item for item in comparables if item.price < verdict.max_reasonable_offer_pln
-    ]
+    cheaper = [item for item in comparables if item.price < verdict.max_reasonable_offer_pln]
     if cheaper:
         triggers.append(f"{len(cheaper)} comparable(s) already sit below the ceiling.")
     if scores.price_delta_to_fair_mid_pct > 5:
@@ -1500,7 +1500,7 @@ def _top_reasons(
         reasons.append("Asking price is close to or below the fair-price midpoint.")
     if listing.price_reductions:
         reasons.append(f"Price has already been reduced {listing.price_reductions} time(s).")
-    if listing.nearest_stop_m <= 500:
+    if listing.nearest_stop_m is not None and listing.nearest_stop_m <= 500:
         reasons.append(
             f"Good public-transport proximity: nearest stop about {listing.nearest_stop_m} m."
         )

@@ -138,7 +138,7 @@ const defaultFilters: Filters = {
 const SEARCH_COPY = {
   en: {
     title: "Find apartments worth checking",
-    subtitle: "Start simple. Domarion ranks listings by value, risk, liquidity and negotiation potential.",
+    subtitle: "Start simple. WartoMetr ranks listings by value, risk, liquidity and negotiation potential.",
     location: "Location",
     purpose: "Buying purpose",
     living: "For living",
@@ -162,7 +162,7 @@ const SEARCH_COPY = {
   },
   pl: {
     title: "Znajdź mieszkania warte sprawdzenia",
-    subtitle: "Zacznij od podstaw. Domarion porządkuje oferty według wartości, ryzyka, płynności i potencjału negocjacji.",
+    subtitle: "Zacznij od podstaw. WartoMetr porządkuje oferty według wartości, ryzyka, płynności i potencjału negocjacji.",
     location: "Lokalizacja",
     purpose: "Cel zakupu",
     living: "Do zamieszkania",
@@ -186,7 +186,7 @@ const SEARCH_COPY = {
   },
   ru: {
     title: "Найдите квартиры, которые стоит проверить",
-    subtitle: "Начните с простых фильтров. Domarion ранжирует объявления по цене, рискам, ликвидности и потенциалу торга.",
+    subtitle: "Начните с простых фильтров. WartoMetr ранжирует объявления по цене, рискам, ликвидности и потенциалу торга.",
     location: "Локация",
     purpose: "Цель покупки",
     living: "Для жизни",
@@ -210,7 +210,7 @@ const SEARCH_COPY = {
   },
   uk: {
     title: "Знайдіть квартири, які варто перевірити",
-    subtitle: "Почніть із простих фільтрів. Domarion ранжує оголошення за ціною, ризиками, ліквідністю та потенціалом торгу.",
+    subtitle: "Почніть із простих фільтрів. WartoMetr ранжує оголошення за ціною, ризиками, ліквідністю та потенціалом торгу.",
     location: "Локація",
     purpose: "Ціль купівлі",
     living: "Для життя",

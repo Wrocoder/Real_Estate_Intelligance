@@ -14,6 +14,7 @@ from domarion.schemas import (
     ScoreBreakdown,
 )
 from domarion.services.buyer_decision import build_buyer_decision
+from domarion.services.comparables import ComparableSelection, select_comparables
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.rental_estimate import build_listing_rental_estimate
@@ -22,6 +23,11 @@ from domarion.services.risk_profile import build_listing_risk_profile
 
 class ScoringConfigurationError(ValueError):
     pass
+
+
+def _legacy_comparable_selection(repository, listing: Listing) -> ComparableSelection:
+    items = repository.find_comparables(listing)
+    return ComparableSelection(items, 0, "legacy alert matching", 0, [])
 
 
 SCORING_FORMULA_VERSION = "domarion-scoring-v1"
@@ -137,6 +143,40 @@ def calculate_scores(
     weights = weights or get_scoring_weights()
     median_price = area_statistics.median_price_per_m2
     price_delta_pct = ((listing.price_per_m2 / median_price) - 1) * 100
+    missing_inputs = {
+        name
+        for name, value in {
+            "distance_to_center_km": listing.distance_to_center_km,
+            "nearest_stop_m": listing.nearest_stop_m,
+            "nearest_school_m": listing.nearest_school_m,
+            "nearest_major_road_m": listing.nearest_major_road_m,
+            "nearest_industrial_zone_m": listing.nearest_industrial_zone_m,
+            "parks_within_1km": listing.parks_within_1km,
+            "schools_within_1km": listing.schools_within_1km,
+            "planned_investments_within_2km": listing.planned_investments_within_2km,
+        }.items()
+        if value is None
+    }
+    # Missing contextual inputs remain unknown; neutral baselines only keep the
+    # aggregate score renderable and are reflected in confidence/warnings below.
+    distance_to_center_km = (
+        listing.distance_to_center_km if listing.distance_to_center_km is not None else 6.0
+    )
+    nearest_stop_m = listing.nearest_stop_m if listing.nearest_stop_m is not None else 500
+    nearest_school_m = listing.nearest_school_m if listing.nearest_school_m is not None else 900
+    nearest_major_road_m = (
+        listing.nearest_major_road_m if listing.nearest_major_road_m is not None else 700
+    )
+    nearest_industrial_zone_m = (
+        listing.nearest_industrial_zone_m if listing.nearest_industrial_zone_m is not None else 2200
+    )
+    parks_within_1km = listing.parks_within_1km if listing.parks_within_1km is not None else 1
+    schools_within_1km = listing.schools_within_1km if listing.schools_within_1km is not None else 1
+    planned_investments_within_2km = (
+        listing.planned_investments_within_2km
+        if listing.planned_investments_within_2km is not None
+        else 0
+    )
 
     comparable_prices = [item.price_per_m2 for item in comparables] or [median_price]
     comparable_median = int(median(comparable_prices))
@@ -158,24 +198,21 @@ def calculate_scores(
 
     price_position = clamp(70 - price_delta_pct * 2.2)
     area_trend = clamp(50 + area_statistics.price_change_90d_pct * 6)
-    transport = clamp(100 - max(0, listing.nearest_stop_m - 200) / 8)
-    future_infrastructure = clamp(45 + listing.planned_investments_within_2km * 13)
+    transport = clamp(100 - max(0, nearest_stop_m - 200) / 8)
+    future_infrastructure = clamp(45 + planned_investments_within_2km * 13)
     liquidity = clamp(
         100
         - area_statistics.average_days_on_market * 0.45
         + max(0, area_statistics.removed_listings_30d - area_statistics.new_listings_30d) * 0.2
     )
     lifestyle_infrastructure = clamp(
-        35
-        + listing.schools_within_1km * 12
-        + listing.parks_within_1km * 10
-        - max(0, listing.nearest_school_m - 700) / 20
+        35 + schools_within_1km * 12 + parks_within_1km * 10 - max(0, nearest_school_m - 700) / 20
     )
     rental_potential = clamp(
         55
-        + (100 - min(listing.nearest_stop_m, 1000) / 10) * 0.25
-        + listing.schools_within_1km * 3
-        - max(0, listing.distance_to_center_km - 6) * 2.5
+        + (100 - min(nearest_stop_m, 1000) / 10) * 0.25
+        + schools_within_1km * 3
+        - max(0, distance_to_center_km - 6) * 2.5
     )
 
     pricing_risk = clamp(max(0, price_delta_pct) * 3.5)
@@ -185,9 +222,9 @@ def calculate_scores(
         + max(0, area_statistics.supply_change_90d_pct) * 1.3
     )
     location_risk = clamp(
-        max(0, 700 - listing.nearest_major_road_m) / 12
-        + max(0, 1500 - listing.nearest_industrial_zone_m) / 25
-        + max(0, listing.nearest_stop_m - 700) / 8
+        max(0, 700 - nearest_major_road_m) / 12
+        + max(0, 1500 - nearest_industrial_zone_m) / 25
+        + max(0, nearest_stop_m - 700) / 8
     )
     building_risk = clamp(
         (15 if listing.floor == 0 else 0)
@@ -230,9 +267,9 @@ def calculate_scores(
 
     if price_delta_pct < -5:
         reasons.append("Цена за m2 ниже медианы района.")
-    if listing.planned_investments_within_2km >= 2:
+    if planned_investments_within_2km >= 2:
         reasons.append("Рядом есть несколько planned investments в радиусе 2 км.")
-    if listing.nearest_stop_m <= 400:
+    if nearest_stop_m <= 400:
         reasons.append("Хорошая транспортная доступность по расстоянию до остановки.")
     if listing.price_reductions > 0:
         reasons.append("Цена уже снижалась, это усиливает переговорную позицию.")
@@ -241,10 +278,16 @@ def calculate_scores(
         warnings.append("Цена за m2 заметно выше медианы района.")
     if listing.days_on_market > area_statistics.average_days_on_market * 1.5:
         warnings.append("Объект находится на рынке существенно дольше среднего по району.")
-    if listing.nearest_industrial_zone_m < 1500:
+    if nearest_industrial_zone_m < 1500:
         warnings.append("Промышленная зона находится относительно близко.")
     if listing.data_quality_score < 70:
         warnings.append("Качество данных ниже желательного уровня, выводы нужно перепроверить.")
+    if missing_inputs:
+        warnings.append(
+            "Недостающие поля инфраструктуры не подставлялись; зависимые сигналы имеют "
+            "пониженную уверенность: " + ", ".join(sorted(missing_inputs)) + "."
+        )
+        fair_price_confidence_score = min(fair_price_confidence_score, 55)
 
     return PropertyScores(
         formula_version=SCORING_FORMULA_VERSION,
@@ -286,30 +329,82 @@ def calculate_scores(
     )
 
 
-def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
+def build_listing_analysis(
+    repository, listing: Listing, *, use_relevant_comparables: bool = True
+) -> ListingAnalysis:
     area_statistics = repository.get_area_statistics(listing.area_id)
     if area_statistics is None:
         raise ValueError(f"Missing area statistics for {listing.area_id}")
 
     price_history = repository.get_price_history(listing.id)
     listing_events = repository.get_listing_events(listing.id)
-    comparables = repository.find_comparables(listing)
+    comparable_selection = (
+        select_comparables(repository, listing)
+        if use_relevant_comparables
+        else _legacy_comparable_selection(repository, listing)
+    )
+    comparables = comparable_selection.items
+    context_listing = listing.model_copy(
+        update={
+            "distance_to_center_km": listing.distance_to_center_km
+            if listing.distance_to_center_km is not None
+            else 6.0,
+            "nearest_stop_m": listing.nearest_stop_m if listing.nearest_stop_m is not None else 500,
+            "nearest_school_m": listing.nearest_school_m
+            if listing.nearest_school_m is not None
+            else 900,
+            "nearest_major_road_m": listing.nearest_major_road_m
+            if listing.nearest_major_road_m is not None
+            else 700,
+            "nearest_industrial_zone_m": listing.nearest_industrial_zone_m
+            if listing.nearest_industrial_zone_m is not None
+            else 2200,
+            "parks_within_1km": listing.parks_within_1km
+            if listing.parks_within_1km is not None
+            else 1,
+            "schools_within_1km": listing.schools_within_1km
+            if listing.schools_within_1km is not None
+            else 1,
+            "planned_investments_within_2km": listing.planned_investments_within_2km
+            if listing.planned_investments_within_2km is not None
+            else 0,
+        }
+    )
     developer_reputation = repository.get_developer_reputation_for_listing(listing.id)
-    future_area_impact = build_listing_future_impact(repository, listing)
+    future_area_impact = build_listing_future_impact(repository, context_listing)
     growth_analysis = build_listing_growth_analysis(
         repository,
-        listing,
+        context_listing,
         area_statistics,
         future_area_impact=future_area_impact,
     )
     scores = calculate_scores(listing, area_statistics, comparables)
+    confidence_cap = {0: 92, 1: 78, 2: 64, 3: 52}.get(comparable_selection.level, 40)
+    if len(comparables) < 3:
+        confidence_cap = min(confidence_cap, 55)
+    scores = scores.model_copy(
+        update={
+            "fair_price_confidence_score": min(scores.fair_price_confidence_score, confidence_cap),
+            "warnings": [
+                *scores.warnings,
+                *(
+                    [
+                        "Слабая выборка comparables: fair-price диапазон носит только "
+                        "ориентировочный характер."
+                    ]
+                    if len(comparables) < 3
+                    else []
+                ),
+            ],
+        }
+    )
     rental_estimate = build_listing_rental_estimate(
-        listing,
+        context_listing,
         scores,
         comparable_count=len(comparables),
     )
     risk_profile = build_listing_risk_profile(
-        listing=listing,
+        listing=context_listing,
         area_statistics=area_statistics,
         scores=scores,
         developer_reputation=developer_reputation,
@@ -355,9 +450,16 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
     data_quality_notes = [
         f"Data Quality Score: {listing.data_quality_score}/100.",
         "Расчеты основаны на MVP-данных и требуют проверки источников перед реальной сделкой.",
+        f"Comparable sample: {len(comparables)} objects; scope: {comparable_selection.scope}; "
+        f"freshness window: {comparable_selection.freshness_days} days.",
+        *comparable_selection.excluded_reasons,
     ]
+    if rental_estimate is None:
+        data_quality_notes.append(
+            "Rental estimate: insufficient_data; no comparable rental observations are available."
+        )
     buyer_decision = build_buyer_decision(
-        listing=listing,
+        listing=context_listing,
         area_statistics=area_statistics,
         scores=scores,
         comparables=comparables,
@@ -385,6 +487,10 @@ def build_listing_analysis(repository, listing: Listing) -> ListingAnalysis:
         insights=insights,
         negotiation_arguments=negotiation_arguments,
         data_quality_notes=data_quality_notes,
+        comparables_scope=comparable_selection.scope,
+        comparables_selection_level=comparable_selection.level,
+        comparables_freshness_days=comparable_selection.freshness_days,
+        comparables_excluded_reasons=comparable_selection.excluded_reasons,
         disclaimer=SCORING_DISCLAIMER,
     )
 

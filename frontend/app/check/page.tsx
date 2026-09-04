@@ -89,7 +89,7 @@ const DEFAULT_FORM: CheckFormState = {
   building_year: "",
   lat: "",
   lon: "",
-  confirm_private_analysis: true,
+  confirm_private_analysis: false,
 };
 
 const DISTRICTS = ["Fabryczna", "Krzyki", "Psie Pole"];
@@ -107,11 +107,11 @@ type RequiredReportField = keyof CheckPageCopy["requiredFieldLabels"];
 const PRODUCT_COPY = {
   en: {
     heroTitle: "Check an apartment before buying",
-    heroText: "Paste an Otodom or OLX link. Domarion estimates a fair price, risks, total purchase cost and negotiation range.",
+    heroText: "Paste an Otodom or OLX link. WartoMetr estimates a fair price, risks, total purchase cost and negotiation range.",
     urlLabel: "Otodom or OLX link",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Check apartment",
-    search: "Or search for an apartment with Domarion",
+    search: "Or search for an apartment with WartoMetr",
     manualSummary: "Enter apartment details manually",
     purpose: "Buying purpose",
     living: "For living",
@@ -130,14 +130,17 @@ const PRODUCT_COPY = {
     details: "Apartment details",
     report: "Full property report",
     assistant: "Ask about this apartment",
+    consent: "I understand that WartoMetr will fetch this public listing, keep a private reference for the analysis, and let me delete the draft.",
+    privacy: "Privacy details",
+    consentRequired: "Confirm the data-use notice before importing the link.",
   },
   pl: {
     heroTitle: "Sprawdź mieszkanie przed zakupem",
-    heroText: "Wklej link z Otodom lub OLX. Domarion oszacuje cenę rynkową, ryzyka, całkowity koszt zakupu i zakres negocjacji.",
+    heroText: "Wklej link z Otodom lub OLX. WartoMetr oszacuje cenę rynkową, ryzyka, całkowity koszt zakupu i zakres negocjacji.",
     urlLabel: "Link Otodom lub OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Sprawdź mieszkanie",
-    search: "Albo wyszukaj mieszkanie w Domarion",
+    search: "Albo wyszukaj mieszkanie w WartoMetr",
     manualSummary: "Wpisz dane mieszkania ręcznie",
     purpose: "Cel zakupu",
     living: "Do zamieszkania",
@@ -156,14 +159,17 @@ const PRODUCT_COPY = {
     details: "Dane mieszkania",
     report: "Pełny raport mieszkania",
     assistant: "Zapytaj o to mieszkanie",
+    consent: "Rozumiem, że WartoMetr pobierze to publiczne ogłoszenie, zachowa prywatne odniesienie do analizy i umożliwi usunięcie szkicu.",
+    privacy: "Szczegóły prywatności",
+    consentRequired: "Potwierdź zasady wykorzystania danych przed importem linku.",
   },
   ru: {
     heroTitle: "Проверьте квартиру перед покупкой",
-    heroText: "Вставьте ссылку Otodom или OLX. Domarion оценит рыночный диапазон, риски, полную стоимость покупки и диапазон торга.",
+    heroText: "Вставьте ссылку Otodom или OLX. WartoMetr оценит рыночный диапазон, риски, полную стоимость покупки и диапазон торга.",
     urlLabel: "Ссылка Otodom или OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Проверить квартиру",
-    search: "Или найти квартиру в Domarion",
+    search: "Или найти квартиру в WartoMetr",
     manualSummary: "Ввести параметры квартиры вручную",
     purpose: "Цель покупки",
     living: "Для жизни",
@@ -182,14 +188,17 @@ const PRODUCT_COPY = {
     details: "Параметры квартиры",
     report: "Полный отчет по квартире",
     assistant: "Задать вопрос по квартире",
+    consent: "Я понимаю, что WartoMetr получит это публичное объявление, сохранит приватную ссылку для анализа и позволит удалить черновик.",
+    privacy: "Подробнее о приватности",
+    consentRequired: "Подтвердите правила использования данных перед импортом ссылки.",
   },
   uk: {
     heroTitle: "Перевірте квартиру перед купівлею",
-    heroText: "Вставте посилання Otodom або OLX. Domarion оцінить ринковий діапазон, ризики, повну вартість купівлі та діапазон торгу.",
+    heroText: "Вставте посилання Otodom або OLX. WartoMetr оцінить ринковий діапазон, ризики, повну вартість купівлі та діапазон торгу.",
     urlLabel: "Посилання Otodom або OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Перевірити квартиру",
-    search: "Або знайти квартиру в Domarion",
+    search: "Або знайти квартиру в WartoMetr",
     manualSummary: "Ввести параметри квартири вручну",
     purpose: "Ціль купівлі",
     living: "Для життя",
@@ -208,6 +217,9 @@ const PRODUCT_COPY = {
     details: "Параметри квартири",
     report: "Повний звіт по квартирі",
     assistant: "Поставити питання по квартирі",
+    consent: "Я розумію, що WartoMetr отримає це публічне оголошення, збереже приватне посилання для аналізу та дозволить видалити чернетку.",
+    privacy: "Деталі приватності",
+    consentRequired: "Підтвердьте правила використання даних перед імпортом посилання.",
   },
 } as const;
 
@@ -335,6 +347,10 @@ export default function CheckListingPage() {
   }
 
   async function previewReference() {
+    if (!form.confirm_private_analysis) {
+      setError(product.consentRequired);
+      return;
+    }
     await importFromUrl({ generateReport: true });
   }
 
@@ -343,7 +359,7 @@ export default function CheckListingPage() {
     resetAIAnswer(copy.statuses.aiReadyAfterCheck);
     setUrlImportStatus(product.importStatus);
     try {
-      const payload = await api.importUserSubmittedListingFromUrl(form.source_url);
+      const payload = await api.importUserSubmittedListingFromUrl(form.source_url, true);
       const updatedForm = mergeImportedFields(form, payload.fields);
       setUrlImportResult(payload);
       setReferencePreview(payload.reference_preview);
@@ -489,7 +505,7 @@ export default function CheckListingPage() {
     <>
       <section className={analysis ? "check-hero compact" : "check-hero"}>
         <div className="check-hero-copy">
-          <span className="landing-eyebrow">Domarion</span>
+          <span className="landing-eyebrow">WartoMetr</span>
           <h1>{product.heroTitle}</h1>
           <p>{product.heroText}</p>
         </div>
@@ -528,12 +544,20 @@ export default function CheckListingPage() {
           </div>
           <button
             className="button primary check-submit"
-            disabled={!form.source_url.trim()}
+            disabled={!form.source_url.trim() || !form.confirm_private_analysis}
             type="button"
             onClick={() => void previewReference()}
           >
             <ClipboardCheck size={18} /> {product.check}
           </button>
+          <label className="consent-row">
+            <input
+              type="checkbox"
+              checked={form.confirm_private_analysis}
+              onChange={(event) => updateField("confirm_private_analysis", event.target.checked)}
+            />
+            <span>{product.consent} <Link href="/privacy">{product.privacy}</Link></span>
+          </label>
           <Link className="check-secondary-link" href="/">
             <Search size={16} /> {product.search}
           </Link>

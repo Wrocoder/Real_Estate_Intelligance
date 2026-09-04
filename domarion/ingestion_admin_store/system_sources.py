@@ -27,6 +27,7 @@ def system_source_payloads() -> list[SourceRegistryEntryCreate]:
                 "User-submitted source references are temporary private evidence. Retain only "
                 "while needed for the user's draft/report workflow."
             ),
+            is_demo=False,
             is_active=True,
         )
     ]

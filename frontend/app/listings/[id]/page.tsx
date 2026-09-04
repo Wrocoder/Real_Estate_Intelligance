@@ -188,6 +188,9 @@ export default function ListingDetailPage() {
             <ArrowLeft size={16} /> {copy.actions.back}
           </Link>
           <h1 style={{ marginTop: 14 }}>{listing.title}</h1>
+          {listing.data_provenance.mode === "demo" ? (
+            <span className="data-provenance-badge">{copy.demoData}</span>
+          ) : null}
           <p>
             {listing.address}, {listing.district}, {listing.municipality} ·{" "}
             {listing.market_type}
@@ -445,6 +448,15 @@ export default function ListingDetailPage() {
             </div>
 
             <h2>{copy.sections.comparables}</h2>
+            <p className="muted-text">
+              {locale === "pl"
+                ? `Próba: ${analysis.comparables.length} obiektów. Zakres: ${analysis.comparables_scope}. Świeżość danych: ${analysis.comparables_freshness_days} dni.`
+                : locale === "ru"
+                  ? `Выборка: ${analysis.comparables.length} объектов. Охват: ${analysis.comparables_scope}. Свежесть данных: ${analysis.comparables_freshness_days} дней.`
+                  : locale === "uk"
+                    ? `Вибірка: ${analysis.comparables.length} об'єктів. Охоплення: ${analysis.comparables_scope}. Свіжість даних: ${analysis.comparables_freshness_days} днів.`
+                    : `Sample: ${analysis.comparables.length} properties. Scope: ${analysis.comparables_scope}. Freshness: ${analysis.comparables_freshness_days} days.`}
+            </p>
             <div className="table-scroll">
               <table className="table">
                 <thead>

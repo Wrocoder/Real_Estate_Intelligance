@@ -140,10 +140,21 @@ def _market_liquidity_factor(
 
 
 def _transport_factor(listing: Listing) -> ListingRiskFactor:
-    if listing.nearest_stop_m > 1000:
+    nearest_stop_m = listing.nearest_stop_m or 500
+    if listing.nearest_stop_m is None:
+        return ListingRiskFactor(
+            code="weak_transport",
+            category="location",
+            severity="medium",
+            score=50,
+            summary="Public transport distance is unknown; verify before deciding.",
+            evidence=["Nearest stop: unknown."],
+            recommended_checks=["Check the real walking route and service frequency."],
+        )
+    if nearest_stop_m > 1000:
         severity = "high"
         summary = "Public transport access appears weak."
-    elif listing.nearest_stop_m > 700:
+    elif nearest_stop_m > 700:
         severity = "medium"
         summary = "Public transport access needs on-site validation."
     else:
@@ -163,10 +174,21 @@ def _transport_factor(listing: Listing) -> ListingRiskFactor:
 
 
 def _road_noise_factor(listing: Listing) -> ListingRiskFactor:
-    if listing.nearest_major_road_m < 120:
+    nearest_major_road_m = listing.nearest_major_road_m
+    if nearest_major_road_m is None:
+        return ListingRiskFactor(
+            code="major_road_noise",
+            category="environment",
+            severity="medium",
+            score=50,
+            summary="Major-road distance is unknown; verify on site.",
+            evidence=["Nearest major road: unknown."],
+            recommended_checks=["Visit during rush hour and check noise maps."],
+        )
+    if nearest_major_road_m < 120:
         severity = "high"
         summary = "Major road is very close; noise and air quality require inspection."
-    elif listing.nearest_major_road_m < 250:
+    elif nearest_major_road_m < 250:
         severity = "medium"
         summary = "Major road proximity can affect comfort and resale."
     else:
@@ -186,10 +208,21 @@ def _road_noise_factor(listing: Listing) -> ListingRiskFactor:
 
 
 def _industrial_factor(listing: Listing) -> ListingRiskFactor:
-    if listing.nearest_industrial_zone_m < 700:
+    nearest_industrial_zone_m = listing.nearest_industrial_zone_m
+    if nearest_industrial_zone_m is None:
+        return ListingRiskFactor(
+            code="industrial_zone",
+            category="environment",
+            severity="medium",
+            score=50,
+            summary="Industrial-zone distance is unknown; verify on site.",
+            evidence=["Nearest industrial zone: unknown."],
+            recommended_checks=["Check land-use plan, traffic and emissions."],
+        )
+    if nearest_industrial_zone_m < 700:
         severity = "high"
         summary = "Industrial zone is close; check noise, traffic and emissions."
-    elif listing.nearest_industrial_zone_m < 1500:
+    elif nearest_industrial_zone_m < 1500:
         severity = "medium"
         summary = "Industrial zone is within a range worth checking."
     else:

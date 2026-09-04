@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
+import { DemoModeBanner } from "@/components/DemoModeBanner";
+import { AuthSessionNotice } from "@/components/AuthSessionNotice";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LocalizedNavigation } from "@/components/LocalizedNavigation";
 import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
@@ -11,7 +13,7 @@ import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Domarion",
+  title: "WartoMetr",
   description: "Check an apartment before buying in Poland.",
 };
 
@@ -27,14 +29,18 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <Link href="/" className="brand">
               <span className="brand-mark">W</span>
               <span>
-                <strong>Domarion</strong>
+                <strong>WartoMetr</strong>
                 <small>Sprawdzenie mieszkania</small>
               </span>
             </Link>
             <LocalizedNavigation initialLocale={initialLocale} />
             <LanguageSwitcher initialLocale={initialLocale} />
           </aside>
-          <main className="main">{children}</main>
+          <main className="main">
+            <DemoModeBanner initialLocale={initialLocale} />
+            <AuthSessionNotice />
+            {children}
+          </main>
         </div>
       </body>
     </html>

@@ -1,5 +1,5 @@
 [Unit]
-Description=Run Domarion PostgreSQL logical backup daily
+Description=Run WartoMetr PostgreSQL logical backup daily
 
 [Timer]
 OnCalendar=*-*-* 03:15:00

@@ -1,4 +1,4 @@
-# Domarion Analytics: экспертный обзор проекта
+# WartoMetr Analytics: экспертный обзор проекта
 
 Дата: 2026-07-22  
 База обзора: `development_plan.md`, `First_prompt_ru.md`, текущий код проекта  
@@ -6,7 +6,7 @@
 
 ## 1. Краткое резюме
 
-Domarion Analytics / Real Estate Intelligence Poland - SaaS-платформа для
+WartoMetr Analytics / Real Estate Intelligence Poland - SaaS-платформа для
 аналитики недвижимости в Польше. MVP сфокусирован на Wroclaw,
 Dolnoslaskie и пригородах вокруг Wroclaw, тип недвижимости - квартиры на
 продажу, первичный и вторичный рынок.

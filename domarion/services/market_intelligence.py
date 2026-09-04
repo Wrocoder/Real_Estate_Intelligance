@@ -15,7 +15,7 @@ from domarion.services.market_dashboard import build_market_dashboard
 
 MARKET_INTELLIGENCE_DISCLAIMER = (
     "This market intelligence report is an analytical screening product based on current "
-    "normalized listings, area statistics and Domarion scoring context. It is not financial, "
+    "normalized listings, area statistics and WartoMetr scoring context. It is not financial, "
     "legal, valuation or investment advice and does not guarantee demand, price, liquidity or "
     "future performance."
 )
@@ -64,7 +64,7 @@ def build_market_intelligence_report(
         source_notes=[
             "Dashboard metrics come from normalized active listings and area statistics.",
             (
-                "Area watchlist uses Domarion value, growth, buyer/seller pressure "
+                "Area watchlist uses WartoMetr value, growth, buyer/seller pressure "
                 "and liquidity indexes."
             ),
             (

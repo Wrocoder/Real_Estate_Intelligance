@@ -25,10 +25,6 @@ on:
         description: "Frontend build-time public site URL, for example https://app.example.com."
         required: false
         default: ""
-      next_public_owner_id:
-        description: "Frontend build-time owner fallback."
-        required: false
-        default: "demo-user"
 
 permissions:
   contents: read
@@ -84,7 +80,6 @@ jobs:
         working-directory: frontend
     env:
       NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
-      NEXT_PUBLIC_OWNER_ID: demo-user
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
@@ -133,7 +128,6 @@ jobs:
         run: |
           docker build \
             --build-arg NEXT_PUBLIC_API_BASE_URL=http://127.0.0.1:8000 \
-            --build-arg NEXT_PUBLIC_OWNER_ID=demo-user \
             --build-arg NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000 \
             -t domarion-frontend:ci \
             ./frontend
@@ -162,17 +156,13 @@ jobs:
         env:
           INPUT_NEXT_PUBLIC_API_BASE_URL: ${{ inputs.next_public_api_base_url || '' }}
           INPUT_NEXT_PUBLIC_SITE_URL: ${{ inputs.next_public_site_url || '' }}
-          INPUT_NEXT_PUBLIC_OWNER_ID: ${{ inputs.next_public_owner_id || '' }}
           VAR_NEXT_PUBLIC_API_BASE_URL: ${{ vars.OCI_NEXT_PUBLIC_API_BASE_URL }}
           VAR_NEXT_PUBLIC_SITE_URL: ${{ vars.OCI_NEXT_PUBLIC_SITE_URL }}
-          VAR_NEXT_PUBLIC_OWNER_ID: ${{ vars.OCI_NEXT_PUBLIC_OWNER_ID }}
         run: |
           set -euo pipefail
 
           api_base_url="${INPUT_NEXT_PUBLIC_API_BASE_URL:-$VAR_NEXT_PUBLIC_API_BASE_URL}"
           site_url="${INPUT_NEXT_PUBLIC_SITE_URL:-$VAR_NEXT_PUBLIC_SITE_URL}"
-          owner_id="${INPUT_NEXT_PUBLIC_OWNER_ID:-$VAR_NEXT_PUBLIC_OWNER_ID}"
-          owner_id="${owner_id:-demo-user}"
 
           if [[ -z "$api_base_url" || -z "$site_url" ]]; then
             echo "Set OCI_NEXT_PUBLIC_API_BASE_URL and OCI_NEXT_PUBLIC_SITE_URL." >&2
@@ -185,7 +175,6 @@ jobs:
           {
             echo "OCI_NEXT_PUBLIC_API_BASE_URL=$api_base_url"
             echo "OCI_NEXT_PUBLIC_SITE_URL=$site_url"
-            echo "OCI_NEXT_PUBLIC_OWNER_ID=$owner_id"
             echo "OCI_IMAGE_TAG=$image_tag"
             echo "OCI_API_IMAGE=$image_namespace/domarion-api"
             echo "OCI_FRONTEND_IMAGE=$image_namespace/domarion-frontend"
@@ -225,7 +214,6 @@ jobs:
           push: true
           build-args: |
             NEXT_PUBLIC_API_BASE_URL=${{ env.OCI_NEXT_PUBLIC_API_BASE_URL }}
-            NEXT_PUBLIC_OWNER_ID=${{ env.OCI_NEXT_PUBLIC_OWNER_ID }}
             NEXT_PUBLIC_SITE_URL=${{ env.OCI_NEXT_PUBLIC_SITE_URL }}
           tags: |
             ${{ env.OCI_FRONTEND_IMAGE }}:${{ env.OCI_IMAGE_TAG }}

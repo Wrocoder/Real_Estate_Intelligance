@@ -2,7 +2,7 @@
 
 Date: 2026-07-20
 
-This checklist defines when Domarion can expand beyond Wrocław/Dolnośląskie
+This checklist defines when WartoMetr can expand beyond Wrocław/Dolnośląskie
 without weakening report quality or creating source/legal risk. It is a go/no-go
 tool for adding another Polish city to ingestion, scoring, maps and reports.
 

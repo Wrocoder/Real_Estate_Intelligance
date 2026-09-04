@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 
 from domarion.auth_store.factory import memory_auth_store
-from domarion.ingestion_admin_store.factory import memory_ingestion_admin_store
+from domarion.ingestion_admin_store.factory import get_memory_ingestion_admin_store
 from domarion.ingestion_admin_store.memory import _now
 from domarion.ingestion_admin_store.system_sources import (
     USER_SUBMITTED_REFERENCE_SOURCE_NAME,
@@ -15,6 +15,7 @@ from domarion.ingestion_admin_store.system_sources import (
 from domarion.main import app
 
 client = TestClient(app)
+memory_ingestion_admin_store = get_memory_ingestion_admin_store(include_demo_data=True)
 
 ADMIN_HEADERS = {
     "X-Domarion-User-Id": "admin-test",

@@ -54,7 +54,7 @@ def build_news_ai_summary(
         guardrails=[
             AIAnswerGuardrail(
                 code="source_grounded_only",
-                message="Summary uses only stored article fields and Domarion area statistics.",
+                message="Summary uses only stored article fields and WartoMetr area statistics.",
             ),
             AIAnswerGuardrail(
                 code="no_price_forecast",

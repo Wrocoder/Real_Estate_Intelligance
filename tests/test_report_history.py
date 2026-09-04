@@ -26,7 +26,7 @@ def test_generate_and_list_saved_html_report() -> None:
     assert payload["listing_id"] == "wr-001"
     assert payload["report_format"] == "html"
     assert payload["content_type"].startswith("text/html")
-    assert "Domarion" in payload["content"]
+    assert "WartoMetr" in payload["content"]
     assert payload["report_metadata"]["investment_score"] >= 0
     assert payload["report_metadata"]["decision_label"]
     assert payload["report_metadata"]["price_label"]
@@ -241,7 +241,7 @@ def test_email_saved_report_dry_run() -> None:
     assert payload["status"] == "dry_run"
     assert payload["provider"] == "email:dry-run"
     assert payload["target_email"] == "owner@example.com"
-    assert payload["subject"] == "Domarion report: 3 pokoje przy planowanej trasie tramwajowej"
+    assert payload["subject"] == "WartoMetr report: 3 pokoje przy planowanej trasie tramwajowej"
 
 
 def test_email_report_is_owner_scoped() -> None:
@@ -328,7 +328,7 @@ def test_email_saved_report_sends_smtp_message(monkeypatch) -> None:
     assert smtp_sessions[0].login_args == ("smtp-user", "smtp-pass")
     assert sent_messages[0]["To"] == "owner@example.com"
     assert sent_messages[0]["From"] == "reports@example.com"
-    assert "Domarion report" in sent_messages[0]["Subject"]
+    assert "WartoMetr report" in sent_messages[0]["Subject"]
     assert sent_messages[0].get_body(preferencelist=("html",)) is not None
     get_settings.cache_clear()
 

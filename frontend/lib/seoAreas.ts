@@ -51,7 +51,7 @@ export const SEO_AREAS: SeoArea[] = [
       "Dla części mieszkań trzeba osobno sprawdzić odległość od stref przemysłowych i dużych dróg.",
     ],
     plannedInvestments: [
-      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie Domarion.",
+      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie WartoMetr.",
       "Przed zakupem sprawdź Biuletyn Informacji Publicznej miasta i najnowsze komunikaty transportowe dla konkretnej ulicy.",
     ],
     internalLinks: [
@@ -91,7 +91,7 @@ export const SEO_AREAS: SeoArea[] = [
       "Poszczególne części dzielnicy różnią się transportem i infrastrukturą społeczną.",
     ],
     plannedInvestments: [
-      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie Domarion.",
+      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie WartoMetr.",
       "Przed zakupem sprawdź Biuletyn Informacji Publicznej miasta i najnowsze komunikaty transportowe dla konkretnej ulicy.",
     ],
     internalLinks: [
@@ -131,7 +131,7 @@ export const SEO_AREAS: SeoArea[] = [
       "Trzeba osobno sprawdzić bliskość kolei, stref przemysłowych i hałaśliwych tras.",
     ],
     plannedInvestments: [
-      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie Domarion.",
+      "Brak potwierdzonej inwestycji przypiętej do tej dzielnicy w aktualnej publicznej warstwie WartoMetr.",
       "Przed zakupem sprawdź Biuletyn Informacji Publicznej miasta i najnowsze komunikaty transportowe dla konkretnej ulicy.",
     ],
     internalLinks: [

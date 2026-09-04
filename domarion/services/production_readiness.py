@@ -1,13 +1,17 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from domarion.core.config import Settings, get_settings
-from domarion.schemas import ProductionReadinessCheck, ProductionReadinessReport
+from domarion.schemas import (
+    ProductionReadinessCheck,
+    ProductionReadinessReport,
+    SourceRegistryEntry,
+)
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "0.0.0.0", "::1"}
 REQUIRED_POSTGRES_BACKENDS = {
@@ -41,6 +45,7 @@ MONITORING_ENV_VARS = {
 def build_production_readiness_report(
     settings: Settings | None = None,
     env: Mapping[str, str] | None = None,
+    sources: Iterable[SourceRegistryEntry] = (),
 ) -> ProductionReadinessReport:
     settings = settings or get_settings()
     env_values = env if env is not None else os.environ
@@ -51,8 +56,7 @@ def build_production_readiness_report(
         name="application_config",
         status="pass",
         message=(
-            f"{settings.app_name} configuration loaded for "
-            f"ENVIRONMENT={settings.environment}."
+            f"{settings.app_name} configuration loaded for ENVIRONMENT={settings.environment}."
         ),
     )
 
@@ -67,6 +71,8 @@ def build_production_readiness_report(
 
     checks.extend(
         [
+            _check_demo_data_safety(settings, sources),
+            _check_auth_security(settings),
             _check_postgres_backends(settings),
             _check_database_url(settings.database_url),
             _check_redis_url(settings.redis_url),
@@ -82,6 +88,77 @@ def build_production_readiness_report(
         ]
     )
     return _build_report(settings.environment, checks)
+
+
+def validate_startup_data_mode(settings: Settings) -> None:
+    environment = settings.environment.strip().casefold()
+    if not settings.demo_mode_enabled:
+        return
+    if environment not in {"local", "development", "test"}:
+        raise RuntimeError(
+            "DEMO_MODE_ENABLED is allowed only in local, development, or test environments."
+        )
+    if settings.data_repository_backend.strip().casefold() != "memory":
+        raise RuntimeError(
+            "DEMO_MODE_ENABLED requires DATA_REPOSITORY_BACKEND=memory to prevent "
+            "mixing demo and persistent records."
+        )
+
+
+def validate_startup_auth(settings: Settings) -> None:
+    if settings.environment.strip().casefold() in {"local", "development", "test"}:
+        return
+    check = _check_auth_security(settings)
+    if check.status == "fail":
+        raise RuntimeError(check.message)
+
+
+def _check_auth_security(settings: Settings) -> ProductionReadinessCheck:
+    secret = settings.auth_session_secret.strip()
+    if len(secret) < 32 or secret == "local-development-only-change-me":
+        return _make_check(
+            name="auth_session_security",
+            status="fail",
+            message=(
+                "Deployed authentication requires a unique session secret of at least 32 "
+                "characters."
+            ),
+            remediation="Set AUTH_SESSION_SECRET from the deployment secret manager.",
+        )
+    return _make_check(
+        name="auth_session_security",
+        status="pass",
+        message="Authentication session signing is configured.",
+    )
+
+
+def _check_demo_data_safety(
+    settings: Settings,
+    sources: Iterable[SourceRegistryEntry],
+) -> ProductionReadinessCheck:
+    active_demo_sources = sorted(
+        source.name for source in sources if source.is_active and source.is_demo
+    )
+    failures: list[str] = []
+    if settings.demo_mode_enabled:
+        failures.append("DEMO_MODE_ENABLED is active")
+    if active_demo_sources:
+        failures.append("active demo sources: " + ", ".join(active_demo_sources))
+    if failures:
+        return _make_check(
+            name="demo_data_safety",
+            status="fail",
+            message="Production demo-data guard failed: " + "; ".join(failures) + ".",
+            remediation=(
+                "Disable demo mode and deactivate or remove every source marked is_demo "
+                "before serving production traffic."
+            ),
+        )
+    return _make_check(
+        name="demo_data_safety",
+        status="pass",
+        message="Demo mode is disabled and no active demo sources are registered.",
+    )
 
 
 def _check_postgres_backends(settings: Settings) -> ProductionReadinessCheck:
@@ -221,8 +298,7 @@ def _check_report_artifact_storage(settings: Settings) -> ProductionReadinessChe
             status="fail",
             message="REPORT_ARTIFACT_S3_BUCKET is not configured.",
             remediation=(
-                "Create a private report artifact bucket and set "
-                "REPORT_ARTIFACT_S3_BUCKET."
+                "Create a private report artifact bucket and set REPORT_ARTIFACT_S3_BUCKET."
             ),
         )
     return _make_check(
@@ -312,9 +388,7 @@ def _check_notification_transports(settings: Settings) -> ProductionReadinessChe
             name="notification_transports",
             status="fail",
             message=(
-                "Enabled alert transport credentials are incomplete: "
-                + ", ".join(missing)
-                + "."
+                "Enabled alert transport credentials are incomplete: " + ", ".join(missing) + "."
             ),
             remediation="Set all enabled SMTP/Telegram credentials or disable the transport.",
         )
@@ -399,9 +473,7 @@ def _check_backup_freshness(env: Mapping[str, str]) -> ProductionReadinessCheck:
     prefix = env.get("BACKUP_PREFIX") or "domarion-postgres"
     max_age_hours = _env_int(env.get("BACKUP_MAX_AGE_HOURS"), default=30)
     try:
-        backups = [
-            path for path in output_dir.glob(f"{prefix}-*.dump") if path.is_file()
-        ]
+        backups = [path for path in output_dir.glob(f"{prefix}-*.dump") if path.is_file()]
     except OSError as exc:
         return _make_check(
             name="backup_freshness",
@@ -426,8 +498,7 @@ def _check_backup_freshness(env: Mapping[str, str]) -> ProductionReadinessCheck:
             name="backup_freshness",
             status="warn",
             message=(
-                f"Latest local logical backup {latest.name} is older than "
-                f"{max_age_hours} hours."
+                f"Latest local logical backup {latest.name} is older than {max_age_hours} hours."
             ),
             remediation="Check domarion-postgres-backup.timer and offsite backup upload.",
         )

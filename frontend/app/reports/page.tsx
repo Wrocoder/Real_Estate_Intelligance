@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { CreditCard, Download, ExternalLink, RefreshCw, Search } from "lucide-react";
 
+import { AuthForm } from "@/components/AuthForm";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
+  ApiError,
   api,
   reportContentUrl,
   reportPdfUrl,
@@ -179,9 +181,11 @@ export default function ReportsPage() {
   const [status, setStatus] = useState(copy.statuses.loading);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
+    setAuthRequired(false);
     setIsLoading(true);
     setStatus(copy.statuses.loading);
     try {
@@ -195,8 +199,13 @@ export default function ReportsPage() {
       setInsights(insightData);
       setStatus(copy.statuses.loaded(data.length));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -207,6 +216,8 @@ export default function ReportsPage() {
   }, [load]);
 
   const buyerReports = reports.filter((report) => report.audience === "buyer");
+
+  if (authRequired) return <AuthForm onAuthenticated={load} />;
 
   return (
     <>

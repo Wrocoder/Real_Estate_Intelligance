@@ -4,7 +4,7 @@ from domarion.services.scoring import SCORING_FORMULA_VERSION
 
 
 def test_scoring_backtest_evaluates_historical_price_transitions() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
 
     result = run_scoring_backtest(repository, city="Wrocław", item_limit=2)
 
@@ -22,7 +22,7 @@ def test_scoring_backtest_evaluates_historical_price_transitions() -> None:
 
 
 def test_scoring_backtest_report_groups_drift_and_recommendations() -> None:
-    repository = InMemoryRealEstateRepository()
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
 
     report = build_scoring_backtest_report(repository, city="Wrocław", item_limit=3)
 

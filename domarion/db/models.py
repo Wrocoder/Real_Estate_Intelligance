@@ -36,6 +36,7 @@ class ListingSource(Base):
     raw_payload_retention_days: Mapped[int | None] = mapped_column(Integer)
     private_url_retention_days: Mapped[int | None] = mapped_column(Integer)
     retention_notes: Mapped[str | None] = mapped_column(Text)
+    is_demo: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -789,6 +790,7 @@ class User(Base):
     email: Mapped[str | None] = mapped_column(String(255), unique=True, index=True)
     display_name: Mapped[str | None] = mapped_column(String(160))
     role: Mapped[str] = mapped_column(String(40), default="buyer", index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(512))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

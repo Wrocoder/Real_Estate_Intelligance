@@ -22,7 +22,7 @@ def test_market_intelligence_report_builds_audience_specific_sections(
     expected_prefix: str,
 ) -> None:
     report = build_market_intelligence_report(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         audience=audience,
         city="Wrocław",
         area_limit=2,
@@ -44,7 +44,7 @@ def test_market_intelligence_report_builds_audience_specific_sections(
 
 def test_market_intelligence_report_supports_district_scope() -> None:
     report = build_market_intelligence_report(
-        InMemoryRealEstateRepository(),
+        InMemoryRealEstateRepository(include_demo_data=True),
         audience="developer",
         city="Wrocław",
         district="Fabryczna",

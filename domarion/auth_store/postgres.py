@@ -1,7 +1,8 @@
 from datetime import datetime
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domarion.db.models import Subscription as SubscriptionModel
@@ -12,6 +13,43 @@ from domarion.schemas import AuthIdentity, Subscription, SubscriptionUpdate, Use
 class PostgresAuthStore:
     def __init__(self, session: Session) -> None:
         self.session = session
+
+    def get_user(self, user_id: str) -> UserAccount | None:
+        row = self.session.get(UserModel, user_id)
+        return self._user_from_row(row) if row is not None else None
+
+    def get_user_by_email(self, email: str) -> UserAccount | None:
+        row = self.session.scalar(
+            select(UserModel).where(func.lower(UserModel.email) == email.strip().casefold())
+        )
+        return self._user_from_row(row) if row is not None else None
+
+    def create_password_user(self, identity: AuthIdentity, password_hash: str) -> UserAccount:
+        if self.get_user_by_email(identity.email or "") is not None:
+            raise ValueError("An account with this email already exists")
+        now = datetime.utcnow()
+        user = UserModel(
+            id=identity.user_id,
+            email=identity.email,
+            display_name=identity.display_name,
+            role=identity.role,
+            password_hash=password_hash,
+            created_at=now,
+            updated_at=now,
+        )
+        self.session.add(user)
+        try:
+            self.session.flush()
+            self._create_subscription(user.id, identity.plan, now)
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise ValueError("An account with this email already exists") from exc
+        self.session.refresh(user)
+        return self._user_from_row(user)
+
+    def get_password_hash(self, user_id: str) -> str | None:
+        return self.session.scalar(select(UserModel.password_hash).where(UserModel.id == user_id))
 
     def get_or_create_user(self, identity: AuthIdentity) -> UserAccount:
         user = self.session.get(UserModel, identity.user_id)

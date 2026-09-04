@@ -87,9 +87,7 @@ def build_object_watch_alert_create(
             developer_reputation.reputation_score if developer_reputation is not None else None
         ),
         baseline_developer_risk_signal_count=(
-            len(developer_reputation.risk_signals)
-            if developer_reputation is not None
-            else None
+            len(developer_reputation.risk_signals) if developer_reputation is not None else None
         ),
         days_on_market_thresholds=list(DEFAULT_OBJECT_WATCH_DOM_THRESHOLDS),
         min_cheaper_comparable_discount_pct=DEFAULT_CHEAPER_COMPARABLE_DISCOUNT_PCT,
@@ -141,7 +139,9 @@ def build_object_watch_preview(
             continue
         listing = repository.get_listing(listing_id)
         if listing is not None:
-            matches.append(build_listing_analysis(repository, listing))
+            matches.append(
+                build_listing_analysis(repository, listing, use_relevant_comparables=False)
+            )
 
     if not matches and filters.target_type == "user_submitted_draft":
         matches = _draft_comparable_matches(repository, filters, limit)
@@ -214,7 +214,10 @@ def find_alert_matches(
         )
     ]
 
-    analyses = [build_listing_analysis(repository, listing) for listing in listings]
+    analyses = [
+        build_listing_analysis(repository, listing, use_relevant_comparables=False)
+        for listing in listings
+    ]
 
     if filters.min_investment_score is not None:
         analyses = [
@@ -447,14 +450,18 @@ def _planned_investment_events(
         previous = baseline_statuses.get(investment_id)
         if previous is not None and previous == status:
             continue
-        nearest = next(
-            (
-                item
-                for item in analysis.future_area_impact.nearest_investments
-                if item.investment.id == investment_id
-            ),
-            None,
-        ) if analysis.future_area_impact is not None else None
+        nearest = (
+            next(
+                (
+                    item
+                    for item in analysis.future_area_impact.nearest_investments
+                    if item.investment.id == investment_id
+                ),
+                None,
+            )
+            if analysis.future_area_impact is not None
+            else None
+        )
         name = nearest.investment.name if nearest is not None else investment_id
         events.append(
             ObjectWatchEvent(
@@ -663,7 +670,10 @@ def _draft_comparable_matches(
         max_price=filters.baseline_price,
         min_area_m2=filters.min_area_m2,
     )
-    analyses = [build_listing_analysis(repository, listing) for listing in listings]
+    analyses = [
+        build_listing_analysis(repository, listing, use_relevant_comparables=False)
+        for listing in listings
+    ]
     return sorted(
         analyses,
         key=lambda item: (
@@ -683,7 +693,7 @@ def _target_listing_analysis(
     listing = repository.get_listing(filters.target_listing_id)
     if listing is None:
         return None
-    return build_listing_analysis(repository, listing)
+    return build_listing_analysis(repository, listing, use_relevant_comparables=False)
 
 
 def _object_watch_triggers(filters: AlertFilters) -> list[ObjectWatchTriggerType]:
@@ -698,10 +708,7 @@ def _planned_investment_statuses(analysis: ListingAnalysis) -> dict[str, str]:
     impact = analysis.future_area_impact
     if impact is None:
         return {}
-    return {
-        item.investment.id: item.investment.status
-        for item in impact.nearest_investments[:10]
-    }
+    return {item.investment.id: item.investment.status for item in impact.nearest_investments[:10]}
 
 
 def _default_object_watch_name(

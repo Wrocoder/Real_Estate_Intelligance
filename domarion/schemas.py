@@ -5,6 +5,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 MarketType = Literal["primary", "secondary"]
+DataMode = Literal["live", "demo"]
 RenovationCondition = Literal[
     "move_in_ready",
     "refresh",
@@ -332,6 +333,17 @@ class ProductionReadinessReport(BaseModel):
     checks: list[ProductionReadinessCheck]
 
 
+class DataProvenance(BaseModel):
+    mode: DataMode = "live"
+    source_type: str
+    notice_code: str | None = None
+
+
+class RuntimeContext(BaseModel):
+    data_mode: DataMode
+    demo_mode_enabled: bool
+
+
 class PriceHistoryPoint(BaseModel):
     observed_at: date
     price: int
@@ -351,6 +363,9 @@ class Listing(BaseModel):
     title: str
     source_name: str
     source_url: str
+    data_provenance: DataProvenance = Field(
+        default_factory=lambda: DataProvenance(source_type="listing_source")
+    )
     voivodeship: str | None = None
     city: str
     district: str
@@ -387,14 +402,14 @@ class Listing(BaseModel):
     relisted: bool
     lat: float
     lon: float
-    distance_to_center_km: float
-    nearest_stop_m: int
-    nearest_school_m: int
-    nearest_major_road_m: int
-    nearest_industrial_zone_m: int
-    parks_within_1km: int
-    schools_within_1km: int
-    planned_investments_within_2km: int
+    distance_to_center_km: float | None = None
+    nearest_stop_m: int | None = None
+    nearest_school_m: int | None = None
+    nearest_major_road_m: int | None = None
+    nearest_industrial_zone_m: int | None = None
+    parks_within_1km: int | None = None
+    schools_within_1km: int | None = None
+    planned_investments_within_2km: int | None = None
     data_quality_score: int = Field(ge=0, le=100)
 
 
@@ -464,6 +479,9 @@ class AreaStatistics(BaseModel):
     area_id: str
     name: str
     city: str
+    data_provenance: DataProvenance = Field(
+        default_factory=lambda: DataProvenance(source_type="market_statistics")
+    )
     median_price_per_m2: int
     average_price_per_m2: int
     active_listings: int
@@ -917,11 +935,16 @@ class RentalCashflowScenario(BaseModel):
 
 class ListingRentalEstimate(BaseModel):
     listing_id: str
+    status: Literal["estimated", "insufficient_data"] = "estimated"
+    source: str = "derived_model"
+    method: str = "deterministic screening heuristic"
+    period: str = "current listing snapshot"
     monthly_rent_low_pln: int = Field(ge=0)
     monthly_rent_mid_pln: int = Field(ge=0)
     monthly_rent_high_pln: int = Field(ge=0)
     rent_per_m2_mid_pln: int = Field(ge=0)
     gross_yield_pct: float = Field(ge=0)
+    net_yield_on_cash_pct: float = Field(default=0, ge=-100)
     vacancy_rate_pct: float = Field(ge=0, le=100)
     operating_costs_monthly_pln: int = Field(ge=0)
     net_operating_income_monthly_pln: int
@@ -1107,6 +1130,7 @@ class SourceRegistryEntry(BaseModel):
     raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
     private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
     retention_notes: str | None = None
+    is_demo: bool = False
     is_active: bool = True
     created_at: datetime
     updated_at: datetime
@@ -1127,6 +1151,7 @@ class SourceRegistryEntryCreate(BaseModel):
     raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
     private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
     retention_notes: str | None = None
+    is_demo: bool = False
     is_active: bool = True
 
 
@@ -1145,6 +1170,7 @@ class SourceRegistryEntryUpdate(BaseModel):
     raw_payload_retention_days: int | None = Field(default=None, ge=1, le=3650)
     private_url_retention_days: int | None = Field(default=None, ge=1, le=3650)
     retention_notes: str | None = None
+    is_demo: bool | None = None
     is_active: bool | None = None
 
 
@@ -1557,6 +1583,7 @@ class BuyerDecisionPackage(BaseModel):
     knowledge: BuyerKnowledgeMatrix
     total_acquisition: TotalAcquisitionCost
     selected_intent: PurchaseIntent = "unsure"
+    decision_model_version: str = "buyer-decision-v2-intent"
     selected_intent_fit: BuyerIntentFit | None = None
     intent_fit: list[BuyerIntentFit] = Field(default_factory=list)
     pre_viewing: ViewingAssistant
@@ -1750,6 +1777,10 @@ class ListingAnalysis(BaseModel):
     insights: list[str]
     negotiation_arguments: list[str]
     data_quality_notes: list[str]
+    comparables_scope: str = "unknown"
+    comparables_selection_level: int = Field(default=0, ge=0)
+    comparables_freshness_days: int = Field(default=180, ge=0)
+    comparables_excluded_reasons: list[str] = Field(default_factory=list)
     disclaimer: str = (
         "Scoring outputs are decision-support screening signals, not financial, legal or "
         "investment advice, not a valuation certificate and not a guarantee of price, financing, "
@@ -1913,6 +1944,8 @@ class SourceReferencePreview(BaseModel):
 class SourceUrlImportRequest(BaseModel):
     source_url: str = Field(min_length=3, max_length=1000)
     timeout_seconds: float = Field(default=8, ge=1, le=20)
+    consent_given: bool = False
+    consent_version: str = "listing-import-v1"
 
 
 class SourceUrlImportFields(BaseModel):
@@ -2764,9 +2797,7 @@ class ReportOrderBillingDetails(BaseModel):
         }
         missing = [field for field, value in required_fields.items() if not value]
         if missing:
-            raise ValueError(
-                "Invoice billing details require: " + ", ".join(sorted(missing))
-            )
+            raise ValueError("Invoice billing details require: " + ", ".join(sorted(missing)))
         if self.customer_type == "individual":
             raise ValueError("Invoice billing details require customer_type='company'")
         if self.email and ("@" not in self.email or "." not in self.email.rsplit("@", 1)[-1]):
@@ -3081,6 +3112,9 @@ class NewsArticleListItem(BaseModel):
     id: str
     title: str
     summary: str
+    data_provenance: DataProvenance = Field(
+        default_factory=lambda: DataProvenance(source_type="news_source")
+    )
     category: NewsCategory
     source_name: str
     source_url: str | None = None
@@ -3173,6 +3207,34 @@ class AuthIdentity(BaseModel):
     display_name: str | None = None
     role: UserRole = "buyer"
     plan: SubscriptionPlan = "free"
+
+
+class AuthCredentials(BaseModel):
+    email: str = Field(min_length=3, max_length=255)
+    password: str = Field(min_length=10, max_length=128)
+
+    @model_validator(mode="after")
+    def validate_email(self) -> "AuthCredentials":
+        self.email = self.email.strip().casefold()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", self.email):
+            raise ValueError("Enter a valid email address")
+        return self
+
+
+class AuthRegistration(AuthCredentials):
+    display_name: str | None = Field(default=None, min_length=2, max_length=160)
+
+    @model_validator(mode="after")
+    def normalize_display_name(self) -> "AuthRegistration":
+        if self.display_name is not None:
+            self.display_name = self.display_name.strip()
+        return self
+
+
+class AuthSession(BaseModel):
+    user: UserAccount
+    expires_at: datetime
+    demo_mode: bool = False
 
 
 class Subscription(BaseModel):

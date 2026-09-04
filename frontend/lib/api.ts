@@ -1,8 +1,20 @@
+export type DataProvenance = {
+  mode: "live" | "demo";
+  source_type: string;
+  notice_code: string | null;
+};
+
+export type RuntimeContext = {
+  data_mode: "live" | "demo";
+  demo_mode_enabled: boolean;
+};
+
 export type Listing = {
   id: string;
   title: string;
   source_name: string;
   source_url: string;
+  data_provenance: DataProvenance;
   voivodeship: string | null;
   city: string;
   district: string;
@@ -54,6 +66,7 @@ export type AreaStatistics = {
   area_id: string;
   name: string;
   city: string;
+  data_provenance: DataProvenance;
   median_price_per_m2: number;
   average_price_per_m2: number;
   active_listings: number;
@@ -515,11 +528,16 @@ export type RentalCashflowScenario = {
 
 export type ListingRentalEstimate = {
   listing_id: string;
+  status: "estimated" | "insufficient_data";
+  source: string;
+  method: string;
+  period: string;
   monthly_rent_low_pln: number;
   monthly_rent_mid_pln: number;
   monthly_rent_high_pln: number;
   rent_per_m2_mid_pln: number;
   gross_yield_pct: number;
+  net_yield_on_cash_pct: number;
   vacancy_rate_pct: number;
   operating_costs_monthly_pln: number;
   net_operating_income_monthly_pln: number;
@@ -863,6 +881,7 @@ export type NewsArticleListItem = {
   id: string;
   title: string;
   summary: string;
+  data_provenance: DataProvenance;
   category: NewsCategory;
   source_name: string;
   source_url: string | null;
@@ -1174,6 +1193,7 @@ export type BuyerDecisionPackage = {
   knowledge: BuyerKnowledgeMatrix;
   total_acquisition: TotalAcquisitionCost;
   selected_intent: PurchaseIntent;
+  decision_model_version: string;
   selected_intent_fit: BuyerIntentFit | null;
   intent_fit: BuyerIntentFit[];
   pre_viewing: ViewingAssistant;
@@ -1224,6 +1244,10 @@ export type ListingAnalysis = {
   insights: string[];
   negotiation_arguments: string[];
   data_quality_notes: string[];
+  comparables_scope: string;
+  comparables_selection_level: number;
+  comparables_freshness_days: number;
+  comparables_excluded_reasons: string[];
   disclaimer: string;
 };
 
@@ -2065,6 +2089,12 @@ export type AccountSummary = {
   usage: AccountUsage;
 };
 
+export type AuthSession = {
+  user: UserAccount;
+  expires_at: string;
+  demo_mode: boolean;
+};
+
 export type ListingSearchQuery = {
   voivodeship?: string;
   city?: string;
@@ -2459,6 +2489,7 @@ export type SourceRegistryEntry = {
   raw_payload_retention_days: number | null;
   private_url_retention_days: number | null;
   retention_notes: string | null;
+  is_demo: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -2479,6 +2510,7 @@ export type SourceRegistryEntryPayload = {
   raw_payload_retention_days?: number | null;
   private_url_retention_days?: number | null;
   retention_notes?: string | null;
+  is_demo?: boolean;
   is_active?: boolean;
 };
 
@@ -3022,7 +3054,6 @@ export type MapQuery = {
 };
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
-export const OWNER_ID = process.env.NEXT_PUBLIC_OWNER_ID ?? "demo-user";
 const ADMIN_HEADERS = {
   "X-Domarion-User-Id": "demo-admin",
   "X-Domarion-Email": "admin@domarion.local",
@@ -3054,6 +3085,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         ...(init?.headers ?? {}),
       },
       cache: "no-store",
+      credentials: "include",
     });
   } catch (caught) {
     const detail = caught instanceof Error ? caught.message : "network error";
@@ -3065,41 +3097,81 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(`API ${response.status}: ${body}`);
+    let detail = body;
+    try {
+      const parsed = JSON.parse(body) as { detail?: string | object };
+      detail = typeof parsed.detail === "string" ? parsed.detail : JSON.stringify(parsed.detail);
+    } catch {
+      // Keep the plain response body when it is not JSON.
+    }
+    const isCredentialAttempt = path === "/api/v1/auth/login";
+    if (
+      typeof window !== "undefined" &&
+      !isCredentialAttempt &&
+      (response.status === 401 || response.status === 403)
+    ) {
+      const reason =
+        response.status === 401 && detail === "Sign in is required" ? "required" : "expired";
+      window.dispatchEvent(
+        new CustomEvent("domarion:auth-required", {
+          detail: { status: response.status, reason },
+        }),
+      );
+    }
+    throw new ApiError(response.status, detail || response.statusText);
   }
 
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
+async function authenticatedFetch(path: string, init?: RequestInit): Promise<Response> {
+  const response = await fetch(`${currentApiBaseUrl()}${path}`, {
+    ...init,
+    cache: "no-store",
+    credentials: "include",
+  });
+  if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
+    window.dispatchEvent(
+      new CustomEvent("domarion:auth-required", {
+        detail: {
+          status: response.status,
+          reason: response.status === 401 ? "expired" : "forbidden",
+        },
+      }),
+    );
+  }
+  return response;
+}
+
+export class ApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 function currentApiBaseUrl() {
-  if (typeof window === "undefined") {
-    return API_BASE_URL;
-  }
-  if (isLocalFrontendHost(window.location.hostname) && isLocalApiBaseUrl(API_BASE_URL)) {
-    return "http://127.0.0.1:8000";
-  }
   return API_BASE_URL;
 }
 
-function isLocalFrontendHost(hostname: string) {
-  return hostname === "localhost" || hostname === "127.0.0.1";
-}
-
-function isLocalApiBaseUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return (
-      url.hostname === "localhost" ||
-      url.hostname === "127.0.0.1" ||
-      url.hostname === "::1" ||
-      url.hostname === "[::1]"
-    );
-  } catch {
-    return false;
-  }
-}
-
 export const api = {
+  register: (payload: { email: string; password: string; display_name?: string }) =>
+    request<AuthSession>("/api/v1/auth/register", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  login: (payload: { email: string; password: string }) =>
+    request<AuthSession>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getSession: () => request<AuthSession>("/api/v1/auth/session"),
+  logout: () => request<void>("/api/v1/auth/logout", { method: "POST" }),
+  getRuntimeContext: () => request<RuntimeContext>("/runtime-context"),
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listHiddenGems: (params: HiddenGemQuery = {}) =>
@@ -3139,7 +3211,7 @@ export const api = {
     if (payload.sourceName) form.set("source_name", payload.sourceName);
     form.set("dry_run", String(payload.dryRun ?? true));
 
-    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/import`, {
+    const response = await authenticatedFetch("/api/v1/admin/developers/import", {
       method: "POST",
       headers: ADMIN_HEADERS,
       body: form,
@@ -3161,7 +3233,7 @@ export const api = {
       },
     ),
   deleteAdminDeveloperProfile: (developerId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/profiles/${encodeURIComponent(developerId)}`, {
+    authenticatedFetch(`/api/v1/admin/developers/profiles/${encodeURIComponent(developerId)}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
       cache: "no-store",
@@ -3176,7 +3248,7 @@ export const api = {
       },
     ),
   deleteAdminDeveloperProject: (projectId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/projects/${encodeURIComponent(projectId)}`, {
+    authenticatedFetch(`/api/v1/admin/developers/projects/${encodeURIComponent(projectId)}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
       cache: "no-store",
@@ -3191,7 +3263,7 @@ export const api = {
       },
     ),
   deleteAdminDeveloperAlias: (aliasId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/aliases/${encodeURIComponent(aliasId)}`, {
+    authenticatedFetch(`/api/v1/admin/developers/aliases/${encodeURIComponent(aliasId)}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
       cache: "no-store",
@@ -3218,7 +3290,7 @@ export const api = {
       },
     ),
   deleteAdminDeveloperQualitySignal: (signalId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}`, {
+    authenticatedFetch(`/api/v1/admin/developers/signals/${encodeURIComponent(signalId)}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
       cache: "no-store",
@@ -3329,10 +3401,8 @@ export const api = {
       },
     ),
   deleteCustomDashboard: async (dashboardId: string) => {
-    const response = await fetch(
-      `${currentApiBaseUrl()}/api/v1/enterprise/custom-dashboards/${encodeURIComponent(
-        dashboardId,
-      )}`,
+    const response = await authenticatedFetch(
+      `/api/v1/enterprise/custom-dashboards/${encodeURIComponent(dashboardId)}`,
       {
         method: "DELETE",
         cache: "no-store",
@@ -3382,10 +3452,8 @@ export const api = {
       },
     ),
   removeAgencyMember: async (agencyId: string, membershipId: string) => {
-    const response = await fetch(
-      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
-        agencyId,
-      )}/members/${encodeURIComponent(membershipId)}`,
+    const response = await authenticatedFetch(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/members/${encodeURIComponent(membershipId)}`,
       {
         method: "DELETE",
         cache: "no-store",
@@ -3464,10 +3532,10 @@ export const api = {
       },
     ),
   deleteAgencyCrmNote: async (agencyId: string, clientId: string, noteId: string) => {
-    const response = await fetch(
-      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
-        agencyId,
-      )}/crm/clients/${encodeURIComponent(clientId)}/notes/${encodeURIComponent(noteId)}`,
+    const response = await authenticatedFetch(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/notes/${encodeURIComponent(noteId)}`,
       {
         method: "DELETE",
         cache: "no-store",
@@ -3528,12 +3596,10 @@ export const api = {
     clientId: string,
     shortlistId: string,
   ) => {
-    const response = await fetch(
-      `${currentApiBaseUrl()}/api/v1/agencies/${encodeURIComponent(
-        agencyId,
-      )}/crm/clients/${encodeURIComponent(clientId)}/shortlists/${encodeURIComponent(
-        shortlistId,
-      )}`,
+    const response = await authenticatedFetch(
+      `/api/v1/agencies/${encodeURIComponent(agencyId)}/crm/clients/${encodeURIComponent(
+        clientId,
+      )}/shortlists/${encodeURIComponent(shortlistId)}`,
       {
         method: "DELETE",
         cache: "no-store",
@@ -3569,10 +3635,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ source_url: sourceUrl }),
     }),
-  importUserSubmittedListingFromUrl: (sourceUrl: string) =>
+  importUserSubmittedListingFromUrl: (sourceUrl: string, consentGiven = false) =>
     request<SourceUrlImportResult>("/api/v1/user-submitted-listings/import-from-url", {
       method: "POST",
-      body: JSON.stringify({ source_url: sourceUrl }),
+      body: JSON.stringify({ source_url: sourceUrl, consent_given: consentGiven }),
     }),
   createPartnerReferral: (payload: PartnerReferralPayload) =>
     request<PartnerReferral>("/api/v1/partner-referrals", {
@@ -3658,7 +3724,7 @@ export const api = {
   getUserSubmittedListingDraft: (draftId: string) =>
     request<UserSubmittedListingDraft>(`/api/v1/user-submitted-listings/drafts/${draftId}`),
   deleteUserSubmittedListingDraft: (draftId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/user-submitted-listings/drafts/${draftId}`, {
+    authenticatedFetch(`/api/v1/user-submitted-listings/drafts/${draftId}`, {
       method: "DELETE",
     }),
   generateUserSubmittedDraftReport: (
@@ -3885,7 +3951,7 @@ export const api = {
     if (payload.sourceType) form.set("source_type", payload.sourceType);
     form.set("dry_run", String(payload.dryRun ?? true));
 
-    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/listings/import-csv`, {
+    const response = await authenticatedFetch("/api/v1/admin/listings/import-csv", {
       method: "POST",
       headers: ADMIN_HEADERS,
       body: form,
@@ -3918,7 +3984,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteAdminPlannedInvestment: (investmentId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/admin/planned-investments/${investmentId}`, {
+    authenticatedFetch(`/api/v1/admin/planned-investments/${investmentId}`, {
       method: "DELETE",
       headers: ADMIN_HEADERS,
     }),
@@ -3932,7 +3998,7 @@ export const api = {
     if (payload.sourceName) form.set("source_name", payload.sourceName);
     form.set("dry_run", String(payload.dryRun ?? false));
 
-    const response = await fetch(`${currentApiBaseUrl()}/api/v1/admin/planned-investments/import`, {
+    const response = await authenticatedFetch("/api/v1/admin/planned-investments/import", {
       method: "POST",
       headers: ADMIN_HEADERS,
       body: form,
@@ -4083,13 +4149,13 @@ export const api = {
       },
     ),
   addFavorite: (listingId: string, note?: string) =>
-    request<Favorite>(`/api/v1/favorites?owner_id=${OWNER_ID}`, {
+    request<Favorite>("/api/v1/favorites", {
       method: "POST",
       body: JSON.stringify({ listing_id: listingId, note }),
     }),
-  listFavorites: () => request<Favorite[]>(`/api/v1/favorites?owner_id=${OWNER_ID}`),
+  listFavorites: () => request<Favorite[]>("/api/v1/favorites"),
   deleteFavorite: (favoriteId: string) =>
-    fetch(`${currentApiBaseUrl()}/api/v1/favorites/${favoriteId}?owner_id=${OWNER_ID}`, {
+    request<void>(`/api/v1/favorites/${favoriteId}`, {
       method: "DELETE",
     }),
   generateReport: (
@@ -4130,7 +4196,7 @@ export const api = {
     frequency?: AlertFrequency;
     delivery_target?: string | null;
   }) =>
-    request<Alert>(`/api/v1/alerts?owner_id=${OWNER_ID}`, {
+    request<Alert>("/api/v1/alerts", {
       method: "POST",
       body: JSON.stringify({
         name: payload.name,
@@ -4140,33 +4206,22 @@ export const api = {
         delivery_target: payload.delivery_target ?? null,
       }),
     }),
-  listAlerts: () => request<Alert[]>(`/api/v1/alerts?owner_id=${OWNER_ID}`),
+  listAlerts: () => request<Alert[]>("/api/v1/alerts"),
   updateAlert: (alertId: string, payload: AlertUpdate) =>
-    request<Alert>(`/api/v1/alerts/${encodeURIComponent(alertId)}?owner_id=${OWNER_ID}`, {
+    request<Alert>(`/api/v1/alerts/${encodeURIComponent(alertId)}`, {
       method: "PATCH",
       body: JSON.stringify(payload),
     }),
-  deleteAlert: async (alertId: string) => {
-    const response = await fetch(
-      `${currentApiBaseUrl()}/api/v1/alerts/${encodeURIComponent(alertId)}?owner_id=${OWNER_ID}`,
-      {
-        method: "DELETE",
-        cache: "no-store",
-      },
-    );
-    if (!response.ok) {
-      const body = await response.text();
-      throw new Error(`API ${response.status}: ${body}`);
-    }
-  },
+  deleteAlert: (alertId: string) =>
+    request<void>(`/api/v1/alerts/${encodeURIComponent(alertId)}`, { method: "DELETE" }),
   previewAlert: (alertId: string) =>
-    request<AlertPreview>(`/api/v1/alerts/${alertId}/preview?owner_id=${OWNER_ID}`),
+    request<AlertPreview>(`/api/v1/alerts/${alertId}/preview`),
   buildRealtorAlertDigest: (
     alertId: string,
     payload: RealtorSavedSearchDigestRequest = {},
   ) =>
     request<RealtorSavedSearchDigest>(
-      `/api/v1/alerts/${encodeURIComponent(alertId)}/realtor-digest?owner_id=${OWNER_ID}`,
+      `/api/v1/alerts/${encodeURIComponent(alertId)}/realtor-digest`,
       {
         method: "POST",
         body: JSON.stringify({
@@ -4178,12 +4233,12 @@ export const api = {
       },
     ),
   deliverAlert: (alertId: string, dryRun = true, maxMatches = 10) =>
-    request<AlertDeliveryJob>(`/api/v1/alerts/${alertId}/deliver?owner_id=${OWNER_ID}`, {
+    request<AlertDeliveryJob>(`/api/v1/alerts/${alertId}/deliver`, {
       method: "POST",
       body: JSON.stringify({ dry_run: dryRun, max_matches: maxMatches }),
     }),
   listAlertDeliveryJobs: () =>
-    request<AlertDeliveryJob[]>(`/api/v1/alert-delivery-jobs?owner_id=${OWNER_ID}`),
+    request<AlertDeliveryJob[]>("/api/v1/alert-delivery-jobs"),
 };
 
 export function reportContentUrl(reportId: string) {

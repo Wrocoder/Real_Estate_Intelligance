@@ -668,7 +668,7 @@ def test_email_delivery_sends_smtp_message(monkeypatch) -> None:
     assert smtp_sessions[0].started_tls is True
     assert smtp_sessions[0].login_args == ("smtp-user", "smtp-pass")
     assert sent_messages[0]["To"] == "buyer@example.com"
-    assert "Domarion alert" in sent_messages[0]["Subject"]
+    assert "WartoMetr alert" in sent_messages[0]["Subject"]
     assert "Fabryczna" in sent_messages[0].get_content()
     get_settings.cache_clear()
 
@@ -693,7 +693,7 @@ def test_telegram_delivery_sends_bot_api_payload(monkeypatch) -> None:
 
     monkeypatch.setenv("ALERT_TELEGRAM_ENABLED", "true")
     monkeypatch.setenv("ALERT_TELEGRAM_BOT_TOKEN", "token-123")
-    monkeypatch.setenv("ALERT_TELEGRAM_BOT_NAME", "DomarionTestBot")
+    monkeypatch.setenv("ALERT_TELEGRAM_BOT_NAME", "WartoMetrTestBot")
     monkeypatch.setenv("ALERT_TELEGRAM_API_BASE_URL", "https://telegram.local")
     monkeypatch.setattr(alert_delivery, "urlopen", fake_urlopen)
     get_settings.cache_clear()
@@ -721,7 +721,7 @@ def test_telegram_delivery_sends_bot_api_payload(monkeypatch) -> None:
     assert delivered.status_code == 200
     assert job["status"] == "sent"
     assert job["provider"] == "telegram:bot-api"
-    assert job["metadata"]["bot_name"] == "DomarionTestBot"
+    assert job["metadata"]["bot_name"] == "WartoMetrTestBot"
     assert request.full_url == "https://telegram.local/bottoken-123/sendMessage"
     assert timeout == 10.0
     payload = request.data.decode("utf-8")

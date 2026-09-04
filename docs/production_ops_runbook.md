@@ -1,6 +1,6 @@
 # Production Ops Runbook
 
-Domarion has a working Oracle Cloud deployment as of 2026-09-01. This runbook
+WartoMetr has a working Oracle Cloud deployment as of 2026-09-01. This runbook
 defines the remaining paid-production operational baseline: Postgres/PostGIS,
 Redis, offsite backups, report artifact bucket and background workers.
 

@@ -93,7 +93,7 @@ def _transport_factor(
     ]
     score = _clamp(
         88
-        - max(0, listing.nearest_stop_m - 250) / 7
+        - max(0, (listing.nearest_stop_m or 500) - 250) / 7
         + min(len(nearby_stops), 3) * 4
         + min(len(planned_transport), 2) * 8
     )
@@ -127,9 +127,9 @@ def _education_factor(
     nearby_kindergartens = _nearby_refs(listing, kindergartens, radius_km=1.5)
     score = _clamp(
         36
-        + min(listing.schools_within_1km, 4) * 12
+        + min(listing.schools_within_1km or 1, 4) * 12
         + min(len(nearby_kindergartens), 3) * 9
-        - max(0, listing.nearest_school_m - 800) / 24
+        - max(0, (listing.nearest_school_m or 900) - 800) / 24
     )
     evidence = [
         f"Schools within 1 km: {listing.schools_within_1km}.",
@@ -165,7 +165,7 @@ def _parks_greenery_factor(
     ]
     score = _clamp(
         35
-        + min(listing.parks_within_1km, 4) * 14
+        + min(listing.parks_within_1km or 1, 4) * 14
         + min(len(nearby_parks), 3) * 8
         + min(len(planned_greenery), 2) * 7
     )
@@ -175,8 +175,7 @@ def _parks_greenery_factor(
     ]
     if planned_greenery:
         evidence.append(
-            "Planned greenery/public-space projects within 5 km: "
-            f"{len(planned_greenery)}."
+            f"Planned greenery/public-space projects within 5 km: {len(planned_greenery)}."
         )
     return _factor(
         code="parks_greenery",
@@ -254,10 +253,7 @@ def _retail_services_factor(
         )
     center_access_bonus = 6 if listing.distance_to_center_km <= 5 else 0
     score = _clamp(
-        34
-        + min(len(nearby_15), 4) * 13
-        + min(len(nearby_25), 5) * 5
-        + center_access_bonus
+        34 + min(len(nearby_15), 4) * 13 + min(len(nearby_25), 5) * 5 + center_access_bonus
     )
     evidence = [
         f"Retail/services amenities within 1.5 km: {len(nearby_15)}.",
@@ -308,10 +304,7 @@ def _offices_jobs_factor(
         )
     center_access_score = max(0, 24 - listing.distance_to_center_km * 3)
     score = _clamp(
-        35
-        + min(len(nearby_offices), 4) * 11
-        + min(len(planned_jobs), 3) * 9
-        + center_access_score
+        35 + min(len(nearby_offices), 4) * 11 + min(len(planned_jobs), 3) * 9 + center_access_score
     )
     evidence = [
         f"Office/job amenities within 3 km: {len(nearby_offices)}.",
@@ -457,8 +450,7 @@ def _amenities_by_type(
     return [
         amenity
         for amenity in amenities
-        if _contains_any(amenity.amenity_type, tokens)
-        or _contains_any(amenity.name, tokens)
+        if _contains_any(amenity.amenity_type, tokens) or _contains_any(amenity.name, tokens)
     ]
 
 

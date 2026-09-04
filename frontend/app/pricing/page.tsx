@@ -12,8 +12,10 @@ import {
   RefreshCw,
 } from "lucide-react";
 
+import { AuthForm } from "@/components/AuthForm";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
+  ApiError,
   api,
   reportContentUrl,
   type AccountSummary,
@@ -237,9 +239,11 @@ export default function PricingPage() {
   });
   const [status, setStatus] = useState(copy.statuses.loading);
   const [error, setError] = useState("");
+  const [authRequired, setAuthRequired] = useState(false);
 
   const load = useCallback(async () => {
     setError("");
+    setAuthRequired(false);
     setStatus(copy.statuses.loading);
     try {
       const [accountData, planData, productData, orderData] = await Promise.all([
@@ -254,8 +258,13 @@ export default function PricingPage() {
       setOrders(orderData);
       setStatus(copy.statuses.ready);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     }
   }, [copy]);
 
@@ -295,8 +304,13 @@ export default function PricingPage() {
         window.location.href = checkout.checkout_url;
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.values.unknownError);
-      setStatus(copy.statuses.backendUnavailable);
+      if (caught instanceof ApiError && caught.status === 401) {
+        setAuthRequired(true);
+        setStatus("");
+      } else {
+        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setStatus(copy.statuses.backendUnavailable);
+      }
     }
   }
 
@@ -308,6 +322,7 @@ export default function PricingPage() {
   const buyerPlans = plans.filter((plan) => BUYER_PLAN_CODES.includes(plan.plan));
   const buyerProPlan = plans.find((plan) => plan.plan === "buyer_pro");
 
+  if (authRequired) return <AuthForm onAuthenticated={load} />;
   if (error) return <ErrorBlock message={error} prefix={copy.errorPrefix} />;
   if (!account || products.length === 0) {
     return <LoadingBlock label={copy.empty.loading} steps={PRICING_LOADING_STEPS[locale]} />;

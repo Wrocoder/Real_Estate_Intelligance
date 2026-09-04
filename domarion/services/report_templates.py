@@ -100,17 +100,17 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
 
 def _domarion_verdict_section(analysis: ListingAnalysis | None) -> ReportSection:
     if analysis is None:
-        return ReportSection(title="Domarion Verdict", items=[])
+        return ReportSection(title="WartoMetr Verdict", items=[])
     decision = analysis.buyer_decision
     if decision is None:
         return _buyer_decision_summary_section(analysis).model_copy(
-            update={"title": "Domarion Verdict"}
+            update={"title": "WartoMetr Verdict"}
         )
 
     verdict = decision.verdict
     total = decision.total_acquisition
     return ReportSection(
-        title="Domarion Verdict",
+        title="WartoMetr Verdict",
         items=[
             f"{verdict.score:.1f}/10 - {verdict.headline}.",
             verdict.summary,
@@ -171,10 +171,7 @@ def _property_due_diligence_section(analysis: ListingAnalysis | None) -> ReportS
 
     diligence = decision.due_diligence
     checklist = [
-        (
-            f"{item.priority}/{item.category}: {item.label} "
-            f"({item.status}) - {item.rationale}"
-        )
+        (f"{item.priority}/{item.category}: {item.label} ({item.status}) - {item.rationale}")
         for item in diligence.checklist[:10]
     ]
     return ReportSection(
@@ -302,7 +299,10 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
             reasons.append("цена не выше разумного потолка по текущему объекту")
         if comparable.price_per_m2 < listing.price_per_m2:
             reasons.append("ниже цена за m2")
-        if comparable.nearest_stop_m < listing.nearest_stop_m:
+        if (
+            listing.nearest_stop_m is not None
+            and comparable.nearest_stop_m < listing.nearest_stop_m
+        ):
             reasons.append("лучше транспортная близость")
         if comparable.days_on_market < listing.days_on_market:
             reasons.append("меньше экспозиция на рынке")
@@ -411,10 +411,7 @@ def _next_action_like_section(analysis: ListingAnalysis) -> ReportSection:
                 "Перед просмотром: запросить czynsz, fundusz remontowy, media "
                 "и список того, что входит в цену."
             ),
-            (
-                "На просмотре: сверить состояние окон/электрики/воды/вентиляции "
-                "и проверить шум."
-            ),
+            ("На просмотре: сверить состояние окон/электрики/воды/вентиляции и проверить шум."),
         ],
     )
 
@@ -455,17 +452,14 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
     if analysis.growth_analysis is not None:
         growth = analysis.growth_analysis
         items.append(
-            f"Growth analysis: {growth.growth_score}/100 "
-            f"({growth.growth_label}). {growth.summary}"
+            f"Growth analysis: {growth.growth_score}/100 ({growth.growth_label}). {growth.summary}"
         )
         if growth.positive_signals:
             items.append(f"Growth positives: {'; '.join(growth.positive_signals[:3])}.")
         if growth.drag_signals:
             items.append(f"Growth drags/checks: {'; '.join(growth.drag_signals[:3])}.")
         if growth.missing_layers:
-            items.append(
-                f"Growth data gaps to verify: {'; '.join(growth.missing_layers[:3])}."
-            )
+            items.append(f"Growth data gaps to verify: {'; '.join(growth.missing_layers[:3])}.")
     if analysis.rental_estimate is not None:
         rental = analysis.rental_estimate
         items.append(
@@ -501,10 +495,7 @@ def _future_impact_report_items(analysis: ListingAnalysis) -> list[str]:
         items.append(f"Positive catalysts: {catalysts}.")
     if impact.negative_or_supply_projects:
         checks = "; ".join(
-            (
-                f"{item.name}: "
-                f"{'; '.join([*item.disruption_risks, *item.supply_pressure_risks])}"
-            )
+            (f"{item.name}: {'; '.join([*item.disruption_risks, *item.supply_pressure_risks])}")
             for item in impact.negative_or_supply_projects[:3]
         )
         items.append(f"Disruption/supply checks: {checks}.")
@@ -534,10 +525,9 @@ def _price_market_section(analysis: ListingAnalysis | None) -> ReportSection:
         items=[
             f"Текущая цена: {listing.price:,} {listing.currency}".replace(",", " "),
             f"Цена за m2: {listing.price_per_m2:,} {listing.currency}".replace(",", " "),
-            (
-                f"Fair price range: {scores.fair_price_low:,}-"
-                f"{scores.fair_price_high:,} PLN"
-            ).replace(",", " "),
+            (f"Fair price range: {scores.fair_price_low:,}-{scores.fair_price_high:,} PLN").replace(
+                ",", " "
+            ),
             f"Fair price confidence: {scores.fair_price_confidence_score}/100",
             f"Медиана района: {analysis.area_statistics.median_price_per_m2:,} PLN/m2".replace(
                 ",", " "
@@ -658,8 +648,7 @@ def _risk_section(analysis: ListingAnalysis | None) -> ReportSection:
         for factor in profile.factors[:6]:
             evidence = f" Evidence: {'; '.join(factor.evidence[:2])}" if factor.evidence else ""
             items.append(
-                f"{factor.category}/{factor.code}: {factor.severity}. "
-                f"{factor.summary}{evidence}"
+                f"{factor.category}/{factor.code}: {factor.severity}. {factor.summary}{evidence}"
             )
         if profile.priority_checks:
             items.append(f"Priority checks: {'; '.join(profile.priority_checks[:5])}.")
@@ -865,10 +854,7 @@ def _realtor_price_arguments_section(analysis: ListingAnalysis | None) -> Report
     items = [
         f"Позиционирование для клиента: {position} ({delta:+.1f}% к fair price mid).",
         f"Fair price confidence: {scores.fair_price_confidence_score}/100.",
-        (
-            f"Цена объекта: {_money(listing.price)}, "
-            f"{_money(listing.price_per_m2)}/m2."
-        ),
+        (f"Цена объекта: {_money(listing.price)}, {_money(listing.price_per_m2)}/m2."),
         (
             f"Медиана района: {_money(analysis.area_statistics.median_price_per_m2)}/m2, "
             f"средняя экспозиция {analysis.area_statistics.average_days_on_market} дней."
