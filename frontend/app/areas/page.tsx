@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, BarChart3, MapPinned } from "lucide-react";
 
-import { money, numberValue, percent } from "@/lib/format";
+import { CoverageNotice } from "@/components/CoverageNotice";
+import { AreaDynamicMetrics } from "@/components/AreaDynamicEvidence";
+import type { AreaStatistics } from "@/lib/api";
 import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 
@@ -36,6 +38,8 @@ export default function AreasPage() {
         </div>
       </header>
 
+      <CoverageNotice />
+
       <section className="seo-area-grid">
         {SEO_AREAS.map((area) => (
           <article className="seo-area-card" key={area.areaId}>
@@ -44,20 +48,7 @@ export default function AreasPage() {
               <h2>{area.name}</h2>
               <p>{area.description}</p>
             </div>
-            <div className="area-metrics">
-              <span>
-                <small>Mediana</small>
-                <strong>{money(area.medianPricePerM2)}/m2</strong>
-              </span>
-              <span>
-                <small>Ogłoszeń</small>
-                <strong>{numberValue(area.activeListings)}</strong>
-              </span>
-              <span>
-                <small>90 dni</small>
-                <strong>{percent(area.priceChange90dPct)}</strong>
-              </span>
-            </div>
+            <AreaDynamicMetrics areaId={area.areaId} fallback={{ area_id: area.areaId, name: area.name, city: area.city, data_provenance: { mode: "demo", source_type: "editorial_fallback", notice_code: null }, median_price_per_m2: area.medianPricePerM2, average_price_per_m2: area.averagePricePerM2, active_listings: area.activeListings, new_listings_30d: 0, removed_listings_30d: 0, average_days_on_market: area.averageDaysOnMarket, price_change_90d_pct: area.priceChange90dPct, supply_change_90d_pct: area.supplyChange90dPct } satisfies AreaStatistics} />
             <Link className="button" href={`/areas/${area.slug}`}>
               Szczegóły <ArrowRight size={16} />
             </Link>

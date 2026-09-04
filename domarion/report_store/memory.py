@@ -23,10 +23,17 @@ class InMemoryReportStore:
         owner_id: str | None = None,
     ) -> list[GeneratedReportListItem]:
         reports = self.list_reports_with_metadata(limit=limit, owner_id=owner_id)
-        return [
-            GeneratedReportListItem(**report.model_dump(exclude={"content", "report_metadata"}))
-            for report in reports
-        ]
+        return [self._to_list_item(report) for report in reports]
+
+    @staticmethod
+    def _to_list_item(report: GeneratedReport) -> GeneratedReportListItem:
+        metadata = report.report_metadata or {}
+        report_version = metadata.get("report_template_code") or metadata.get("scoring_formula_version")
+        return GeneratedReportListItem(
+            **report.model_dump(exclude={"content", "report_metadata", "report_version", "data_as_of"}),
+            report_version=str(report_version) if report_version is not None else None,
+            data_as_of=report.created_at,
+        )
 
     def list_reports_with_metadata(
         self,

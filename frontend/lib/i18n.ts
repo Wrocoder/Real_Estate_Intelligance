@@ -1174,8 +1174,13 @@ export type ListingDetailCopy = {
     saveReport: string;
     openReport: string;
     answer: string;
+    compare: string;
+    track: string;
+    negotiate: string;
+    mortgage: string;
   };
   sections: {
+    decisionDetails: string;
     aiAssistant: string;
     insights: string;
     negotiation: string;
@@ -1215,6 +1220,7 @@ export type ListingDetailCopy = {
     analyticsUpdated: string;
     backendUnavailable: string;
     favoriteAdded: string;
+    trackingAdded: string;
     reportSaved: (reportId: string) => string;
     aiReady: string;
     aiQuestionsUnavailable: string;
@@ -5779,8 +5785,13 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       saveReport: "Save report",
       openReport: "Open report",
       answer: "Answer",
+      compare: "Compare",
+      track: "Track changes",
+      negotiate: "Prepare negotiation",
+      mortgage: "Check mortgage budget",
     },
     sections: {
+      decisionDetails: "Why this is the verdict",
       aiAssistant: "Apartment assistant",
       insights: "Object insights",
       negotiation: "Negotiation arguments",
@@ -5853,6 +5864,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       analyticsUpdated: "Analytics updated",
       backendUnavailable: "Service is temporarily unavailable",
       favoriteAdded: "Added to favorites",
+      trackingAdded: "Tracking enabled",
       reportSaved: (reportId) => `Report saved: ${reportId}`,
       aiReady: "Assistant ready",
       aiQuestionsUnavailable: "Questions unavailable",
@@ -5935,8 +5947,13 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       saveReport: "Zapisz raport",
       openReport: "Otwórz raport",
       answer: "Odpowiedz",
+      compare: "Porównaj",
+      track: "Śledź zmiany",
+      negotiate: "Przygotuj negocjację",
+      mortgage: "Sprawdź budżet kredytu",
     },
     sections: {
+      decisionDetails: "Dlaczego taki werdykt",
       aiAssistant: "Asystent mieszkania",
       insights: "Wnioski o obiekcie",
       negotiation: "Argumenty negocjacyjne",
@@ -6009,6 +6026,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       analyticsUpdated: "Analityka odświeżona",
       backendUnavailable: "Usługa jest chwilowo niedostępna",
       favoriteAdded: "Dodano do ulubionych",
+      trackingAdded: "Śledzenie włączone",
       reportSaved: (reportId) => `Raport zapisany: ${reportId}`,
       aiReady: "Asystent gotowy",
       aiQuestionsUnavailable: "Pytania niedostępne",
@@ -6091,8 +6109,13 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       saveReport: "Сохранить отчет",
       openReport: "Открыть отчет",
       answer: "Ответить",
+      compare: "Сравнить",
+      track: "Следить за изменениями",
+      negotiate: "Подготовить торг",
+      mortgage: "Проверить бюджет ипотеки",
     },
     sections: {
+      decisionDetails: "Почему такой вывод",
       aiAssistant: "Помощник по квартире",
       insights: "Выводы по объекту",
       negotiation: "Аргументы для торга",
@@ -6165,6 +6188,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       analyticsUpdated: "Аналитика обновлена",
       backendUnavailable: "Сервис временно недоступен",
       favoriteAdded: "Добавлено в избранное",
+      trackingAdded: "Отслеживание включено",
       reportSaved: (reportId) => `Отчет сохранен: ${reportId}`,
       aiReady: "Помощник готов",
       aiQuestionsUnavailable: "Вопросы недоступны",
@@ -6249,8 +6273,13 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       saveReport: "Зберегти звіт",
       openReport: "Відкрити звіт",
       answer: "Відповісти",
+      compare: "Порівняти",
+      track: "Стежити за змінами",
+      negotiate: "Підготувати торг",
+      mortgage: "Перевірити бюджет іпотеки",
     },
     sections: {
+      decisionDetails: "Чому такий висновок",
       aiAssistant: "Помічник щодо квартири",
       insights: "Висновки щодо об'єкта",
       negotiation: "Аргументи для торгу",
@@ -6323,6 +6352,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       analyticsUpdated: "Аналітику оновлено",
       backendUnavailable: "Сервіс тимчасово недоступний",
       favoriteAdded: "Додано в обране",
+      trackingAdded: "Стеження увімкнено",
       reportSaved: (reportId) => `Звіт збережено: ${reportId}`,
       aiReady: "Помічник готовий",
       aiQuestionsUnavailable: "Питання недоступні",

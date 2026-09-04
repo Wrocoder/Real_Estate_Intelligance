@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BarChart3, Bell, ClipboardCheck, Gem, Search } from "lucide-react";
 
 import { ListingCard } from "@/components/ListingCard";
+import { CoverageNotice } from "@/components/CoverageNotice";
 import { PropertyMap } from "@/components/PropertyMap";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
@@ -19,6 +20,7 @@ import {
   type MapQuery,
 } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { EXPLORER_COPY } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -158,6 +160,9 @@ const SEARCH_COPY = {
     bestForRent: "Best for rent",
     liquid: "Most liquid",
     negotiation: "Best negotiation opportunities",
+    applied: "Applied filters",
+    sortBy: "Sorted by",
+    advancedApplied: (count: number) => `${count} advanced filter${count === 1 ? "" : "s"}`,
     loadingSteps: ["Checking matching apartments", "Ranking by value and risk", "Preparing the map"],
   },
   pl: {
@@ -182,6 +187,9 @@ const SEARCH_COPY = {
     bestForRent: "Najlepsze pod wynajem",
     liquid: "Najbardziej płynne",
     negotiation: "Najlepsze okazje do negocjacji",
+    applied: "Zastosowane filtry",
+    sortBy: "Sortowanie",
+    advancedApplied: (count: number) => `Filtry zaawansowane: ${count}`,
     loadingSteps: ["Sprawdzamy pasujące mieszkania", "Układamy wyniki według wartości i ryzyka", "Przygotowujemy mapę"],
   },
   ru: {
@@ -206,6 +214,9 @@ const SEARCH_COPY = {
     bestForRent: "Лучшие под аренду",
     liquid: "Самые ликвидные",
     negotiation: "Лучшие возможности для торга",
+    applied: "Примененные фильтры",
+    sortBy: "Сортировка",
+    advancedApplied: (count: number) => `Расширенных фильтров: ${count}`,
     loadingSteps: ["Проверяем подходящие квартиры", "Сортируем по цене и рискам", "Готовим карту"],
   },
   uk: {
@@ -230,6 +241,9 @@ const SEARCH_COPY = {
     bestForRent: "Найкращі під оренду",
     liquid: "Найліквідніші",
     negotiation: "Найкращі можливості для торгу",
+    applied: "Застосовані фільтри",
+    sortBy: "Сортування",
+    advancedApplied: (count: number) => `Розширених фільтрів: ${count}`,
     loadingSteps: ["Перевіряємо відповідні квартири", "Сортуємо за ціною і ризиками", "Готуємо карту"],
   },
 } as const;
@@ -335,36 +349,35 @@ export default function ExplorerPage() {
       setStatus(copy.status.found(search.total, search.page, search.total_pages));
       setIsLoading(false);
     } catch (caught) {
-      const message = caught instanceof Error ? caught.message : "unknown error";
+      const message = localizedError(caught, locale, copy.status.backendUnavailable);
       setError(message);
       setStatus(copy.status.backendUnavailable);
       setIsLoading(false);
     }
-  }, [copy, filters]);
+  }, [copy, filters, locale]);
 
   useEffect(() => {
     if (!appliedUrlFiltersRef.current) {
       appliedUrlFiltersRef.current = true;
       const params = new URLSearchParams(window.location.search);
-      const municipality = params.get("municipality");
-      const district = params.get("district");
-      const query = params.get("q");
-      if (
-        (municipality && filters.municipality !== municipality) ||
-        (district && filters.district !== district) ||
-        (query && filters.query !== query)
-      ) {
-        setFilters((current) => ({
-          ...current,
-          municipality: municipality || current.municipality,
-          district: district || current.district,
-          query: query || current.query,
-        }));
+      const parsed = filtersFromUrl(params);
+      const hasFilters = Array.from(params.keys()).some((key) => key !== "page");
+      const parsedPage = Number(params.get("page"));
+      if (Number.isInteger(parsedPage) && parsedPage > 0) setPage(parsedPage);
+      if (hasFilters) {
+        setFilters((current) => applyIntentDefaults({ ...current, ...parsed }));
         return;
       }
     }
     void load(page);
-  }, [filters.district, filters.municipality, filters.query, load, page]);
+  }, [filters, load, page]);
+
+  useEffect(() => {
+    if (!appliedUrlFiltersRef.current) return;
+    const params = filtersToUrl(filters, page);
+    const query = params.toString();
+    window.history.replaceState(null, "", query ? `${window.location.pathname}?${query}` : window.location.pathname);
+  }, [filters, page]);
 
   const mapQuery = useMemo<MapQuery>(() => {
     const radiusKm = filters.radiusKm ? Number(filters.radiusKm) : undefined;
@@ -424,7 +437,7 @@ export default function ExplorerPage() {
         );
       } catch (caught) {
         if (cancelled) return;
-        setMapError(caught instanceof Error ? caught.message : "unknown error");
+        setMapError(localizedError(caught, locale, copy.status.mapUnavailable));
         setMapStatus(copy.status.mapUnavailable);
       }
     }
@@ -433,7 +446,7 @@ export default function ExplorerPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy, mapQuery]);
+  }, [copy, locale, mapQuery]);
 
   const municipalities = Array.from(new Set(areas.map((area) => area.city))).sort((left, right) => {
     if (left === "Wrocław") return -1;
@@ -457,6 +470,7 @@ export default function ExplorerPage() {
     areas[0] ??
     null;
   const compareHref = `/compare?ids=${compareIds.join(",")}`;
+  const appliedFilters = activeFilterLabels(filters, product, copy);
 
   function updateFilters(next: Partial<Filters>) {
     setFilters((current) => applyIntentDefaults({ ...current, ...next }));
@@ -558,7 +572,7 @@ export default function ExplorerPage() {
   return (
     <>
       <section className="onboarding-panel">
-        <h1>{onboarding.title}</h1>
+        <h2>{onboarding.title}</h2>
         <div className="onboarding-actions">
           <Link className="onboarding-action primary" href="/check">
             <ClipboardCheck size={18} />
@@ -601,6 +615,15 @@ export default function ExplorerPage() {
           </button>
         </div>
       </header>
+
+      <CoverageNotice />
+
+      <section className="applied-filters" aria-label={product.applied}>
+        <strong>{product.applied}</strong>
+        <div className="applied-filter-list">
+          {appliedFilters.map((label) => <span className="status-pill info" key={label}>{label}</span>)}
+        </div>
+      </section>
 
       <section className="metric-grid">
         <div className="metric">
@@ -1336,6 +1359,68 @@ function buildSearchQuery(filters: Filters, page: number): ListingSearchQuery {
     page,
     page_size: Number(filters.pageSize),
   };
+}
+
+const URL_FILTER_FIELDS: Array<keyof Filters> = [
+  "mode", "buyingPurpose", "query", "voivodeship", "municipality", "district", "marketType",
+  "minArea", "maxArea", "buildingType", "renovationState", "hasBalcony", "hasTerrace", "hasGarden",
+  "hasElevator", "parkingType", "heatingType", "rooms", "maxPrice", "minFloor", "maxFloor",
+  "maxBuildingFloors", "minBuildingYear", "maxBuildingYear", "maxFairDelta", "minInvestment", "maxRisk",
+  "minNegotiation", "minLiquidity", "minRental", "minDataQuality", "minDeveloperReputation",
+  "minDeveloperConfidence", "minDeveloperCompleted", "minDeveloperActive", "requireDeveloper",
+  "excludeDeveloperRisk", "maxCenterKm", "maxStopM", "maxSchoolM", "minMajorRoadM", "minIndustrialZoneM",
+  "radiusKm", "sort", "pageSize",
+];
+
+function filtersToUrl(filters: Filters, page: number) {
+  const params = new URLSearchParams();
+  for (const key of URL_FILTER_FIELDS) {
+    const value = filters[key];
+    if (value === defaultFilters[key] || value === "" || value === false || isImplicitIntentFilter(filters, key)) continue;
+    params.set(key === "query" ? "q" : key, String(value));
+  }
+  if (page > 1) params.set("page", String(page));
+  return params;
+}
+
+function filtersFromUrl(params: URLSearchParams): Partial<Filters> {
+  const parsed: Partial<Filters> = {};
+  for (const key of URL_FILTER_FIELDS) {
+    const raw = params.get(key === "query" ? "q" : key);
+    if (raw === null) continue;
+    const defaultValue = defaultFilters[key];
+    (parsed as Record<string, string | boolean>)[key] = typeof defaultValue === "boolean" ? raw === "true" || raw === "1" : raw;
+  }
+  return parsed;
+}
+
+function activeFilterLabels(
+  filters: Filters,
+  product: typeof SEARCH_COPY[keyof typeof SEARCH_COPY],
+  copy: typeof EXPLORER_COPY[keyof typeof EXPLORER_COPY],
+) {
+  const labels: string[] = [];
+  if (filters.query) labels.push(`${copy.filters.search}: ${filters.query}`);
+  if (filters.municipality) labels.push(`${product.location}: ${filters.municipality}`);
+  if (filters.district) labels.push(`${copy.filters.district}: ${filters.district}`);
+  if (filters.buyingPurpose !== defaultFilters.buyingPurpose) labels.push(filters.buyingPurpose === "investment" ? product.investment : product.living);
+  if (filters.marketType) labels.push(`${product.market}: ${filters.marketType === "primary" ? product.primary : product.secondary}`);
+  if (filters.rooms) labels.push(`${copy.filters.rooms}: ${filters.rooms}`);
+  if (filters.minArea || filters.maxArea) labels.push(`${product.size}: ${filters.minArea || "0"}-${filters.maxArea || "∞"} m2`);
+  if (filters.maxPrice) labels.push(`${copy.filters.maxPrice}: ${filters.maxPrice}`);
+  if (filters.mode === "hidden_gems") labels.push(copy.actions.hiddenGems);
+  const advancedKeys = ["buildingType", "renovationState", "hasBalcony", "hasTerrace", "hasGarden", "hasElevator", "parkingType", "heatingType", "minFloor", "maxFloor", "maxBuildingFloors", "minBuildingYear", "maxBuildingYear", "maxFairDelta", "minInvestment", "maxRisk", "minNegotiation", "minLiquidity", "minRental", "minDataQuality", "minDeveloperReputation", "minDeveloperConfidence", "minDeveloperCompleted", "minDeveloperActive", "requireDeveloper", "excludeDeveloperRisk", "maxCenterKm", "maxStopM", "maxSchoolM", "minMajorRoadM", "minIndustrialZoneM", "radiusKm"] as const;
+  const advancedCount = advancedKeys.filter((key) => filters[key] !== defaultFilters[key] && filters[key] !== "" && filters[key] !== false && !isImplicitIntentFilter(filters, key)).length;
+  if (advancedCount) labels.push(product.advancedApplied(advancedCount));
+  labels.push(`${product.sortBy}: ${copy.optionLabels.sort[filters.sort] ?? filters.sort}`);
+  return labels;
+}
+
+function isImplicitIntentFilter(filters: Filters, key: keyof Filters) {
+  if (filters.buyingPurpose === "living") return key === "maxRisk" && filters.maxRisk === "70";
+  return key === "minInvestment" && filters.minInvestment === "55"
+    || key === "minRental" && filters.minRental === "45"
+    || key === "minLiquidity" && filters.minLiquidity === "45";
 }
 
 function applyIntentDefaults(filters: Filters): Filters {

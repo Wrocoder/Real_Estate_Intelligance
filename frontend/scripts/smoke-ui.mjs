@@ -53,9 +53,13 @@ function expectMinSize(label, content, minBytes) {
 const packageJson = JSON.parse(read("package.json"));
 const globalStyles = read("app/globals.css");
 const apiClient = read("lib/api.ts");
+const apiTransport = read("lib/apiClient.ts");
+const generatedApi = read("lib/generated-api.ts");
 const explorerPage = read("app/page.tsx");
 const checkPage = read("app/check/page.tsx");
-const checkDraftsPage = read("app/check/drafts/page.tsx");
+const savedPage = read("app/saved/page.tsx");
+const savedApartmentsPage = read("components/SavedApartmentsPage.tsx");
+const legacySavedPage = read("app/check/drafts/page.tsx");
 const comparePage = read("app/compare/page.tsx");
 const listingCard = read("components/ListingCard.tsx");
 const demoModeBanner = read("components/DemoModeBanner.tsx");
@@ -72,8 +76,11 @@ const areaComparePage = read("app/areas/compare/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
+const mortgagePage = read("app/mortgage/page.tsx");
 const buyerBetaPage = read("app/beta/page.tsx");
+const buyerBetaContent = read("components/BuyerBetaContent.tsx");
 const realtorsPage = read("app/realtors/page.tsx");
+const realtorsContent = read("components/RealtorsContent.tsx");
 const newsPage = read("app/news/page.tsx");
 const developersPage = read("app/developers/page.tsx");
 const developerDetailPage = read("app/developers/[developerId]/page.tsx");
@@ -90,6 +97,18 @@ const scoreLabels = read("lib/scoreLabels.ts");
 const formatters = read("lib/format.ts");
 const useLocalePreference = read("lib/useLocalePreference.ts");
 const sitemap = read("app/sitemap.ts");
+
+const consumerSource = fs
+  .readdirSync(path.join(root, "app"), { recursive: true })
+  .filter((file) => typeof file === "string" && file.endsWith((".tsx")))
+  .filter((file) => !file.startsWith("admin"))
+  .map((file) => read(path.join("app", file)))
+  .join("\n");
+const consumerComponentSource = fs
+  .readdirSync(path.join(root, "components"), { recursive: true })
+  .filter((file) => typeof file === "string" && file.endsWith(".tsx"))
+  .map((file) => read(path.join("components", file)))
+  .join("\n");
 
 expectIncludes("package scripts", JSON.stringify(packageJson.scripts), [
   "\"build\"",
@@ -148,7 +167,6 @@ expectIncludes("api client contracts", apiClient, [
   "/fulfill",
   "listingDatasetExportUrl",
   "/api/v1/datasets/listings/export",
-  'credentials: "include"',
   "/api/v1/auth/register",
   "/api/v1/auth/login",
   "/api/v1/auth/logout",
@@ -178,7 +196,14 @@ expectIncludes("navigation session status", authSessionStatus, [
   "response.status === 401",
   "authenticated: false",
 ]);
-expectIncludes("anonymous session handling", apiClient, [
+expectIncludes("consumer navigation hierarchy", localizedNavigation, [
+  "PRIMARY_NAVIGATION_ITEMS",
+  "DISCOVERY_NAVIGATION_ITEMS",
+  "nav-group-label",
+  "aria-current",
+  "isNavigationItemActive",
+]);
+expectIncludes("anonymous session handling", apiTransport, [
   "authenticatedFetch",
   'credentials: "include"',
   'path === "/api/v1/auth/login"',
@@ -186,7 +211,7 @@ expectIncludes("anonymous session handling", apiClient, [
   "detail: { status: response.status, reason }",
 ]);
 for (const [label, page] of [
-  ["my apartments auth boundary", checkDraftsPage],
+  ["my apartments auth boundary", savedApartmentsPage],
   ["alerts auth boundary", alertsPage],
   ["reports auth boundary", reportsPage],
   ["pricing auth boundary", pricingPage],
@@ -203,6 +228,18 @@ expectIncludes("account CRM workspace", accountPage, [
   "createAgencyCrmShortlist",
   "previewAgencyCrmShortlistShare",
   "CrmSharePreviewBlock",
+]);
+expectIncludes("alerts delivery history", alertsPage, [
+  "api.listAlertDeliveryJobs()",
+  "Promise.allSettled",
+  "deliverySummary",
+  "deliveryStatusLabel",
+  "deliveryStatusTone",
+  "Delivery history",
+  "Historia dostarczenia",
+  "История доставки",
+  "Історія доставки",
+  "dateValue(job.created_at, locale)",
 ]);
 
 expectIncludes("search explorer page", explorerPage, [
@@ -259,14 +296,28 @@ expectIncludes("check page i18n", checkPage, [
   "confidenceLabel(result.confidence_score, locale)",
 ]);
 
-expectIncludes("check drafts page i18n", checkDraftsPage, [
+expectIncludes("saved apartments page", savedApartmentsPage, [
   "CHECK_DRAFTS_COPY[locale]",
-  "MY_APARTMENTS_COPY[locale]",
+  "api.listFavorites()",
+  "api.listUserSubmittedListingDrafts",
+  "createListingObjectWatch",
+  "createUserSubmittedDraftObjectWatch",
+  "filter === \"all\"",
+  "No saved apartments yet",
+  "Nie ma jeszcze zapisanych mieszkań",
+  "Пока нет сохраненных квартир",
+  "Поки немає збережених квартир",
+]);
+expectIncludes("saved apartments route", savedPage, ["SavedApartmentsPage"]);
+expectIncludes("legacy saved route migration", legacySavedPage, [
+  "redirect(\"/saved\")",
+]);
+expectIncludes("saved apartments page i18n", savedApartmentsPage, [
+  "CHECK_DRAFTS_COPY[locale]",
   "useLocalePreference()",
-  "NAV_TITLE[locale]",
-  "copy.statuses.loaded(data.length)",
-  "copy.values.rooms(draft.rooms)",
-  "dateValue(draft.updated_at, locale)",
+  "TITLE[locale]",
+  "copy.values.rooms(listing.rooms)",
+  "dateValue(updated, locale)",
 ]);
 
 expectIncludes("compare page i18n", comparePage, [
@@ -278,9 +329,17 @@ expectIncludes("compare page i18n", comparePage, [
   "copy.actions.getVerdict",
   "copy.actions.buildShortlist",
   "comparisonRows(items, metricById, copy, locale)",
+  "api.compareListings(selectedIds, intent)",
+  "syncCompareUrl",
+  "compare-mobile-cards",
   "key={row.id}",
   "scoreLabel(metric.decision_label, locale)",
   "money(metric.estimated_monthly_payment_pln, locale)",
+  "setSelectedIds(initialIds)",
+  ".slice(0, 5)",
+  "current.length >= 5",
+  "compare-table-desktop",
+  "compare-mobile-cards",
 ]);
 
 expectIncludes("map component", mapComponent, [
@@ -366,24 +425,26 @@ expectNotIncludes("payments page hides mock payment controls", pricingPage, [
   "api.listReportOrderEvents(",
 ]);
 
-expectIncludes("buyer beta landing", buyerBetaPage, [
-  "Проверка квартиры перед покупкой",
+expectIncludes("buyer beta landing", buyerBetaPage + buyerBetaContent, [
+  "BuyerBetaContent",
   "href=\"/check?source=buyer-beta\"",
   "href=\"/pricing?source=buyer-beta\"",
   "BetaLeadForm",
   "segment=\"buyer_beta\"",
   "LandingMapScene",
-  "Ссылка на объявление хранится приватно",
+  "LANDING_COPY",
+  "useLocalePreference",
 ]);
 
-expectIncludes("realtor beta landing", realtorsPage, [
-  "Аналитика и отчеты для риелторов",
+expectIncludes("realtor beta landing", realtorsPage + realtorsContent, [
+  "RealtorsContent",
   "href=\"/pricing?source=realtor-beta\"",
   "href=\"/reports?source=realtor-beta\"",
   "BetaLeadForm",
   "segment=\"realtor_beta\"",
-  "Брендированный отчет риелтора",
   "LandingMapScene",
+  "REALTOR_COPY",
+  "useLocalePreference",
 ]);
 
 expectIncludes("landing map scene", landingScene, [
@@ -447,6 +508,8 @@ expectIncludes("area compare localization", areaComparePage, [
   "useLocalePreference()",
   "money(area.median_price_per_m2, locale)",
   "formatNullablePercent(area.price_per_m2_vs_city_pct, locale, copy)",
+  "area-compare-mobile-cards",
+  "area-compare-table-desktop",
 ]);
 
 expectIncludes("area detail guide internal links", areaDetailPage, [
@@ -483,6 +546,11 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "copy.sections.priceHistory",
   "copy.sections.comparables",
   "copy.actions.openReport",
+  "copy.actions.compare",
+  "copy.actions.track",
+  "copy.actions.negotiate",
+  "api.createListingObjectWatch(listingId)",
+  "<BuyerDecisionPanel decision={displayedDecision}",
   "scoreLabel(scores.decision_label, locale)",
   "money(listing.price, locale)",
   "dateValue(point.observed_at, locale)",
@@ -497,6 +565,73 @@ expectRegex(
   listingDetailPage,
   /copy\.sections\.priceHistory[\s\S]*table-scroll[\s\S]*copy\.sections\.comparables[\s\S]*table-scroll/,
 );
+expectIncludes("listing detail decision hierarchy", read("components/BuyerDecisionPanel.tsx"), [
+  "<details className=\"buyer-decision-details\">",
+  "<summary>{copy.sections.decisionDetails}</summary>",
+  "buyer-decision-details-body",
+]);
+expectIncludes("score explainability", read("components/ScoreBars.tsx"), [
+  "scores.explainability",
+  "data-score-explanation-version",
+  "DRIVER_LABELS",
+  "coverage",
+]);
+expectIncludes("score explainability API contract", read("lib/api.ts"), [
+  "explainability:",
+  "coverage_score",
+  "missing_data_codes",
+]);
+expectIncludes("safe localized API errors", read("lib/errorMessages.ts"), [
+  "network_error",
+  "auth_required",
+  "validation_error",
+  "localizedError",
+  "pl:",
+  "en:",
+  "ru:",
+  "uk:",
+]);
+expectNotIncludes("consumer errors do not expose raw exception messages", consumerSource, [
+  "caught instanceof Error ? caught.message",
+]);
+expectNotIncludes("consumer components do not expose raw exception messages", consumerComponentSource, [
+  "caught instanceof Error ? caught.message",
+]);
+expectIncludes("API error metadata", apiTransport, [
+  "errorCode",
+  "correlationId",
+  "public readonly code",
+]);
+expectIncludes("analytics request contract", apiClient, ["purchase_intent: purchaseIntent"]);
+expectIncludes("typed API boundary", apiClient, [
+  "import {",
+  'from "./apiClient"',
+]);
+expectIncludes("API request transport", apiTransport, ['credentials: "include"']);
+expectIncludes("API transport boundary", apiTransport, [
+  "export async function request<T>",
+  "export class ApiError",
+  "export async function authenticatedFetch",
+]);
+expectIncludes("generated OpenAPI contract", generatedApi, [
+  '"/api/v1/listings"',
+  '"/api/v1/areas"',
+  '"/api/v1/compare"',
+  '"/api/v1/mortgage/calculate"',
+]);
+expectNotIncludes("stable collection keys", [
+  read("components/FutureImpactNarrativePanel.tsx"),
+  read("components/Charts.tsx"),
+  read("app/compare/page.tsx"),
+  read("app/check/page.tsx"),
+  read("app/listings/[id]/page.tsx"),
+  read("app/news/page.tsx"),
+  read("app/areas/compare/page.tsx"),
+].join("\n"), [
+  "key={`${index}-",
+  "key={`${citation.source_id}-${index}`}",
+  "key={`${guardrail.code}-${index}`}"
+]);
 
 expectIncludes("primary navigation", layout, [
   "LOCALE_COOKIE_NAME",
@@ -506,10 +641,26 @@ expectIncludes("primary navigation", layout, [
   "<DemoModeBanner",
   "<AuthSessionNotice",
 ]);
+expectIncludes("document outline and keyboard entry", layout, [
+  'id="main-content"',
+  'href="#main-content"',
+  "SKIP_TO_CONTENT",
+]);
+expectIncludes("mortgage financial hierarchy", mortgagePage, [
+  "mortgage-summary-grid",
+  "financial-summary",
+  "mortgage-cash-grid",
+  "financial-metric total",
+]);
+expectIncludes("financial values use tabular numerals", globalStyles, [
+  "font-variant-numeric: tabular-nums",
+]);
+expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}</h2>"]);
+expectNotIncludes("homepage does not duplicate h1", explorerPage, ["<h1>{onboarding.title}</h1>"]);
 expectIncludes("localized navigation", localizedNavigation, [
   "href: \"/check\"",
   "href: \"/\"",
-  "href: \"/check/drafts\"",
+  "href: \"/saved\"",
   "href: \"/areas\"",
   'href="/account?mode=login"',
   'href="/account?mode=register"',

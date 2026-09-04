@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { localizedError } from "@/lib/errorMessages";
 import {
   api,
   type DeveloperProject,
@@ -42,7 +43,7 @@ export default function DeveloperProfilePage() {
       setReputation(data);
       setStatus(copy.statuses.updated(dateValue(data.developer.updated_at, locale)));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+      setError(localizedError(caught, locale, copy.statuses.unknownError));
       setStatus(copy.statuses.profileUnavailable);
     }
   }, [copy, developerId, locale]);

@@ -183,7 +183,7 @@
 
 **Сложность:** L. **Зависимости:** P0-03, P0-04, rental data source.
 
-### [ ] P1-04. Сделать result page ориентированной на решение
+### [x] P1-04. Сделать result page ориентированной на решение
 
 **Область:** `/listings/:id`; `ListingDetailPage`; analytical sections.
 
@@ -193,7 +193,7 @@
 
 **Сложность:** L. **Зависимости:** P0-03, P0-04, P1-02, UI primitives.
 
-### [ ] P1-05. Сделать score explainable
+### [x] P1-05. Сделать score explainable
 
 **Область:** Risk, Investment, Negotiation, Liquidity и Rental scores.
 
@@ -203,7 +203,7 @@
 
 **Сложность:** L. **Зависимости:** P0-03, P1-02, localization contract.
 
-### [ ] P1-06. Завершить локализацию и безопасные ошибки
+### [x] P1-06. Завершить локализацию и безопасные ошибки
 
 **Область:** все consumer routes; API error schema; mutation feedback.
 
@@ -213,7 +213,7 @@
 
 **Сложность:** XL. **Зависимости:** error taxonomy, translation ownership, API contracts.
 
-### [ ] P1-07. Объединить saved apartments в одну ментальную модель
+### [x] P1-07. Объединить saved apartments в одну ментальную модель
 
 **Область:** `/saved`; `/my-properties`; header/mobile navigation; save actions.
 
@@ -223,7 +223,7 @@
 
 **Сложность:** L. **Зависимости:** P0-02, data model ownership, routing migration.
 
-### [ ] P1-08. Исправить comparison flow и contract
+### [x] P1-08. Исправить comparison flow и contract
 
 **Область:** `/compare`; comparison API; contextual add-to-compare actions.
 
@@ -233,7 +233,7 @@
 
 **Сложность:** L. **Зависимости:** P0-02, P1-02, P1-07.
 
-### [ ] P1-09. Довести alerts до понятного пользовательского сервиса
+### [x] P1-09. Довести alerts до понятного пользовательского сервиса
 
 **Область:** `/alerts`; listing tracking; delivery channels; notification preferences.
 
@@ -243,7 +243,7 @@
 
 **Сложность:** L. **Зависимости:** P0-02, provider readiness, event model.
 
-### [ ] P1-10. Исправить mortgage и полную стоимость покупки
+### [x] P1-10. Исправить mortgage и полную стоимость покупки
 
 **Область:** `/mortgage`; listing CTA; purchase costs; affordability.
 
@@ -253,7 +253,7 @@
 
 **Сложность:** L. **Зависимости:** legal/product review, P0-03, source freshness.
 
-### [ ] P1-11. Сделать negotiation output сценарным и доказуемым
+### [x] P1-11. Сделать negotiation output сценарным и доказуемым
 
 **Область:** negotiation section; report; comparable evidence.
 
@@ -263,7 +263,7 @@
 
 **Сложность:** M. **Зависимости:** P0-04, P1-05.
 
-### [ ] P1-12. Прояснить pricing, reports и entitlement
+### [x] P1-12. Прояснить pricing, reports и entitlement
 
 **Область:** `/pricing`; `/reports`; checkout/subscription mutations.
 
@@ -273,7 +273,7 @@
 
 **Сложность:** L. **Зависимости:** P0-02, billing provider/product model, report versioning.
 
-### [ ] P1-13. Явно показать географическое покрытие
+### [x] P1-13. Явно показать географическое покрытие
 
 **Область:** `/search`; `/check`; `/areas`; empty/no-data states.
 
@@ -283,7 +283,7 @@
 
 **Сложность:** M. **Зависимости:** source registry, P0-04.
 
-### [ ] P1-14. Добавить provenance к listing cards и результатам импорта
+### [x] P1-14. Добавить provenance к listing cards и результатам импорта
 
 **Область:** search/cards; saved; compare; listing result.
 
@@ -297,7 +297,7 @@
 
 ## P2 - навигация, discovery и системное качество
 
-### [ ] P2-01. Упростить IA и активную навигацию
+### [x] P2-01. Упростить IA и активную навигацию
 
 **Область:** desktop header; mobile navigation; secondary routes.
 
@@ -305,7 +305,7 @@
 
 **Сложность:** M. **Зависимости:** P1-07, route inventory.
 
-### [ ] P2-02. Сделать search прозрачным и управляемым
+### [x] P2-02. Сделать search прозрачным и управляемым
 
 **Область:** `/search`; filters; sort; result cards.
 
@@ -313,7 +313,7 @@
 
 **Сложность:** M. **Зависимости:** P1-02, P1-13, P1-14.
 
-### [ ] P2-03. Перевести areas на динамические и проверяемые данные
+### [x] P2-03. Перевести areas на динамические и проверяемые данные
 
 **Область:** `/areas`; `/areas/:slug`; infrastructure; trends; planned investments.
 
@@ -321,7 +321,7 @@
 
 **Сложность:** L. **Зависимости:** `$domarion-analytics-integrity`, source registry, P1-13.
 
-### [ ] P2-04. Укрепить guides как редакционный продукт
+### [x] P2-04. Укрепить guides как редакционный продукт
 
 **Область:** `/guides`; `/guides/:slug`; все существующие guide slugs.
 
@@ -329,7 +329,7 @@
 
 **Сложность:** M. **Зависимости:** editorial ownership, localization.
 
-### [ ] P2-05. Привести mobile UX к отдельной композиции
+### [x] P2-05. Привести mobile UX к отдельной композиции
 
 **Область:** все consumer routes на 390 px и tablet viewport.
 
@@ -337,7 +337,7 @@
 
 **Сложность:** L. **Зависимости:** P1 result/compare/navigation tasks.
 
-### [ ] P2-06. Снизить визуальную плотность и унифицировать компоненты
+### [x] P2-06. Снизить визуальную плотность и унифицировать компоненты
 
 **Область:** cards, badges, buttons, spacing, typography, chart hierarchy.
 
@@ -345,7 +345,7 @@
 
 **Сложность:** L. **Зависимости:** `$domarion-ui-quality`, P1-04.
 
-### [ ] P2-07. Разделить крупные frontend/backend модули и типизировать API
+### [x] P2-07. Разделить крупные frontend/backend модули и типизировать API
 
 **Область:** большие page/API modules; generated OpenAPI client; domain boundaries.
 
@@ -353,7 +353,7 @@
 
 **Сложность:** XL. **Зависимости:** стабилизация P0/P1 API; не выполнять как отдельный rewrite.
 
-### [ ] P2-08. Добавить browser quality gate в CI
+### [x] P2-08. Добавить browser quality gate в CI
 
 **Область:** `.github/workflows/ci.yml`; Playwright/browser tests.
 
@@ -370,7 +370,7 @@
 
 **Сложность:** L. **Зависимости:** стабильные P0/P1 flows, test authentication, deterministic fixture strategy.
 
-### [ ] P2-09. Устранить нестабильные React keys и расхождение UI states
+### [x] P2-09. Устранить нестабильные React keys и расхождение UI states
 
 **Область:** developer lists и другие повторяющиеся collections; query/mutation cache.
 
@@ -382,13 +382,13 @@
 
 ## P3 - polish
 
-### [ ] P3-01. Исправить document outline и accessibility labels
+### [x] P3-01. Исправить document outline и accessibility labels
 
 **Область:** consumer pages с двумя `h1`, пропущенными именами controls, landmarks и focus order.
 
 **Сложность:** S. **Зависимости:** P2-01, P2-06.
 
-### [ ] P3-02. Исправить typography/spacing мелких финансовых значений
+### [x] P3-02. Исправить typography/spacing мелких финансовых значений
 
 **Область:** mortgage labels/values и аналогичные summary rows.
 

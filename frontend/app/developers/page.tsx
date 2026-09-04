@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, Building2, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { localizedError } from "@/lib/errorMessages";
 import {
   api,
   type DeveloperQualitySignal,
@@ -48,11 +49,11 @@ export default function DevelopersPage() {
           : data.items[0]?.developer.id ?? null,
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+      setError(localizedError(caught, locale, copy.statuses.unknownError));
     } finally {
       setLoading(false);
     }
-  }, [city, copy, minConfidence, minScore]);
+  }, [city, copy, locale, minConfidence, minScore]);
 
   useEffect(() => {
     void load();

@@ -45,6 +45,7 @@ import {
   type SubscriptionPlan,
 } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { ACCOUNT_PAGE_COPY, type AccountPageCopy, type Locale } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -348,12 +349,12 @@ export default function AccountPage() {
           setSelectedCrmClient(null);
         }
       } catch (caught) {
-        setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingCrmError);
+        setStatus(localizedError(caught, locale, copy.statuses.loadingCrmError));
       } finally {
         setCrmBusy(false);
       }
     },
-    [copy],
+    [copy, locale],
   );
 
   const load = useCallback(async () => {
@@ -389,11 +390,11 @@ export default function AccountPage() {
         setAuthRequired(true);
         setStatus("");
       } else {
-        setError(caught instanceof Error ? caught.message : copy.statuses.unknownError);
+        setError(localizedError(caught, locale, copy.statuses.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     }
-  }, [copy]);
+  }, [copy, locale]);
 
   const loadAgencyWorkspace = useCallback(
     async (preferredAgencyId?: string | null) => {
@@ -413,12 +414,12 @@ export default function AccountPage() {
         }
         setStatus(copy.statuses.workspaceSelected);
       } catch (caught) {
-        setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingWorkspaceError);
+        setStatus(localizedError(caught, locale, copy.statuses.loadingWorkspaceError));
       } finally {
         setAgencyBusy(false);
       }
     },
-    [copy],
+    [copy, locale],
   );
 
   useEffect(() => {
@@ -461,7 +462,7 @@ export default function AccountPage() {
       setSelectedAgency(await api.getAgency(agencyId));
       setStatus(copy.statuses.workspaceSelected);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.loadingWorkspaceError);
+      setStatus(localizedError(caught, locale, copy.statuses.loadingWorkspaceError));
     } finally {
       setAgencyBusy(false);
     }
@@ -487,7 +488,7 @@ export default function AccountPage() {
       setAgencyForm({ name: "", billing_email: "", website_url: "", city: "Wrocław" });
       setStatus(copy.statuses.agencyCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.agencyCreateError);
+      setStatus(localizedError(caught, locale, copy.statuses.agencyCreateError));
     } finally {
       setAgencyBusy(false);
     }
@@ -513,7 +514,7 @@ export default function AccountPage() {
       await refreshAgency(selectedAgency.id);
       setStatus(copy.statuses.memberAdded);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.addMemberError);
+      setStatus(localizedError(caught, locale, copy.statuses.addMemberError));
     } finally {
       setAgencyBusy(false);
     }
@@ -528,7 +529,7 @@ export default function AccountPage() {
       await refreshAgency(selectedAgency.id);
       setStatus(copy.statuses.roleUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.roleUpdateError);
+      setStatus(localizedError(caught, locale, copy.statuses.roleUpdateError));
     } finally {
       setAgencyBusy(false);
     }
@@ -546,7 +547,7 @@ export default function AccountPage() {
       await refreshAgency(selectedAgency.id);
       setStatus(copy.statuses.statusUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.statusUpdateError);
+      setStatus(localizedError(caught, locale, copy.statuses.statusUpdateError));
     } finally {
       setAgencyBusy(false);
     }
@@ -561,7 +562,7 @@ export default function AccountPage() {
       await refreshAgency(selectedAgency.id);
       setStatus(copy.statuses.memberRemoved);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.removeMemberError);
+      setStatus(localizedError(caught, locale, copy.statuses.removeMemberError));
     } finally {
       setAgencyBusy(false);
     }
@@ -576,7 +577,7 @@ export default function AccountPage() {
       setSelectedCrmClient(await api.getAgencyCrmClient(selectedAgency.id, clientId));
       setStatus(copy.statuses.crmClientSelected);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientLoadError);
+      setStatus(localizedError(caught, locale, copy.statuses.crmClientLoadError));
     } finally {
       setCrmBusy(false);
     }
@@ -620,7 +621,7 @@ export default function AccountPage() {
       await loadCrmForAgency(selectedAgency.id, created.id);
       setStatus(copy.statuses.crmClientCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientCreateError);
+      setStatus(localizedError(caught, locale, copy.statuses.crmClientCreateError));
     } finally {
       setCrmBusy(false);
     }
@@ -637,7 +638,7 @@ export default function AccountPage() {
       await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
       setStatus(copy.statuses.crmClientStatusUpdated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.crmClientUpdateError);
+      setStatus(localizedError(caught, locale, copy.statuses.crmClientUpdateError));
     } finally {
       setCrmBusy(false);
     }
@@ -661,7 +662,7 @@ export default function AccountPage() {
       await loadCrmForAgency(selectedAgency.id, selectedCrmClient.id);
       setStatus(copy.statuses.noteAdded);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.noteAddError);
+      setStatus(localizedError(caught, locale, copy.statuses.noteAddError));
     } finally {
       setCrmBusy(false);
     }
@@ -705,7 +706,7 @@ export default function AccountPage() {
       }
       setStatus(copy.statuses.shortlistCreated);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.shortlistCreateError);
+      setStatus(localizedError(caught, locale, copy.statuses.shortlistCreateError));
     } finally {
       setCrmBusy(false);
     }
@@ -739,7 +740,7 @@ export default function AccountPage() {
       }
       setStatus(nextShareEnabled ? copy.statuses.shareEnabled : copy.statuses.shareDisabled);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.shareUpdateError);
+      setStatus(localizedError(caught, locale, copy.statuses.shareUpdateError));
     } finally {
       setCrmBusy(false);
     }
@@ -759,7 +760,7 @@ export default function AccountPage() {
       );
       setStatus(copy.statuses.sharePreviewReady);
     } catch (caught) {
-      setStatus(caught instanceof Error ? caught.message : copy.statuses.sharePreviewError);
+      setStatus(localizedError(caught, locale, copy.statuses.sharePreviewError));
     } finally {
       setCrmBusy(false);
     }
@@ -856,7 +857,7 @@ export default function AccountPage() {
             <small>{buyerCopy.descriptions.checkApartment}</small>
           </span>
         </Link>
-        <Link className="account-action-card" href="/check/drafts">
+        <Link className="account-action-card" href="/saved">
           <FolderOpen size={18} />
           <span>
             <strong>{buyerCopy.actions.myApartments}</strong>

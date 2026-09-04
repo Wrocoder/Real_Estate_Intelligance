@@ -4,6 +4,7 @@ import { Eye, EyeOff, LogIn, UserPlus } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 
 import { ApiError, api } from "@/lib/api";
+import { localizedError } from "@/lib/errorMessages";
 import type { Locale } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -140,7 +141,7 @@ export function AuthForm({ onAuthenticated }: { onAuthenticated?: () => void | P
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) setError(copy.invalid);
       else if (caught instanceof ApiError && caught.status === 409) setError(copy.exists);
-      else setError(copy.generic);
+      else setError(localizedError(caught, locale, copy.generic));
     } finally {
       setBusy(false);
     }

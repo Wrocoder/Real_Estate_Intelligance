@@ -88,7 +88,7 @@ export function LineChart({ points, ariaLabel, valueFormatter }: LineChartProps)
         </text>
         {orderedPoints.length > 1 ? <path className="chart-line" d={path} /> : null}
         {coordinates.map((point) => (
-          <g key={`${point.label}-${point.value}`}>
+          <g key={`${point.label}-${point.value}-${point.helper ?? ""}`}>
             <circle className="chart-point" cx={point.x} cy={point.y} r="5" />
             <title>
               {point.label}: {valueFormatter(point.value)}
@@ -101,7 +101,7 @@ export function LineChart({ points, ariaLabel, valueFormatter }: LineChartProps)
           return (
             <text
               className="chart-axis-label chart-x-label"
-              key={`${point.label}-${index}`}
+            key={`${point.label}-${point.value}`}
               textAnchor={xAnchor(index, orderedPoints.length)}
               x={point.x}
               y={LINE_CHART_HEIGHT - 14}

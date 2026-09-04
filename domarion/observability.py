@@ -75,6 +75,7 @@ class StructuredRequestLoggingMiddleware(BaseHTTPMiddleware):
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         request_id = _request_id(request)
+        request.state.request_id = request_id
         started_at = time.perf_counter()
         status_code = 500
         error_type: str | None = None

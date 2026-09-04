@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Calculator, RefreshCw, Send } from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
@@ -11,6 +12,7 @@ import {
   type PartnerReferralType,
 } from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import type { Locale } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -138,6 +140,13 @@ const COPY = {
       rate: "Rate",
       payment: "Payment",
       overpayment: "Interest cost",
+      totalRepayment: "Total loan repayment",
+      totalOutlay: "Total cash over loan term",
+      marketTreatment: "Tax treatment",
+      marketPrimary: "Primary market: price is treated as VAT-inclusive; PCC is not added.",
+      marketSecondary: "Secondary market: PCC is estimated at 2% when selected; a first-home exemption may apply.",
+      legalFreshness: (date: string) => `Legal source checked ${date}`,
+      affordabilityWarning: "This is a budgeting estimate, not a bank decision or credit offer.",
       cashBreakdown: "Cash breakdown",
       totalCash: "Total cash",
       loan: "Loan",
@@ -220,6 +229,13 @@ const COPY = {
       rate: "Oprocentowanie",
       payment: "Rata",
       overpayment: "Koszt odsetek",
+      totalRepayment: "Łączna spłata kredytu",
+      totalOutlay: "Łączny wydatek w okresie kredytu",
+      marketTreatment: "Rozliczenie podatku",
+      marketPrimary: "Rynek pierwotny: cena jest traktowana jako zawierająca VAT; PCC nie jest doliczany.",
+      marketSecondary: "Rynek wtórny: PCC szacujemy na 2% po zaznaczeniu; może obowiązywać zwolnienie dla pierwszego mieszkania.",
+      legalFreshness: (date: string) => `Źródło prawne sprawdzone ${date}`,
+      affordabilityWarning: "To szacunek budżetowy, a nie decyzja banku ani oferta kredytowa.",
       cashBreakdown: "Struktura gotówki",
       totalCash: "Gotówka razem",
       loan: "Kredyt",
@@ -302,6 +318,13 @@ const COPY = {
       rate: "Ставка",
       payment: "Платеж",
       overpayment: "Стоимость процентов",
+      totalRepayment: "Всего выплат по кредиту",
+      totalOutlay: "Всего денежных расходов за срок кредита",
+      marketTreatment: "Налоговый режим",
+      marketPrimary: "Первичный рынок: цена считается с VAT; PCC не добавляется.",
+      marketSecondary: "Вторичный рынок: PCC оценивается в 2% при выборе; может применяться освобождение для первого жилья.",
+      legalFreshness: (date: string) => `Юридический источник проверен ${date}`,
+      affordabilityWarning: "Это оценка бюджета, а не решение банка и не кредитное предложение.",
       cashBreakdown: "Структура наличных расходов",
       totalCash: "Всего наличными",
       loan: "Кредит",
@@ -384,6 +407,13 @@ const COPY = {
       rate: "Ставка",
       payment: "Платіж",
       overpayment: "Вартість відсотків",
+      totalRepayment: "Загальна виплата за кредитом",
+      totalOutlay: "Загальні грошові витрати за строк кредиту",
+      marketTreatment: "Податковий режим",
+      marketPrimary: "Первинний ринок: ціна вважається з VAT; PCC не додається.",
+      marketSecondary: "Вторинний ринок: PCC оцінюється у 2% за вибором; може діяти звільнення для першого житла.",
+      legalFreshness: (date: string) => `Юридичне джерело перевірено ${date}`,
+      affordabilityWarning: "Це оцінка бюджету, а не рішення банку і не кредитна пропозиція.",
       cashBreakdown: "Структура готівкових витрат",
       totalCash: "Усього готівкою",
       loan: "Кредит",
@@ -407,8 +437,10 @@ const COPY = {
 
 export default function MortgagePage() {
   const { locale } = useLocalePreference();
+  const searchParams = useSearchParams();
   const copy = COPY[locale];
   const [form, setForm] = useState<MortgageFormState>(DEFAULT_FORM);
+  const [contextApplied, setContextApplied] = useState(false);
   const [referralForm, setReferralForm] =
     useState<ReferralFormState>(DEFAULT_REFERRAL_FORM);
   const [result, setResult] = useState<MortgageCalculationResult | null>(null);
@@ -448,15 +480,28 @@ export default function MortgagePage() {
       setResult(payload);
       setStatus(copy.calculated);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.calculateError);
+      setError(localizedError(caught, locale, copy.calculateError));
       setStatus(copy.calculateError);
     }
   }
 
   useEffect(() => {
-    void calculate();
+    const price = Number(searchParams.get("property_price_pln") || 0);
+    const market = searchParams.get("market_type");
+    if (price > 0 || market === "primary" || market === "secondary") {
+      setForm((current) => ({
+        ...current,
+        ...(price > 0 ? { property_price_pln: String(Math.round(price)) } : {}),
+        ...(market === "primary" || market === "secondary" ? { market_type: market } : {}),
+      }));
+    }
+    setContextApplied(true);
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (contextApplied) void calculate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [contextApplied]);
 
   function updateField<K extends keyof MortgageFormState>(key: K, value: MortgageFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -497,7 +542,7 @@ export default function MortgagePage() {
       setReferralResult(referral);
       setReferralStatus(copy.referralCreated(referral.id));
     } catch (caught) {
-      setReferralError(caught instanceof Error ? caught.message : copy.referralError);
+      setReferralError(localizedError(caught, locale, copy.referralError));
       setReferralStatus(copy.referralError);
     }
   }
@@ -516,7 +561,7 @@ export default function MortgagePage() {
 
       {error ? <ErrorBlock message={error} /> : null}
 
-      <section className="metric-grid">
+      <section className="metric-grid mortgage-summary-grid">
         <div className="metric">
           <span>{copy.metrics.cashNeeded}</span>
           <strong>{result ? money(result.costs.upfront_cash_needed_pln, locale) : "—"}</strong>
@@ -648,7 +693,7 @@ export default function MortgagePage() {
             </div>
 
             <label className="field" style={{ marginTop: 12 }}>
-              <span>PCC 2%</span>
+              <span>PCC 2% (secondary market)</span>
               <select
                 className="select"
                 value={form.include_pcc ? "yes" : "no"}
@@ -669,7 +714,7 @@ export default function MortgagePage() {
           <div className="panel-body">
             {result ? (
               <>
-                <ul className="section-list compact">
+                <ul className="section-list compact financial-summary">
                   <li>
                     <span>{copy.result.downPayment}</span>
                     <strong>{formatPlainPct(result.costs.down_payment_pct, locale)}</strong>
@@ -689,6 +734,16 @@ export default function MortgagePage() {
                     </strong>
                   </li>
                 </ul>
+                <div className="decision-callout" style={{ marginTop: 16 }}>
+                  <strong>{copy.result.marketTreatment}</strong>
+                  <p>
+                    {form.market_type === "primary" ? copy.result.marketPrimary : copy.result.marketSecondary}
+                  </p>
+                  <small>{copy.result.legalFreshness(result.legal_context.checked_at)}</small>{" "}
+                  <a href={result.legal_context.source_url} target="_blank" rel="noreferrer">
+                    {result.legal_context.source_name}
+                  </a>
+                </div>
                 <ul className="section-list" style={{ marginTop: 12 }}>
                   {result.notes.map((note) => (
                     <li key={note}>{note}</li>
@@ -696,6 +751,9 @@ export default function MortgagePage() {
                 </ul>
                 <p className="muted" style={{ marginBottom: 0 }}>
                   {result.disclaimer}
+                </p>
+                <p className="muted" style={{ marginBottom: 0, marginTop: 8 }}>
+                  {copy.result.affordabilityWarning}
                 </p>
               </>
             ) : (
@@ -719,6 +777,7 @@ export default function MortgagePage() {
                   <th>{copy.result.payment}</th>
                   <th>DTI</th>
                   <th>{copy.result.overpayment}</th>
+                  <th>{copy.result.totalRepayment}</th>
                 </tr>
               </thead>
               <tbody>
@@ -729,6 +788,7 @@ export default function MortgagePage() {
                     <td>{money(scenario.monthly_total_payment_pln, locale)}</td>
                     <td>{formatNullablePct(scenario.debt_to_income_pct, locale)}</td>
                     <td>{money(scenario.total_interest_pln, locale)}</td>
+                    <td>{money(scenario.total_repaid_pln, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -743,20 +803,33 @@ export default function MortgagePage() {
             <h2>{copy.result.cashBreakdown}</h2>
           </div>
           <div className="panel-body">
-            <div className="metric-grid">
+            <div className="metric-grid mortgage-cash-grid">
               <CostMetric label="PCC" locale={locale} value={result.costs.pcc_tax_pln} />
               <CostMetric label={copy.form.notary} locale={locale} value={result.costs.notary_fee_pln} />
               <CostMetric label={copy.form.court} locale={locale} value={result.costs.court_fees_pln} />
               <CostMetric label={copy.form.bankCommission} locale={locale} value={result.costs.bank_commission_pln} />
               <CostMetric label={copy.form.agentCommission} locale={locale} value={result.costs.agent_commission_pln} />
               <CostMetric label={copy.form.renovation} locale={locale} value={result.costs.renovation_budget_pln} />
-              <div className="metric">
+              <div className="metric financial-metric total">
                 <span>{copy.result.totalCash}</span>
                 <strong>{money(result.costs.upfront_cash_needed_pln, locale)}</strong>
               </div>
-              <div className="metric">
+              <div className="metric financial-metric">
                 <span>{copy.result.loan}</span>
                 <strong>{money(result.costs.loan_amount_pln, locale)}</strong>
+              </div>
+              <div className="metric financial-metric">
+                <span>{copy.result.totalRepayment}</span>
+                <strong>{money(result.base_scenario.total_repaid_pln, locale)}</strong>
+              </div>
+              <div className="metric financial-metric total">
+                <span>{copy.result.totalOutlay}</span>
+                <strong>
+                  {money(
+                    result.costs.upfront_cash_needed_pln + result.base_scenario.total_repaid_pln,
+                    locale,
+                  )}
+                </strong>
               </div>
             </div>
           </div>
@@ -882,7 +955,7 @@ function NumberField({
 
 function CostMetric({ label, locale, value }: { label: string; locale: Locale; value: number }) {
   return (
-    <div className="metric">
+    <div className="metric financial-metric">
       <span>{label}</span>
       <strong>{money(value, locale)}</strong>
     </div>

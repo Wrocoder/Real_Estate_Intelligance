@@ -152,7 +152,12 @@ def _negotiation_assistant_section(analysis: ListingAnalysis | None) -> ReportSe
                     f"{_money(negotiation.max_reasonable_offer_pln)}."
                 ),
                 f"Posture: {negotiation.posture}; score {negotiation.negotiation_score}/100.",
+                "Scenario: figures are indicative negotiation scenarios, not a guaranteed market truth.",
                 *[f"Аргумент: {item}" for item in negotiation.arguments[:6]],
+                *[
+                    f"Evidence for argument: {item.source_name} ({item.confidence_score}/100)."
+                    for item in negotiation.argument_evidence[:6]
+                ],
                 *[f"Сценарий: {item}" for item in negotiation.seller_script[:5]],
                 *[f"Guardrail: {item}" for item in negotiation.guardrails],
             ]

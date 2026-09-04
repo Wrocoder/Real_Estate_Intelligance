@@ -1,7 +1,10 @@
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, Response, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from domarion import __version__
 from domarion.api import router
@@ -39,6 +42,58 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         description="API foundation for WartoMetr real estate decision support.",
     )
     app.state.settings = settings
+
+    def error_payload(request: Request, detail: object, status_code: int) -> dict[str, object]:
+        if isinstance(detail, dict) and isinstance(detail.get("code"), str):
+            code = detail["code"]
+            params = {key: value for key, value in detail.items() if key != "code"}
+        else:
+            code = {
+                400: "bad_request",
+                401: "auth_required",
+                403: "forbidden",
+                404: "not_found",
+                409: "conflict",
+                413: "payload_too_large",
+                422: "validation_error",
+                429: "rate_limited",
+                500: "internal_error",
+                503: "service_unavailable",
+            }.get(status_code, "request_failed")
+            params = {}
+        correlation_id = getattr(request.state, "request_id", None) or request.headers.get(
+            "X-Request-ID"
+        )
+        if not correlation_id:
+            correlation_id = "unavailable"
+        return {
+            "detail": jsonable_encoder(detail),
+            "error": {"code": code, "params": params, "correlation_id": correlation_id},
+        }
+
+    @app.exception_handler(HTTPException)
+    async def http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
+        return JSONResponse(
+            status_code=exc.status_code,
+            headers=exc.headers,
+            content=error_payload(request, exc.detail, exc.status_code),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request, exc: RequestValidationError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            content=error_payload(request, exc.errors(), status.HTTP_422_UNPROCESSABLE_ENTITY),
+        )
+
+    @app.exception_handler(Exception)
+    async def unhandled_error_handler(request: Request, _exc: Exception) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=error_payload(request, "The service could not complete the request", 500),
+        )
 
     app.add_middleware(
         StructuredRequestLoggingMiddleware,

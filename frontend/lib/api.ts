@@ -1,3 +1,16 @@
+import {
+  authenticatedFetch,
+  currentApiBaseUrl,
+  request,
+} from "./apiClient";
+
+export { API_BASE_URL, ApiError } from "./apiClient";
+export type {
+  components as OpenApiComponents,
+  operations as OpenApiOperations,
+  paths as OpenApiPaths,
+} from "./generated-api";
+
 export type DataProvenance = {
   mode: "live" | "demo";
   source_type: string;
@@ -9,11 +22,20 @@ export type RuntimeContext = {
   demo_mode_enabled: boolean;
 };
 
+export type CoverageMetadata = {
+  supported_cities: string[];
+  supported_districts: string[];
+  source_name: string;
+  checked_at: string;
+  freshness_note: string;
+};
+
 export type Listing = {
   id: string;
   title: string;
   source_name: string;
   source_url: string;
+  media_status: "available" | "missing" | "unknown";
   data_provenance: DataProvenance;
   voivodeship: string | null;
   city: string;
@@ -1059,6 +1081,15 @@ export type PropertyScores = {
   price_delta_to_fair_mid_pct: number;
   reasons: string[];
   warnings: string[];
+  explainability: {
+    version: string;
+    coverage_score: number;
+    drivers: Array<{
+      code: string;
+      direction: "positive" | "negative" | "unknown";
+    }>;
+    missing_data_codes: string[];
+  };
 };
 
 export type BuyerVerdictStatus = "buy" | "negotiate" | "avoid" | "verify_first";
@@ -1105,6 +1136,14 @@ export type BuyerNegotiationAssistant = {
   negotiation_score: number;
   posture: string;
   arguments: string[];
+  argument_evidence: Array<{
+    argument: string;
+    topic: string;
+    source_name: string;
+    source_type: string;
+    confidence_score: number;
+    note: string | null;
+  }>;
   seller_script: string[];
   guardrails: string[];
 };
@@ -1534,6 +1573,8 @@ export type GeneratedReport = {
   content: string;
   report_metadata: Record<string, unknown>;
   created_at: string;
+  report_version: string | null;
+  data_as_of: string | null;
 };
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;
@@ -1941,6 +1982,11 @@ export type MortgageCalculationResult = {
   affordability: MortgageAffordability;
   notes: string[];
   disclaimer: string;
+  legal_context: {
+    checked_at: string;
+    source_name: string;
+    source_url: string;
+  };
 };
 
 export type PartnerReferralType =
@@ -3053,7 +3099,6 @@ export type MapQuery = {
   max_risk_score?: number;
 };
 
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://127.0.0.1:8000";
 const ADMIN_HEADERS = {
   "X-Domarion-User-Id": "demo-admin",
   "X-Domarion-Email": "admin@domarion.local",
@@ -3072,90 +3117,6 @@ function toQueryString<T extends object>(params: T) {
   );
   const query = searchParams.toString();
   return query ? `?${query}` : "";
-}
-
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const apiBaseUrl = currentApiBaseUrl();
-  let response: Response;
-  try {
-    response = await fetch(`${apiBaseUrl}${path}`, {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
-      cache: "no-store",
-      credentials: "include",
-    });
-  } catch (caught) {
-    const detail = caught instanceof Error ? caught.message : "network error";
-    throw new Error(
-      `Сервис временно недоступен: ${apiBaseUrl}. Проверь, что сервер запущен и ` +
-        `NEXT_PUBLIC_API_BASE_URL указывает на правильный порт. Детали: ${detail}`,
-    );
-  }
-
-  if (!response.ok) {
-    const body = await response.text();
-    let detail = body;
-    try {
-      const parsed = JSON.parse(body) as { detail?: string | object };
-      detail = typeof parsed.detail === "string" ? parsed.detail : JSON.stringify(parsed.detail);
-    } catch {
-      // Keep the plain response body when it is not JSON.
-    }
-    const isCredentialAttempt = path === "/api/v1/auth/login";
-    if (
-      typeof window !== "undefined" &&
-      !isCredentialAttempt &&
-      (response.status === 401 || response.status === 403)
-    ) {
-      const reason =
-        response.status === 401 && detail === "Sign in is required" ? "required" : "expired";
-      window.dispatchEvent(
-        new CustomEvent("domarion:auth-required", {
-          detail: { status: response.status, reason },
-        }),
-      );
-    }
-    throw new ApiError(response.status, detail || response.statusText);
-  }
-
-  if (response.status === 204) return undefined as T;
-  return response.json() as Promise<T>;
-}
-
-async function authenticatedFetch(path: string, init?: RequestInit): Promise<Response> {
-  const response = await fetch(`${currentApiBaseUrl()}${path}`, {
-    ...init,
-    cache: "no-store",
-    credentials: "include",
-  });
-  if (typeof window !== "undefined" && (response.status === 401 || response.status === 403)) {
-    window.dispatchEvent(
-      new CustomEvent("domarion:auth-required", {
-        detail: {
-          status: response.status,
-          reason: response.status === 401 ? "expired" : "forbidden",
-        },
-      }),
-    );
-  }
-  return response;
-}
-
-export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-function currentApiBaseUrl() {
-  return API_BASE_URL;
 }
 
 export const api = {
@@ -3177,6 +3138,9 @@ export const api = {
   listHiddenGems: (params: HiddenGemQuery = {}) =>
     request<HiddenGemsResponse>(`/api/v1/listings/hidden-gems${toQueryString(params)}`),
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
+  getAreaStatistics: (areaId: string) =>
+    request<AreaStatistics>(`/api/v1/areas/${encodeURIComponent(areaId)}/statistics`),
+  getCoverage: () => request<CoverageMetadata>("/api/v1/coverage"),
   compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
     request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),
   listNews: (params: { category?: NewsCategory; area_id?: string; limit?: number } = {}) =>
@@ -3360,6 +3324,8 @@ export const api = {
     request<IndustrialZoneReference[]>(
       `/api/v1/infrastructure/industrial-zones${toQueryString(params)}`,
     ),
+  listPlannedInvestments: (params: { city?: string; district?: string } = {}) =>
+    request<PlannedInvestment[]>(`/api/v1/planned-investments${toQueryString(params)}`),
   getMarketDashboard: (params: { city?: string; district?: string } = {}) =>
     request<MarketDashboard>(`/api/v1/market/dashboard${toQueryString(params)}`),
   getMarketIntelligenceReport: (params: {
@@ -4032,10 +3998,10 @@ export const api = {
     request<ReportOrder>(`/api/v1/report-orders/${orderId}/fulfill`, {
       method: "POST",
     }),
-  compareListings: (listingIds: string[]) =>
+  compareListings: (listingIds: string[], purchaseIntent: PurchaseIntent = "unsure") =>
     request<CompareResponse>("/api/v1/compare", {
       method: "POST",
-      body: JSON.stringify({ listing_ids: listingIds }),
+      body: JSON.stringify({ listing_ids: listingIds, purchase_intent: purchaseIntent }),
     }),
   buildRealtorClientShortlist: (payload: RealtorClientShortlistRequest) =>
     request<RealtorClientShortlist>("/api/v1/realtor/client-shortlists/preview", {

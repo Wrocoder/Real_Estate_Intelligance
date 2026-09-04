@@ -29,6 +29,13 @@ def test_scores_stay_in_expected_range() -> None:
     assert scores.fair_price_low < scores.fair_price_mid < scores.fair_price_high
     assert scores.formula_version == SCORING_FORMULA_VERSION
     assert scores.weights_profile == DEFAULT_SCORING_WEIGHTS_PROFILE
+    assert scores.explainability.version == "score-explanation-v1"
+    assert 0 <= scores.explainability.coverage_score <= 100
+    assert all(driver.code for driver in scores.explainability.drivers)
+    assert all(
+        driver.direction in {"positive", "negative", "unknown"}
+        for driver in scores.explainability.drivers
+    )
     assert scores.decision_label in {
         "strong_candidate",
         "good_option",

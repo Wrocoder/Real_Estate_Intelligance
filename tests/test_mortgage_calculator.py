@@ -30,6 +30,8 @@ def test_mortgage_calculator_builds_total_cost_and_affordability() -> None:
     assert result.base_scenario.monthly_total_payment_pln == 2_900
     assert result.affordability.status == "comfortable"
     assert result.affordability.base_debt_to_income_pct == 34
+    assert result.legal_context.checked_at == "2026-09-04"
+    assert "podatki.gov.pl" in result.legal_context.source_url
     assert (
         result.scenarios[1].monthly_total_payment_pln
         > result.base_scenario.monthly_total_payment_pln
@@ -92,3 +94,4 @@ def test_mortgage_calculator_api_returns_scenarios() -> None:
     ]
     assert payload["base_scenario"]["debt_to_income_pct"] is not None
     assert "oferta kredytowa" in payload["disclaimer"]
+    assert payload["legal_context"]["source_name"]

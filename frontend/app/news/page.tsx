@@ -12,6 +12,7 @@ import {
   type NewsCategory,
 } from "@/lib/api";
 import { dateValue } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { NEWS_PAGE_COPY } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -59,7 +60,7 @@ export default function NewsPage() {
       setSelectedId(nextSelectedId);
       setStatus(copy.statuses.loaded(payload.length));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownNewsError);
+      setError(localizedError(caught, locale, copy.statuses.unknownNewsError));
       setStatus(copy.statuses.backendUnavailable);
     } finally {
       setIsLoading(false);
@@ -80,9 +81,9 @@ export default function NewsPage() {
       setAiStatus(copy.statuses.aiReady);
     } catch (caught) {
       setSelectedArticle(null);
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownDetailError);
+      setError(localizedError(caught, locale, copy.statuses.unknownDetailError));
     }
-  }, [copy]);
+  }, [copy, locale]);
 
   async function generateSummary() {
     if (!selectedArticle) return;
@@ -95,7 +96,7 @@ export default function NewsPage() {
       setAiStatus(copy.statuses.aiSaved(payload.usage_log_id ?? payload.article_id));
     } catch (caught) {
       setAiSummary(null);
-      setAiError(caught instanceof Error ? caught.message : copy.statuses.unknownAiError);
+      setAiError(localizedError(caught, locale, copy.statuses.unknownAiError));
       setAiStatus(copy.statuses.aiUnavailable);
     } finally {
       setAiLoading(false);
@@ -297,8 +298,8 @@ export default function NewsPage() {
                       <ShieldCheck size={15} /> {copy.sections.sources}
                     </h3>
                     <div className="ai-citation-list">
-                      {aiSummary.citations.map((citation, index) => (
-                        <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                      {aiSummary.citations.map((citation) => (
+                        <div className="ai-citation" key={`${citation.source_id}-${citation.title}`}>
                           <strong>{citation.title}</strong>
                           <small>
                             {citation.source_type} · {citation.excerpt}
@@ -322,8 +323,8 @@ export default function NewsPage() {
                   <div>
                     <h3 className="ai-verdict-heading">{copy.sections.guardrails}</h3>
                     <div className="meta-row">
-                      {aiSummary.guardrails.map((guardrail, index) => (
-                        <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                      {aiSummary.guardrails.map((guardrail) => (
+                        <span className="status-pill" key={`${guardrail.code}-${guardrail.message}`}>
                           {guardrail.message}
                         </span>
                       ))}
@@ -358,8 +359,8 @@ function SummaryColumn({
         <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
+          {[...new Set(items)].map((item) => (
+            <li key={`${title}-${item}`}>{item}</li>
           ))}
         </ul>
       )}

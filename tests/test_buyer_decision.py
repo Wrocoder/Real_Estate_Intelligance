@@ -36,6 +36,8 @@ def test_buyer_decision_returns_actionable_verdicts(
     assert decision.verdict.recommended_offer_pln <= decision.verdict.max_reasonable_offer_pln
     assert decision.negotiation.opening_offer_pln <= decision.negotiation.max_reasonable_offer_pln
     assert decision.negotiation.seller_script
+    assert len(decision.negotiation.argument_evidence) == len(decision.negotiation.arguments)
+    assert all(item.source_name for item in decision.negotiation.argument_evidence)
     assert decision.verdict.critical_unknowns
 
 

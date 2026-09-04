@@ -3,6 +3,7 @@ import hashlib
 import io
 import json
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
 
@@ -117,6 +118,7 @@ from domarion.schemas import (
     AreaStatistics,
     AuthIdentity,
     CheckoutSession,
+    CoverageMetadata,
     CompareRequest,
     CompareResponse,
     CrmClient,
@@ -220,6 +222,7 @@ from domarion.schemas import (
     PropertyDeduplicationMatch,
     PropertyDeduplicationMatchUpdate,
     PropertyDeduplicationReviewStatus,
+    PurchaseIntent,
     RawListingSummary,
     RealtorClientShortlist,
     RealtorClientShortlistRequest,
@@ -645,6 +648,18 @@ def list_hidden_gems(
 @router.get("/areas", response_model=list[AreaStatistics])
 def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
     return repository.list_area_statistics()
+
+
+@router.get("/coverage", response_model=CoverageMetadata)
+def get_coverage(repository: RepositoryDep) -> CoverageMetadata:
+    areas = repository.list_area_statistics()
+    return CoverageMetadata(
+        supported_cities=sorted({area.city for area in areas}),
+        supported_districts=sorted({f"{area.city}: {area.name}" for area in areas}),
+        source_name="WartoMetr structured market dataset",
+        checked_at=datetime.now(UTC),
+        freshness_note="Coverage is refreshed when the market dataset is rebuilt; verify the date before relying on a local estimate.",
+    )
 
 
 @router.get("/areas/compare", response_model=AreaComparison)
@@ -1213,6 +1228,15 @@ def list_industrial_zones(
         city=city,
         limit=limit,
     )
+
+
+@router.get("/planned-investments", response_model=list[PlannedInvestment])
+def list_planned_investments(
+    repository: RepositoryDep,
+    city: Annotated[str | None, Query(description="City name, for example Wrocław")] = None,
+    district: Annotated[str | None, Query(description="District or estate name")] = None,
+) -> list[PlannedInvestment]:
+    return repository.list_planned_investments(city=city, district=district)
 
 
 @router.get("/plans", response_model=list[PlanLimits])
@@ -4269,7 +4293,12 @@ def compare_listings(
     repository: RepositoryDep,
     account: CurrentAccountDep,
 ) -> CompareResponse:
-    analyses = _build_compare_analyses(payload.listing_ids, repository, account)
+    analyses = _build_compare_analyses(
+        payload.listing_ids,
+        repository,
+        account,
+        purchase_intent=payload.purchase_intent,
+    )
 
     try:
         return build_listing_comparison(analyses)
@@ -5104,6 +5133,8 @@ def _build_compare_analyses(
     listing_ids: list[str],
     repository: RealEstateRepository,
     account: CurrentAccount,
+    *,
+    purchase_intent: PurchaseIntent = "unsure",
 ) -> list[ListingAnalysis]:
     if len(listing_ids) > account.limits.max_compare_items:
         raise HTTPException(
@@ -5123,7 +5154,13 @@ def _build_compare_analyses(
         if listing is None:
             missing_ids.append(listing_id)
             continue
-        analyses.append(build_listing_analysis(repository, listing))
+        analyses.append(
+            build_listing_analysis(
+                repository,
+                listing,
+                purchase_intent=purchase_intent,
+            )
+        )
 
     if missing_ids:
         raise HTTPException(status_code=404, detail={"missing_listing_ids": missing_ids})

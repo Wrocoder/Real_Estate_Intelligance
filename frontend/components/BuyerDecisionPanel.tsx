@@ -32,6 +32,7 @@ type BuyerDecisionCopy = {
     completeness: string;
   };
   sections: {
+    decisionDetails: string;
     reasons: string;
     risks: string;
     unknowns: string;
@@ -81,6 +82,9 @@ type BuyerDecisionCopy = {
     confidenceHigh: string;
     confidenceMedium: string;
     confidenceLow: string;
+    scenarioOnly: string;
+    evidence: string;
+    nextStep: string;
   };
   statuses: Record<BuyerVerdictStatus, string>;
   intents: Record<string, string>;
@@ -100,6 +104,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       completeness: "Data quality",
     },
     sections: {
+      decisionDetails: "Why this is the verdict",
       reasons: "Why it works",
       risks: "Main risks",
       unknowns: "Not verified",
@@ -149,6 +154,9 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       confidenceHigh: "High",
       confidenceMedium: "Medium",
       confidenceLow: "Low",
+      scenarioOnly: "Scenario only",
+      evidence: "Evidence",
+      nextStep: "Next step",
     },
     statuses: {
       buy: "WORTH CONSIDERING",
@@ -177,6 +185,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       completeness: "Pokrycie danych",
     },
     sections: {
+      decisionDetails: "Dlaczego taki werdykt",
       reasons: "Dlaczego warto",
       risks: "Główne ryzyka",
       unknowns: "Niezweryfikowane",
@@ -226,6 +235,9 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       confidenceHigh: "Wysoka",
       confidenceMedium: "Średnia",
       confidenceLow: "Niska",
+      scenarioOnly: "Tylko scenariusz",
+      evidence: "Dowód",
+      nextStep: "Kolejny krok",
     },
     statuses: {
       buy: "WARTO ROZWAŻYĆ",
@@ -254,6 +266,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       completeness: "Покрытие данных",
     },
     sections: {
+      decisionDetails: "Почему такой вывод",
       reasons: "Почему стоит смотреть",
       risks: "Главные риски",
       unknowns: "Не проверено",
@@ -303,6 +316,9 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       confidenceHigh: "Высокая",
       confidenceMedium: "Средняя",
       confidenceLow: "Низкая",
+      scenarioOnly: "Только сценарий",
+      evidence: "Основание",
+      nextStep: "Следующий шаг",
     },
     statuses: {
       buy: "ПОКУПАТЬ",
@@ -331,6 +347,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       completeness: "Покриття даних",
     },
     sections: {
+      decisionDetails: "Чому такий висновок",
       reasons: "Чому варто дивитися",
       risks: "Головні ризики",
       unknowns: "Не перевірено",
@@ -380,6 +397,9 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       confidenceHigh: "Висока",
       confidenceMedium: "Середня",
       confidenceLow: "Низька",
+      scenarioOnly: "Лише сценарій",
+      evidence: "Підстава",
+      nextStep: "Наступний крок",
     },
     statuses: {
       buy: "КУПУВАТИ",
@@ -480,6 +500,9 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
         <ClipboardCheck size={16} /> {copy.cta}
       </a>
 
+      <details className="buyer-decision-details">
+        <summary>{copy.sections.decisionDetails}</summary>
+        <div className="buyer-decision-details-body">
       <div className="buyer-decision-columns">
         <DecisionList
           icon={<CheckCircle2 size={16} />}
@@ -506,6 +529,7 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
           <h3>
             <Target size={16} /> {copy.sections.negotiation}
           </h3>
+          <p className="muted">{copy.labels.scenarioOnly}: {copy.labels.evidence}.</p>
           <dl className="buyer-decision-facts">
             <Fact label={copy.labels.openingOffer} value={money(negotiation.opening_offer_pln, locale)} />
             <Fact
@@ -523,10 +547,17 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
           </dl>
           <ul className="section-list compact">
             {negotiation.arguments.slice(0, 4).map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>
+                <strong>{item}</strong>
+                {negotiation.argument_evidence.find((evidence) => evidence.argument === item) ? (
+                  <small className="muted">
+                    {copy.labels.evidence}: {negotiation.argument_evidence.find((evidence) => evidence.argument === item)?.source_name}
+                  </small>
+                ) : null}
+              </li>
             ))}
             {negotiation.seller_script.slice(0, 3).map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}><strong>{copy.labels.nextStep}:</strong> {item}</li>
             ))}
           </ul>
         </section>
@@ -658,6 +689,8 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
       </section>
 
       <p className="muted buyer-decision-disclaimer">{decision.disclaimer}</p>
+        </div>
+      </details>
     </section>
   );
 }

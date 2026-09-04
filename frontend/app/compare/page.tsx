@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Brain, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { ListingProvenance } from "@/components/ListingProvenance";
 import {
   api,
   type AICompareAnswer,
@@ -17,7 +18,8 @@ import {
   type RealtorClientShortlist,
 } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
-import { COMPARE_PAGE_COPY, type ComparePageCopy } from "@/lib/i18n";
+import { localizedError } from "@/lib/errorMessages";
+import { COMPARE_PAGE_COPY, type ComparePageCopy, type Locale } from "@/lib/i18n";
 import { scoreLabel } from "@/lib/scoreLabels";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -130,7 +132,7 @@ export default function ComparePage() {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .slice(0, 4);
+      .slice(0, 5);
     const initialIntent = params.get("intent") as PurchaseIntent | null;
     if (["self", "family", "rental", "investment"].includes(initialIntent ?? "")) {
       setIntent(initialIntent as PurchaseIntent);
@@ -145,19 +147,17 @@ export default function ComparePage() {
           page_size: 100,
           sort: "investment_score_desc",
         });
-        const fallbackIds = search.items.slice(0, 2).map((item) => item.listing.id);
-        const nextIds = initialIds.length >= 2 ? initialIds : fallbackIds;
         setAvailable(search.items);
-        setSelectedIds(nextIds);
+        setSelectedIds(initialIds);
         setStatus({ key: "listingsLoaded" });
       } catch (caught) {
-        setError(caught instanceof Error ? caught.message : "unknown error");
+        setError(localizedError(caught, locale, copy.statuses.backendUnavailable));
         setStatus({ key: "backendUnavailable" });
       }
     }
 
     void loadInitial();
-  }, []);
+  }, [copy.statuses.backendUnavailable, locale]);
 
   useEffect(() => {
     if (selectedIds.length < 2) {
@@ -170,7 +170,7 @@ export default function ComparePage() {
       setError("");
       setStatus({ key: "comparing" });
       try {
-        const response = await api.compareListings(selectedIds);
+        const response = await api.compareListings(selectedIds, intent);
         if (cancelled) return;
         setComparison(response);
         setAiAnswer(null);
@@ -187,7 +187,7 @@ export default function ComparePage() {
         setAiStatus({ key: "aiUnavailable" });
         setShortlist(null);
         setShortlistStatus({ key: "shortlistUnavailable" });
-        setError(caught instanceof Error ? caught.message : "unknown error");
+        setError(localizedError(caught, locale, copy.statuses.compareUnavailable));
         setStatus({ key: "compareUnavailable" });
       }
     }
@@ -196,7 +196,7 @@ export default function ComparePage() {
     return () => {
       cancelled = true;
     };
-  }, [selectedIds]);
+  }, [copy.statuses.compareUnavailable, intent, locale, selectedIds]);
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
   const metricById = useMemo(
@@ -207,13 +207,17 @@ export default function ComparePage() {
   function toggleListing(listingId: string) {
     setSelectedIds((current) => {
       if (current.includes(listingId)) {
-        return current.filter((item) => item !== listingId);
+        const next = current.filter((item) => item !== listingId);
+        syncCompareUrl(next, intent);
+        return next;
       }
-      if (current.length >= 4) {
+      if (current.length >= 5) {
         setStatus({ key: "compareLimit" });
         return current;
       }
-      return [...current, listingId];
+      const next = [...current, listingId];
+      syncCompareUrl(next, intent);
+      return next;
     });
   }
 
@@ -237,7 +241,7 @@ export default function ComparePage() {
       );
     } catch (caught) {
       setAiAnswer(null);
-      setAiError(caught instanceof Error ? caught.message : "unknown error");
+      setAiError(localizedError(caught, locale, copy.statuses.aiUnavailable));
       setAiStatus({ key: "aiUnavailable" });
     } finally {
       setAiLoading(false);
@@ -261,7 +265,7 @@ export default function ComparePage() {
       setShortlistStatus({ key: "shortlistCount", count: response.items.length });
     } catch (caught) {
       setShortlist(null);
-      setShortlistError(caught instanceof Error ? caught.message : "unknown error");
+      setShortlistError(localizedError(caught, locale, copy.statuses.shortlistUnavailable));
       setShortlistStatus({ key: "shortlistUnavailable" });
     } finally {
       setShortlistLoading(false);
@@ -298,7 +302,7 @@ export default function ComparePage() {
         <div className="panel-body compare-selector">
           <label className="field" style={{ maxWidth: 280 }}>
             <span>{COMPARE_PRODUCT_COPY[locale].intentLabel}</span>
-            <select className="select" value={intent} onChange={(event) => setIntent(event.target.value as PurchaseIntent)}>
+            <select className="select" value={intent} onChange={(event) => { const nextIntent = event.target.value as PurchaseIntent; setIntent(nextIntent); syncCompareUrl(selectedIds, nextIntent); }}>
               <option value="self">{locale === "pl" ? "Do zamieszkania" : locale === "ru" ? "Для жизни" : locale === "uk" ? "Для життя" : "For living"}</option>
               <option value="family">{locale === "pl" ? "Dla rodziny" : locale === "ru" ? "Для семьи" : locale === "uk" ? "Для сім'ї" : "For family"}</option>
               <option value="rental">{locale === "pl" ? "Na wynajem" : locale === "ru" ? "Для аренды" : locale === "uk" ? "Для оренди" : "For rental"}</option>
@@ -458,16 +462,16 @@ export default function ComparePage() {
                         <ShieldCheck size={15} /> {copy.sections.sourcesAndLimits}
                       </h3>
                       <div className="ai-citation-list">
-                        {aiAnswer.citations.slice(0, 5).map((citation, index) => (
-                          <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                      {aiAnswer.citations.slice(0, 5).map((citation) => (
+                        <div className="ai-citation" key={`${citation.source_id}-${citation.title}`}>
                             <strong>{citation.title}</strong>
                             <small>{citation.excerpt}</small>
                           </div>
                         ))}
                       </div>
                       <div className="meta-row">
-                        {aiAnswer.guardrails.map((guardrail, index) => (
-                          <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                      {aiAnswer.guardrails.map((guardrail) => (
+                        <span className="status-pill" key={`${guardrail.code}-${guardrail.message}`}>
                             {guardrail.message}
                           </span>
                         ))}
@@ -643,7 +647,7 @@ export default function ComparePage() {
                 )}
               </span>
             </div>
-            <div className="table-scroll">
+            <div className="table-scroll compare-table-desktop">
               <table className="table compare-table">
                 <thead>
                   <tr>
@@ -666,6 +670,20 @@ export default function ComparePage() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="compare-mobile-cards">
+              {items.map((item, index) => (
+                <article className="compare-mobile-card" key={item.listing.id}>
+                  <h3><Link href={`/listings/${item.listing.id}`}>{item.listing.title}</Link></h3>
+                  <ListingProvenance listing={item.listing} locale={locale} />
+                  {comparisonRows(items, metricById, copy, locale).slice(0, 12).map((row) => (
+                    <div className="compare-mobile-row" key={`${item.listing.id}-${row.id}`}>
+                      <span>{row.label}</span>
+                      <strong>{row.values[index]}</strong>
+                    </div>
+                  ))}
+                </article>
+              ))}
             </div>
           </section>
         </>
@@ -690,8 +708,8 @@ function InsightColumn({
         <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
+          {[...new Set(items)].map((item) => (
+            <li key={`${title}-${item}`}>{item}</li>
           ))}
         </ul>
       )}
@@ -710,7 +728,7 @@ function RecommendationSummary({
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
   bestListingId: string;
-  locale: Parameters<typeof money>[1];
+  locale: Locale;
 }) {
   const item = items.find((analysis) => analysis.listing.id === bestListingId) ?? items[0];
   const metric = metrics.find((candidate) => candidate.listing_id === item?.listing.id);
@@ -725,6 +743,7 @@ function RecommendationSummary({
           {item.listing.district} · {money(item.listing.price, locale)} ·{" "}
           {metric.decision_score}/100
         </p>
+        <ListingProvenance listing={item.listing} locale={locale} />
       </div>
       <div className="compare-recommendation-grid">
         <div>
@@ -1200,4 +1219,12 @@ function rentDetail(
         locale,
       )}/${copy.values.monthly}`
     : "";
+}
+
+function syncCompareUrl(ids: string[], intent: PurchaseIntent) {
+  const params = new URLSearchParams(window.location.search);
+  if (ids.length) params.set("ids", ids.join(","));
+  else params.delete("ids");
+  params.set("intent", intent);
+  window.history.replaceState(null, "", `${window.location.pathname}?${params.toString()}`);
 }

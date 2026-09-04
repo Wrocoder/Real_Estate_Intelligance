@@ -16,6 +16,7 @@ import {
   type GeneratedReportListItem,
 } from "@/lib/api";
 import { dateValue } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { REPORTS_PAGE_COPY, type Locale, type ReportsPageCopy } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -44,9 +45,11 @@ const REPORTS_BUYER_COPY: Record<
       buyReport: string;
       empty: string;
     };
-    values: {
-      noInsight: string;
-      created: (date: string) => string;
+      values: {
+        noInsight: string;
+        created: (date: string) => string;
+        version: (value: string) => string;
+        dataAsOf: (date: string) => string;
     };
   }
 > = {
@@ -76,6 +79,8 @@ const REPORTS_BUYER_COPY: Record<
     values: {
       noInsight: "Summary will appear when available",
       created: (date) => `Created ${date}`,
+      version: (value) => `Report version ${value}`,
+      dataAsOf: (date) => `Data snapshot ${date}`,
     },
   },
   pl: {
@@ -104,6 +109,8 @@ const REPORTS_BUYER_COPY: Record<
     values: {
       noInsight: "Podsumowanie pojawi się, gdy będzie dostępne",
       created: (date) => `Utworzono ${date}`,
+      version: (value) => `Wersja raportu: ${value}`,
+      dataAsOf: (date) => `Dane na dzień: ${date}`,
     },
   },
   ru: {
@@ -132,6 +139,8 @@ const REPORTS_BUYER_COPY: Record<
     values: {
       noInsight: "Резюме появится, когда будет доступно",
       created: (date) => `Создан ${date}`,
+      version: (value) => `Версия отчета: ${value}`,
+      dataAsOf: (date) => `Снимок данных: ${date}`,
     },
   },
   uk: {
@@ -160,6 +169,8 @@ const REPORTS_BUYER_COPY: Record<
     values: {
       noInsight: "Резюме з'явиться, коли буде доступне",
       created: (date) => `Створено ${date}`,
+      version: (value) => `Версія звіту: ${value}`,
+      dataAsOf: (date) => `Знімок даних: ${date}`,
     },
   },
 };
@@ -203,13 +214,13 @@ export default function ReportsPage() {
         setAuthRequired(true);
         setStatus("");
       } else {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [copy]);
+  }, [copy, locale]);
 
   useEffect(() => {
     void load();
@@ -308,6 +319,8 @@ export default function ReportsPage() {
 
                     <div className="meta-row">
                       <span>{buyerCopy.values.created(dateValue(report.created_at, locale))}</span>
+                      {report.report_version ? <span>{buyerCopy.values.version(report.report_version)}</span> : null}
+                      {report.data_as_of ? <span>{buyerCopy.values.dataAsOf(dateValue(report.data_as_of, locale))}</span> : null}
                     </div>
 
                     <div className="button-row">

@@ -7,8 +7,11 @@ import { DistributionBarChart } from "@/components/Charts";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { api, type MarketDashboard, type MarketDistributionBucket } from "@/lib/api";
 import { money, numberValue, percent } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 export default function MarketDashboardPage() {
+  const { locale } = useLocalePreference();
   const [city, setCity] = useState("Wrocław");
   const [district, setDistrict] = useState("");
   const [dashboard, setDashboard] = useState<MarketDashboard | null>(null);
@@ -26,7 +29,7 @@ export default function MarketDashboardPage() {
       setDashboard(payload);
       setStatus("Gotowe");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Nie udało się pobrać danych rynku");
+      setError(localizedError(caught, locale));
       setStatus("Dane rynku są chwilowo niedostępne");
     }
   }

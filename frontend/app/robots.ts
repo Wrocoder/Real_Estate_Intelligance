@@ -14,7 +14,7 @@ export default function robots(): MetadataRoute.Robots {
         "/admin",
         "/alerts",
         "/beta",
-        "/check/drafts",
+        "/saved",
         "/compare",
         "/developers",
         "/market",

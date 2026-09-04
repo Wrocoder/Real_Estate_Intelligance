@@ -117,8 +117,8 @@ function TextList({
 
   return (
     <ul className="section-list compact">
-      {items.map((item, index) => (
-        <li key={`${index}-${item}`}>{item}</li>
+      {[...new Set(items)].map((item) => (
+        <li key={item}>{item}</li>
       ))}
     </ul>
   );
@@ -140,7 +140,7 @@ function ProjectList({
       {items.map((item) => {
         const risks = [...item.disruption_risks, ...item.supply_pressure_risks];
         return (
-          <li key={item.investment_id}>
+          <li key={item.investment_id ?? `${item.name}-${item.expected_year ?? "unknown"}-${item.distance_m}`}>
             <div className="meta-row">
               <strong>{item.name}</strong>
               <span className={`status-pill ${categoryTone(item.category)}`}>

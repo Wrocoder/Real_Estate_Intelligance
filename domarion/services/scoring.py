@@ -11,7 +11,9 @@ from domarion.schemas import (
     Listing,
     ListingAnalysis,
     PropertyScores,
+    PurchaseIntent,
     ScoreBreakdown,
+    ScoreExplainability,
 )
 from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.comparables import ComparableSelection, select_comparables
@@ -289,6 +291,33 @@ def calculate_scores(
         )
         fair_price_confidence_score = min(fair_price_confidence_score, 55)
 
+    driver_codes = []
+    if price_delta_pct <= -5:
+        driver_codes.append({"code": "price_below_area_median", "direction": "positive"})
+    elif price_delta_pct >= 5:
+        driver_codes.append({"code": "price_above_area_median", "direction": "negative"})
+    if area_statistics.price_change_90d_pct > 0:
+        driver_codes.append({"code": "area_price_trend_up", "direction": "positive"})
+    elif area_statistics.price_change_90d_pct < 0:
+        driver_codes.append({"code": "area_price_trend_down", "direction": "negative"})
+    if nearest_stop_m <= 400:
+        driver_codes.append({"code": "transport_access", "direction": "positive"})
+    if liquidity >= 65:
+        driver_codes.append({"code": "local_liquidity", "direction": "positive"})
+    if listing.days_on_market > area_statistics.average_days_on_market * 1.5:
+        driver_codes.append({"code": "long_market_exposure", "direction": "negative"})
+    if listing.price_reductions > 0:
+        driver_codes.append({"code": "price_reduction_history", "direction": "positive"})
+    if missing_inputs:
+        driver_codes.append({"code": "missing_infrastructure_data", "direction": "unknown"})
+    if not comparables:
+        driver_codes.append({"code": "comparable_sample_insufficient", "direction": "unknown"})
+    explainability = ScoreExplainability(
+        coverage_score=max(0, min(100, listing.data_quality_score - len(missing_inputs) * 5)),
+        drivers=driver_codes,
+        missing_data_codes=sorted(missing_inputs),
+    )
+
     return PropertyScores(
         formula_version=SCORING_FORMULA_VERSION,
         weights_profile=scoring_weights_profile(weights),
@@ -326,11 +355,16 @@ def calculate_scores(
         ),
         reasons=reasons,
         warnings=warnings,
+        explainability=explainability,
     )
 
 
 def build_listing_analysis(
-    repository, listing: Listing, *, use_relevant_comparables: bool = True
+    repository,
+    listing: Listing,
+    *,
+    use_relevant_comparables: bool = True,
+    purchase_intent: PurchaseIntent = "unsure",
 ) -> ListingAnalysis:
     area_statistics = repository.get_area_statistics(listing.area_id)
     if area_statistics is None:
@@ -469,6 +503,7 @@ def build_listing_analysis(
         future_area_impact=future_area_impact,
         risk_profile=risk_profile,
         rental_estimate=rental_estimate,
+        purchase_intent=purchase_intent,
     )
 
     return ListingAnalysis(

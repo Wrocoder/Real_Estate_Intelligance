@@ -13,6 +13,7 @@ import {
 import { money, numberValue, percent } from "@/lib/format";
 import { getSeoArea, siteUrl, type SeoArea } from "@/lib/seoAreas";
 import { getSeoGuide, SEO_GUIDES } from "@/lib/seoGuides";
+import { GuideEditorialMeta } from "@/components/GuideEditorialMeta";
 
 type PageProps = {
   params: Promise<{ guideId: string }>;
@@ -89,6 +90,8 @@ export default async function GuidePage({ params }: PageProps) {
         </div>
       </header>
 
+      <GuideEditorialMeta />
+
       <section className="metric-grid">
         <div className="metric">
           <span>Kategoria</span>
@@ -139,7 +142,7 @@ export default async function GuidePage({ params }: PageProps) {
           <div className="panel-body">
             <div className="guide-link-grid">
               {guide.internalLinks.map((link) => (
-                <Link className="button" href={link.href} key={link.href}>
+                <Link className="button" href={link.href} key={`${link.href}-${link.label}`}>
                   {link.label}
                 </Link>
               ))}

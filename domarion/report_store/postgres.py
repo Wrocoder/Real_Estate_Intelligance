@@ -89,6 +89,8 @@ class PostgresReportStore:
 
     @staticmethod
     def _row_to_list_item(row: GeneratedReportModel) -> GeneratedReportListItem:
+        metadata = row.report_metadata or {}
+        report_version = metadata.get("report_template_code") or metadata.get("scoring_formula_version")
         return GeneratedReportListItem(
             id=row.id,
             owner_id=row.owner_id,
@@ -99,4 +101,6 @@ class PostgresReportStore:
             title=row.title,
             summary=row.summary,
             created_at=row.created_at,
+            report_version=str(report_version) if report_version is not None else None,
+            data_as_of=row.created_at,
         )

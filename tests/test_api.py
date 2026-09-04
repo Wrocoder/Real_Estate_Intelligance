@@ -12,6 +12,35 @@ def test_health() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_coverage_exposes_supported_locations_and_freshness() -> None:
+    response = client.get("/api/v1/coverage")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert "Wrocław" in payload["supported_cities"]
+    assert "Wrocław: Fabryczna" in payload["supported_districts"]
+    assert payload["source_name"]
+    assert payload["checked_at"]
+    assert payload["freshness_note"]
+
+
+def test_errors_have_stable_code_params_and_correlation_id() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={"radius_km": 2},
+        headers={"X-Request-ID": "ux-error-test"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "radius_km requires lat and lon"
+    assert response.json()["error"] == {
+        "code": "bad_request",
+        "params": {},
+        "correlation_id": "ux-error-test",
+    }
+    assert response.headers["X-Request-ID"] == "ux-error-test"
+
+
 def test_listings() -> None:
     response = client.get("/api/v1/listings")
     payload = response.json()
@@ -24,6 +53,7 @@ def test_listings() -> None:
     assert "investment_score" in payload["items"][0]["scores"]
     assert "decision_label" in payload["items"][0]["scores"]
     assert "price_label" in payload["items"][0]["scores"]
+    assert payload["items"][0]["listing"]["media_status"] == "unknown"
 
 
 def test_suburban_partner_sample_is_loaded_as_repository_data() -> None:
@@ -441,6 +471,29 @@ def test_areas() -> None:
 
     assert response.status_code == 200
     assert len(response.json()) >= 3
+    assert response.json()[0]["data_provenance"]["source_type"]
+
+
+def test_public_area_evidence_endpoints_preserve_scope_and_unknowns() -> None:
+    infrastructure = client.get(
+        "/api/v1/infrastructure/transport-stops",
+        params={"district_id": "wroclaw-fabryczna"},
+    )
+    planned = client.get(
+        "/api/v1/planned-investments",
+        params={"city": "Wrocław", "district": "Fabryczna"},
+    )
+    empty = client.get(
+        "/api/v1/planned-investments",
+        params={"city": "Wrocław", "district": "Unsupported district"},
+    )
+
+    assert infrastructure.status_code == 200
+    assert all(item["district_id"] == "wroclaw-fabryczna" for item in infrastructure.json())
+    assert planned.status_code == 200
+    assert planned.json()[0]["source_url"]
+    assert empty.status_code == 200
+    assert empty.json() == []
 
 
 def test_developer_ranking_returns_source_backed_scores() -> None:
@@ -793,11 +846,17 @@ def test_compare_requires_existing_ids() -> None:
 
 
 def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
-    response = client.post("/api/v1/compare", json={"listing_ids": ["wr-001", "wr-002"]})
+    response = client.post(
+        "/api/v1/compare",
+        json={"listing_ids": ["wr-001", "wr-002"], "purchase_intent": "investment"},
+    )
     payload = response.json()
 
     assert response.status_code == 200
     assert [item["listing"]["id"] for item in payload["items"]] == ["wr-001", "wr-002"]
+    assert {item["buyer_decision"]["selected_intent"] for item in payload["items"]} == {
+        "investment"
+    }
     assert [item["developer_reputation"]["developer"]["id"] for item in payload["items"]] == [
         "fabryczna-estate-partners",
         "demo-development",

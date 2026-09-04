@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
+import { CoverageNotice } from "@/components/CoverageNotice";
+import { safeHttpsUrl } from "@/components/ListingProvenance";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
 import { ErrorBlock } from "@/components/StateBlocks";
@@ -42,6 +44,7 @@ import {
   type UserSubmittedListingRequest,
 } from "@/lib/api";
 import { dateValue, money, numberValue } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { CHECK_PAGE_COPY, type CheckPageCopy, type Locale } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 import { useLocalePreference } from "@/lib/useLocalePreference";
@@ -263,13 +266,13 @@ export default function CheckListingPage() {
         const payload = await api.listAIQuestions();
         setAIQuestions(payload);
       } catch (caught) {
-        setAiError(caught instanceof Error ? caught.message : copy.statuses.aiQuestionsUnavailable);
+        setAiError(localizedError(caught, locale, copy.statuses.aiQuestionsUnavailable));
         setAiStatus(copy.statuses.aiQuestionsUnavailable);
       }
     }
 
     void loadAIQuestions();
-  }, [copy.statuses.aiQuestionsUnavailable]);
+  }, [copy.statuses.aiQuestionsUnavailable, locale]);
 
   useEffect(() => {
     const draftId = new URLSearchParams(window.location.search).get("draft");
@@ -298,7 +301,7 @@ export default function CheckListingPage() {
         setSaveStatus(copy.statuses.saved);
       } catch (caught) {
         if (cancelled) return;
-        setError(caught instanceof Error ? caught.message : "unknown error");
+        setError(localizedError(caught, locale, copy.statuses.checkError));
         setStatus(copy.statuses.checkError);
       }
     }
@@ -307,7 +310,7 @@ export default function CheckListingPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy, resetAIAnswer]);
+  }, [copy, locale, resetAIAnswer]);
 
   const availableAIQuestions = useMemo(
     () => questionsForAudience(aiQuestions, aiAudience, copy),
@@ -341,7 +344,7 @@ export default function CheckListingPage() {
       setReportStatus(copy.statuses.reportNotCreated);
       setSaveStatus(copy.statuses.notSaved);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.checkError));
       setStatus(copy.statuses.checkError);
     }
   }
@@ -384,7 +387,7 @@ export default function CheckListingPage() {
         setStatus(copy.statuses.fieldsUpdated);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.importError));
       setUrlImportStatus(copy.statuses.importError);
     }
   }
@@ -416,7 +419,7 @@ export default function CheckListingPage() {
       setReportStatus(copy.statuses.reportReady);
       setSaveStatus(copy.statuses.notSaved);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.reportError));
       setReportStatus(copy.statuses.reportError);
     }
   }
@@ -433,7 +436,7 @@ export default function CheckListingPage() {
       setSavedReport(payload);
       setSaveStatus(copy.statuses.saved);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.saveError));
       setSaveStatus(copy.statuses.saveError);
     }
   }
@@ -446,7 +449,7 @@ export default function CheckListingPage() {
       await api.createUserSubmittedDraftObjectWatch(result.draft_id, {});
       setSaveStatus(product.track);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.saveError));
       setSaveStatus(copy.statuses.saveError);
     }
   }
@@ -474,7 +477,7 @@ export default function CheckListingPage() {
       );
     } catch (caught) {
       setAiAnswer(null);
-      setAiError(caught instanceof Error ? caught.message : "unknown error");
+      setAiError(localizedError(caught, locale, copy.statuses.aiQuestionsUnavailable));
       setAiStatus(copy.statuses.aiUnavailable);
     } finally {
       setAiLoading(false);
@@ -565,6 +568,8 @@ export default function CheckListingPage() {
         </div>
       </section>
 
+      <CoverageNotice />
+
       {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
 
       {displayedDecision ? (
@@ -586,7 +591,13 @@ export default function CheckListingPage() {
         <section className="trust-strip">
           <div>
             <span>{product.source}</span>
-            <strong>{referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual}</strong>
+            <strong>
+              {safeHttpsUrl(form.source_url) ? (
+                <a href={safeHttpsUrl(form.source_url) ?? undefined} target="_blank" rel="noreferrer">
+                  {referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual}
+                </a>
+              ) : referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual}
+            </strong>
           </div>
           <div>
             <span>{product.observations}</span>
@@ -599,6 +610,14 @@ export default function CheckListingPage() {
           <div>
             <span>{product.confidence}</span>
             <strong>{result ? confidenceLabel(result.confidence_score, locale) : copy.values.dash}</strong>
+          </div>
+          <div>
+            <span>{locale === "pl" ? "Zdjęcia" : locale === "ru" ? "Фото" : locale === "uk" ? "Фото" : "Photos"}</span>
+            <strong>{locale === "pl" ? "Brak danych ze źródła" : locale === "ru" ? "Источник не сообщил статус" : locale === "uk" ? "Джерело не повідомило статус" : "Source status not supplied"}</strong>
+          </div>
+          <div>
+            <span>{locale === "pl" ? "Ograniczenia" : locale === "ru" ? "Ограничения" : locale === "uk" ? "Обмеження" : "Limitations"}</span>
+            <strong>{urlImportResult?.status === "partial" ? (locale === "pl" ? "Część pól wymaga potwierdzenia" : locale === "ru" ? "Часть полей требует проверки" : locale === "uk" ? "Частина полів потребує перевірки" : "Some fields need confirmation") : urlImportResult?.status === "unsupported" ? (locale === "pl" ? "Źródło nieobsługiwane" : locale === "ru" ? "Источник не поддерживается" : locale === "uk" ? "Джерело не підтримується" : "Source not supported") : (locale === "pl" ? "Status zdjęć nieznany" : locale === "ru" ? "Статус фото неизвестен" : locale === "uk" ? "Статус фото невідомий" : "Photo status is unknown")}</strong>
           </div>
         </section>
       ) : null}
@@ -1003,8 +1022,8 @@ export default function CheckListingPage() {
                       <ShieldCheck size={15} /> {copy.assistantColumn.sources}
                     </h3>
                     <div className="ai-citation-list">
-                      {aiAnswer.citations.slice(0, 5).map((citation, index) => (
-                        <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                      {aiAnswer.citations.slice(0, 5).map((citation) => (
+                        <div className="ai-citation" key={`${citation.source_id}-${citation.title}`}>
                           <strong>{citation.title}</strong>
                           <small>{citation.excerpt}</small>
                         </div>
@@ -1014,8 +1033,8 @@ export default function CheckListingPage() {
                   <div>
                     <h3 className="ai-verdict-heading">{copy.assistantColumn.guardrails}</h3>
                     <div className="meta-row">
-                      {aiAnswer.guardrails.map((guardrail, index) => (
-                        <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                      {aiAnswer.guardrails.map((guardrail) => (
+                        <span className="status-pill" key={`${guardrail.code}-${guardrail.message}`}>
                           {guardrail.message}
                         </span>
                       ))}
@@ -1167,8 +1186,8 @@ function AssistantColumn({
         <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
+          {[...new Set(items)].map((item) => (
+            <li key={`${title}-${item}`}>{item}</li>
           ))}
         </ul>
       )}

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { BarChart3, FileText, Heart, MapPin } from "lucide-react";
 
+import { ListingProvenance } from "@/components/ListingProvenance";
+
 import type { ListingAnalysis } from "@/lib/api";
 import { money } from "@/lib/format";
 import { DEFAULT_LOCALE, LISTING_CARD_COPY, type Locale } from "@/lib/i18n";
@@ -57,6 +59,7 @@ export function ListingCard({
         <div className="muted">
           <MapPin size={14} /> {listing.address}, {listing.district}
         </div>
+        <ListingProvenance listing={listing} locale={locale} />
         <div className="meta-row">
           <span>{money(listing.price, locale)}</span>
           <span>

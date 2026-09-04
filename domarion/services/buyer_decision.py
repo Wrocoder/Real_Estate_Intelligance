@@ -5,6 +5,7 @@ from domarion.schemas import (
     BuyerIntentFit,
     BuyerKnowledgeMatrix,
     BuyerNegotiationAssistant,
+    BuyerNegotiationEvidence,
     BuyerSourceEvidence,
     DeveloperReputation,
     DueDiligenceChecklistItem,
@@ -474,12 +475,70 @@ def _negotiation_assistant(
         negotiation_score=scores.negotiation_score,
         posture=_negotiation_posture(scores),
         arguments=_deduplicate(arguments)[:8],
+        argument_evidence=[
+            _negotiation_argument_evidence(argument, listing, scores, area_statistics, comparables)
+            for argument in _deduplicate(arguments)[:8]
+        ],
         seller_script=_seller_script(listing, scores, verdict),
         guardrails=[
-            "Do not exceed the ceiling before document and building checks are complete.",
-            "Use the fair range as negotiation support, not as a guaranteed valuation.",
-            "If seller rejects the range, compare with alternatives before raising the offer.",
+            "Scenario only: do not exceed the ceiling before document and building checks are complete.",
+            "Scenario only: use the fair range as negotiation support, not as a guaranteed valuation.",
+            "Next step: if the seller rejects the range, compare with alternatives before raising the offer.",
         ],
+    )
+
+
+def _negotiation_argument_evidence(
+    argument: str,
+    listing: Listing,
+    scores: PropertyScores,
+    area_statistics: AreaStatistics,
+    comparables: list[Listing],
+) -> BuyerNegotiationEvidence:
+    lowered = argument.lower()
+    if "comparable" in lowered:
+        return BuyerNegotiationEvidence(
+            argument=argument,
+            topic="comparables",
+            source_name=f"Comparable listing sample ({min(len(comparables), 5)} listings)",
+            source_type="derived_comparable_sample",
+            confidence_score=scores.fair_price_confidence_score,
+            note="Use as a range signal, not as a guaranteed transaction price.",
+        )
+    if "supply" in lowered:
+        return BuyerNegotiationEvidence(
+            argument=argument,
+            topic="area_supply",
+            source_name="Area market snapshot",
+            source_type="area_market_snapshot",
+            confidence_score=70,
+            note="Area-level context; it does not prove this seller will accept a discount.",
+        )
+    if "relisted" in lowered:
+        return BuyerNegotiationEvidence(
+            argument=argument,
+            topic="listing_history",
+            source_name="Listing history",
+            source_type="listing_snapshot",
+            confidence_score=100,
+            note="Verify the original exposure and price anchors before using it.",
+        )
+    if "fair" in lowered:
+        return BuyerNegotiationEvidence(
+            argument=argument,
+            topic="fair_price",
+            source_name="WartoMetr fair-price estimate",
+            source_type="derived_estimate",
+            confidence_score=scores.fair_price_confidence_score,
+            note="Model estimate based on available market evidence.",
+        )
+    return BuyerNegotiationEvidence(
+        argument=argument,
+        topic="listing_facts",
+        source_name="Listing and scoring record",
+        source_type="listing_snapshot",
+        confidence_score=listing.data_quality_score,
+        note="Confirm the underlying fact during viewing or due diligence.",
     )
 
 

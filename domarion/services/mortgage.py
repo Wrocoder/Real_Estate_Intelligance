@@ -3,6 +3,7 @@ from domarion.schemas import (
     MortgageCalculationRequest,
     MortgageCalculationResult,
     MortgageCostBreakdown,
+    MortgageLegalContext,
     MortgageScenario,
 )
 
@@ -10,6 +11,9 @@ MORTGAGE_DISCLAIMER = (
     "Szacunek techniczny do wstępnego budżetowania. To nie jest oferta kredytowa, "
     "rekomendacja finansowa ani decyzja banku."
 )
+MORTGAGE_LEGAL_CHECKED_AT = "2026-09-04"
+MORTGAGE_LEGAL_SOURCE_NAME = "podatki.gov.pl: stawki i zwolnienia PCC"
+MORTGAGE_LEGAL_SOURCE_URL = "https://www.podatki.gov.pl/podatki-osobiste/pcc/stawki-i-limity/"
 
 
 def calculate_mortgage(payload: MortgageCalculationRequest) -> MortgageCalculationResult:
@@ -72,6 +76,11 @@ def calculate_mortgage(payload: MortgageCalculationRequest) -> MortgageCalculati
         affordability=affordability,
         notes=_build_notes(payload, costs, affordability),
         disclaimer=MORTGAGE_DISCLAIMER,
+        legal_context=MortgageLegalContext(
+            checked_at=MORTGAGE_LEGAL_CHECKED_AT,
+            source_name=MORTGAGE_LEGAL_SOURCE_NAME,
+            source_url=MORTGAGE_LEGAL_SOURCE_URL,
+        ),
     )
 
 

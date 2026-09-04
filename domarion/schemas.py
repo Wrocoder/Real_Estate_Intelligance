@@ -339,6 +339,14 @@ class DataProvenance(BaseModel):
     notice_code: str | None = None
 
 
+class CoverageMetadata(BaseModel):
+    supported_cities: list[str] = Field(default_factory=list)
+    supported_districts: list[str] = Field(default_factory=list)
+    source_name: str
+    checked_at: datetime
+    freshness_note: str
+
+
 class RuntimeContext(BaseModel):
     data_mode: DataMode
     demo_mode_enabled: bool
@@ -363,6 +371,7 @@ class Listing(BaseModel):
     title: str
     source_name: str
     source_url: str
+    media_status: Literal["available", "missing", "unknown"] = "unknown"
     data_provenance: DataProvenance = Field(
         default_factory=lambda: DataProvenance(source_type="listing_source")
     )
@@ -1408,6 +1417,18 @@ class ScoreBreakdown(BaseModel):
     risk_penalty: int
 
 
+class ScoreDriver(BaseModel):
+    code: str
+    direction: Literal["positive", "negative", "unknown"]
+
+
+class ScoreExplainability(BaseModel):
+    version: str = "score-explanation-v1"
+    coverage_score: int = Field(default=0, ge=0, le=100)
+    drivers: list[ScoreDriver] = Field(default_factory=list)
+    missing_data_codes: list[str] = Field(default_factory=list)
+
+
 class PropertyScores(BaseModel):
     formula_version: str
     weights_profile: str
@@ -1430,6 +1451,7 @@ class PropertyScores(BaseModel):
     breakdown: ScoreBreakdown
     reasons: list[str]
     warnings: list[str]
+    explainability: ScoreExplainability = Field(default_factory=ScoreExplainability)
 
     @model_validator(mode="before")
     @classmethod
@@ -1495,8 +1517,18 @@ class BuyerNegotiationAssistant(BaseModel):
     negotiation_score: int = Field(ge=0, le=100)
     posture: str
     arguments: list[str] = Field(default_factory=list)
+    argument_evidence: list["BuyerNegotiationEvidence"] = Field(default_factory=list)
     seller_script: list[str] = Field(default_factory=list)
     guardrails: list[str] = Field(default_factory=list)
+
+
+class BuyerNegotiationEvidence(BaseModel):
+    argument: str
+    topic: str
+    source_name: str
+    source_type: str
+    confidence_score: int = Field(ge=0, le=100)
+    note: str | None = None
 
 
 class DueDiligenceChecklistItem(BaseModel):
@@ -2179,6 +2211,7 @@ class HiddenGemsResponse(BaseModel):
 
 class CompareRequest(BaseModel):
     listing_ids: list[str] = Field(min_length=2, max_length=5)
+    purchase_intent: PurchaseIntent = "unsure"
 
 
 class CompareMortgageAssumptions(BaseModel):
@@ -2526,6 +2559,12 @@ class MortgageAffordability(BaseModel):
     monthly_buffer_after_payment_pln: int | None = None
 
 
+class MortgageLegalContext(BaseModel):
+    checked_at: str
+    source_name: str
+    source_url: str
+
+
 class MortgageCalculationResult(BaseModel):
     costs: MortgageCostBreakdown
     base_scenario: MortgageScenario
@@ -2533,6 +2572,7 @@ class MortgageCalculationResult(BaseModel):
     affordability: MortgageAffordability
     notes: list[str]
     disclaimer: str
+    legal_context: MortgageLegalContext
 
 
 class PartnerReferralCreate(BaseModel):
@@ -2952,6 +2992,8 @@ class GeneratedReportListItem(BaseModel):
     title: str
     summary: str
     created_at: datetime
+    report_version: str | None = None
+    data_as_of: datetime | None = None
 
 
 class GeneratedReport(GeneratedReportListItem):

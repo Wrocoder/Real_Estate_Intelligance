@@ -21,6 +21,19 @@ export type SeoGuide = {
   internalLinks: SeoGuideLink[];
 };
 
+export const GUIDE_EDITORIAL_META = {
+  author: "Zespół redakcyjny WartoMetr",
+  reviewer: "Zespół kontroli treści WartoMetr",
+  updatedAt: "2026-09-04",
+  sources: [
+    { label: "GUS", href: "https://stat.gov.pl/" },
+    { label: "NBP", href: "https://nbp.pl/publikacje/" },
+    { label: "gov.pl", href: "https://www.gov.pl/web/rozwoj-technologia" },
+  ],
+  disclaimer:
+    "Materiał ma charakter informacyjny. Nie zastępuje indywidualnej analizy mieszkania, porady prawnej, finansowej ani decyzji kredytowej.",
+} as const;
+
 export const SEO_GUIDES: SeoGuide[] = [
   {
     slug: "wroclaw-price-per-m2",
@@ -168,7 +181,7 @@ export const SEO_GUIDES: SeoGuide[] = [
     internalLinks: [
       { href: "/areas/compare", label: "Porównaj dzielnice" },
       { href: "/compare", label: "Porównaj konkretne mieszkania" },
-      { href: "/check/drafts", label: "Moje mieszkania" },
+      { href: "/saved", label: "Moje mieszkania" },
       { href: "/guides/best-districts-wroclaw", label: "Najlepsze dzielnice" },
     ],
     sections: [
@@ -427,7 +440,7 @@ export const SEO_GUIDES: SeoGuide[] = [
       { href: "/mortgage", label: "Kalkulator kredytu" },
       { href: "/guides/mortgage-calculator-poland", label: "Kredyt hipoteczny" },
       { href: "/check", label: "Sprawdź mieszkanie" },
-      { href: "/check/drafts", label: "Moje mieszkania" },
+      { href: "/saved", label: "Moje mieszkania" },
     ],
     sections: [
       {

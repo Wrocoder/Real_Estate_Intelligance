@@ -4,6 +4,7 @@ import { ArrowRight, BookOpen, ClipboardCheck, MapPinned } from "lucide-react";
 
 import { SEO_GUIDES } from "@/lib/seoGuides";
 import { siteUrl } from "@/lib/seoAreas";
+import { GuideEditorialMeta } from "@/components/GuideEditorialMeta";
 
 export const metadata: Metadata = {
   title: "Przewodniki po zakupie mieszkania w Polsce | WartoMetr",
@@ -35,6 +36,8 @@ export default function GuidesPage() {
         </div>
       </header>
 
+      <GuideEditorialMeta />
+
       <section className="seo-guide-grid">
         {SEO_GUIDES.map((guide) => (
           <article className="seo-guide-card" key={guide.slug}>
@@ -42,6 +45,7 @@ export default function GuidesPage() {
               <span className="status-pill info">{guide.category}</span>
               <h2>{guide.title}</h2>
               <p>{guide.description}</p>
+              <GuideEditorialMeta compact />
             </div>
             <ul className="section-list compact">
               {guide.keyTakeaways.slice(0, 2).map((item) => (

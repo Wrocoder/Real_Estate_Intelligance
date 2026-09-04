@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowLeft, BarChart3, Brain, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { localizedError } from "@/lib/errorMessages";
 import {
   api,
   type AreaComparison,
@@ -60,7 +61,7 @@ export default function AreaComparisonPage() {
       setAiStatus(copy.statuses.aiReady);
       setStatus(copy.statuses.ready);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : copy.statuses.unknownComparisonError);
+      setError(localizedError(caught, locale, copy.statuses.unknownComparisonError));
       setStatus(copy.statuses.backendUnavailable);
     }
   }
@@ -95,7 +96,7 @@ export default function AreaComparisonPage() {
       setAiStatus(copy.statuses.aiSaved(payload.usage_log_id ?? payload.area_id));
     } catch (caught) {
       setAreaSummary(null);
-      setAiError(caught instanceof Error ? caught.message : copy.statuses.unknownSummaryError);
+      setAiError(localizedError(caught, locale, copy.statuses.unknownSummaryError));
       setAiStatus(copy.statuses.aiUnavailable);
     } finally {
       setAiLoading(false);
@@ -254,14 +255,15 @@ export default function AreaComparisonPage() {
                 ))}
               </select>
             </div>
-            <div className="field">
+            <label className="field">
               <span>{copy.fields.scope}</span>
               <input
                 className="input"
                 readOnly
+                aria-label={copy.fields.scope}
                 value={copy.values.scope}
               />
-            </div>
+            </label>
             <button
               className="button primary"
               disabled={aiLoading || !selectedAreaId}
@@ -306,8 +308,8 @@ export default function AreaComparisonPage() {
                     <ShieldCheck size={15} /> {copy.sections.sources}
                   </h3>
                   <div className="ai-citation-list">
-                    {areaSummary.citations.map((citation, index) => (
-                      <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                  {areaSummary.citations.map((citation) => (
+                    <div className="ai-citation" key={`${citation.source_id}-${citation.title}`}>
                         <strong>{citation.title}</strong>
                         <small>
                           {citation.source_type} · {citation.excerpt}
@@ -332,8 +334,8 @@ export default function AreaComparisonPage() {
                 <div>
                   <h3 className="ai-verdict-heading">{copy.sections.guardrails}</h3>
                   <div className="meta-row">
-                    {areaSummary.guardrails.map((guardrail, index) => (
-                      <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                  {areaSummary.guardrails.map((guardrail) => (
+                    <span className="status-pill" key={`${guardrail.code}-${guardrail.message}`}>
                         {guardrail.code}
                       </span>
                     ))}
@@ -355,7 +357,8 @@ export default function AreaComparisonPage() {
         </div>
         <div className="panel-body">
           {comparison.areas.length ? (
-            <div className="table-scroll">
+            <>
+            <div className="table-scroll area-compare-table-desktop">
               <table className="table">
                 <thead>
                   <tr>
@@ -405,6 +408,37 @@ export default function AreaComparisonPage() {
                 </tbody>
               </table>
             </div>
+            <div className="area-compare-mobile-cards">
+              {comparison.areas.map((area) => (
+                <article className="area-compare-mobile-card" key={area.area_id}>
+                  <div className="area-compare-mobile-heading">
+                    <div>
+                      <h3>{area.name}</h3>
+                      <small>{area.summary}</small>
+                    </div>
+                    <span className={`status-pill ${labelTone(area.market_label)}`}>
+                      {labelText(area.market_label, copy)}
+                    </span>
+                  </div>
+                  <div className="area-compare-mobile-primary">
+                    <span>{copy.table.medianM2}</span>
+                    <strong>{money(area.median_price_per_m2, locale)}</strong>
+                  </div>
+                  <div className="area-compare-mobile-grid">
+                    <span>{copy.table.dom}<strong>{copy.values.days(area.average_days_on_market)}</strong></span>
+                    <span>{copy.table.supply}<strong>{numberValue(area.active_listings, locale)}</strong></span>
+                    <span>{copy.table.value}<strong>{copy.values.score(area.value_index)}</strong></span>
+                    <span>{copy.table.growth}<strong>{copy.values.score(area.growth_index)}</strong></span>
+                    <span>{copy.table.liquidity}<strong>{copy.values.score(area.liquidity_index)}</strong></span>
+                    <span>{copy.table.buyer}<strong>{copy.values.score(area.buyer_market_index)}</strong></span>
+                  </div>
+                  <Link className="button" href={`/areas/${area.area_id}`}>
+                    {copy.actions.areas}
+                  </Link>
+                </article>
+              ))}
+            </div>
+            </>
           ) : (
             <div className="empty-state">{copy.empty.noAreas}</div>
           )}
@@ -439,8 +473,8 @@ function SummaryColumn({
         <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
+          {[...new Set(items)].map((item) => (
+            <li key={`${title}-${item}`}>{item}</li>
           ))}
         </ul>
       )}

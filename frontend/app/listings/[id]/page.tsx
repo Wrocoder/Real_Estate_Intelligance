@@ -5,22 +5,27 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   ArrowLeft,
+  Bell,
   Brain,
   BookOpen,
   Building2,
+  Columns2,
   FileText,
   Heart,
   Newspaper,
   RefreshCw,
   ShieldCheck,
+  WalletCards,
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
+import { ListingProvenance } from "@/components/ListingProvenance";
 import { LineChart } from "@/components/Charts";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { localizedError } from "@/lib/errorMessages";
 import {
   api,
   objectReportUrl,
@@ -84,10 +89,10 @@ export default function ListingDetailPage() {
         setAreaNews([]);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.backendUnavailable));
       setStatus(copy.statuses.backendUnavailable);
     }
-  }, [copy, listingId]);
+  }, [copy, listingId, locale]);
 
   useEffect(() => {
     void load();
@@ -99,13 +104,13 @@ export default function ListingDetailPage() {
         const data = await api.listAIQuestions();
         setAIQuestions(data);
       } catch (caught) {
-        setAiError(caught instanceof Error ? caught.message : copy.statuses.aiQuestionsUnavailable);
+        setAiError(localizedError(caught, locale, copy.statuses.aiQuestionsUnavailable));
         setAiStatus(copy.statuses.aiQuestionsUnavailable);
       }
     }
 
     void loadAIQuestions();
-  }, [copy.statuses.aiQuestionsUnavailable]);
+  }, [copy.statuses.aiQuestionsUnavailable, locale]);
 
   const availableAIQuestions = useMemo(
     () => questionsForAudience(aiQuestions, aiAudience, copy),
@@ -125,8 +130,21 @@ export default function ListingDetailPage() {
   }, [availableAIQuestions, selectedAIQuestion]);
 
   async function addFavorite() {
-    await api.addFavorite(listingId, copy.favoriteNote);
-    setStatus(copy.statuses.favoriteAdded);
+    try {
+      await api.addFavorite(listingId, copy.favoriteNote);
+      setStatus(copy.statuses.favoriteAdded);
+    } catch (caught) {
+      setStatus(localizedError(caught, locale, copy.statuses.backendUnavailable));
+    }
+  }
+
+  async function trackListing() {
+    try {
+      await api.createListingObjectWatch(listingId);
+      setStatus(copy.statuses.trackingAdded);
+    } catch (caught) {
+      setStatus(localizedError(caught, locale, copy.statuses.backendUnavailable));
+    }
   }
 
   async function generateReport() {
@@ -152,7 +170,7 @@ export default function ListingDetailPage() {
       );
     } catch (caught) {
       setAiAnswer(null);
-      setAiError(caught instanceof Error ? caught.message : "unknown error");
+      setAiError(localizedError(caught, locale, copy.statuses.aiUnavailable));
       setAiStatus(copy.statuses.aiUnavailable);
     } finally {
       setAiLoading(false);
@@ -173,6 +191,9 @@ export default function ListingDetailPage() {
   const { listing, scores, area_statistics: areaStats } = analysis;
   const verdictTone = decisionTone(scores);
   const displayedDecision = postViewingResult?.updated_decision ?? analysis.buyer_decision;
+  const compareIds = [listingId, analysis.comparables[0]?.id].filter(Boolean).join(",");
+  const compareHref = compareIds ? `/compare?ids=${encodeURIComponent(compareIds)}` : "/compare";
+  const mortgageHref = `/mortgage?property_price_pln=${encodeURIComponent(listing.price)}&market_type=${encodeURIComponent(listing.market_type)}`;
   const developer = analysis.developer_reputation;
   const priceHistoryPoints = analysis.price_history.map((point) => ({
     label: point.observed_at,
@@ -195,6 +216,7 @@ export default function ListingDetailPage() {
             {listing.address}, {listing.district}, {listing.municipality} ·{" "}
             {listing.market_type}
           </p>
+          <ListingProvenance listing={listing} locale={locale} />
         </div>
         <div className="toolbar">
           <button className="button" type="button" onClick={() => void load()}>
@@ -208,6 +230,26 @@ export default function ListingDetailPage() {
           </button>
         </div>
       </header>
+
+      {displayedDecision ? (
+        <nav className="listing-decision-actions" aria-label={copy.sections.decisionDetails}>
+          <button className="button" type="button" onClick={() => void addFavorite()}>
+            <Heart size={16} /> {copy.actions.favorite}
+          </button>
+          <Link className="button" href={compareHref}>
+            <Columns2 size={16} /> {copy.actions.compare}
+          </Link>
+          <a className="button" href="#buyer-negotiation">
+            <FileText size={16} /> {copy.actions.negotiate}
+          </a>
+          <Link className="button" href={mortgageHref}>
+            <WalletCards size={16} /> {copy.actions.mortgage}
+          </Link>
+          <button className="button" type="button" onClick={() => void trackListing()}>
+            <Bell size={16} /> {copy.actions.track}
+          </button>
+        </nav>
+      ) : null}
 
       {displayedDecision ? (
         <BuyerDecisionPanel decision={displayedDecision} locale={locale} />
@@ -371,8 +413,8 @@ export default function ListingDetailPage() {
                     <ShieldCheck size={15} /> {copy.assistantColumn.sources}
                   </h3>
                   <div className="ai-citation-list">
-                    {aiAnswer.citations.slice(0, 5).map((citation, index) => (
-                      <div className="ai-citation" key={`${citation.source_id}-${index}`}>
+                  {aiAnswer.citations.slice(0, 5).map((citation) => (
+                    <div className="ai-citation" key={`${citation.source_id}-${citation.title}`}>
                         <strong>{citation.title}</strong>
                         <small>{citation.excerpt}</small>
                       </div>
@@ -382,8 +424,8 @@ export default function ListingDetailPage() {
                 <div>
                   <h3 className="ai-verdict-heading">{copy.assistantColumn.guardrails}</h3>
                   <div className="meta-row">
-                    {aiAnswer.guardrails.map((guardrail, index) => (
-                      <span className="status-pill" key={`${guardrail.code}-${index}`}>
+                  {aiAnswer.guardrails.map((guardrail) => (
+                    <span className="status-pill" key={`${guardrail.code}-${guardrail.message}`}>
                         {guardrail.message}
                       </span>
                     ))}
@@ -399,7 +441,7 @@ export default function ListingDetailPage() {
       </section>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
-        <section className="panel">
+          <section className="panel">
           <div className="panel-header">
             <h2>{copy.sections.insights}</h2>
             <span className="status-line">{status}</span>
@@ -571,8 +613,8 @@ function AssistantColumn({
         <p className="muted">{emptyLabel}</p>
       ) : (
         <ul className="ai-verdict-list">
-          {items.map((item, index) => (
-            <li key={`${title}-${index}`}>{item}</li>
+          {[...new Set(items)].map((item) => (
+            <li key={`${title}-${item}`}>{item}</li>
           ))}
         </ul>
       )}

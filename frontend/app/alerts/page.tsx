@@ -13,9 +13,11 @@ import {
   type AlertChannel,
   type AlertFrequency,
   type AlertPreview,
+  type AlertDeliveryJob,
   type AlertUpdate,
 } from "@/lib/api";
-import { money, percent } from "@/lib/format";
+import { dateValue, money, percent } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import { ALERTS_PAGE_COPY, type AlertsPageCopy, type Locale } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -114,13 +116,23 @@ const ALERT_PRODUCT_COPY = {
   },
 } as const;
 
+const DELIVERY_COPY = {
+  en: { audit: "Delivery history", lastAttempt: "Last delivery", noDelivery: "No delivery attempt yet", provider: "Provider", message: "Result", delivered: (count: number, total: number) => `${count}/${total} delivered` },
+  pl: { audit: "Historia dostarczenia", lastAttempt: "Ostatnie dostarczenie", noDelivery: "Nie wykonano jeszcze próby dostarczenia", provider: "Dostawca", message: "Wynik", delivered: (count: number, total: number) => `Dostarczono ${count}/${total}` },
+  ru: { audit: "История доставки", lastAttempt: "Последняя доставка", noDelivery: "Попыток доставки пока не было", provider: "Провайдер", message: "Результат", delivered: (count: number, total: number) => `Доставлено ${count}/${total}` },
+  uk: { audit: "Історія доставки", lastAttempt: "Остання доставка", noDelivery: "Спроб доставки ще не було", provider: "Провайдер", message: "Результат", delivered: (count: number, total: number) => `Доставлено ${count}/${total}` },
+} as const;
+
 type AlertProductCopy = (typeof ALERT_PRODUCT_COPY)[Locale];
 
 export default function AlertsPage() {
   const { locale } = useLocalePreference();
   const copy = ALERTS_PAGE_COPY[locale];
   const product = ALERT_PRODUCT_COPY[locale];
+  const deliveryCopy = DELIVERY_COPY[locale];
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [deliveryJobs, setDeliveryJobs] = useState<AlertDeliveryJob[]>([]);
+  const [deliveryError, setDeliveryError] = useState("");
   const [preview, setPreview] = useState<AlertPreview | null>(null);
   const [status, setStatus] = useState(copy.statuses.loading);
   const [isLoading, setIsLoading] = useState(true);
@@ -166,21 +178,33 @@ export default function AlertsPage() {
     setIsLoading(true);
     setStatus(copy.statuses.loading);
     try {
-      const alertData = await api.listAlerts();
-      setAlerts(alertData);
-      setStatus(copy.statuses.loaded(alertData.length));
+      const [alertsResult, jobsResult] = await Promise.allSettled([
+        api.listAlerts(),
+        api.listAlertDeliveryJobs(),
+      ]);
+      if (alertsResult.status === "rejected") throw alertsResult.reason;
+      setAlerts(alertsResult.value);
+      if (jobsResult.status === "fulfilled") {
+        setDeliveryJobs(jobsResult.value);
+        setDeliveryError("");
+      } else if (jobsResult.reason instanceof ApiError && jobsResult.reason.status === 401) {
+        throw jobsResult.reason;
+      } else {
+        setDeliveryError(localizedError(jobsResult.reason, locale, copy.values.unknownError));
+      }
+      setStatus(copy.statuses.loaded(alertsResult.value.length));
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
         setAuthRequired(true);
         setStatus("");
       } else {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [copy]);
+  }, [copy, locale]);
 
   useEffect(() => {
     void load();
@@ -246,7 +270,7 @@ export default function AlertsPage() {
       setStatus(copy.statuses.created(alert.id));
     } catch (caught) {
       if (!requireSignIn(caught)) {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     }
@@ -260,7 +284,7 @@ export default function AlertsPage() {
       setStatus(copy.statuses.previewLoaded(data.total_matches));
     } catch (caught) {
       if (!requireSignIn(caught)) {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     }
@@ -280,7 +304,7 @@ export default function AlertsPage() {
       setStatus(copy.statuses.updated(updated.name));
     } catch (caught) {
       if (!requireSignIn(caught)) {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownAlertUpdateError);
+        setError(localizedError(caught, locale, copy.values.unknownAlertUpdateError));
         setStatus(copy.statuses.updateError);
       }
     } finally {
@@ -302,7 +326,7 @@ export default function AlertsPage() {
       setStatus(copy.statuses.deleted(alert.name));
     } catch (caught) {
       if (!requireSignIn(caught)) {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownAlertDeleteError);
+        setError(localizedError(caught, locale, copy.values.unknownAlertDeleteError));
         setStatus(copy.statuses.deleteError);
       }
     } finally {
@@ -325,7 +349,7 @@ export default function AlertsPage() {
       </header>
 
       <section className="alert-intent-grid">
-        <Link className="alert-intent-card primary" href="/check/drafts">
+        <Link className="alert-intent-card primary" href="/saved">
           <Building2 size={18} />
           <span>
             <strong>{product.apartmentWatch}</strong>
@@ -387,6 +411,11 @@ export default function AlertsPage() {
                             </span>
                           ))}
                         </div>
+                      </div>
+
+                      <div className="alert-delivery-status">
+                        <span>{deliveryCopy.lastAttempt}</span>
+                        <strong>{deliverySummary(alert, deliveryJobs, deliveryCopy, locale)}</strong>
                       </div>
 
                       <div className="alert-preferences">
@@ -550,6 +579,36 @@ export default function AlertsPage() {
           </div>
         </aside>
       </div>
+
+      <section className="panel" style={{ marginTop: 16 }}>
+        <div className="panel-header">
+          <h2>{deliveryCopy.audit}</h2>
+          <span className="muted">{deliveryJobs.length}</span>
+        </div>
+        <div className="panel-body">
+          {deliveryError ? (
+            <ErrorBlock message={deliveryError} prefix={copy.errorPrefix} />
+          ) : deliveryJobs.length === 0 ? (
+            <EmptyBlock label={deliveryCopy.noDelivery} />
+          ) : (
+            <div className="alert-delivery-history">
+              {deliveryJobs.slice(0, 12).map((job) => (
+                <article className="alert-delivery-entry" key={job.id}>
+                  <div>
+                    <strong>{alerts.find((alert) => alert.id === job.alert_id)?.name ?? job.alert_id}</strong>
+                    <span>{dateValue(job.created_at, locale)} · {deliveryCopy.provider}: {job.provider}</span>
+                  </div>
+                  <div>
+                    <span className={`status-pill ${deliveryStatusTone(job.status)}`}>{deliveryStatusLabel(job.status, locale)}</span>
+                    <span>{deliveryCopy.delivered(job.delivered_count, job.total_matches)}</span>
+                    <small>{job.message}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       <section className="panel" id="track-search" style={{ marginTop: 16 }}>
         <div className="panel-header">
@@ -913,4 +972,32 @@ function eventSeverityTone(severity: string) {
   if (severity === "risk") return "rejected";
   if (severity === "watch") return "warning";
   return "info";
+}
+
+function deliverySummary(
+  alert: Alert,
+  jobs: AlertDeliveryJob[],
+  copy: (typeof DELIVERY_COPY)[Locale],
+  locale: Locale,
+) {
+  const job = jobs.find((candidate) => candidate.alert_id === alert.id);
+  if (!job) return copy.noDelivery;
+  return `${deliveryStatusLabel(job.status, locale)} · ${dateValue(job.created_at, locale)} · ${job.delivered_count}/${job.total_matches}`;
+}
+
+function deliveryStatusTone(status: AlertDeliveryJob["status"]) {
+  if (status === "sent") return "healthy";
+  if (status === "failed") return "rejected";
+  if (status === "skipped") return "warning";
+  return "info";
+}
+
+function deliveryStatusLabel(status: AlertDeliveryJob["status"], locale: Locale) {
+  const labels: Record<Locale, Record<AlertDeliveryJob["status"], string>> = {
+    en: { dry_run: "Test only", sent: "Sent", skipped: "Not sent", failed: "Failed" },
+    pl: { dry_run: "Tylko test", sent: "Dostarczono", skipped: "Nie wysłano", failed: "Błąd" },
+    ru: { dry_run: "Только тест", sent: "Доставлено", skipped: "Не отправлено", failed: "Ошибка" },
+    uk: { dry_run: "Лише тест", sent: "Доставлено", skipped: "Не надіслано", failed: "Помилка" },
+  };
+  return labels[locale][status];
 }

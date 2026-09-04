@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "smoke": "node scripts/smoke-ui.mjs",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "generate:openapi": "node scripts/generate-openapi.mjs",
+    "browser:quality": "node scripts/browser-quality.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",
@@ -24,6 +26,8 @@
     "@types/react-dom": "^19.0.2",
     "eslint": "^9.17.0",
     "eslint-config-next": "^15.1.0",
+    "openapi-typescript": "^7.13.0",
+    "playwright": "^1.62.1",
     "typescript": "^5.7.2"
   },
   "overrides": {

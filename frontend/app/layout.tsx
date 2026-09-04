@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import type { ReactNode } from "react";
@@ -12,9 +12,21 @@ import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
 
 import "./globals.css";
 
+const SKIP_TO_CONTENT = {
+  pl: "Przejdź do treści",
+  en: "Skip to content",
+  ru: "Перейти к содержимому",
+  uk: "Перейти до вмісту",
+} as const;
+
 export const metadata: Metadata = {
   title: "WartoMetr",
   description: "Check an apartment before buying in Poland.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -36,7 +48,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <LocalizedNavigation initialLocale={initialLocale} />
             <LanguageSwitcher initialLocale={initialLocale} />
           </aside>
-          <main className="main">
+          <a className="skip-link" href="#main-content">
+            {SKIP_TO_CONTENT[initialLocale]}
+          </a>
+          <main className="main" id="main-content">
             <DemoModeBanner initialLocale={initialLocale} />
             <AuthSessionNotice />
             {children}

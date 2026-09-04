@@ -96,7 +96,7 @@ export const SEO_AREAS: SeoArea[] = [
     ],
     internalLinks: [
       { href: "/?district=Krzyki", label: "Zobacz mieszkania na Krzykach" },
-      { href: "/check/drafts", label: "Moje mieszkania" },
+      { href: "/saved", label: "Moje mieszkania" },
       { href: "/alerts", label: "Śledź podobne mieszkania" },
     ],
   },

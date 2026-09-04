@@ -3,9 +3,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Bell, FileText, Newspaper, Search } from "lucide-react";
 
-import { money, numberValue, percent } from "@/lib/format";
 import { getSeoArea, SEO_AREAS, siteUrl } from "@/lib/seoAreas";
 import { SEO_GUIDES } from "@/lib/seoGuides";
+import { CoverageNotice } from "@/components/CoverageNotice";
+import { AreaDynamicEvidence } from "@/components/AreaDynamicEvidence";
 
 type PageProps = {
   params: Promise<{ areaId: string }>;
@@ -85,24 +86,8 @@ export default async function AreaPage({ params }: PageProps) {
         </div>
       </header>
 
-      <section className="metric-grid">
-        <div className="metric">
-          <span>Mediana ceny</span>
-          <strong>{money(area.medianPricePerM2)}/m2</strong>
-        </div>
-        <div className="metric">
-          <span>Średnia cena</span>
-          <strong>{money(area.averagePricePerM2)}/m2</strong>
-        </div>
-        <div className="metric">
-          <span>Aktywne ogłoszenia</span>
-          <strong>{numberValue(area.activeListings)}</strong>
-        </div>
-        <div className="metric">
-          <span>Zmiana ceny w 90 dni</span>
-          <strong>{percent(area.priceChange90dPct)}</strong>
-        </div>
-      </section>
+      <CoverageNotice />
+      <AreaDynamicEvidence areaId={area.areaId} city={area.city} district={area.district} />
 
       <div className="detail-grid" style={{ marginTop: 16 }}>
         <section className="panel">
@@ -147,19 +132,6 @@ export default async function AreaPage({ params }: PageProps) {
             <FileText size={18} />
           </div>
           <div className="panel-body">
-            <ul className="section-list">
-              <li>Średni czas ekspozycji: {area.averageDaysOnMarket} dni.</li>
-              <li>Zmiana podaży w 90 dni: {percent(area.supplyChange90dPct)}.</li>
-              <li>Aktywne ogłoszenia w aktualnej bazie: {numberValue(area.activeListings)}.</li>
-            </ul>
-
-            <h2>Planowane zmiany</h2>
-            <ul className="section-list compact">
-              {area.plannedInvestments.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-
             <h2>Przewodniki</h2>
             <ul className="section-list compact">
               {relatedGuides.map((guide) => (

@@ -9,6 +9,7 @@ import type {
   PostViewingVerdictRecalculation,
 } from "@/lib/api";
 import { money } from "@/lib/format";
+import { localizedError } from "@/lib/errorMessages";
 import type { Locale } from "@/lib/i18n";
 
 type Props = {
@@ -327,7 +328,7 @@ export function PostViewingVerdictRecalculator({
         ),
       );
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "unknown error");
+      setError(localizedError(caught, locale, copy.statuses.error));
       setStatus(copy.statuses.error);
     } finally {
       setLoading(false);

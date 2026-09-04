@@ -14,6 +14,7 @@ import {
 
 import { AuthForm } from "@/components/AuthForm";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { localizedError } from "@/lib/errorMessages";
 import {
   ApiError,
   api,
@@ -149,6 +150,15 @@ const PRICING_BUYER_COPY: Record<
     startWithCheck: string;
     contextReady: string;
     receiptDetails: string;
+    boundaryTitle: string;
+    boundaryDescription: string;
+    matrix: {
+      feature: string;
+      monthlyReports: string;
+      alerts: string;
+      compare: string;
+      exports: string;
+    };
     noOrders: string;
     monthlyReports: (count: string) => string;
     trackedSearches: (count: string) => string;
@@ -163,6 +173,9 @@ const PRICING_BUYER_COPY: Record<
     startWithCheck: "Start with an apartment check",
     contextReady: "Report will be attached to the selected apartment.",
     receiptDetails: "Receipt details",
+    boundaryTitle: "What is free and what is paid",
+    boundaryDescription: "The free plan covers monthly checks. A one-time report is a separate purchase and becomes available only after the payment provider confirms it.",
+    matrix: { feature: "Feature", monthlyReports: "Monthly reports", alerts: "Tracked searches", compare: "Apartments in compare", exports: "Report export" },
     noOrders: "Purchased reports will appear here.",
     monthlyReports: (count) => `${count} reports each month`,
     trackedSearches: (count) => `${count} tracked searches`,
@@ -176,6 +189,9 @@ const PRICING_BUYER_COPY: Record<
     startWithCheck: "Zacznij od sprawdzenia mieszkania",
     contextReady: "Raport będzie przypisany do wybranego mieszkania.",
     receiptDetails: "Dane do rachunku",
+    boundaryTitle: "Co jest bezpłatne, a co płatne",
+    boundaryDescription: "Plan darmowy obejmuje miesięczne sprawdzenia. Raport jednorazowy jest osobnym zakupem i pojawi się dopiero po potwierdzeniu płatności przez operatora.",
+    matrix: { feature: "Funkcja", monthlyReports: "Raporty miesięcznie", alerts: "Śledzone wyszukiwania", compare: "Mieszkania w porównaniu", exports: "Eksport raportu" },
     noOrders: "Kupione raporty pojawią się tutaj.",
     monthlyReports: (count) => `${count} raportów miesięcznie`,
     trackedSearches: (count) => `${count} śledzonych wyszukiwań`,
@@ -189,6 +205,9 @@ const PRICING_BUYER_COPY: Record<
     startWithCheck: "Начните с проверки квартиры",
     contextReady: "Отчет будет привязан к выбранной квартире.",
     receiptDetails: "Данные для счета",
+    boundaryTitle: "Что бесплатно, а что платно",
+    boundaryDescription: "Бесплатный тариф включает проверки в течение месяца. Разовый отчет покупается отдельно и появится только после подтверждения оплаты оператором.",
+    matrix: { feature: "Функция", monthlyReports: "Отчеты в месяц", alerts: "Отслеживаемые поиски", compare: "Квартиры в сравнении", exports: "Экспорт отчета" },
     noOrders: "Купленные отчеты появятся здесь.",
     monthlyReports: (count) => `${count} отчетов в месяц`,
     trackedSearches: (count) => `${count} отслеживаемых поисков`,
@@ -202,6 +221,9 @@ const PRICING_BUYER_COPY: Record<
     startWithCheck: "Почніть із перевірки квартири",
     contextReady: "Звіт буде прив'язаний до вибраної квартири.",
     receiptDetails: "Дані для рахунку",
+    boundaryTitle: "Що безкоштовно, а що платно",
+    boundaryDescription: "Безкоштовний тариф включає перевірки протягом місяця. Разовий звіт купується окремо й стане доступним лише після підтвердження оплати оператором.",
+    matrix: { feature: "Функція", monthlyReports: "Звіти на місяць", alerts: "Відстежувані пошуки", compare: "Квартири в порівнянні", exports: "Експорт звіту" },
     noOrders: "Куплені звіти з'являться тут.",
     monthlyReports: (count) => `${count} звітів на місяць`,
     trackedSearches: (count) => `${count} відстежуваних пошуків`,
@@ -223,6 +245,7 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<PlanLimits[]>([]);
   const [products, setProducts] = useState<ReportProduct[]>([]);
   const [orders, setOrders] = useState<ReportOrder[]>([]);
+  const [creatingProductCode, setCreatingProductCode] = useState<string | null>(null);
   const [reportContext, setReportContext] = useState<ReportContext>({
     listingReference: "",
     areaReference: "",
@@ -262,11 +285,11 @@ export default function PricingPage() {
         setAuthRequired(true);
         setStatus("");
       } else {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
     }
-  }, [copy]);
+  }, [copy, locale]);
 
   useEffect(() => {
     void load();
@@ -281,7 +304,9 @@ export default function PricingPage() {
   }, []);
 
   async function createAndPay(product: ReportProduct) {
+    if (creatingProductCode !== null) return;
     setError("");
+    setCreatingProductCode(product.code);
     try {
       const listingReference = reportOrderReference(product, reportContext);
       if (!listingReference) {
@@ -308,9 +333,11 @@ export default function PricingPage() {
         setAuthRequired(true);
         setStatus("");
       } else {
-        setError(caught instanceof Error ? caught.message : copy.values.unknownError);
+        setError(localizedError(caught, locale, copy.values.unknownError));
         setStatus(copy.statuses.backendUnavailable);
       }
+    } finally {
+      setCreatingProductCode(null);
     }
   }
 
@@ -404,10 +431,10 @@ export default function PricingPage() {
                 <button
                   className="button primary"
                   type="button"
-                  disabled={!canBuyProduct(product, reportContext)}
+                  disabled={!canBuyProduct(product, reportContext) || creatingProductCode !== null}
                   onClick={() => void createAndPay(product)}
                 >
-                  <CreditCard size={16} /> {productCopy.cta}
+                  <CreditCard size={16} /> {creatingProductCode === product.code ? copy.statuses.creatingOrder(productCopy.title) : productCopy.cta}
                 </button>
               </article>
             );
@@ -423,6 +450,7 @@ export default function PricingPage() {
               <label className="compare-toggle">
                 <input
                   type="checkbox"
+                  aria-label={copy.fields.b2bInvoice}
                   checked={billingForm.invoiceRequested}
                   onChange={(event) =>
                     setBillingForm((current) => ({
@@ -476,6 +504,33 @@ export default function PricingPage() {
           </details>
         </div>
       </section>
+
+      {buyerPlans.length > 0 ? (
+        <section className="panel" style={{ marginTop: 16 }}>
+          <div className="panel-header">
+            <h2>{buyerCopy.boundaryTitle}</h2>
+          </div>
+          <div className="panel-body">
+            <p className="muted">{buyerCopy.boundaryDescription}</p>
+            <div className="table-scroll">
+              <table className="table pricing-matrix">
+                <thead>
+                  <tr>
+                    <th>{buyerCopy.matrix.feature}</th>
+                    {buyerPlans.map((plan) => <th key={plan.plan}>{planLabel(plan.plan, locale)}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  <PricingMatrixRow label={buyerCopy.matrix.monthlyReports} plans={buyerPlans} value={(plan) => numberValue(plan.monthly_reports, locale)} />
+                  <PricingMatrixRow label={buyerCopy.matrix.alerts} plans={buyerPlans} value={(plan) => numberValue(plan.max_alerts, locale)} />
+                  <PricingMatrixRow label={buyerCopy.matrix.compare} plans={buyerPlans} value={(plan) => numberValue(plan.max_compare_items, locale)} />
+                  <PricingMatrixRow label={buyerCopy.matrix.exports} plans={buyerPlans} value={(plan) => plan.can_export ? "✓" : "—"} />
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <div className="grid-2" style={{ marginTop: 16 }}>
         <section className="panel">
@@ -576,6 +631,23 @@ export default function PricingPage() {
         </aside>
       </div>
     </>
+  );
+}
+
+function PricingMatrixRow({
+  label,
+  plans,
+  value,
+}: {
+  label: string;
+  plans: PlanLimits[];
+  value: (plan: PlanLimits) => string;
+}) {
+  return (
+    <tr>
+      <th scope="row">{label}</th>
+      {plans.map((plan) => <td key={plan.plan}>{value(plan)}</td>)}
+    </tr>
   );
 }
 
