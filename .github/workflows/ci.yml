@@ -37,6 +37,9 @@ jobs:
   backend:
     name: Backend
     runs-on: ubuntu-latest
+    env:
+      # Backend performance smoke exercises the deterministic in-memory fixture.
+      DEMO_MODE_ENABLED: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v7
