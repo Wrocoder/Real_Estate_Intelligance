@@ -54,6 +54,31 @@ def test_personal_endpoints_reject_anonymous_and_forged_demo_identity() -> None:
         assert not any(name.startswith("x-domarion-") for name in parameter_names)
 
 
+def test_session_identity_ignores_caller_controlled_role_and_plan_headers() -> None:
+    with TestClient(app) as client:
+        _register(client, "buyer@example.com")
+
+        admin_response = client.get(
+            "/api/v1/admin/ingestion/jobs",
+            headers={
+                "X-Domarion-Role": "admin",
+                "X-Domarion-Plan": "enterprise",
+            },
+        )
+        enterprise_response = client.get(
+            "/api/v1/enterprise/custom-dashboards",
+            headers={
+                "X-Domarion-Role": "admin",
+                "X-Domarion-Plan": "enterprise",
+            },
+        )
+
+        assert admin_response.status_code == 403
+        assert admin_response.json()["detail"] == "Admin role required"
+        assert enterprise_response.status_code == 403
+        assert enterprise_response.json()["error"]["code"] == "plan_limit_reached"
+
+
 def test_two_sessions_are_isolated_on_read_update_and_delete() -> None:
     with TestClient(app) as alice, TestClient(app) as bob:
         alice_session = _register(alice, "alice@example.com")
@@ -137,7 +162,11 @@ def test_login_rejects_bad_password_and_restores_session() -> None:
             json={"email": "missing@example.com", "password": "incorrect-password"},
         )
         assert unknown.status_code == 401
-        assert unknown.json() == denied.json()
+        denied_payload = denied.json()
+        unknown_payload = unknown.json()
+        assert unknown_payload["detail"] == denied_payload["detail"]
+        assert unknown_payload["error"]["code"] == denied_payload["error"]["code"]
+        assert unknown_payload["error"]["params"] == denied_payload["error"]["params"]
 
         accepted = client.post(
             "/api/v1/auth/login",

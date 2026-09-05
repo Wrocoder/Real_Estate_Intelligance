@@ -16,7 +16,11 @@ from domarion.schemas import (
     ScoreExplainability,
 )
 from domarion.services.buyer_decision import build_buyer_decision
-from domarion.services.comparables import ComparableSelection, select_comparables
+from domarion.services.comparables import (
+    ComparableSelection,
+    build_comparable_evidence,
+    select_comparables,
+)
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.growth_analysis import build_listing_growth_analysis
 from domarion.services.rental_estimate import build_listing_rental_estimate
@@ -504,6 +508,8 @@ def build_listing_analysis(
         risk_profile=risk_profile,
         rental_estimate=rental_estimate,
         purchase_intent=purchase_intent,
+        comparables_scope=comparable_selection.scope,
+        comparables_freshness_days=comparable_selection.freshness_days,
     )
 
     return ListingAnalysis(
@@ -512,6 +518,7 @@ def build_listing_analysis(
         price_history=price_history,
         listing_events=listing_events,
         comparables=comparables,
+        comparable_evidence=build_comparable_evidence(listing, comparables),
         developer_reputation=developer_reputation,
         future_area_impact=future_area_impact,
         growth_analysis=growth_analysis,

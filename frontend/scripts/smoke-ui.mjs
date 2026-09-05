@@ -55,6 +55,10 @@ const globalStyles = read("app/globals.css");
 const apiClient = read("lib/api.ts");
 const apiTransport = read("lib/apiClient.ts");
 const generatedApi = read("lib/generated-api.ts");
+const decisionSummary = read("components/DecisionSummary.tsx");
+const provenanceDetails = read("components/ProvenanceDetails.tsx");
+const comparableEvidence = read("components/ComparableEvidencePanel.tsx");
+const stateBlocks = read("components/StateBlocks.tsx");
 const explorerPage = read("app/page.tsx");
 const checkPage = read("app/check/page.tsx");
 const savedPage = read("app/saved/page.tsx");
@@ -295,6 +299,47 @@ expectIncludes("check page i18n", checkPage, [
   "money(analysis.listing.price, locale)",
   "confidenceLabel(result.confidence_score, locale)",
 ]);
+expectIncludes("check recovery states", checkPage + stateBlocks, [
+  "activeOperation",
+  "LoadingBlock",
+  "retryFailedOperation",
+  "ImportOutcomeNotice",
+  "onRetry",
+  "state-block-actions",
+  "importPartialTitle",
+  "importFailedTitle",
+  "importUnsupportedTitle",
+]);
+expectIncludes("shared decision summary", decisionSummary, [
+  "decision-summary",
+  "decisionSummaryFromDecision",
+  "decisionSummaryFromScores",
+  "confidenceScore",
+  "decision-summary-next-step",
+  "NEXT_STEPS",
+]);
+expectIncludes("check decision summary", checkPage, [
+  "<BuyerDecisionPanel",
+  "confidenceScore={result?.confidence_score",
+  "<DecisionSummary",
+  "reportResult.report.buyer_decision",
+  "decisionSummaryFromScores(",
+]);
+expectIncludes("provenance contract", provenanceDetails + apiClient + generatedApi, [
+  "ProvenanceRecord",
+  "sampleSize",
+  "calculationType",
+  "Source and method",
+  "Źródło i sposób obliczenia",
+  "geographic_scope",
+  "calculation_type",
+]);
+expectIncludes("provenance decision surfaces", read("components/BuyerDecisionPanel.tsx") + read("components/ListingProvenance.tsx") + read("components/AreaDynamicEvidence.tsx"), [
+  "ProvenanceDetails",
+  "sourceType:",
+  "sampleSize:",
+  "calculationType:",
+]);
 
 expectIncludes("saved apartments page", savedApartmentsPage, [
   "CHECK_DRAFTS_COPY[locale]",
@@ -319,6 +364,11 @@ expectIncludes("saved apartments page i18n", savedApartmentsPage, [
   "copy.values.rooms(listing.rooms)",
   "dateValue(updated, locale)",
 ]);
+expectIncludes("saved decision summary", savedApartmentsPage, [
+  "<DecisionSummary",
+  "decisionSummaryFromScores",
+  "draftDecision",
+]);
 
 expectIncludes("compare page i18n", comparePage, [
   "COMPARE_PAGE_COPY[locale]",
@@ -340,6 +390,11 @@ expectIncludes("compare page i18n", comparePage, [
   "current.length >= 5",
   "compare-table-desktop",
   "compare-mobile-cards",
+]);
+expectIncludes("compare decision summary", comparePage, [
+  "<DecisionSummary",
+  "decisionSummaryFromScores",
+  "fallbackSummary={metric.recommendation}",
 ]);
 
 expectIncludes("map component", mapComponent, [
@@ -377,6 +432,10 @@ expectIncludes("reports page", reportsPage, [
   "reportContentUrl(report.id)",
   "reportPdfUrl(report.id)",
   "REPORTS_LOADING_STEPS[locale]",
+]);
+expectIncludes("reports decision summary", reportsPage, [
+  "<DecisionSummary",
+  "report.decision_summary",
 ]);
 expectRegex("reports card library", reportsPage, /report-library-grid[\s\S]*buyerReports\.map/);
 
@@ -544,13 +603,14 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "LISTING_LOADING_STEPS[locale]",
   "useLocalePreference()",
   "copy.sections.priceHistory",
-  "copy.sections.comparables",
+  "<ComparableEvidencePanel analysis={analysis} locale={locale} />",
   "copy.actions.openReport",
   "copy.actions.compare",
   "copy.actions.track",
   "copy.actions.negotiate",
   "api.createListingObjectWatch(listingId)",
-  "<BuyerDecisionPanel decision={displayedDecision}",
+  "<BuyerDecisionPanel",
+  "decision={displayedDecision}",
   "scoreLabel(scores.decision_label, locale)",
   "money(listing.price, locale)",
   "dateValue(point.observed_at, locale)",
@@ -560,11 +620,17 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "<BookOpen",
   "listing.data_provenance.mode === \"demo\"",
 ]);
-expectRegex(
-  "listing detail mobile table wrappers",
-  listingDetailPage,
-  /copy\.sections\.priceHistory[\s\S]*table-scroll[\s\S]*copy\.sections\.comparables[\s\S]*table-scroll/,
-);
+expectIncludes("comparable evidence component", comparableEvidence, [
+  "Why this price?",
+  "Technical match",
+  "similarity_score",
+  "similarity_factors",
+  "<ProvenanceDetails",
+  "No sufficiently similar properties found",
+]);
+expectIncludes("check comparable evidence", checkPage, [
+  "<ComparableEvidencePanel analysis={analysis} locale={locale} />",
+]);
 expectIncludes("listing detail decision hierarchy", read("components/BuyerDecisionPanel.tsx"), [
   "<details className=\"buyer-decision-details\">",
   "<summary>{copy.sections.decisionDetails}</summary>",
@@ -585,6 +651,9 @@ expectIncludes("safe localized API errors", read("lib/errorMessages.ts"), [
   "network_error",
   "auth_required",
   "validation_error",
+  "bad_request",
+  "unsupported_area",
+  "location_unavailable",
   "localizedError",
   "pl:",
   "en:",
@@ -601,6 +670,11 @@ expectIncludes("API error metadata", apiTransport, [
   "errorCode",
   "correlationId",
   "public readonly code",
+]);
+expectIncludes("actionable check error recovery", read("app/check/page.tsx"), [
+  "shouldOpenManualEntry",
+  "manualEntryRequested",
+  "open={manualEntryOpen}",
 ]);
 expectIncludes("analytics request contract", apiClient, ["purchase_intent: purchaseIntent"]);
 expectIncludes("typed API boundary", apiClient, [

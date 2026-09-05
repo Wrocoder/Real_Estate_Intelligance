@@ -81,11 +81,7 @@ def _session_token(request: Request, authorization: str | None, settings: Settin
 
 
 def _demo_identity_allowed(settings: Settings) -> bool:
-    return settings.demo_mode_enabled and settings.environment.strip().casefold() in {
-        "local",
-        "development",
-        "test",
-    }
+    return settings.demo_identity_allowed
 
 
 def _account_for_user(

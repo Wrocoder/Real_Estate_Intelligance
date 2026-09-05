@@ -831,12 +831,20 @@ Invoke-WebRequest http://127.0.0.1:8000/api/v1/reports/{report_id}/pdf `
   -OutFile domarion-report.pdf
 ```
 
-## Auth и тарифные лимиты MVP
+## Auth и тарифные лимиты
 
-Полноценный OAuth/JWT еще не подключен. Для MVP используется header-based identity,
-которую позже можно заменить на Clerk/Auth.js/custom JWT без переписывания бизнес-логики.
+Основной пользовательский flow использует регистрацию/вход по email и паролю
+с подписанной HttpOnly session cookie. Роль и тариф берутся из auth store и не
+могут быть изменены caller-controlled headers.
 
-По умолчанию API использует `demo-user`. Для имитации другого пользователя:
+Legacy identity headers и `owner_id` query fallback предназначены только для
+явных local/development/test demo fixtures при `DEMO_MODE_ENABLED=true`.
+Они запрещены в staging/production и не являются способом аутентификации
+публичного пользователя. Для production используй регистрацию/вход и session
+cookie.
+
+В изолированном demo-режиме API использует `demo-user`. Чтобы имитировать другого
+пользователя локально:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:8000/api/v1/me `
@@ -923,7 +931,9 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/crm/shared-shortlists/$($shortli
 
 ## Internal admin MVP
 
-Admin endpoints требуют роль `admin` через MVP identity headers:
+В production admin endpoints требуют роль `admin` у аутентифицированной
+session. Приведенный ниже header-based пример работает только в local demo
+режиме:
 
 ```powershell
 $headers = @{
@@ -1431,8 +1441,10 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/admin/partner-referrals/$($lead.
 
 ## Избранное и уведомления
 
-Endpoints используют текущего пользователя из headers. Для обратной совместимости
-можно временно передавать `owner_id` query parameter. По умолчанию используется `demo-user`.
+В local demo режиме endpoints используют текущего demo-пользователя из headers.
+Для обратной совместимости можно временно передавать `owner_id` query parameter.
+В staging/production нужен аутентифицированный session; caller не выбирает
+чужой owner id.
 
 Добавить объект в избранное:
 

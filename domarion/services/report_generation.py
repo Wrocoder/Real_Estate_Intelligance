@@ -97,6 +97,37 @@ def generate_and_store_object_report(
             "buyer_verdict_score": (
                 analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
             ),
+            "buyer_verdict_headline": (
+                analysis.buyer_decision.verdict.headline if analysis.buyer_decision else None
+            ),
+            "buyer_verdict_summary": (
+                analysis.buyer_decision.verdict.summary if analysis.buyer_decision else None
+            ),
+            "buyer_seller_price_pln": (
+                analysis.buyer_decision.verdict.seller_price_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_low_pln": (
+                analysis.buyer_decision.verdict.fair_price_low_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_mid_pln": (
+                analysis.buyer_decision.verdict.fair_price_mid_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_high_pln": (
+                analysis.buyer_decision.verdict.fair_price_high_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_price_delta_to_fair_mid_pct": (
+                analysis.buyer_decision.verdict.price_delta_to_fair_mid_pct
+                if analysis.buyer_decision
+                else None
+            ),
             "buyer_selected_intent": (
                 analysis.buyer_decision.selected_intent if analysis.buyer_decision else None
             ),
@@ -186,6 +217,37 @@ def generate_and_store_user_submitted_draft_report(
             ),
             "buyer_verdict_score": (
                 analysis.buyer_decision.verdict.score if analysis.buyer_decision else None
+            ),
+            "buyer_verdict_headline": (
+                analysis.buyer_decision.verdict.headline if analysis.buyer_decision else None
+            ),
+            "buyer_verdict_summary": (
+                analysis.buyer_decision.verdict.summary if analysis.buyer_decision else None
+            ),
+            "buyer_seller_price_pln": (
+                analysis.buyer_decision.verdict.seller_price_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_low_pln": (
+                analysis.buyer_decision.verdict.fair_price_low_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_mid_pln": (
+                analysis.buyer_decision.verdict.fair_price_mid_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_fair_price_high_pln": (
+                analysis.buyer_decision.verdict.fair_price_high_pln
+                if analysis.buyer_decision
+                else None
+            ),
+            "buyer_price_delta_to_fair_mid_pct": (
+                analysis.buyer_decision.verdict.price_delta_to_fair_mid_pct
+                if analysis.buyer_decision
+                else None
             ),
             "buyer_selected_intent": (
                 analysis.buyer_decision.selected_intent if analysis.buyer_decision else None

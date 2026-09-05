@@ -8,6 +8,7 @@ from domarion.schemas import (
     MarketDistributionBucket,
     ObjectReport,
 )
+from domarion.services.provenance import provenance_evidence_details
 
 
 def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -> str:
@@ -43,20 +44,63 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
         )
         for point in analysis.price_history
     )
-    comparable_rows = "\n".join(
-        (
-            "<tr>"
-            f"<td>{escape(item.title)}</td>"
-            f"<td>{escape(item.district)}</td>"
-            f"<td>{item.rooms}</td>"
-            f"<td>{item.area_m2:.1f}</td>"
-            f"<td>{_money(item.price)}</td>"
-            f"<td>{_money(item.price_per_m2)}/m2</td>"
-            "</tr>"
+    comparable_evidence = analysis.comparable_evidence
+    if comparable_evidence:
+        comparable_rows = "\n".join(
+            (
+                "<tr>"
+                f"<td>{escape(item.title)}</td>"
+                f"<td>{escape(item.district)}</td>"
+                f"<td>{item.rooms}</td>"
+                f"<td>{item.area_m2:.1f}</td>"
+                f"<td>{_money(item.price)}</td>"
+                f"<td>{_money(item.price_per_m2)}/m2</td>"
+                f"<td>{escape(str(item.observed_at))}</td>"
+                f"<td>{item.distance_m if item.distance_m is not None else 'unknown'} m</td>"
+                f"<td>{item.similarity_score}/100</td>"
+                "</tr>"
+            )
+            for item in comparable_evidence
         )
-        for item in analysis.comparables
+        comparable_note = (
+            f"Comparable sample: {len(comparable_evidence)} objects; "
+            f"scope: {escape(analysis.comparables_scope)}; "
+            f"freshness window: {analysis.comparables_freshness_days} days. "
+            "Technical match is a deterministic comparison of available attributes, "
+            "not confidence in the fair-price estimate."
+        )
+    else:
+        comparable_rows = "\n".join(
+            (
+                "<tr>"
+                f"<td>{escape(item.title)}</td>"
+                f"<td>{escape(item.district)}</td>"
+                f"<td>{item.rooms}</td>"
+                f"<td>{item.area_m2:.1f}</td>"
+                f"<td>{_money(item.price)}</td>"
+                f"<td>{_money(item.price_per_m2)}/m2</td>"
+                "</tr>"
+            )
+            for item in analysis.comparables
+        )
+        comparable_note = (
+            "Detailed comparable evidence is unavailable for this stored report; "
+            "do not treat the fair-price estimate as a strong comparable-based valuation."
+        )
+    comparable_headers = (
+        "<th>Наблюдалось</th><th>Расстояние</th><th>Сходство</th>"
+        if comparable_evidence
+        else ""
     )
-    verdict_html = _render_buyer_verdict(buyer_decision)
+    comparable_empty_colspan = 9 if comparable_evidence else 6
+    comparable_header_row = (
+        "<tr><th>Объект</th><th>Район</th><th>Комнаты</th><th>m2</th>"
+        f"<th>Цена</th><th>Цена за m2</th>{comparable_headers}</tr>"
+    )
+    comparable_empty_row = (
+        f'<tr><td colspan="{comparable_empty_colspan}">Недостаточно данных.</td></tr>'
+    )
+    verdict_html = _render_buyer_verdict(buyer_decision, scores)
 
     return f"""<!doctype html>
 <html lang="ru">
@@ -96,6 +140,13 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       padding-bottom: 18px;
       margin-bottom: 22px;
     }}
+    .report-metadata {{
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      font-size: 12px;
+      margin-top: 14px;
+    }}
     .brand {{ font-weight: 700; color: var(--accent); letter-spacing: .02em; }}
     .brand-logo {{ display: block; max-width: 180px; max-height: 54px; margin-bottom: 10px; }}
     h1 {{ margin: 8px 0 8px; font-size: 28px; line-height: 1.15; }}
@@ -117,6 +168,21 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       margin: 18px 0 20px;
     }}
     .verdict h2 {{ margin-top: 0; font-size: 16px; letter-spacing: .04em; }}
+    .verdict-status-row {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }}
+    .verdict-status {{
+      display: inline-block;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+      letter-spacing: .04em;
+      padding: 4px 8px;
+    }}
     .verdict-title {{
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -124,6 +190,13 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       align-items: start;
     }}
     .verdict-score {{ font-size: 38px; line-height: 1; color: var(--accent); font-weight: 700; }}
+    .report-next-step {{
+      border-left: 4px solid var(--accent);
+      background: var(--soft);
+      padding: 12px 14px;
+      margin-top: 14px;
+    }}
+    .report-next-step h3 {{ margin-bottom: 4px; }}
     .money-grid {{
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -176,6 +249,27 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       vertical-align: top;
     }}
     th {{ background: var(--soft); }}
+    @media (max-width: 720px) {{
+      .page {{ width: calc(100% - 20px); margin: 10px auto; padding: 18px; }}
+      .topline {{ display: block; }}
+      .verdict {{ padding: 14px; }}
+      .verdict-title {{ grid-template-columns: minmax(0, 1fr) auto; }}
+      .split-grid, .grid, .scores {{ grid-template-columns: 1fr; }}
+      .decision-primary-grid {{ grid-template-columns: repeat(2, minmax(0, 1fr)); }}
+      .decision-primary-grid .metric:nth-child(3) {{ grid-column: 1 / -1; }}
+      .verdict-title h1 {{ font-size: 24px; }}
+      .verdict-title p {{ font-size: 13px; }}
+      .verdict-score {{ font-size: 28px; }}
+      .decision-primary-grid {{ gap: 6px; }}
+      .decision-primary-grid .metric {{ min-height: 62px; padding: 8px 10px; }}
+      .decision-primary-grid .metric .label {{ font-size: 11px; }}
+      .decision-primary-grid .metric .value {{ font-size: 16px; margin-top: 2px; }}
+      .decision-secondary-grid {{ grid-template-columns: 1fr; }}
+      .report-next-step {{ padding: 10px; margin-top: 10px; }}
+      .report-next-step p {{ margin-bottom: 0; }}
+      table {{ display: block; max-width: 100%; overflow-x: auto; }}
+      th, td {{ min-width: 110px; overflow-wrap: anywhere; }}
+    }}
     .footer {{
       border-top: 1px solid var(--line);
       margin-top: 28px;
@@ -203,17 +297,18 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
           {escape(listing.address)} · {escape(listing.district)}, {escape(listing.city)}
         </p>
       </div>
-      <div class="muted">
-        <p>Listing ID: {escape(listing.id)}</p>
-        <p>Audience: {escape(report.audience)}</p>
-        <p>Template: {escape(report.template_name)}</p>
-        <p>Source: {escape(listing.source_name)}</p>
-      </div>
     </section>
+
+    {verdict_html}
 
     <p class="summary">{escape(report.summary)}</p>
 
-    {verdict_html}
+    <div class="report-metadata muted">
+      <span>Listing ID: {escape(listing.id)}</span>
+      <span>Audience: {escape(report.audience)}</span>
+      <span>Template: {escape(report.template_name)}</span>
+      <span>Source: {escape(listing.source_name)}</span>
+    </div>
 
     <section class="grid">
       {_metric("Цена", _money(listing.price))}
@@ -245,14 +340,13 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
     </section>
 
     <section>
-      <h2>Похожие объекты</h2>
+        <h2>Похожие объекты</h2>
+      <p class="muted">{comparable_note}</p>
       <table>
         <thead>
-          <tr>
-            <th>Объект</th><th>Район</th><th>Комнаты</th><th>m2</th><th>Цена</th><th>Цена за m2</th>
-          </tr>
+          {comparable_header_row}
         </thead>
-        <tbody>{comparable_rows or '<tr><td colspan="6">Недостаточно данных.</td></tr>'}</tbody>
+        <tbody>{comparable_rows or comparable_empty_row}</tbody>
       </table>
     </section>
 
@@ -455,7 +549,7 @@ def _render_section(title: str, items: list[str]) -> str:
     return f"<section><h2>{escape(title)}</h2><ul>{rows}</ul></section>"
 
 
-def _render_buyer_verdict(buyer_decision) -> str:
+def _render_buyer_verdict(buyer_decision, scores) -> str:
     if buyer_decision is None:
         return ""
     verdict = buyer_decision.verdict
@@ -475,14 +569,24 @@ def _render_buyer_verdict(buyer_decision) -> str:
         (
             "<li>"
             f"{escape(item.topic)} -> {escape(item.basis)}; "
-            f"{escape(item.source_name)}; confidence {item.confidence_score}/100"
+            f"{escape(item.source_name)}; confidence {item.confidence_score}/100; "
+            f"{escape('; '.join(provenance_evidence_details(item)))}"
             "</li>"
         )
         for item in knowledge.source_evidence[:5]
     )
+    status_label = _buyer_verdict_status_label(verdict.status)
+    fair_price_metric = _metric(
+        "Fair price",
+        f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}",
+    )
     return f"""
     <section class="verdict">
       <h2>WartoMetr VERDICT</h2>
+      <div class="verdict-status-row">
+        <span class="verdict-status">{status_label}</span>
+        <span class="muted">Deterministic buyer decision</span>
+      </div>
       <div class="verdict-title">
         <div>
           <h1>{escape(verdict.headline)}</h1>
@@ -490,14 +594,18 @@ def _render_buyer_verdict(buyer_decision) -> str:
         </div>
         <div class="verdict-score">{verdict.score:.1f}/10</div>
       </div>
-      <div class="money-grid">
+      <div class="money-grid decision-primary-grid">
         {_metric("Цена продавца", _money(verdict.seller_price_pln))}
-        {_metric(
-            "Fair price",
-            f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}",
-        )}
+        {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
+        {fair_price_metric}
         {_metric("Рекомендуемый offer", _money(verdict.recommended_offer_pln))}
         {_metric("Верхняя граница", _money(verdict.max_reasonable_offer_pln))}
+      </div>
+      <div class="report-next-step">
+        <h3>Next step</h3>
+        <p>{_buyer_verdict_next_step(verdict.status)}</p>
+      </div>
+      <div class="money-grid decision-secondary-grid">
         {for_you_metric}
         {_metric("Стартовый offer", _money(verdict.opening_offer_pln))}
         {_metric("Реальная стоимость въезда", _money(total.total_move_in_cost_pln))}
@@ -522,6 +630,27 @@ def _render_buyer_verdict(buyer_decision) -> str:
       </div>
     </section>
     """
+
+
+def _buyer_verdict_status_label(status: str) -> str:
+    return {
+        "buy": "BUY",
+        "negotiate": "NEGOTIATE",
+        "avoid": "SKIP",
+        "verify_first": "VERIFY FIRST",
+    }.get(status, "VERIFY FIRST")
+
+
+def _buyer_verdict_next_step(status: str) -> str:
+    return {
+        "buy": "Request the documents and verify the technical condition before paying a deposit.",
+        "negotiate": "Prepare the first offer using the fair-price range and the evidence below.",
+        "avoid": (
+            "Pause the purchase and reconsider only if the material risk or missing evidence "
+            "changes."
+        ),
+        "verify_first": "Close the critical unknowns before making an offer or paying a deposit.",
+    }.get(status, "Close the critical unknowns before making an offer or paying a deposit.")
 
 
 def _list_items(items: list[str]) -> str:

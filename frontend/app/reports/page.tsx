@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CreditCard, Download, ExternalLink, RefreshCw, Search } from "lucide-react";
 
 import { AuthForm } from "@/components/AuthForm";
+import { DecisionSummary } from "@/components/DecisionSummary";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   ApiError,
@@ -311,6 +312,13 @@ export default function ReportsPage() {
                         {copy.values.audienceLabels[report.audience] ?? report.audience}
                       </span>
                     </div>
+
+                    <DecisionSummary
+                      compact
+                      fallbackSummary={report.summary}
+                      locale={locale}
+                      snapshot={report.decision_summary}
+                    />
 
                     <div className="report-insight">
                       <strong>{insight ? insightLabel(insight, copy) : buyerCopy.values.noInsight}</strong>

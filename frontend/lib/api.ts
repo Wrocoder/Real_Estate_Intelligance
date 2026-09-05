@@ -17,6 +17,12 @@ export type DataProvenance = {
   notice_code: string | null;
 };
 
+export type ProvenanceCalculationType =
+  | "observed"
+  | "calculated"
+  | "model_estimate"
+  | "unknown";
+
 export type RuntimeContext = {
   data_mode: "live" | "demo";
   demo_mode_enabled: boolean;
@@ -82,6 +88,30 @@ export type Listing = {
   schools_within_1km: number;
   planned_investments_within_2km: number;
   data_quality_score: number;
+};
+
+export type ComparableEvidence = {
+  listing_id: string;
+  title: string;
+  source_name: string;
+  data_provenance: DataProvenance;
+  address: string;
+  city: string;
+  district: string;
+  market_type: "primary" | "secondary";
+  observed_at: string;
+  price: number;
+  area_m2: number;
+  rooms: number;
+  price_per_m2: number;
+  floor: number | null;
+  building_year: number | null;
+  renovation_state: string | null;
+  distance_m: number | null;
+  similarity_score: number;
+  similarity_factors: string[];
+  price_delta_to_subject_pct: number;
+  price_per_m2_delta_to_subject_pct: number;
 };
 
 export type AreaStatistics = {
@@ -1141,6 +1171,11 @@ export type BuyerNegotiationAssistant = {
     topic: string;
     source_name: string;
     source_type: string;
+    updated_at?: string | null;
+    sample_size?: number | null;
+    geographic_scope?: string | null;
+    time_range?: string | null;
+    calculation_type?: ProvenanceCalculationType;
     confidence_score: number;
     note: string | null;
   }>;
@@ -1175,6 +1210,10 @@ export type BuyerSourceEvidence = {
   source_name: string;
   source_type: string;
   updated_at: string | null;
+  sample_size?: number | null;
+  geographic_scope?: string | null;
+  time_range?: string | null;
+  calculation_type?: ProvenanceCalculationType;
   confidence_score: number;
   note: string | null;
 };
@@ -1273,6 +1312,7 @@ export type ListingAnalysis = {
   price_history: PriceHistoryPoint[];
   listing_events: ListingEvent[];
   comparables: Listing[];
+  comparable_evidence: ComparableEvidence[];
   developer_reputation: DeveloperReputation | null;
   future_area_impact: ListingFutureImpact | null;
   growth_analysis: ListingGrowthAnalysis | null;
@@ -1575,6 +1615,25 @@ export type GeneratedReport = {
   created_at: string;
   report_version: string | null;
   data_as_of: string | null;
+  decision_summary: GeneratedReportDecisionSummary | null;
+};
+
+export type GeneratedReportDecisionSummary = {
+  status: BuyerVerdictStatus | null;
+  score: number | null;
+  headline: string | null;
+  summary: string | null;
+  seller_price_pln: number | null;
+  fair_price_low_pln: number | null;
+  fair_price_mid_pln: number | null;
+  fair_price_high_pln: number | null;
+  price_delta_to_fair_mid_pct: number | null;
+  confidence_score: number | null;
+  recommended_offer_pln: number | null;
+  max_reasonable_offer_pln: number | null;
+  total_move_in_cost_pln: number | null;
+  selected_intent: PurchaseIntent | null;
+  selected_intent_score: number | null;
 };
 
 export type GeneratedReportListItem = Omit<GeneratedReport, "content" | "report_metadata">;

@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   ExternalLink,
   FileText,
+  RefreshCw,
   Save,
   Search,
   ShieldCheck,
@@ -18,12 +19,15 @@ import {
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
 import { CoverageNotice } from "@/components/CoverageNotice";
+import { ComparableEvidencePanel } from "@/components/ComparableEvidencePanel";
+import { DecisionSummary, decisionSummaryFromScores } from "@/components/DecisionSummary";
 import { safeHttpsUrl } from "@/components/ListingProvenance";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
-import { ErrorBlock } from "@/components/StateBlocks";
+import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
+  ApiError,
   reportContentUrl,
   type AIListingAnswer,
   type AIQuestionCode,
@@ -43,7 +47,7 @@ import {
   type UserSubmittedListingReport,
   type UserSubmittedListingRequest,
 } from "@/lib/api";
-import { dateValue, money, numberValue } from "@/lib/format";
+import { dateValue, money } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { CHECK_PAGE_COPY, type CheckPageCopy, type Locale } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
@@ -107,6 +111,10 @@ const RENOVATION_CONDITIONS: RenovationCondition[] = [
 ];
 type RequiredReportField = keyof CheckPageCopy["requiredFieldLabels"];
 
+function shouldOpenManualEntry(caught: unknown) {
+  return caught instanceof ApiError && caught.status === 400;
+}
+
 const PRODUCT_COPY = {
   en: {
     heroTitle: "Check an apartment before buying",
@@ -116,6 +124,8 @@ const PRODUCT_COPY = {
     check: "Check apartment",
     search: "Or search for an apartment with WartoMetr",
     manualSummary: "Enter apartment details manually",
+    manualHint: "No link? Address, price, size and rooms are enough to start.",
+    advancedSummary: "Additional details (optional)",
     purpose: "Buying purpose",
     living: "For living",
     investment: "For investment",
@@ -136,6 +146,12 @@ const PRODUCT_COPY = {
     consent: "I understand that WartoMetr will fetch this public listing, keep a private reference for the analysis, and let me delete the draft.",
     privacy: "Privacy details",
     consentRequired: "Confirm the data-use notice before importing the link.",
+    importPartialTitle: "Some listing details were found",
+    importPartialText: "We do not fill in unknown values. Check the imported fields and complete anything missing before creating the report.",
+    importFailedTitle: "The listing could not be read",
+    importFailedText: "No reliable listing details were extracted. Try again or enter the address, price, size and rooms manually.",
+    importUnsupportedTitle: "This listing source is not supported",
+    importUnsupportedText: "We can import Otodom and OLX listings. You can still enter the apartment details manually.",
   },
   pl: {
     heroTitle: "Sprawdź mieszkanie przed zakupem",
@@ -145,6 +161,8 @@ const PRODUCT_COPY = {
     check: "Sprawdź mieszkanie",
     search: "Albo wyszukaj mieszkanie w WartoMetr",
     manualSummary: "Wpisz dane mieszkania ręcznie",
+    manualHint: "Nie masz linku? Na początek wystarczą adres, cena, metraż i liczba pokoi.",
+    advancedSummary: "Dane dodatkowe (opcjonalne)",
     purpose: "Cel zakupu",
     living: "Do zamieszkania",
     investment: "Na inwestycję",
@@ -165,6 +183,12 @@ const PRODUCT_COPY = {
     consent: "Rozumiem, że WartoMetr pobierze to publiczne ogłoszenie, zachowa prywatne odniesienie do analizy i umożliwi usunięcie szkicu.",
     privacy: "Szczegóły prywatności",
     consentRequired: "Potwierdź zasady wykorzystania danych przed importem linku.",
+    importPartialTitle: "Znaleźliśmy część danych ogłoszenia",
+    importPartialText: "Nie uzupełniamy nieznanych wartości. Sprawdź zaimportowane pola i wpisz brakujące dane przed utworzeniem raportu.",
+    importFailedTitle: "Nie udało się odczytać ogłoszenia",
+    importFailedText: "Nie udało się pobrać wiarygodnych danych ogłoszenia. Spróbuj ponownie albo wpisz ręcznie adres, cenę, metraż i liczbę pokoi.",
+    importUnsupportedTitle: "To źródło ogłoszenia nie jest obsługiwane",
+    importUnsupportedText: "Importujemy ogłoszenia z Otodom i OLX. Dane mieszkania możesz nadal wpisać ręcznie.",
   },
   ru: {
     heroTitle: "Проверьте квартиру перед покупкой",
@@ -174,6 +198,8 @@ const PRODUCT_COPY = {
     check: "Проверить квартиру",
     search: "Или найти квартиру в WartoMetr",
     manualSummary: "Ввести параметры квартиры вручную",
+    manualHint: "Нет ссылки? Для начала достаточно адреса, цены, площади и числа комнат.",
+    advancedSummary: "Дополнительные данные (необязательно)",
     purpose: "Цель покупки",
     living: "Для жизни",
     investment: "Для инвестиции",
@@ -194,6 +220,12 @@ const PRODUCT_COPY = {
     consent: "Я понимаю, что WartoMetr получит это публичное объявление, сохранит приватную ссылку для анализа и позволит удалить черновик.",
     privacy: "Подробнее о приватности",
     consentRequired: "Подтвердите правила использования данных перед импортом ссылки.",
+    importPartialTitle: "Найдена только часть данных объявления",
+    importPartialText: "Мы не подставляем неизвестные значения. Проверьте импортированные поля и заполните недостающие данные перед созданием отчета.",
+    importFailedTitle: "Не удалось прочитать объявление",
+    importFailedText: "Надежные данные объявления не извлечены. Повторите попытку или введите вручную адрес, цену, площадь и число комнат.",
+    importUnsupportedTitle: "Источник объявления не поддерживается",
+    importUnsupportedText: "Мы импортируем объявления с Otodom и OLX. Параметры квартиры можно ввести вручную.",
   },
   uk: {
     heroTitle: "Перевірте квартиру перед купівлею",
@@ -203,6 +235,8 @@ const PRODUCT_COPY = {
     check: "Перевірити квартиру",
     search: "Або знайти квартиру в WartoMetr",
     manualSummary: "Ввести параметри квартири вручну",
+    manualHint: "Немає посилання? Для початку достатньо адреси, ціни, площі та кількості кімнат.",
+    advancedSummary: "Додаткові дані (необов'язково)",
     purpose: "Ціль купівлі",
     living: "Для життя",
     investment: "Для інвестиції",
@@ -223,8 +257,17 @@ const PRODUCT_COPY = {
     consent: "Я розумію, що WartoMetr отримає це публічне оголошення, збереже приватне посилання для аналізу та дозволить видалити чернетку.",
     privacy: "Деталі приватності",
     consentRequired: "Підтвердьте правила використання даних перед імпортом посилання.",
+    importPartialTitle: "Знайдено лише частину даних оголошення",
+    importPartialText: "Ми не підставляємо невідомі значення. Перевірте імпортовані поля та заповніть відсутні дані перед створенням звіту.",
+    importFailedTitle: "Не вдалося прочитати оголошення",
+    importFailedText: "Надійні дані оголошення не вилучено. Спробуйте ще раз або введіть вручну адресу, ціну, площу та кількість кімнат.",
+    importUnsupportedTitle: "Джерело оголошення не підтримується",
+    importUnsupportedText: "Ми імпортуємо оголошення з Otodom і OLX. Параметри квартири можна ввести вручну.",
   },
 } as const;
+
+type ProductCopy = (typeof PRODUCT_COPY)[Locale];
+type CoreOperation = "draft" | "import" | "check" | "report" | "save" | "track";
 
 export default function CheckListingPage() {
   const { locale } = useLocalePreference();
@@ -253,6 +296,11 @@ export default function CheckListingPage() {
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [activeOperation, setActiveOperation] = useState<CoreOperation | null>(null);
+  const [retryAction, setRetryAction] = useState<CoreOperation | null>(null);
+  const [lastReportForm, setLastReportForm] = useState<CheckFormState | null>(null);
+  const [draftRetryToken, setDraftRetryToken] = useState(0);
+  const [manualEntryRequested, setManualEntryRequested] = useState(false);
 
   const resetAIAnswer = useCallback((nextStatus = copy.statuses.aiReadyAfterCheck) => {
     setAiAnswer(null);
@@ -282,6 +330,8 @@ export default function CheckListingPage() {
     let cancelled = false;
     async function loadDraft() {
       setError("");
+      setRetryAction(null);
+      setActiveOperation("draft");
       setStatus(copy.statuses.calculating);
       try {
         const draft = await api.getUserSubmittedListingDraft(stableDraftId);
@@ -299,10 +349,14 @@ export default function CheckListingPage() {
         setUrlImportStatus(copy.statuses.fieldsUpdated);
         setReportStatus(copy.statuses.reportNotCreated);
         setSaveStatus(copy.statuses.saved);
+        setRetryAction(null);
       } catch (caught) {
         if (cancelled) return;
         setError(localizedError(caught, locale, copy.statuses.checkError));
         setStatus(copy.statuses.checkError);
+        setRetryAction("draft");
+      } finally {
+        if (!cancelled) setActiveOperation(null);
       }
     }
 
@@ -310,7 +364,7 @@ export default function CheckListingPage() {
     return () => {
       cancelled = true;
     };
-  }, [copy, locale, resetAIAnswer]);
+  }, [copy, draftRetryToken, locale, resetAIAnswer]);
 
   const availableAIQuestions = useMemo(
     () => questionsForAudience(aiQuestions, aiAudience, copy),
@@ -332,6 +386,12 @@ export default function CheckListingPage() {
   async function analyze(event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     setError("");
+    setRetryAction(null);
+    setActiveOperation("check");
+    setResult(null);
+    setReportResult(null);
+    setSavedReport(null);
+    setPostViewingResult(null);
     setStatus(copy.statuses.calculating);
     try {
       const payload = await api.analyzeUserSubmittedListing(buildListingPayload(form));
@@ -343,9 +403,15 @@ export default function CheckListingPage() {
       setStatus(copy.statuses.checkReady);
       setReportStatus(copy.statuses.reportNotCreated);
       setSaveStatus(copy.statuses.notSaved);
+      setRetryAction(null);
+      setManualEntryRequested(false);
     } catch (caught) {
+      if (shouldOpenManualEntry(caught)) setManualEntryRequested(true);
       setError(localizedError(caught, locale, copy.statuses.checkError));
       setStatus(copy.statuses.checkError);
+      setRetryAction("check");
+    } finally {
+      setActiveOperation(null);
     }
   }
 
@@ -359,6 +425,10 @@ export default function CheckListingPage() {
 
   async function importFromUrl(options: { generateReport?: boolean } = {}) {
     setError("");
+    setRetryAction(null);
+    setActiveOperation("import");
+    setUrlImportResult(null);
+    setReferencePreview(null);
     resetAIAnswer(copy.statuses.aiReadyAfterCheck);
     setUrlImportStatus(product.importStatus);
     try {
@@ -386,9 +456,14 @@ export default function CheckListingPage() {
       } else {
         setStatus(copy.statuses.fieldsUpdated);
       }
+      setRetryAction(null);
     } catch (caught) {
+      if (shouldOpenManualEntry(caught)) setManualEntryRequested(true);
       setError(localizedError(caught, locale, copy.statuses.importError));
       setUrlImportStatus(copy.statuses.importError);
+      setRetryAction("import");
+    } finally {
+      setActiveOperation(null);
     }
   }
 
@@ -398,12 +473,18 @@ export default function CheckListingPage() {
 
   async function createReportFromForm(targetForm: CheckFormState) {
     setError("");
+    setRetryAction(null);
     const missingFields = missingRequiredReportFields(targetForm);
     if (missingFields.length > 0) {
       setReportStatus(copy.statuses.missingFields(missingFieldLabels(missingFields, copy)));
       setStatus(copy.statuses.fillRequiredForReport);
       return;
     }
+    setReportResult(null);
+    setSavedReport(null);
+    setPostViewingResult(null);
+    setLastReportForm(targetForm);
+    setActiveOperation("report");
     setReportStatus(copy.statuses.reportGenerating);
     try {
       const payload = await api.createUserSubmittedListingReport({
@@ -418,15 +499,23 @@ export default function CheckListingPage() {
       setStatus(copy.statuses.checkReady);
       setReportStatus(copy.statuses.reportReady);
       setSaveStatus(copy.statuses.notSaved);
+      setRetryAction(null);
+      setManualEntryRequested(false);
     } catch (caught) {
+      if (shouldOpenManualEntry(caught)) setManualEntryRequested(true);
       setError(localizedError(caught, locale, copy.statuses.reportError));
       setReportStatus(copy.statuses.reportError);
+      setRetryAction("report");
+    } finally {
+      setActiveOperation(null);
     }
   }
 
   async function saveReportToHistory() {
     if (!result?.draft_id) return;
     setError("");
+    setRetryAction(null);
+    setActiveOperation("save");
     setSaveStatus(copy.statuses.saving);
     try {
       const payload = await api.generateUserSubmittedDraftReport(result.draft_id, {
@@ -435,22 +524,32 @@ export default function CheckListingPage() {
       });
       setSavedReport(payload);
       setSaveStatus(copy.statuses.saved);
+      setRetryAction(null);
     } catch (caught) {
       setError(localizedError(caught, locale, copy.statuses.saveError));
       setSaveStatus(copy.statuses.saveError);
+      setRetryAction("save");
+    } finally {
+      setActiveOperation(null);
     }
   }
 
   async function trackApartment() {
     if (!result?.draft_id) return;
     setError("");
+    setRetryAction(null);
+    setActiveOperation("track");
     setSaveStatus(copy.statuses.saving);
     try {
       await api.createUserSubmittedDraftObjectWatch(result.draft_id, {});
       setSaveStatus(product.track);
+      setRetryAction(null);
     } catch (caught) {
       setError(localizedError(caught, locale, copy.statuses.saveError));
       setSaveStatus(copy.statuses.saveError);
+      setRetryAction("track");
+    } finally {
+      setActiveOperation(null);
     }
   }
 
@@ -503,10 +602,44 @@ export default function CheckListingPage() {
   const analysis = result?.analysis ?? null;
   const displayedDecision = postViewingResult?.updated_decision ?? analysis?.buyer_decision ?? null;
   const verdictTone = analysis ? decisionTone(analysis.scores) : "info";
+  const manualEntryOpen = Boolean(
+    manualEntryRequested ||
+      (analysis && !form.source_url) ||
+      (urlImportResult && urlImportResult.status !== "extracted"),
+  );
+
+  function retryFailedOperation() {
+    switch (retryAction) {
+      case "draft":
+        setError("");
+        setDraftRetryToken((current) => current + 1);
+        return;
+      case "import":
+        void importFromUrl({ generateReport: true });
+        return;
+      case "check":
+        void analyze();
+        return;
+      case "report":
+        void createReportFromForm(lastReportForm ?? form);
+        return;
+      case "save":
+        void saveReportToHistory();
+        return;
+      case "track":
+        void trackApartment();
+        return;
+      default:
+        return;
+    }
+  }
 
   return (
     <>
-      <section className={analysis ? "check-hero compact" : "check-hero"}>
+      <section
+        aria-busy={activeOperation !== null}
+        className={analysis ? "check-hero compact" : "check-hero"}
+      >
         <div className="check-hero-copy">
           <span className="landing-eyebrow">WartoMetr</span>
           <h1>{product.heroTitle}</h1>
@@ -517,11 +650,22 @@ export default function CheckListingPage() {
             <span>{product.urlLabel}</span>
             <input
               className="input check-url-input"
+              disabled={activeOperation !== null}
               placeholder={product.urlPlaceholder}
               type="url"
               value={form.source_url}
               onChange={(event) => {
                 setForm((current) => clearObjectFieldsForNewUrl(current, event.target.value));
+                setManualEntryRequested(false);
+                setResult(null);
+                setReportResult(null);
+                setSavedReport(null);
+                setPostViewingResult(null);
+                setError("");
+                setRetryAction(null);
+                setStatus(copy.statuses.ready);
+                setReportStatus(copy.statuses.reportNotCreated);
+                setSaveStatus(copy.statuses.notSaved);
                 setReferencePreview(null);
                 setUrlImportResult(null);
                 setUrlImportStatus(copy.statuses.importNotStarted);
@@ -532,6 +676,7 @@ export default function CheckListingPage() {
           <div className="intent-toggle" aria-label={product.purpose}>
             <button
               className={form.purchase_intent !== "investment" ? "selected" : ""}
+              disabled={activeOperation !== null}
               type="button"
               onClick={() => updateField("purchase_intent", "self")}
             >
@@ -539,6 +684,7 @@ export default function CheckListingPage() {
             </button>
             <button
               className={form.purchase_intent === "investment" ? "selected" : ""}
+              disabled={activeOperation !== null}
               type="button"
               onClick={() => updateField("purchase_intent", "investment")}
             >
@@ -547,7 +693,9 @@ export default function CheckListingPage() {
           </div>
           <button
             className="button primary check-submit"
-            disabled={!form.source_url.trim() || !form.confirm_private_analysis}
+            disabled={
+              activeOperation !== null || !form.source_url.trim() || !form.confirm_private_analysis
+            }
             type="button"
             onClick={() => void previewReference()}
           >
@@ -557,6 +705,7 @@ export default function CheckListingPage() {
             <input
               type="checkbox"
               checked={form.confirm_private_analysis}
+              disabled={activeOperation !== null}
               onChange={(event) => updateField("confirm_private_analysis", event.target.checked)}
             />
             <span>{product.consent} <Link href="/privacy">{product.privacy}</Link></span>
@@ -570,16 +719,31 @@ export default function CheckListingPage() {
 
       <CoverageNotice />
 
-      {error ? <ErrorBlock message={error} prefix={copy.errorPrefix} /> : null}
+      {activeOperation ? (
+        <LoadingBlock label={operationLabel(activeOperation, copy)} />
+      ) : null}
+
+      {error ? (
+        <ErrorBlock
+          message={error}
+          onRetry={retryAction ? retryFailedOperation : undefined}
+          prefix={copy.errorPrefix}
+          retryLabel={copy.actions.retry}
+        />
+      ) : null}
 
       {displayedDecision ? (
-        <BuyerDecisionPanel decision={displayedDecision} locale={locale} />
+        <BuyerDecisionPanel
+          confidenceScore={result?.confidence_score ?? analysis?.scores.fair_price_confidence_score ?? null}
+          decision={displayedDecision}
+          locale={locale}
+        />
       ) : null}
 
       {analysis?.buyer_decision ? (
         <div style={{ marginTop: 16 }}>
           <PostViewingVerdictRecalculator
-            disabled={!result?.draft_id}
+            disabled={activeOperation !== null || !result?.draft_id}
             locale={locale}
             onRecalculate={recalculatePostViewing}
             result={postViewingResult}
@@ -620,6 +784,15 @@ export default function CheckListingPage() {
             <strong>{urlImportResult?.status === "partial" ? (locale === "pl" ? "Część pól wymaga potwierdzenia" : locale === "ru" ? "Часть полей требует проверки" : locale === "uk" ? "Частина полів потребує перевірки" : "Some fields need confirmation") : urlImportResult?.status === "unsupported" ? (locale === "pl" ? "Źródło nieobsługiwane" : locale === "ru" ? "Источник не поддерживается" : locale === "uk" ? "Джерело не підтримується" : "Source not supported") : (locale === "pl" ? "Status zdjęć nieznany" : locale === "ru" ? "Статус фото неизвестен" : locale === "uk" ? "Статус фото невідомий" : "Photo status is unknown")}</strong>
           </div>
         </section>
+      ) : null}
+
+      {urlImportResult ? (
+        <ImportOutcomeNotice
+          onRetry={urlImportResult.status === "failed" ? () => void previewReference() : undefined}
+          product={product}
+          result={urlImportResult}
+          retryLabel={copy.actions.retryImport}
+        />
       ) : null}
 
       {analysis ? (
@@ -680,40 +853,19 @@ export default function CheckListingPage() {
       ) : null}
 
       <section className={analysis ? "grid-2" : "manual-entry-only"} style={{ marginTop: 16 }}>
-        <details className="panel manual-entry-panel" open={Boolean(analysis && !form.source_url)}>
+        <details className="panel manual-entry-panel" open={manualEntryOpen}>
           <summary>
             <span>{product.manualSummary}</span>
             <span className="status-line">{status}</span>
           </summary>
-          <form className="panel-body" onSubmit={(event) => void analyze(event)}>
-            <div className="form-grid">
-              <label className="field">
-                <span>{copy.fields.title}</span>
-                <input
-                  className="input"
-                  placeholder={copy.placeholders.optional}
-                  value={form.title}
-                  onChange={(event) => updateField("title", event.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span>{copy.fields.developer}</span>
-                <input
-                  className="input"
-                  placeholder={copy.placeholders.optional}
-                  value={form.developer_name}
-                  onChange={(event) => updateField("developer_name", event.target.value)}
-                />
-              </label>
-              <label className="field">
-                <span>{copy.fields.investment}</span>
-                <input
-                  className="input"
-                  placeholder={copy.placeholders.optional}
-                  value={form.investment_name}
-                  onChange={(event) => updateField("investment_name", event.target.value)}
-                />
-              </label>
+          <p className="manual-entry-hint">{product.manualHint}</p>
+          <form
+            aria-busy={activeOperation === "check"}
+            className="panel-body"
+            onSubmit={(event) => void analyze(event)}
+          >
+            <fieldset className="check-form-fields" disabled={activeOperation !== null}>
+              <div className="form-grid essential-fields">
               <label className="field">
                 <span>{copy.fields.address}</span>
                 <input
@@ -736,6 +888,7 @@ export default function CheckListingPage() {
                 <span>{copy.fields.district}</span>
                 <input
                   className="input"
+                  required
                   list="district-options"
                   value={form.district}
                   onChange={(event) => updateField("district", event.target.value)}
@@ -746,108 +899,145 @@ export default function CheckListingPage() {
                   ))}
                 </datalist>
               </label>
-              <label className="field">
-                <span>{copy.fields.market}</span>
-                <select
-                  className="select"
-                  value={form.market_type}
-                  onChange={(event) =>
-                    updateField("market_type", event.target.value as CheckFormState["market_type"])
-                  }
-                >
-                  <option value="secondary">{copy.values.secondary}</option>
-                  <option value="primary">{copy.values.primary}</option>
-                </select>
-              </label>
-              <label className="field">
-                <span>{copy.fields.purchaseIntent}</span>
-                <select
-                  className="select"
-                  value={form.purchase_intent}
-                  onChange={(event) =>
-                    updateField(
-                      "purchase_intent",
-                      event.target.value as CheckFormState["purchase_intent"],
-                    )
-                  }
-                >
-                  {PURCHASE_INTENTS.map((intent) => (
-                    <option key={intent} value={intent}>
-                      {copy.values.purchaseIntents[intent] ?? intent}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field">
-                <span>{copy.fields.renovationCondition}</span>
-                <select
-                  className="select"
-                  value={form.renovation_condition}
-                  onChange={(event) =>
-                    updateField(
-                      "renovation_condition",
-                      event.target.value as CheckFormState["renovation_condition"],
-                    )
-                  }
-                >
-                  <option value="">{copy.values.renovationConditionUnknown}</option>
-                  {RENOVATION_CONDITIONS.map((condition) => (
-                    <option key={condition} value={condition}>
-                      {copy.values.renovationConditions[condition] ?? condition}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <NumberField
-                label={copy.fields.renovationBudget}
-                value={form.custom_renovation_budget_pln}
-                onChange={(value) => updateField("custom_renovation_budget_pln", value)}
-              />
               <NumberField
                 label={copy.fields.price}
+                required
                 value={form.price}
                 onChange={(value) => updateField("price", value)}
               />
               <NumberField
                 label={copy.fields.area}
+                required
                 step="0.1"
                 value={form.area_m2}
                 onChange={(value) => updateField("area_m2", value)}
               />
               <NumberField
                 label={copy.fields.rooms}
+                required
                 value={form.rooms}
                 onChange={(value) => updateField("rooms", value)}
               />
-              <NumberField
-                label={copy.fields.floor}
-                value={form.floor}
-                onChange={(value) => updateField("floor", value)}
-              />
-              <NumberField
-                label={copy.fields.buildingFloors}
-                value={form.building_floors}
-                onChange={(value) => updateField("building_floors", value)}
-              />
-              <NumberField
-                label={copy.fields.buildingYear}
-                value={form.building_year}
-                onChange={(value) => updateField("building_year", value)}
-              />
-            </div>
+              </div>
 
-            <p className="status-line">{status}</p>
-            <p className="status-line">{reportStatus}</p>
-            <p className="status-line">{saveStatus}</p>
-            <div className="button-row" style={{ marginTop: 12 }}>
-              <button
-                className="button primary"
-                disabled={!form.confirm_private_analysis}
-                type="submit"
-              >
-                <ClipboardCheck size={16} /> {product.check}
-              </button>
-            </div>
+              <details className="advanced-fields">
+              <summary>{product.advancedSummary}</summary>
+              <div className="form-grid">
+                <label className="field">
+                  <span>{copy.fields.title}</span>
+                  <input
+                    className="input"
+                    placeholder={copy.placeholders.optional}
+                    value={form.title}
+                    onChange={(event) => updateField("title", event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{copy.fields.developer}</span>
+                  <input
+                    className="input"
+                    placeholder={copy.placeholders.optional}
+                    value={form.developer_name}
+                    onChange={(event) => updateField("developer_name", event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{copy.fields.investment}</span>
+                  <input
+                    className="input"
+                    placeholder={copy.placeholders.optional}
+                    value={form.investment_name}
+                    onChange={(event) => updateField("investment_name", event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{copy.fields.market}</span>
+                  <select
+                    className="select"
+                    value={form.market_type}
+                    onChange={(event) =>
+                      updateField("market_type", event.target.value as CheckFormState["market_type"])
+                    }
+                  >
+                    <option value="secondary">{copy.values.secondary}</option>
+                    <option value="primary">{copy.values.primary}</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{copy.fields.purchaseIntent}</span>
+                  <select
+                    className="select"
+                    value={form.purchase_intent}
+                    onChange={(event) =>
+                      updateField(
+                        "purchase_intent",
+                        event.target.value as CheckFormState["purchase_intent"],
+                      )
+                    }
+                  >
+                    {PURCHASE_INTENTS.map((intent) => (
+                      <option key={intent} value={intent}>
+                        {copy.values.purchaseIntents[intent] ?? intent}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>{copy.fields.renovationCondition}</span>
+                  <select
+                    className="select"
+                    value={form.renovation_condition}
+                    onChange={(event) =>
+                      updateField(
+                        "renovation_condition",
+                        event.target.value as CheckFormState["renovation_condition"],
+                      )
+                    }
+                  >
+                    <option value="">{copy.values.renovationConditionUnknown}</option>
+                    {RENOVATION_CONDITIONS.map((condition) => (
+                      <option key={condition} value={condition}>
+                        {copy.values.renovationConditions[condition] ?? condition}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <NumberField
+                  label={copy.fields.renovationBudget}
+                  value={form.custom_renovation_budget_pln}
+                  onChange={(value) => updateField("custom_renovation_budget_pln", value)}
+                />
+                <NumberField
+                  label={copy.fields.floor}
+                  value={form.floor}
+                  onChange={(value) => updateField("floor", value)}
+                />
+                <NumberField
+                  label={copy.fields.buildingFloors}
+                  value={form.building_floors}
+                  onChange={(value) => updateField("building_floors", value)}
+                />
+                <NumberField
+                  label={copy.fields.buildingYear}
+                  value={form.building_year}
+                  onChange={(value) => updateField("building_year", value)}
+                />
+              </div>
+              </details>
+
+              <p className="status-line">{status}</p>
+              <p className="status-line">{reportStatus}</p>
+              <p className="status-line">{saveStatus}</p>
+              <div className="button-row" style={{ marginTop: 12 }}>
+                <button
+                  className="button primary"
+                  disabled={activeOperation !== null || !form.confirm_private_analysis}
+                  type="submit"
+                >
+                  <ClipboardCheck size={16} /> {product.check}
+                </button>
+              </div>
+            </fieldset>
           </form>
         </details>
 
@@ -910,7 +1100,7 @@ export default function CheckListingPage() {
                 <div className="button-row" style={{ marginTop: 12 }}>
                   <button
                     className="button primary"
-                    disabled={!form.confirm_private_analysis}
+                    disabled={activeOperation !== null || !form.confirm_private_analysis}
                     type="button"
                     onClick={() => void createReport()}
                   >
@@ -918,7 +1108,7 @@ export default function CheckListingPage() {
                   </button>
                   <button
                     className="button"
-                    disabled={!result.draft_id}
+                    disabled={activeOperation !== null || !result.draft_id}
                     type="button"
                     onClick={() => void saveReportToHistory()}
                   >
@@ -932,7 +1122,7 @@ export default function CheckListingPage() {
                   </Link>
                   <button
                     className="button"
-                    disabled={!result.draft_id}
+                    disabled={activeOperation !== null || !result.draft_id}
                     type="button"
                     onClick={() => void trackApartment()}
                   >
@@ -989,7 +1179,7 @@ export default function CheckListingPage() {
               </div>
               <button
                 className="button primary"
-                disabled={aiLoading || !result?.draft_id}
+                disabled={aiLoading || activeOperation !== null || !result?.draft_id}
                 type="button"
                 onClick={() => void generateAIAnswer()}
               >
@@ -1084,37 +1274,8 @@ export default function CheckListingPage() {
 
       {analysis ? (
         <section className="panel" style={{ marginTop: 16 }}>
-          <div className="panel-header">
-            <h2>{copy.sections.comparables}</h2>
-            <span className="status-pill info">{result?.comparables_basis}</span>
-          </div>
           <div className="panel-body">
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>{copy.table.object}</th>
-                    <th>{copy.table.district}</th>
-                    <th>{copy.table.price}</th>
-                    <th>{copy.table.area}</th>
-                    <th>{copy.table.rooms}</th>
-                    <th>{copy.table.pricePerM2}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analysis.comparables.map((listing) => (
-                    <tr key={listing.id}>
-                      <td>{listing.title}</td>
-                      <td>{listing.district}</td>
-                      <td>{money(listing.price, locale)}</td>
-                      <td>{numberValue(listing.area_m2, locale)}</td>
-                      <td>{listing.rooms}</td>
-                      <td>{money(listing.price_per_m2, locale)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ComparableEvidencePanel analysis={analysis} locale={locale} />
             <p className="muted">{result?.retention_note}</p>
           </div>
         </section>
@@ -1137,7 +1298,7 @@ export default function CheckListingPage() {
               ) : null}
               <button
                 className="button"
-                disabled={!result?.draft_id}
+                disabled={activeOperation !== null || !result?.draft_id}
                 type="button"
                 onClick={() => void saveReportToHistory()}
               >
@@ -1147,6 +1308,15 @@ export default function CheckListingPage() {
             </div>
           </div>
           <div className="panel-body">
+            <DecisionSummary
+              confidenceScore={reportResult.analysis.confidence_score}
+              decision={reportResult.report.buyer_decision ?? reportResult.analysis.analysis.buyer_decision}
+              fallback={decisionSummaryFromScores(
+                reportResult.analysis.analysis.scores,
+                reportResult.analysis.analysis.listing.price,
+              )}
+              locale={locale}
+            />
             <p className="empty-state">{reportResult.report.summary}</p>
             <div className="grid-2" style={{ marginTop: 12 }}>
               {reportResult.report.sections.map((section) => (
@@ -1167,6 +1337,60 @@ export default function CheckListingPage() {
         </section>
       ) : null}
     </>
+  );
+}
+
+function operationLabel(operation: CoreOperation, copy: CheckPageCopy) {
+  switch (operation) {
+    case "import":
+      return copy.statuses.autoImporting;
+    case "report":
+      return copy.statuses.reportGenerating;
+    case "save":
+    case "track":
+      return copy.statuses.saving;
+    case "draft":
+    case "check":
+      return copy.statuses.calculating;
+  }
+}
+
+function ImportOutcomeNotice({
+  onRetry,
+  product,
+  result,
+  retryLabel,
+}: {
+  onRetry?: () => void;
+  product: ProductCopy;
+  result: SourceUrlImportResult;
+  retryLabel: string;
+}) {
+  if (result.status === "extracted") return null;
+
+  const partial = result.status === "partial";
+  const content = partial
+    ? { title: product.importPartialTitle, text: product.importPartialText }
+    : result.status === "failed"
+      ? { title: product.importFailedTitle, text: product.importFailedText }
+      : { title: product.importUnsupportedTitle, text: product.importUnsupportedText };
+
+  return (
+    <section
+      aria-label={content.title}
+      className={`import-outcome-notice ${partial ? "partial" : "error"}`}
+      role={partial ? "status" : "alert"}
+    >
+      <strong>{content.title}</strong>
+      <p>{content.text}</p>
+      {onRetry ? (
+        <div className="state-block-actions">
+          <button className="button" type="button" onClick={onRetry}>
+            <RefreshCw size={15} /> {retryLabel}
+          </button>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
@@ -1454,11 +1678,13 @@ function isPositiveNumber(value: string) {
 
 function NumberField({
   label,
+  required = false,
   value,
   step,
   onChange,
 }: {
   label: string;
+  required?: boolean;
   value: string;
   step?: string;
   onChange: (value: string) => void;
@@ -1470,6 +1696,7 @@ function NumberField({
         className="input"
         inputMode="decimal"
         min="0"
+        required={required}
         step={step ?? "1"}
         type="number"
         value={value}

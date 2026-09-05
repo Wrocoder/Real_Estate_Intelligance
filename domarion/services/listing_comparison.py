@@ -256,6 +256,8 @@ def _buyer_decision(analysis: ListingAnalysis) -> BuyerDecisionPackage:
         future_area_impact=analysis.future_area_impact,
         risk_profile=analysis.risk_profile,
         rental_estimate=analysis.rental_estimate,
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
     )
 
 

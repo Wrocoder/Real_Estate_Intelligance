@@ -316,6 +316,8 @@ def analyze_user_submitted_listing(
         risk_profile=risk_profile,
         rental_estimate=analysis.rental_estimate,
         purchase_intent=payload.purchase_intent,
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
     )
 
     analysis = analysis.model_copy(

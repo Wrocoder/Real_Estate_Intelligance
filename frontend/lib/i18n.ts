@@ -206,6 +206,7 @@ export type CheckPageCopy = {
     check: string;
     acceptAndReport: string;
     retryImport: string;
+    retry: string;
     linkAndParamsReport: string;
     refresh: string;
     generateReport: string;
@@ -1696,6 +1697,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       check: "Check",
       acceptAndReport: "Accept and get report",
       retryImport: "Retry import",
+      retry: "Try again",
       linkAndParamsReport: "Link + parameters -> report",
       refresh: "Refresh",
       generateReport: "Generate report",
@@ -1924,6 +1926,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       check: "Sprawdź",
       acceptAndReport: "Akceptuj i pobierz raport",
       retryImport: "Ponów import",
+      retry: "Spróbuj ponownie",
       linkAndParamsReport: "Link + parametry -> raport",
       refresh: "Odśwież",
       generateReport: "Wygeneruj raport",
@@ -2152,6 +2155,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       check: "Проверить",
       acceptAndReport: "Принять и получить отчет",
       retryImport: "Повторить импорт",
+      retry: "Повторить",
       linkAndParamsReport: "Ссылка + параметры -> отчет",
       refresh: "Обновить",
       generateReport: "Сгенерировать отчет",
@@ -2381,6 +2385,7 @@ export const CHECK_PAGE_COPY: Record<Locale, CheckPageCopy> = {
       check: "Перевірити",
       acceptAndReport: "Прийняти й отримати звіт",
       retryImport: "Повторити імпорт",
+      retry: "Спробувати ще раз",
       linkAndParamsReport: "Посилання + параметри -> звіт",
       refresh: "Оновити",
       generateReport: "Згенерувати звіт",

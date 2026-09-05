@@ -9,6 +9,7 @@ from domarion.schemas import (
     ReportTemplateDescriptor,
 )
 from domarion.services.mortgage import calculate_mortgage
+from domarion.services.provenance import provenance_evidence_details
 
 SectionBuilder = Callable[[ListingAnalysis | None], ReportSection]
 
@@ -152,7 +153,8 @@ def _negotiation_assistant_section(analysis: ListingAnalysis | None) -> ReportSe
                     f"{_money(negotiation.max_reasonable_offer_pln)}."
                 ),
                 f"Posture: {negotiation.posture}; score {negotiation.negotiation_score}/100.",
-                "Scenario: figures are indicative negotiation scenarios, not a guaranteed market truth.",
+                "Scenario: figures are indicative negotiation scenarios, not a guaranteed "
+                "market truth.",
                 *[f"Аргумент: {item}" for item in negotiation.arguments[:6]],
                 *[
                     f"Evidence for argument: {item.source_name} ({item.confidence_score}/100)."
@@ -211,7 +213,8 @@ def _what_we_know_section(analysis: ListingAnalysis | None) -> ReportSection:
     source_items = [
         (
             f"Source: {item.topic} -> {item.basis}; {item.source_name}; "
-            f"confidence {item.confidence_score}/100."
+            f"confidence {item.confidence_score}/100; "
+            f"{'; '.join(provenance_evidence_details(item))}."
         )
         for item in knowledge.source_evidence[:6]
     ]

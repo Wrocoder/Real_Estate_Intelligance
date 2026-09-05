@@ -2,12 +2,23 @@
 
 import { ExternalLink } from "lucide-react";
 
+import { ProvenanceDetails } from "@/components/ProvenanceDetails";
 import type { Listing } from "@/lib/api";
 import { dateValue } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
 type ListingProvenanceProps = {
-  listing: Pick<Listing, "source_name" | "source_url" | "last_seen_at" | "relisted" | "media_status">;
+  listing: Pick<
+    Listing,
+    | "source_name"
+    | "source_url"
+    | "last_seen_at"
+    | "relisted"
+    | "media_status"
+    | "data_provenance"
+    | "city"
+    | "district"
+  >;
   locale: Locale;
 };
 
@@ -31,6 +42,18 @@ export function ListingProvenance({ listing, locale }: ListingProvenanceProps) {
       <span>{copy.media}: {mediaLabel}</span>
       {stale ? <span className="status-pill warning">{copy.stale}</span> : null}
       {listing.relisted ? <span className="status-pill warning">{copy.relisted}</span> : null}
+      <ProvenanceDetails
+        locale={locale}
+        provenance={{
+          sourceName: listing.source_name,
+          sourceType: listing.data_provenance.source_type,
+          updatedAt: listing.last_seen_at,
+          sampleSize: 1,
+          scope: `${listing.city}: ${listing.district}`,
+          calculationType: "observed",
+          mode: listing.data_provenance.mode,
+        }}
+      />
     </div>
   );
 }

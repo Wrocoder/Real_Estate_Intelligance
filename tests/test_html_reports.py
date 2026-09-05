@@ -33,6 +33,18 @@ def test_render_object_report_html_contains_printable_report() -> None:
     assert "История цены" in html
     assert "Похожие объекты" in html
     assert "не финансовая" in html
+    assert '<span class="verdict-status">' in html
+    assert "Fair price confidence" in html
+    assert '<div class="report-next-step">' in html
+    assert "source type: listing data" in html
+    assert "observations:" in html
+    assert "method: model estimate" in html
+    assert "Technical match is a deterministic comparison" in html
+    assert "Наблюдалось" in html
+    assert "Расстояние" in html
+    assert "Сходство" in html
+    assert html.index('<section class="verdict">') < html.index('<p class="summary">')
+    assert html.index('<p class="summary">') < html.index('<section class="scores">')
 
 
 def test_render_object_report_html_escapes_dynamic_fields() -> None:
@@ -145,6 +157,12 @@ def test_object_report_uses_audience_templates() -> None:
     assert "Negotiation Assistant" in buyer_section_titles
     assert "Property Due Diligence" in buyer_section_titles
     assert "Что мы знаем, оцениваем и не знаем" in buyer_section_titles
+    knowledge_section = next(
+        section
+        for section in buyer_report.sections
+        if section.title == "Что мы знаем, оцениваем и не знаем"
+    )
+    assert any("observations:" in item for item in knowledge_section.items)
     assert "Жизнь, аренда и развитие района" in buyer_section_titles
     assert "Ипотека и бюджет покупки" in buyer_section_titles
     assert "Вопросы продавцу" in buyer_section_titles

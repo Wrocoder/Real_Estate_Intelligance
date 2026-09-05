@@ -1,3 +1,5 @@
+import { RefreshCw } from "lucide-react";
+
 export function LoadingBlock({
   label = "Przygotowujemy dane",
   steps,
@@ -19,11 +21,28 @@ export function LoadingBlock({
   );
 }
 
-export function ErrorBlock({ message, prefix = "Błąd" }: { message: string; prefix?: string }) {
+export function ErrorBlock({
+  message,
+  prefix = "Błąd",
+  onRetry,
+  retryLabel = "Spróbuj ponownie",
+}: {
+  message: string;
+  prefix?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <div className="empty-state state-block error" role="alert">
       <strong>{prefix}</strong>
       <span>{message}</span>
+      {onRetry ? (
+        <div className="state-block-actions">
+          <button className="button" type="button" onClick={onRetry}>
+            <RefreshCw size={15} /> {retryLabel}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

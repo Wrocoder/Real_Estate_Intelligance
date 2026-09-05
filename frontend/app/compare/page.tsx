@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BarChart3, Brain, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
+import { DecisionSummary, decisionSummaryFromScores } from "@/components/DecisionSummary";
 import { ListingProvenance } from "@/components/ListingProvenance";
 import {
   api,
@@ -739,12 +740,18 @@ function RecommendationSummary({
       <div>
         <span className="status-pill healthy">{copy.bestOverall}</span>
         <h2>{item.listing.title}</h2>
-        <p>
-          {item.listing.district} · {money(item.listing.price, locale)} ·{" "}
-          {metric.decision_score}/100
-        </p>
+        <p>{item.listing.district}</p>
         <ListingProvenance listing={item.listing} locale={locale} />
       </div>
+      <DecisionSummary
+        compact
+        confidenceScore={item.scores.fair_price_confidence_score}
+        decision={item.buyer_decision}
+        fallback={decisionSummaryFromScores(item.scores, item.listing.price)}
+        fallbackLabel={scoreLabel(item.scores.decision_label, locale)}
+        fallbackSummary={metric.recommendation}
+        locale={locale}
+      />
       <div className="compare-recommendation-grid">
         <div>
           <h3>{copy.why}</h3>

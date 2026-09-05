@@ -3,6 +3,8 @@ from functools import lru_cache
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+DEMO_IDENTITY_ENVIRONMENTS = frozenset({"local", "development", "test"})
+
 
 class Settings(BaseSettings):
     app_name: str = "WartoMetr API"
@@ -81,6 +83,14 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_database_url(self) -> str:
         return normalize_sqlalchemy_database_url(self.database_url)
+
+    @property
+    def demo_identity_allowed(self) -> bool:
+        """Allow caller-provided identity headers only in explicit demo environments."""
+        return (
+            self.demo_mode_enabled
+            and self.environment.strip().casefold() in DEMO_IDENTITY_ENVIRONMENTS
+        )
 
 
 def normalize_sqlalchemy_database_url(database_url: str) -> str:

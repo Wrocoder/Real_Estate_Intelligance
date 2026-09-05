@@ -10,12 +10,15 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { DecisionSummary } from "@/components/DecisionSummary";
+import { ProvenanceDetails } from "@/components/ProvenanceDetails";
 import type { BuyerDecisionPackage, BuyerSourceEvidence, BuyerVerdictStatus } from "@/lib/api";
-import { dateValue, money } from "@/lib/format";
+import { money } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
 type Props = {
   decision: BuyerDecisionPackage | null;
+  confidenceScore?: number | null;
   locale: Locale;
 };
 
@@ -417,84 +420,21 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
 };
 
-export function BuyerDecisionPanel({ decision, locale }: Props) {
+export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props) {
   if (!decision) return null;
 
   const copy = COPY[locale];
-  const verdict = decision.verdict;
   const negotiation = decision.negotiation;
   const dueDiligence = decision.due_diligence;
   const knowledge = decision.knowledge;
   const total = decision.total_acquisition;
-  const domarionScore = Math.round(verdict.score * 10);
-  const overpricingAbs = Math.abs(verdict.overpricing_pln);
-  const priceRelation =
-    verdict.overpricing_pln > 0
-      ? copy.labels.aboveRange(money(overpricingAbs, locale))
-      : verdict.overpricing_pln < 0
-        ? copy.labels.belowRange(money(overpricingAbs, locale))
-        : copy.labels.withinRange;
-  const selectedIntentFit =
-    decision.selected_intent_fit ??
-    decision.intent_fit.find((fit) => fit.intent === decision.selected_intent) ??
-    decision.intent_fit.find((fit) => fit.intent === "unsure") ??
-    null;
-
   return (
-    <section className={`buyer-decision buyer-decision-${verdict.status}`}>
-      <div className="buyer-decision-hero">
-        <div>
-          <div className="meta-row">
-            <span className={`status-pill ${verdictStatusTone(verdict.status)}`}>
-              {copy.statuses[verdict.status]}
-            </span>
-            <span className="status-pill info">{copy.eyebrow}</span>
-            {selectedIntentFit ? (
-              <span className="status-pill info">
-                {copy.labels.selectedIntent}:{" "}
-                {copy.intents[decision.selected_intent] ?? decision.selected_intent}
-              </span>
-            ) : null}
-          </div>
-          <h2>{verdict.headline}</h2>
-          <p>{verdict.summary}</p>
-          <p className="buyer-price-relation">{priceRelation}</p>
-        </div>
-        <strong className="buyer-decision-score">{domarionScore}/100</strong>
-      </div>
-
-      <div className="buyer-decision-metrics">
-        {selectedIntentFit ? (
-          <Metric
-            label={copy.metrics.forYou}
-            value={`${Math.round(selectedIntentFit.score / 10)}/10`}
-          />
-        ) : null}
-        <Metric label={copy.metrics.sellerPrice} value={money(verdict.seller_price_pln, locale)} />
-        <Metric
-          label={copy.metrics.fairPrice}
-            value={`${money(verdict.fair_price_low_pln, locale)}-${money(
-              verdict.fair_price_high_pln,
-              locale,
-            )}`}
-        />
-        <Metric
-          label={copy.metrics.recommendedOffer}
-          value={money(verdict.recommended_offer_pln, locale)}
-        />
-        <Metric
-          label={copy.metrics.maxOffer}
-          value={money(verdict.max_reasonable_offer_pln, locale)}
-        />
-        <Metric
-          label={copy.metrics.moveInCost}
-          value={money(total.total_move_in_cost_pln, locale)}
-        />
-        <Metric
-          label={copy.metrics.completeness}
-          value={`${knowledge.check_completeness_score}/100`}
-        />
-      </div>
+    <section className={`buyer-decision buyer-decision-${decision.verdict.status}`}>
+      <DecisionSummary
+        confidenceScore={confidenceScore}
+        decision={decision}
+        locale={locale}
+      />
 
       <a className="button primary buyer-decision-cta" href="#buyer-negotiation">
         <ClipboardCheck size={16} /> {copy.cta}
@@ -507,19 +447,19 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
         <DecisionList
           icon={<CheckCircle2 size={16} />}
           title={copy.sections.reasons}
-          items={verdict.top_reasons}
+          items={decision.verdict.top_reasons}
           emptyLabel={copy.labels.empty}
         />
         <DecisionList
           icon={<ShieldAlert size={16} />}
           title={copy.sections.risks}
-          items={verdict.top_risks}
+          items={decision.verdict.top_risks}
           emptyLabel={copy.labels.empty}
         />
         <DecisionList
           icon={<HelpCircle size={16} />}
           title={copy.sections.unknowns}
-          items={verdict.critical_unknowns}
+          items={decision.verdict.critical_unknowns}
           emptyLabel={copy.labels.empty}
         />
       </div>
@@ -546,16 +486,37 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
             <Fact label={copy.labels.posture} value={negotiation.posture} />
           </dl>
           <ul className="section-list compact">
-            {negotiation.arguments.slice(0, 4).map((item) => (
-              <li key={item}>
-                <strong>{item}</strong>
-                {negotiation.argument_evidence.find((evidence) => evidence.argument === item) ? (
-                  <small className="muted">
-                    {copy.labels.evidence}: {negotiation.argument_evidence.find((evidence) => evidence.argument === item)?.source_name}
-                  </small>
-                ) : null}
-              </li>
-            ))}
+            {negotiation.arguments.slice(0, 4).map((item) => {
+              const evidence = negotiation.argument_evidence.find(
+                (candidate) => candidate.argument === item,
+              );
+              return (
+                <li key={item}>
+                  <strong>{item}</strong>
+                  {evidence ? (
+                    <>
+                      <small className="muted">
+                        {copy.labels.evidence}: {evidence.source_name}
+                      </small>
+                      <ProvenanceDetails
+                        locale={locale}
+                        provenance={{
+                          sourceName: evidence.source_name,
+                          sourceType: evidence.source_type,
+                          updatedAt: evidence.updated_at,
+                          sampleSize: evidence.sample_size,
+                          scope: evidence.geographic_scope,
+                          timeRange: evidence.time_range,
+                          calculationType: evidence.calculation_type ?? "unknown",
+                          confidenceScore: evidence.confidence_score,
+                          note: evidence.note,
+                        }}
+                      />
+                    </>
+                  ) : null}
+                </li>
+              );
+            })}
             {negotiation.seller_script.slice(0, 3).map((item) => (
               <li key={item}><strong>{copy.labels.nextStep}:</strong> {item}</li>
             ))}
@@ -695,15 +656,6 @@ export function BuyerDecisionPanel({ decision, locale }: Props) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <>
@@ -784,18 +736,23 @@ function SourceEvidenceItem({
       <small>
         {source.source_name} · {copy.labels.confidence}{" "}
         {confidenceLabel(source.confidence_score, copy)}
-        {source.updated_at ? ` · ${copy.labels.updated} ${dateValue(source.updated_at, locale)}` : ""}
       </small>
-      {source.note ? <small>{source.note}</small> : null}
+      <ProvenanceDetails
+        locale={locale}
+        provenance={{
+          sourceName: source.source_name,
+          sourceType: source.source_type,
+          updatedAt: source.updated_at,
+          sampleSize: source.sample_size,
+          scope: source.geographic_scope,
+          timeRange: source.time_range,
+          calculationType: source.calculation_type ?? "unknown",
+          confidenceScore: source.confidence_score,
+          note: source.note,
+        }}
+      />
     </article>
   );
-}
-
-function verdictStatusTone(status: BuyerVerdictStatus) {
-  if (status === "buy") return "healthy";
-  if (status === "negotiate") return "warning";
-  if (status === "avoid") return "error";
-  return "info";
 }
 
 function humanizeCode(value: string) {

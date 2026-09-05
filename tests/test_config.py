@@ -25,3 +25,11 @@ def test_demo_mode_requires_explicit_environment_flag(monkeypatch) -> None:
     settings = Settings(_env_file=None)
 
     assert settings.demo_mode_enabled is False
+
+
+def test_demo_identity_is_allowed_only_in_explicit_demo_environments() -> None:
+    assert Settings(environment="local", demo_mode_enabled=True).demo_identity_allowed is True
+    assert Settings(environment="development", demo_mode_enabled=True).demo_identity_allowed is True
+    assert Settings(environment="test", demo_mode_enabled=True).demo_identity_allowed is True
+    assert Settings(environment="staging", demo_mode_enabled=True).demo_identity_allowed is False
+    assert Settings(environment="production", demo_mode_enabled=True).demo_identity_allowed is False

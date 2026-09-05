@@ -10,7 +10,8 @@
     "smoke": "node scripts/smoke-ui.mjs",
     "typecheck": "tsc --noEmit",
     "generate:openapi": "node scripts/generate-openapi.mjs",
-    "browser:quality": "node scripts/browser-quality.mjs"
+    "browser:quality": "node scripts/browser-quality.mjs",
+    "browser:check-recovery": "node scripts/check-recovery.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

@@ -80,6 +80,19 @@
 | `DELETE` | `/api/v1/user-submitted-listings/drafts/{draft_id}` |
 | `POST` | `/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate` |
 
+Analysis and report responses expose buyer source evidence with the source
+class, update date, observation count, geographic scope, time range, explicit
+observed/calculated/model-estimate/unknown method, confidence, and notes when
+those values are available. The frontend renders these fields through the
+shared provenance disclosure instead of exposing internal source codes.
+
+Listing analysis responses also expose `comparable_evidence` for the selected
+fresh comparable sample. Each item carries its observed date, market type,
+price, price/m2, size, rooms, optional floor/building year/condition, distance
+from the subject, deterministic technical similarity score and factor codes.
+The `Dlaczego taka cena?` UI localizes those factors and states that they are
+reference points, not transaction valuations or guarantees.
+
 ## Reports, Payments And Exports
 
 | Method | Path |
@@ -104,6 +117,12 @@
 | `POST` | `/api/v1/reports/{report_id}/email` |
 | `GET` | `/api/v1/reports/{report_id}/pdf` |
 | `GET` | `/api/v1/datasets/listings/export` |
+
+`GET /api/v1/reports` includes a `decision_summary` snapshot when the
+report was generated from a buyer decision. The snapshot contains only the
+non-sensitive verdict, price-range, confidence and next-offer fields needed
+for report-list cards; older reports and non-property reports may return
+`null` fields.
 
 ## AI And Stored Insights
 
@@ -180,7 +199,9 @@
 
 ## Internal Admin API
 
-Admin routes use MVP identity headers and require `X-Domarion-Role: admin`.
+Admin routes require the authenticated account role to be `admin`. Legacy
+identity headers are accepted only by explicit local/development/test demo
+fixtures and are never a production authentication mechanism.
 
 | Method | Path |
 | --- | --- |

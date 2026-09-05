@@ -4410,6 +4410,20 @@ export interface components {
             source_name: string;
             /** Source Type */
             source_type: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Sample Size */
+            sample_size?: number | null;
+            /** Geographic Scope */
+            geographic_scope?: string | null;
+            /** Time Range */
+            time_range?: string | null;
+            /**
+             * Calculation Type
+             * @default unknown
+             * @enum {string}
+             */
+            calculation_type: "observed" | "calculated" | "model_estimate" | "unknown";
             /** Confidence Score */
             confidence_score: number;
             /** Note */
@@ -4427,6 +4441,18 @@ export interface components {
             source_type: string;
             /** Updated At */
             updated_at?: string | null;
+            /** Sample Size */
+            sample_size?: number | null;
+            /** Geographic Scope */
+            geographic_scope?: string | null;
+            /** Time Range */
+            time_range?: string | null;
+            /**
+             * Calculation Type
+             * @default unknown
+             * @enum {string}
+             */
+            calculation_type: "observed" | "calculated" | "model_estimate" | "unknown";
             /** Confidence Score */
             confidence_score: number;
             /** Note */
@@ -4450,6 +4476,56 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+        };
+        /** ComparableEvidence */
+        ComparableEvidence: {
+            /** Listing Id */
+            listing_id: string;
+            /** Title */
+            title: string;
+            /** Source Name */
+            source_name: string;
+            data_provenance: components["schemas"]["DataProvenance"];
+            /** Address */
+            address: string;
+            /** City */
+            city: string;
+            /** District */
+            district: string;
+            /**
+             * Market Type
+             * @enum {string}
+             */
+            market_type: "primary" | "secondary";
+            /**
+             * Observed At
+             * Format: date
+             */
+            observed_at: string;
+            /** Price */
+            price: number;
+            /** Area M2 */
+            area_m2: number;
+            /** Rooms */
+            rooms: number;
+            /** Price Per M2 */
+            price_per_m2: number;
+            /** Floor */
+            floor?: number | null;
+            /** Building Year */
+            building_year?: number | null;
+            /** Renovation State */
+            renovation_state?: string | null;
+            /** Distance M */
+            distance_m?: number | null;
+            /** Similarity Score */
+            similarity_score: number;
+            /** Similarity Factors */
+            similarity_factors?: string[];
+            /** Price Delta To Subject Pct */
+            price_delta_to_subject_pct: number;
+            /** Price Per M2 Delta To Subject Pct */
+            price_per_m2_delta_to_subject_pct: number;
         };
         /** CompareItemMetrics */
         CompareItemMetrics: {
@@ -5812,12 +5888,46 @@ export interface components {
             report_version?: string | null;
             /** Data As Of */
             data_as_of?: string | null;
+            decision_summary?: components["schemas"]["GeneratedReportDecisionSummary"] | null;
             /** Content */
             content: string;
             /** Report Metadata */
             report_metadata: {
                 [key: string]: unknown;
             };
+        };
+        /** GeneratedReportDecisionSummary */
+        GeneratedReportDecisionSummary: {
+            /** Status */
+            status?: ("buy" | "negotiate" | "avoid" | "verify_first") | null;
+            /** Score */
+            score?: number | null;
+            /** Headline */
+            headline?: string | null;
+            /** Summary */
+            summary?: string | null;
+            /** Seller Price Pln */
+            seller_price_pln?: number | null;
+            /** Fair Price Low Pln */
+            fair_price_low_pln?: number | null;
+            /** Fair Price Mid Pln */
+            fair_price_mid_pln?: number | null;
+            /** Fair Price High Pln */
+            fair_price_high_pln?: number | null;
+            /** Price Delta To Fair Mid Pct */
+            price_delta_to_fair_mid_pct?: number | null;
+            /** Confidence Score */
+            confidence_score?: number | null;
+            /** Recommended Offer Pln */
+            recommended_offer_pln?: number | null;
+            /** Max Reasonable Offer Pln */
+            max_reasonable_offer_pln?: number | null;
+            /** Total Move In Cost Pln */
+            total_move_in_cost_pln?: number | null;
+            /** Selected Intent */
+            selected_intent?: ("self" | "family" | "rental" | "investment" | "unsure") | null;
+            /** Selected Intent Score */
+            selected_intent_score?: number | null;
         };
         /** GeneratedReportListItem */
         GeneratedReportListItem: {
@@ -5852,6 +5962,7 @@ export interface components {
             report_version?: string | null;
             /** Data As Of */
             data_as_of?: string | null;
+            decision_summary?: components["schemas"]["GeneratedReportDecisionSummary"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -6271,6 +6382,8 @@ export interface components {
             listing_events?: components["schemas"]["ListingEvent"][];
             /** Comparables */
             comparables: components["schemas"]["Listing"][];
+            /** Comparable Evidence */
+            comparable_evidence?: components["schemas"]["ComparableEvidence"][];
             developer_reputation?: components["schemas"]["DeveloperReputation"] | null;
             future_area_impact?: components["schemas"]["ListingFutureImpact"] | null;
             growth_analysis?: components["schemas"]["ListingGrowthAnalysis"] | null;

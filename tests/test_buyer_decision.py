@@ -62,6 +62,33 @@ def test_buyer_decision_exposes_due_diligence_total_cost_and_source_confidence()
         "fair price",
         "market context",
     }
+    assert all(
+        source.calculation_type in {"observed", "calculated", "model_estimate", "unknown"}
+        for source in decision.knowledge.source_evidence
+    )
+    source_by_topic = {source.topic: source for source in decision.knowledge.source_evidence}
+    assert source_by_topic["asking price and object parameters"].sample_size == 1
+    assert source_by_topic["asking price and object parameters"].geographic_scope
+    assert source_by_topic["fair price"].sample_size is not None
+    assert source_by_topic["fair price"].geographic_scope
+    assert source_by_topic["market context"].time_range == "90 days"
+
+
+def test_buyer_decision_source_evidence_carries_comparable_window() -> None:
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
+    listing = repository.get_listing("wr-001")
+    assert listing is not None
+
+    analysis = build_listing_analysis(repository, listing)
+    assert analysis.buyer_decision is not None
+    source_by_topic = {
+        source.topic: source for source in analysis.buyer_decision.knowledge.source_evidence
+    }
+
+    fair_price_source = source_by_topic["fair price"]
+    assert fair_price_source.sample_size == len(analysis.comparables)
+    assert fair_price_source.time_range == f"{analysis.comparables_freshness_days} days"
+    assert fair_price_source.calculation_type == "model_estimate"
 
 
 def test_buyer_decision_uses_custom_renovation_budget_before_condition_estimate() -> None:

@@ -74,6 +74,8 @@ def build_buyer_decision(
     risk_profile: ListingRiskProfile | None = None,
     rental_estimate: ListingRentalEstimate | None = None,
     purchase_intent: PurchaseIntent = "unsure",
+    comparables_scope: str | None = None,
+    comparables_freshness_days: int | None = None,
 ) -> BuyerDecisionPackage:
     total_acquisition = _total_acquisition_cost(listing)
     due_diligence = _due_diligence(
@@ -107,6 +109,7 @@ def build_buyer_decision(
         area_statistics=area_statistics,
         comparables=comparables,
         negotiation_arguments=negotiation_arguments,
+        comparables_freshness_days=comparables_freshness_days,
     )
     knowledge = _knowledge_matrix(
         listing=listing,
@@ -117,6 +120,8 @@ def build_buyer_decision(
         future_area_impact=future_area_impact,
         rental_estimate=rental_estimate,
         data_quality_notes=data_quality_notes,
+        comparables_scope=comparables_scope,
+        comparables_freshness_days=comparables_freshness_days,
     )
     pre_viewing = _pre_viewing_assistant(
         verdict=verdict,
@@ -162,6 +167,8 @@ def recalculate_post_viewing_verdict(
         future_area_impact=analysis.future_area_impact,
         risk_profile=analysis.risk_profile,
         rental_estimate=analysis.rental_estimate,
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
     )
     risk_adjustment, offer_adjustment, findings, issue_findings, actions = (
         _post_viewing_adjustments(analysis.listing, answers)
@@ -220,6 +227,7 @@ def recalculate_post_viewing_verdict(
                 else []
             ),
         ],
+        comparables_freshness_days=analysis.comparables_freshness_days,
     )
     knowledge = _knowledge_matrix(
         listing=adjusted_listing,
@@ -233,6 +241,8 @@ def recalculate_post_viewing_verdict(
             *analysis.data_quality_notes,
             "Post-viewing checklist answers were applied to the buyer verdict.",
         ],
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
     )
     pre_viewing = _pre_viewing_assistant(
         verdict=verdict,
@@ -448,6 +458,7 @@ def _negotiation_assistant(
     area_statistics: AreaStatistics,
     comparables: list[Listing],
     negotiation_arguments: list[str],
+    comparables_freshness_days: int | None,
 ) -> BuyerNegotiationAssistant:
     arguments = list(negotiation_arguments)
     if comparables:
@@ -476,14 +487,24 @@ def _negotiation_assistant(
         posture=_negotiation_posture(scores),
         arguments=_deduplicate(arguments)[:8],
         argument_evidence=[
-            _negotiation_argument_evidence(argument, listing, scores, area_statistics, comparables)
+            _negotiation_argument_evidence(
+                argument,
+                listing,
+                scores,
+                area_statistics,
+                comparables,
+                comparables_freshness_days,
+            )
             for argument in _deduplicate(arguments)[:8]
         ],
         seller_script=_seller_script(listing, scores, verdict),
         guardrails=[
-            "Scenario only: do not exceed the ceiling before document and building checks are complete.",
-            "Scenario only: use the fair range as negotiation support, not as a guaranteed valuation.",
-            "Next step: if the seller rejects the range, compare with alternatives before raising the offer.",
+            "Scenario only: do not exceed the ceiling before document and building checks "
+            "are complete.",
+            "Scenario only: use the fair range as negotiation support, not as a guaranteed "
+            "valuation.",
+            "Next step: if the seller rejects the range, compare with alternatives before "
+            "raising the offer.",
         ],
     )
 
@@ -494,6 +515,7 @@ def _negotiation_argument_evidence(
     scores: PropertyScores,
     area_statistics: AreaStatistics,
     comparables: list[Listing],
+    comparables_freshness_days: int | None,
 ) -> BuyerNegotiationEvidence:
     lowered = argument.lower()
     if "comparable" in lowered:
@@ -502,6 +524,14 @@ def _negotiation_argument_evidence(
             topic="comparables",
             source_name=f"Comparable listing sample ({min(len(comparables), 5)} listings)",
             source_type="derived_comparable_sample",
+            sample_size=min(len(comparables), 5),
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range=(
+                f"{comparables_freshness_days} days"
+                if comparables_freshness_days is not None
+                else None
+            ),
+            calculation_type="calculated",
             confidence_score=scores.fair_price_confidence_score,
             note="Use as a range signal, not as a guaranteed transaction price.",
         )
@@ -511,6 +541,10 @@ def _negotiation_argument_evidence(
             topic="area_supply",
             source_name="Area market snapshot",
             source_type="area_market_snapshot",
+            sample_size=area_statistics.active_listings,
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range="90 days",
+            calculation_type="calculated",
             confidence_score=70,
             note="Area-level context; it does not prove this seller will accept a discount.",
         )
@@ -520,6 +554,10 @@ def _negotiation_argument_evidence(
             topic="listing_history",
             source_name="Listing history",
             source_type="listing_snapshot",
+            updated_at=listing.last_seen_at,
+            sample_size=1,
+            geographic_scope=f"{listing.city}: {listing.district}",
+            calculation_type="observed",
             confidence_score=100,
             note="Verify the original exposure and price anchors before using it.",
         )
@@ -529,6 +567,14 @@ def _negotiation_argument_evidence(
             topic="fair_price",
             source_name="WartoMetr fair-price estimate",
             source_type="derived_estimate",
+            sample_size=len(comparables),
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range=(
+                f"{comparables_freshness_days} days"
+                if comparables_freshness_days is not None
+                else None
+            ),
+            calculation_type="model_estimate",
             confidence_score=scores.fair_price_confidence_score,
             note="Model estimate based on available market evidence.",
         )
@@ -537,6 +583,10 @@ def _negotiation_argument_evidence(
         topic="listing_facts",
         source_name="Listing and scoring record",
         source_type="listing_snapshot",
+        updated_at=listing.last_seen_at,
+        sample_size=1,
+        geographic_scope=f"{listing.city}: {listing.district}",
+        calculation_type="observed",
         confidence_score=listing.data_quality_score,
         note="Confirm the underlying fact during viewing or due diligence.",
     )
@@ -853,7 +903,12 @@ def _knowledge_matrix(
     future_area_impact: ListingFutureImpact | None,
     rental_estimate: ListingRentalEstimate | None,
     data_quality_notes: list[str],
+    comparables_scope: str | None,
+    comparables_freshness_days: int | None,
 ) -> BuyerKnowledgeMatrix:
+    comparable_window = (
+        comparables_freshness_days if comparables_scope is not None else None
+    )
     known = [
         f"Asking price {_money(listing.price)} and {_money(listing.price_per_m2)}/m2.",
         (
@@ -903,6 +958,9 @@ def _knowledge_matrix(
             source_name=listing.source_name,
             source_type="listing_reference",
             updated_at=listing.last_seen_at,
+            sample_size=1,
+            geographic_scope=f"{listing.city}: {listing.district}",
+            calculation_type="observed",
             confidence_score=listing.data_quality_score,
             note="Private source URLs are not exposed in reports.",
         ),
@@ -911,6 +969,14 @@ def _knowledge_matrix(
             basis=f"{len(comparables)} comparables plus area median for {area_statistics.name}",
             source_name="WartoMetr comparables and area statistics",
             source_type="market_snapshot",
+            sample_size=len(comparables),
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range=(
+                f"{comparable_window} days"
+                if comparable_window is not None
+                else None
+            ),
+            calculation_type="model_estimate",
             confidence_score=scores.fair_price_confidence_score,
         ),
         BuyerSourceEvidence(
@@ -921,6 +987,10 @@ def _knowledge_matrix(
             ),
             source_name="WartoMetr area statistics",
             source_type="area_statistics",
+            sample_size=area_statistics.active_listings,
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range="90 days",
+            calculation_type="calculated",
             confidence_score=min(90, 55 + area_statistics.active_listings // 20),
         ),
     ]
@@ -931,6 +1001,9 @@ def _knowledge_matrix(
                 basis=f"{len(future_area_impact.nearest_investments)} nearest planned investments",
                 source_name="WartoMetr planned investments registry",
                 source_type="open_data_or_admin_verified",
+                sample_size=len(future_area_impact.nearest_investments),
+                geographic_scope="within 2 km of the listing",
+                calculation_type="model_estimate",
                 confidence_score=_future_confidence(future_area_impact),
                 note=future_area_impact.methodology_note,
             )
@@ -942,6 +1015,8 @@ def _knowledge_matrix(
                 basis="rental heuristic from object, location and comparable-density signals",
                 source_name="WartoMetr rental estimate",
                 source_type="derived_model",
+                geographic_scope=f"{listing.city}: {listing.district}",
+                calculation_type="model_estimate",
                 confidence_score=rental_estimate.confidence_score,
             )
         )

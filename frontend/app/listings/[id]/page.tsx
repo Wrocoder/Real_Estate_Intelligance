@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
+import { ComparableEvidencePanel } from "@/components/ComparableEvidencePanel";
 import { ListingProvenance } from "@/components/ListingProvenance";
 import { LineChart } from "@/components/Charts";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
@@ -252,7 +253,11 @@ export default function ListingDetailPage() {
       ) : null}
 
       {displayedDecision ? (
-        <BuyerDecisionPanel decision={displayedDecision} locale={locale} />
+        <BuyerDecisionPanel
+          confidenceScore={analysis.scores.fair_price_confidence_score}
+          decision={displayedDecision}
+          locale={locale}
+        />
       ) : null}
 
       {analysis.buyer_decision ? (
@@ -489,42 +494,7 @@ export default function ListingDetailPage() {
               </table>
             </div>
 
-            <h2>{copy.sections.comparables}</h2>
-            <p className="muted-text">
-              {locale === "pl"
-                ? `Próba: ${analysis.comparables.length} obiektów. Zakres: ${analysis.comparables_scope}. Świeżość danych: ${analysis.comparables_freshness_days} dni.`
-                : locale === "ru"
-                  ? `Выборка: ${analysis.comparables.length} объектов. Охват: ${analysis.comparables_scope}. Свежесть данных: ${analysis.comparables_freshness_days} дней.`
-                  : locale === "uk"
-                    ? `Вибірка: ${analysis.comparables.length} об'єктів. Охоплення: ${analysis.comparables_scope}. Свіжість даних: ${analysis.comparables_freshness_days} днів.`
-                    : `Sample: ${analysis.comparables.length} properties. Scope: ${analysis.comparables_scope}. Freshness: ${analysis.comparables_freshness_days} days.`}
-            </p>
-            <div className="table-scroll">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>{copy.table.object}</th>
-                    <th>{copy.table.district}</th>
-                    <th>{copy.table.price}</th>
-                    <th>{copy.table.area}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analysis.comparables.map((item) => (
-                    <tr key={item.id}>
-                      <td>
-                        <Link href={`/listings/${item.id}`}>{item.title}</Link>
-                      </td>
-                      <td>{item.district}</td>
-                      <td>{money(item.price, locale)}</td>
-                      <td>
-                        {money(item.price_per_m2, locale)}/{copy.values.m2}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <ComparableEvidencePanel analysis={analysis} locale={locale} />
           </div>
         </section>
 

@@ -5,10 +5,19 @@ import Link from "next/link";
 import { BarChart3, Bell, FileText, RefreshCw, Trash2 } from "lucide-react";
 
 import { AuthForm } from "@/components/AuthForm";
+import { DecisionSummary, decisionSummaryFromScores } from "@/components/DecisionSummary";
 import { ListingProvenance } from "@/components/ListingProvenance";
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
-import { ApiError, api, type Favorite, type Listing, type PropertyScores, type UserSubmittedListingDraft } from "@/lib/api";
-import { dateValue, money, numberValue } from "@/lib/format";
+import {
+  ApiError,
+  api,
+  type BuyerDecisionPackage,
+  type Favorite,
+  type Listing,
+  type PropertyScores,
+  type UserSubmittedListingDraft,
+} from "@/lib/api";
+import { dateValue, numberValue } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { CHECK_DRAFTS_COPY, type Locale } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
@@ -19,10 +28,10 @@ type SavedItem =
   | { kind: "favorite"; listing: Listing; favorite: Favorite };
 
 const LABELS = {
-  en: { all: "All", checked: "Checked", favorites: "Favorites", checkedBadge: "Checked apartment", favoriteBadge: "Favorite apartment", fairPrice: "Fair price", score: "Score", updated: "Updated", open: "Open", compare: "Compare", track: "Track", tracked: "Apartment tracking is enabled.", remove: "Remove", noSaved: "No saved apartments yet. Save an apartment or check a listing to see it here.", savedCount: (count: number) => `${count} saved apartments` },
-  pl: { all: "Wszystkie", checked: "Sprawdzone", favorites: "Ulubione", checkedBadge: "Sprawdzone mieszkanie", favoriteBadge: "Ulubione mieszkanie", fairPrice: "Cena rynkowa", score: "Ocena", updated: "Aktualizacja", open: "Otwórz", compare: "Porównaj", track: "Śledź", tracked: "Śledzenie mieszkania zostało włączone.", remove: "Usuń", noSaved: "Nie ma jeszcze zapisanych mieszkań. Zapisz ogłoszenie lub je sprawdź, aby zobaczyć je tutaj.", savedCount: (count: number) => `Zapisane mieszkania: ${count}` },
-  ru: { all: "Все", checked: "Проверенные", favorites: "Избранные", checkedBadge: "Проверенная квартира", favoriteBadge: "Избранная квартира", fairPrice: "Рыночный диапазон", score: "Оценка", updated: "Обновлено", open: "Открыть", compare: "Сравнить", track: "Следить", tracked: "Отслеживание квартиры включено.", remove: "Удалить", noSaved: "Пока нет сохраненных квартир. Добавьте объявление в избранное или проверьте его, чтобы увидеть здесь.", savedCount: (count: number) => `Сохраненных квартир: ${count}` },
-  uk: { all: "Усі", checked: "Перевірені", favorites: "Обрані", checkedBadge: "Перевірена квартира", favoriteBadge: "Обрана квартира", fairPrice: "Ринковий діапазон", score: "Оцінка", updated: "Оновлено", open: "Відкрити", compare: "Порівняти", track: "Стежити", tracked: "Стеження за квартирою увімкнено.", remove: "Видалити", noSaved: "Поки немає збережених квартир. Додайте оголошення в обране або перевірте його, щоб побачити тут.", savedCount: (count: number) => `Збережених квартир: ${count}` },
+  en: { all: "All", checked: "Checked", favorites: "Favorites", checkedBadge: "Checked apartment", favoriteBadge: "Favorite apartment", updated: "Updated", open: "Open", compare: "Compare", track: "Track", tracked: "Apartment tracking is enabled.", remove: "Remove", noSaved: "No saved apartments yet. Save an apartment or check a listing to see it here.", verdictUnavailable: "Buyer verdict unavailable", openToCheck: "Open the apartment to prepare a current buyer verdict.", savedCount: (count: number) => `${count} saved apartments` },
+  pl: { all: "Wszystkie", checked: "Sprawdzone", favorites: "Ulubione", checkedBadge: "Sprawdzone mieszkanie", favoriteBadge: "Ulubione mieszkanie", updated: "Aktualizacja", open: "Otwórz", compare: "Porównaj", track: "Śledź", tracked: "Śledzenie mieszkania zostało włączone.", remove: "Usuń", noSaved: "Nie ma jeszcze zapisanych mieszkań. Zapisz ogłoszenie lub je sprawdź, aby zobaczyć je tutaj.", verdictUnavailable: "Brak werdyktu dla kupującego", openToCheck: "Otwórz mieszkanie, aby przygotować aktualny werdykt dla kupującego.", savedCount: (count: number) => `Zapisane mieszkania: ${count}` },
+  ru: { all: "Все", checked: "Проверенные", favorites: "Избранные", checkedBadge: "Проверенная квартира", favoriteBadge: "Избранная квартира", updated: "Обновлено", open: "Открыть", compare: "Сравнить", track: "Следить", tracked: "Отслеживание квартиры включено.", remove: "Удалить", noSaved: "Пока нет сохраненных квартир. Добавьте объявление в избранное или проверьте его, чтобы увидеть здесь.", verdictUnavailable: "Вывод для покупателя недоступен", openToCheck: "Откройте квартиру, чтобы подготовить актуальный вывод для покупателя.", savedCount: (count: number) => `Сохраненных квартир: ${count}` },
+  uk: { all: "Усі", checked: "Перевірені", favorites: "Обрані", checkedBadge: "Перевірена квартира", favoriteBadge: "Обрана квартира", updated: "Оновлено", open: "Відкрити", compare: "Порівняти", track: "Стежити", tracked: "Стеження за квартирою увімкнено.", remove: "Видалити", noSaved: "Поки немає збережених квартир. Додайте оголошення в обране або перевірте його, щоб побачити тут.", verdictUnavailable: "Висновок для покупця недоступний", openToCheck: "Відкрийте квартиру, щоб підготувати актуальний висновок для покупця.", savedCount: (count: number) => `Збережених квартир: ${count}` },
 } as const;
 
 const TITLE = { en: "My apartments", pl: "Moje mieszkania", ru: "Мои квартиры", uk: "Мої квартири" } as const;
@@ -112,12 +121,26 @@ export default function SavedApartmentsPage() {
 function SavedApartmentCard({ item, locale, copy, labels, onTrack, onRemove }: { item: SavedItem; locale: Locale; copy: (typeof CHECK_DRAFTS_COPY)[Locale]; labels: (typeof LABELS)[Locale]; onTrack: () => void; onRemove: () => void }) {
   const listing = item.kind === "checked" ? item.draft : item.listing;
   const scores = item.kind === "checked" ? draftScores(item.draft) : null;
+  const decision = item.kind === "checked" ? draftDecision(item.draft) : null;
   const listingId = item.kind === "checked" ? item.draft.listing_id : item.listing.id;
   const updated = item.kind === "checked" ? item.draft.updated_at : item.favorite.created_at;
   const title = item.kind === "checked" ? item.draft.address : item.listing.address || item.listing.title;
-  return <article className="apartment-card"><div><span className="status-pill info">{item.kind === "checked" ? labels.checkedBadge : labels.favoriteBadge}</span><h3>{title}</h3><p>{listing.district}, {listing.city}</p></div>{item.kind === "favorite" ? <ListingProvenance listing={item.listing} locale={locale} /> : <div className="listing-provenance"><span><strong>{labels.updated}:</strong> {dateValue(updated, locale)}</span><span>{locale === "pl" ? "Źródło: prywatna analiza" : locale === "ru" ? "Источник: частный анализ" : locale === "uk" ? "Джерело: приватний аналіз" : "Source: private analysis"}</span><span>{locale === "pl" ? "Zdjęcia: brak danych ze źródła" : locale === "ru" ? "Фото: источник не сообщил статус" : locale === "uk" ? "Фото: джерело не повідомило статус" : "Photos: source status not supplied"}</span></div>}<div className="apartment-card-price"><strong>{money(listing.price, locale)}</strong><span>{numberValue(listing.area_m2, locale)} m2 · {copy.values.rooms(listing.rooms)}</span></div><div className="area-metrics"><span><small>{labels.fairPrice}</small><strong>{fairRange(scores, locale)}</strong></span><span><small>{labels.score}</small><strong>{scores ? `${scores.investment_score}/100` : "-"}</strong></span></div><div className="button-row"><Link className="button primary" href={item.kind === "checked" ? `/check?draft=${encodeURIComponent(item.draft.id)}` : `/listings/${encodeURIComponent(listingId)}`}><FileText size={16} /> {labels.open}</Link><Link className="button" href={`/compare?ids=${encodeURIComponent(listingId)}`}><BarChart3 size={16} /> {labels.compare}</Link><button className="button" type="button" onClick={onTrack}><Bell size={16} /> {labels.track}</button><button className="button danger" type="button" onClick={onRemove}><Trash2 size={16} /> {labels.remove}</button></div></article>;
+  const fallback = scores
+    ? decisionSummaryFromScores(scores, listing.price)
+    : { seller_price_pln: listing.price };
+  const confidenceScore = item.kind === "checked" ? item.draft.confidence_score : null;
+  return <article className="apartment-card"><div><span className="status-pill info">{item.kind === "checked" ? labels.checkedBadge : labels.favoriteBadge}</span><h3>{title}</h3><p>{listing.district}, {listing.city}</p></div>{item.kind === "favorite" ? <ListingProvenance listing={item.listing} locale={locale} /> : <div className="listing-provenance"><span><strong>{labels.updated}:</strong> {dateValue(updated, locale)}</span><span>{locale === "pl" ? "Źródło: prywatna analiza" : locale === "ru" ? "Источник: частный анализ" : locale === "uk" ? "Джерело: приватний аналіз" : "Source: private analysis"}</span><span>{locale === "pl" ? "Zdjęcia: brak danych ze źródła" : locale === "ru" ? "Фото: источник не сообщил статус" : locale === "uk" ? "Фото: джерело не повідомило статус" : "Photos: source status not supplied"}</span></div>}<p className="apartment-card-specs">{numberValue(listing.area_m2, locale)} m2 · {copy.values.rooms(listing.rooms)}</p><DecisionSummary compact confidenceScore={confidenceScore} decision={decision} fallback={fallback} fallbackLabel={labels.verdictUnavailable} fallbackSummary={labels.openToCheck} locale={locale} /><div className="button-row"><Link className="button primary" href={item.kind === "checked" ? `/check?draft=${encodeURIComponent(item.draft.id)}` : `/listings/${encodeURIComponent(listingId)}`}><FileText size={16} /> {labels.open}</Link><Link className="button" href={`/compare?ids=${encodeURIComponent(listingId)}`}><BarChart3 size={16} /> {labels.compare}</Link><button className="button" type="button" onClick={onTrack}><Bell size={16} /> {labels.track}</button><button className="button danger" type="button" onClick={onRemove}><Trash2 size={16} /> {labels.remove}</button></div></article>;
 }
 
 function countSaved(drafts: UserSubmittedListingDraft[], favorites: Favorite[]) { return drafts.length + favorites.filter((favorite) => !drafts.some((draft) => draft.listing_id === favorite.listing_id)).length; }
-function draftScores(draft: UserSubmittedListingDraft): PropertyScores | null { const candidate = draft.analysis_payload?.scores; return candidate && typeof candidate === "object" ? candidate as PropertyScores : null; }
-function fairRange(scores: PropertyScores | null, locale: Locale) { return scores ? `${money(scores.fair_price_low, locale)} - ${money(scores.fair_price_high, locale)}` : "-"; }
+function draftAnalysis(draft: UserSubmittedListingDraft): Record<string, unknown> {
+  const candidate = draft.analysis_payload?.analysis;
+  return candidate && typeof candidate === "object" ? candidate as Record<string, unknown> : draft.analysis_payload;
+}
+function draftScores(draft: UserSubmittedListingDraft): PropertyScores | null { const candidate = draftAnalysis(draft).scores; return candidate && typeof candidate === "object" ? candidate as PropertyScores : null; }
+function draftDecision(draft: UserSubmittedListingDraft): BuyerDecisionPackage | null {
+  const candidate = draftAnalysis(draft).buyer_decision;
+  if (!candidate || typeof candidate !== "object") return null;
+  const verdict = (candidate as { verdict?: unknown }).verdict;
+  return verdict && typeof verdict === "object" ? candidate as BuyerDecisionPackage : null;
+}

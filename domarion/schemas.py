@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 MarketType = Literal["primary", "secondary"]
 DataMode = Literal["live", "demo"]
+ProvenanceCalculationType = Literal["observed", "calculated", "model_estimate", "unknown"]
 RenovationCondition = Literal[
     "move_in_ready",
     "refresh",
@@ -420,6 +421,30 @@ class Listing(BaseModel):
     schools_within_1km: int | None = None
     planned_investments_within_2km: int | None = None
     data_quality_score: int = Field(ge=0, le=100)
+
+
+class ComparableEvidence(BaseModel):
+    listing_id: str
+    title: str
+    source_name: str
+    data_provenance: DataProvenance
+    address: str
+    city: str
+    district: str
+    market_type: MarketType
+    observed_at: date
+    price: int
+    area_m2: float
+    rooms: int
+    price_per_m2: int
+    floor: int | None = None
+    building_year: int | None = None
+    renovation_state: str | None = None
+    distance_m: int | None = Field(default=None, ge=0)
+    similarity_score: int = Field(ge=0, le=100)
+    similarity_factors: list[str] = Field(default_factory=list)
+    price_delta_to_subject_pct: float
+    price_per_m2_delta_to_subject_pct: float
 
 
 class ListingCorrectionRequest(BaseModel):
@@ -1527,6 +1552,11 @@ class BuyerNegotiationEvidence(BaseModel):
     topic: str
     source_name: str
     source_type: str
+    updated_at: date | None = None
+    sample_size: int | None = Field(default=None, ge=0)
+    geographic_scope: str | None = None
+    time_range: str | None = None
+    calculation_type: ProvenanceCalculationType = "unknown"
     confidence_score: int = Field(ge=0, le=100)
     note: str | None = None
 
@@ -1558,6 +1588,10 @@ class BuyerSourceEvidence(BaseModel):
     source_name: str
     source_type: str
     updated_at: date | None = None
+    sample_size: int | None = Field(default=None, ge=0)
+    geographic_scope: str | None = None
+    time_range: str | None = None
+    calculation_type: ProvenanceCalculationType = "unknown"
     confidence_score: int = Field(ge=0, le=100)
     note: str | None = None
 
@@ -1799,6 +1833,7 @@ class ListingAnalysis(BaseModel):
     price_history: list[PriceHistoryPoint]
     listing_events: list[ListingEvent] = Field(default_factory=list)
     comparables: list[Listing]
+    comparable_evidence: list[ComparableEvidence] = Field(default_factory=list)
     developer_reputation: DeveloperReputation | None = None
     future_area_impact: ListingFutureImpact | None = None
     growth_analysis: ListingGrowthAnalysis | None = None
@@ -2982,6 +3017,24 @@ class GeneratedReportCreate(BaseModel):
     report_metadata: dict = Field(default_factory=dict)
 
 
+class GeneratedReportDecisionSummary(BaseModel):
+    status: BuyerVerdictStatus | None = None
+    score: float | None = Field(default=None, ge=0, le=10)
+    headline: str | None = None
+    summary: str | None = None
+    seller_price_pln: int | None = Field(default=None, ge=0)
+    fair_price_low_pln: int | None = Field(default=None, ge=0)
+    fair_price_mid_pln: int | None = Field(default=None, ge=0)
+    fair_price_high_pln: int | None = Field(default=None, ge=0)
+    price_delta_to_fair_mid_pct: float | None = None
+    confidence_score: int | None = Field(default=None, ge=0, le=100)
+    recommended_offer_pln: int | None = Field(default=None, ge=0)
+    max_reasonable_offer_pln: int | None = Field(default=None, ge=0)
+    total_move_in_cost_pln: int | None = Field(default=None, ge=0)
+    selected_intent: PurchaseIntent | None = None
+    selected_intent_score: int | None = Field(default=None, ge=0, le=100)
+
+
 class GeneratedReportListItem(BaseModel):
     id: str
     owner_id: str
@@ -2994,6 +3047,7 @@ class GeneratedReportListItem(BaseModel):
     created_at: datetime
     report_version: str | None = None
     data_as_of: datetime | None = None
+    decision_summary: GeneratedReportDecisionSummary | None = None
 
 
 class GeneratedReport(GeneratedReportListItem):

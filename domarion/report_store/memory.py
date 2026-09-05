@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from domarion.report_store.base import report_decision_summary_from_metadata
 from domarion.schemas import GeneratedReport, GeneratedReportCreate, GeneratedReportListItem
 
 
@@ -28,11 +29,22 @@ class InMemoryReportStore:
     @staticmethod
     def _to_list_item(report: GeneratedReport) -> GeneratedReportListItem:
         metadata = report.report_metadata or {}
-        report_version = metadata.get("report_template_code") or metadata.get("scoring_formula_version")
+        report_version = metadata.get("report_template_code") or metadata.get(
+            "scoring_formula_version"
+        )
         return GeneratedReportListItem(
-            **report.model_dump(exclude={"content", "report_metadata", "report_version", "data_as_of"}),
+            **report.model_dump(
+                exclude={
+                    "content",
+                    "report_metadata",
+                    "report_version",
+                    "data_as_of",
+                    "decision_summary",
+                }
+            ),
             report_version=str(report_version) if report_version is not None else None,
             data_as_of=report.created_at,
+            decision_summary=report_decision_summary_from_metadata(metadata),
         )
 
     def list_reports_with_metadata(

@@ -92,23 +92,24 @@ Restore drill command:
 docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api python scripts/postgres_backup.py restore /srv/domarion/backups/postgres/domarion-postgres-YYYYMMDDTHHMMSSZ.dump --database-url "$RESTORE_DATABASE_URL" --clean
 ```
 
-### P0. Public Auth Is Still MVP/Header-Based
+### P0. Public Auth Boundary Is Closed In The Current Build
 
-Evidence in repo:
+The current build has a real email/password account flow with signed,
+HttpOnly session cookies. `get_current_account` accepts legacy identity
+headers and `owner_id` only when both `DEMO_MODE_ENABLED=true` and the
+environment is `local`, `development`, or `test`.
 
-- `domarion/auth.py` accepts `owner_id` query fallback and
-  `X-Domarion-User-Id`, `X-Domarion-Email`, `X-Domarion-Role`,
-  `X-Domarion-Plan` headers.
-- Defaults still include `DEMO_USER_ID=demo-user`.
+Production and staging startup reject demo mode, and a valid session resolves
+the user, role, and subscription from the auth store; caller-controlled role or
+plan headers do not override that account. Regression coverage is in
+`tests/test_auth_tenant_isolation.py` and `tests/test_config.py`.
 
-Required before public self-serve:
+Remaining before public self-serve:
 
-- Add real identity verification: Auth.js, Clerk, custom JWT, or another chosen
-  provider.
-- Stop trusting user-controlled plan/role headers at the public edge.
-- Keep admin and agency endpoints behind verified roles.
-- Decide whether first paid beta is manually provisioned and invite-only. If yes,
-  document the temporary control and do not call it public self-serve.
+- Choose whether the first paid beta is open registration or manually
+  provisioned/invite-only, and document that commercial control.
+- Keep deployment smoke checks pointed at the session-auth flow rather than the
+  local demo fixtures.
 
 ### P0. Live Payment Flow Is Not Production-Proven
 

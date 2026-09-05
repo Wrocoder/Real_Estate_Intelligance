@@ -10,6 +10,7 @@ const artifactDir = path.join(root, "artifacts", "browser-quality");
 const locales = ["pl", "en", "ru", "uk"];
 const viewports = [
   { name: "desktop", width: 1440, height: 900 },
+  { name: "tablet", width: 768, height: 1024 },
   { name: "mobile", width: 390, height: 844 },
 ];
 const failures = [];
@@ -120,7 +121,7 @@ async function runCriticalFlow(browser) {
     const save = page.getByRole("button", { name: "Zapisz mieszkanie" });
     await save.waitFor({ state: "visible", timeout: 5000 });
     await save.click();
-    await page.getByText("Zapisano", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+    await page.locator(".status-line").filter({ hasText: "Zapisano" }).waitFor({ state: "visible", timeout: 15000 });
     await page.getByRole("link", { name: "Porównaj" }).click();
     await page.waitForURL(/\/compare\?/);
     if (!(await page.getByRole("heading", { name: /Porówn/i }).count())) throw new Error("compare result did not render");
@@ -130,6 +131,43 @@ async function runCriticalFlow(browser) {
     await page.screenshot({ path: path.join(artifactDir, "critical-flow.failure.png"), fullPage: true });
     await context.tracing.stop({ path: path.join(artifactDir, "critical-flow.failure.trace.zip") });
     throw error;
+  } finally {
+    await context.close();
+  }
+}
+
+async function runProvenanceSurfaces(browser) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pl-PL" });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, "provenance-surfaces");
+  try {
+    for (const route of ["/listings/wr-001", "/areas/wroclaw-fabryczna"]) {
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle" });
+      if (route.startsWith("/listings/")) {
+        const comparableSection = page.locator(".comparable-evidence-section");
+        await comparableSection.waitFor({ state: "visible", timeout: 10000 });
+        const comparableText = await comparableSection.innerText();
+        if (!/Dlaczego taka cena\?|Dopasowanie techniczne|Zaobserwowano|Odległość/.test(comparableText)) {
+          throw new Error(`${route}: comparable evidence details are missing`);
+        }
+        if (/same_district|same_market|similar_size|condition_unknown/.test(comparableText)) {
+          throw new Error(`${route}: comparable factor code leaked into the UI`);
+        }
+      }
+      await page.locator("details.provenance-details").first().waitFor({ state: "visible", timeout: 10000 });
+      const details = page.locator("details.provenance-details").first();
+      await details.locator("summary").click();
+      await details.locator(".provenance-details-body").waitFor({ state: "visible" });
+      const detailText = await details.innerText();
+      if (!/Źródło|Typ źródła|Sposób przygotowania/.test(detailText)) {
+        throw new Error(`${route}: localized provenance fields are missing`);
+      }
+      if (/listing_reference|market_snapshot|area_statistics|derived_model|deterministic_fixture|open_data_or_admin_verified/.test(detailText)) {
+        throw new Error(`${route}: internal provenance code leaked into the UI`);
+      }
+      await assertHealthy(page, observation);
+    }
   } finally {
     await context.close();
   }
@@ -156,6 +194,12 @@ try {
   try {
     await runCriticalFlow(browser);
     console.log("browser quality passed: critical-flow");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    await runProvenanceSurfaces(browser);
+    console.log("browser quality passed: provenance-surfaces");
   } catch (error) {
     failures.push(error.message);
   }

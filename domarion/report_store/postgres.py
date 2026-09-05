@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domarion.db.models import GeneratedReport as GeneratedReportModel
+from domarion.report_store.base import report_decision_summary_from_metadata
 from domarion.schemas import GeneratedReport, GeneratedReportCreate, GeneratedReportListItem
 
 
@@ -85,12 +86,15 @@ class PostgresReportStore:
             content=row.content,
             report_metadata=row.report_metadata,
             created_at=row.created_at,
+            decision_summary=report_decision_summary_from_metadata(row.report_metadata or {}),
         )
 
     @staticmethod
     def _row_to_list_item(row: GeneratedReportModel) -> GeneratedReportListItem:
         metadata = row.report_metadata or {}
-        report_version = metadata.get("report_template_code") or metadata.get("scoring_formula_version")
+        report_version = metadata.get("report_template_code") or metadata.get(
+            "scoring_formula_version"
+        )
         return GeneratedReportListItem(
             id=row.id,
             owner_id=row.owner_id,
@@ -103,4 +107,5 @@ class PostgresReportStore:
             created_at=row.created_at,
             report_version=str(report_version) if report_version is not None else None,
             data_as_of=row.created_at,
+            decision_summary=report_decision_summary_from_metadata(metadata),
         )

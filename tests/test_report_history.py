@@ -6,10 +6,30 @@ from fastapi.testclient import TestClient
 from domarion.ai_insight_store.factory import memory_ai_insight_store
 from domarion.core import get_settings
 from domarion.main import app
+from domarion.report_store.base import report_decision_summary_from_metadata
 from domarion.report_store.factory import memory_report_store
 from domarion.services import report_delivery
 
 client = TestClient(app)
+
+
+def test_report_decision_summary_ignores_invalid_legacy_metadata() -> None:
+    summary = report_decision_summary_from_metadata(
+        {
+            "buyer_verdict_score": 11,
+            "buyer_verdict_headline": "Known headline",
+            "buyer_seller_price_pln": -1,
+            "fair_price_confidence_score": 101,
+            "buyer_selected_intent_score": 120,
+        }
+    )
+
+    assert summary is not None
+    assert summary.score is None
+    assert summary.headline == "Known headline"
+    assert summary.seller_price_pln is None
+    assert summary.confidence_score is None
+    assert summary.selected_intent_score is None
 
 
 def test_generate_and_list_saved_html_report() -> None:
@@ -46,6 +66,18 @@ def test_generate_and_list_saved_html_report() -> None:
     assert len(reports) == 1
     assert reports[0]["id"] == payload["id"]
     assert "content" not in reports[0]
+    assert reports[0]["decision_summary"]["status"] == payload["report_metadata"][
+        "buyer_verdict_status"
+    ]
+    assert reports[0]["decision_summary"]["seller_price_pln"] == payload["report_metadata"][
+        "buyer_seller_price_pln"
+    ]
+    assert reports[0]["decision_summary"]["fair_price_low_pln"] == payload["report_metadata"][
+        "buyer_fair_price_low_pln"
+    ]
+    assert reports[0]["decision_summary"]["confidence_score"] == payload["report_metadata"][
+        "fair_price_confidence_score"
+    ]
 
 
 def test_generated_object_report_persists_ai_insights() -> None:

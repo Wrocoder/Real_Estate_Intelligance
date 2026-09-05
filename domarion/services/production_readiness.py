@@ -91,10 +91,9 @@ def build_production_readiness_report(
 
 
 def validate_startup_data_mode(settings: Settings) -> None:
-    environment = settings.environment.strip().casefold()
     if not settings.demo_mode_enabled:
         return
-    if environment not in {"local", "development", "test"}:
+    if not settings.demo_identity_allowed:
         raise RuntimeError(
             "DEMO_MODE_ENABLED is allowed only in local, development, or test environments."
         )

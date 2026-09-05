@@ -55,6 +55,13 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       // Keep the plain response body when it is not JSON.
     }
+    if (response.status === 400 && typeof detail === "string") {
+      if (/area statistics are not available|unsupported.*(?:area|district|city)/i.test(detail)) {
+        errorCode = "unsupported_area";
+      } else if (/geocod(?:e|ing)|location/i.test(detail)) {
+        errorCode = "location_unavailable";
+      }
+    }
     const isCredentialAttempt = path === "/api/v1/auth/login";
     if (
       typeof window !== "undefined" &&

@@ -118,9 +118,9 @@ from domarion.schemas import (
     AreaStatistics,
     AuthIdentity,
     CheckoutSession,
-    CoverageMetadata,
     CompareRequest,
     CompareResponse,
+    CoverageMetadata,
     CrmClient,
     CrmClientCreate,
     CrmClientDetail,
@@ -658,7 +658,10 @@ def get_coverage(repository: RepositoryDep) -> CoverageMetadata:
         supported_districts=sorted({f"{area.city}: {area.name}" for area in areas}),
         source_name="WartoMetr structured market dataset",
         checked_at=datetime.now(UTC),
-        freshness_note="Coverage is refreshed when the market dataset is rebuilt; verify the date before relying on a local estimate.",
+        freshness_note=(
+            "Coverage is refreshed when the market dataset is rebuilt; "
+            "verify the date before relying on a local estimate."
+        ),
     )
 
 
