@@ -4015,6 +4015,29 @@ export interface components {
             price_change_90d_pct: number;
             /** Supply Change 90D Pct */
             supply_change_90d_pct: number;
+            /**
+             * Price Basis
+             * @default listing_observed
+             */
+            price_basis: string;
+            /**
+             * Listing Metrics Available
+             * @default true
+             */
+            listing_metrics_available: boolean;
+            /**
+             * Transaction Observation Count
+             * @default 0
+             */
+            transaction_observation_count: number;
+            /** Transaction Median Price Per M2 */
+            transaction_median_price_per_m2?: number | null;
+            /** Transaction Observed From */
+            transaction_observed_from?: string | null;
+            /** Transaction Observed To */
+            transaction_observed_to?: string | null;
+            /** Data Sources */
+            data_sources?: string[];
             /** Liquidity Index */
             liquidity_index: number;
             /** Buyer Market Index */
@@ -4120,6 +4143,29 @@ export interface components {
             price_change_90d_pct: number;
             /** Supply Change 90D Pct */
             supply_change_90d_pct: number;
+            /**
+             * Price Basis
+             * @default listing_observed
+             */
+            price_basis: string;
+            /**
+             * Listing Metrics Available
+             * @default true
+             */
+            listing_metrics_available: boolean;
+            /**
+             * Transaction Observation Count
+             * @default 0
+             */
+            transaction_observation_count: number;
+            /** Transaction Median Price Per M2 */
+            transaction_median_price_per_m2?: number | null;
+            /** Transaction Observed From */
+            transaction_observed_from?: string | null;
+            /** Transaction Observed To */
+            transaction_observed_to?: string | null;
+            /** Data Sources */
+            data_sources?: string[];
             /** Id */
             id?: number | null;
             /**
@@ -4167,6 +4213,29 @@ export interface components {
             price_change_90d_pct: number;
             /** Supply Change 90D Pct */
             supply_change_90d_pct: number;
+            /**
+             * Price Basis
+             * @default listing_observed
+             */
+            price_basis: string;
+            /**
+             * Listing Metrics Available
+             * @default true
+             */
+            listing_metrics_available: boolean;
+            /**
+             * Transaction Observation Count
+             * @default 0
+             */
+            transaction_observation_count: number;
+            /** Transaction Median Price Per M2 */
+            transaction_median_price_per_m2?: number | null;
+            /** Transaction Observed From */
+            transaction_observed_from?: string | null;
+            /** Transaction Observed To */
+            transaction_observed_to?: string | null;
+            /** Data Sources */
+            data_sources?: string[];
         };
         /** AuthCredentials */
         AuthCredentials: {
@@ -5410,6 +5479,22 @@ export interface components {
             source_type: string;
             /** Notice Code */
             notice_code?: string | null;
+            /** Source Name */
+            source_name?: string | null;
+            /**
+             * Calculation Type
+             * @default unknown
+             * @enum {string}
+             */
+            calculation_type: "observed" | "calculated" | "model_estimate" | "unknown";
+            /** Sample Size */
+            sample_size?: number | null;
+            /** Geographic Scope */
+            geographic_scope?: string | null;
+            /** Time Range */
+            time_range?: string | null;
+            /** Updated At */
+            updated_at?: string | null;
         };
         /** DataQualityLog */
         DataQualityLog: {

@@ -76,8 +76,10 @@ const alertsPage = read("app/alerts/page.tsx");
 const adminPage = read("app/admin/page.tsx");
 const accountPage = read("app/account/page.tsx");
 const areasPage = read("app/areas/page.tsx");
+const areasDirectory = read("components/AreasDirectory.tsx");
 const areaComparePage = read("app/areas/compare/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
+const areaDetailContent = read("components/AreaDetailPage.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
 const mortgagePage = read("app/mortgage/page.tsx");
@@ -277,7 +279,7 @@ expectIncludes("listing card i18n", listingCard, [
 
 expectIncludes("demo mode banner", demoModeBanner, [
   "data-testid=\"demo-mode-banner\"",
-  "api.getRuntimeContext()",
+  "api.getRuntimeContext({ signal: controller.signal })",
   "context.data_mode === \"demo\"",
   "Tryb demonstracyjny",
   "Демонстрационный режим",
@@ -556,10 +558,13 @@ expectIncludes("seo guide detail", guideDetailPage, [
   "href=\"/check\"",
 ]);
 
-expectIncludes("area guide internal links", areasPage, [
-  "SEO_GUIDES.slice(0, 4)",
-  "href=\"/guides\"",
-  "href={`/guides/${guide.slug}`}",
+expectIncludes("live area directory", areasPage + areasDirectory, [
+  "api.listAreas()",
+  "area.area_id !== \"wroclaw-city\"",
+  "area.transaction_observation_count",
+  "area.data_provenance.time_range",
+  "useLocalePreference()",
+  "href={`/areas/${encodeURIComponent(area.area_id)}`}",
 ]);
 
 expectIncludes("area compare localization", areaComparePage, [
@@ -571,10 +576,12 @@ expectIncludes("area compare localization", areaComparePage, [
   "area-compare-table-desktop",
 ]);
 
-expectIncludes("area detail guide internal links", areaDetailPage, [
-  "relatedGuides",
-  "guide.relatedAreaSlugs.includes(area.slug)",
-  "href={`/guides/${guide.slug}`}",
+expectIncludes("live area detail", areaDetailPage + areaDetailContent, [
+  "api.getAreaStatistics(areaId)",
+  "initialArea={area}",
+  "<AreaDynamicEvidence",
+  "useLocalePreference()",
+  "href={`/check?district=${encodeURIComponent(area.name)}`}",
 ]);
 
 expectIncludes("news page localization", newsPage, [
@@ -787,7 +794,8 @@ expectIncludes("public sitemap", sitemap, [
   "\"/check\"",
   "\"/guides\"",
   "\"/areas\"",
-  "SEO_AREAS.map",
+  "api.listAreas()",
+  "area.area_id !== \"wroclaw-city\"",
   "SEO_GUIDES.map",
 ]);
 expectNotIncludes("public sitemap excludes contextual and pro routes", sitemap, [

@@ -1932,6 +1932,55 @@ summary:focus-visible {
   gap: 12px;
 }
 
+.areas-directory {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.areas-directory-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.areas-directory-heading h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+
+.areas-directory-heading p,
+.areas-directory-count {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.areas-directory-search {
+  width: min(360px, 100%);
+  flex: 0 0 min(360px, 100%);
+}
+
+.input-with-icon {
+  position: relative;
+  display: block;
+}
+
+.input-with-icon svg {
+  position: absolute;
+  z-index: 1;
+  left: 11px;
+  top: 50%;
+  color: var(--muted);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.input-with-icon .input {
+  padding-left: 36px;
+}
+
 .seo-area-card {
   display: grid;
   align-content: space-between;
@@ -1942,6 +1991,28 @@ summary:focus-visible {
   background: var(--surface);
   padding: 14px;
   box-shadow: var(--shadow);
+}
+
+.live-area-card {
+  min-height: 280px;
+}
+
+.live-area-card-heading {
+  display: grid;
+  gap: 8px;
+}
+
+.live-area-card-heading > .status-pill {
+  width: fit-content;
+}
+
+.transaction-area-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.transaction-area-metrics span {
+  align-content: start;
+  min-height: 78px;
 }
 
 .seo-area-card h2 {
@@ -3637,6 +3708,17 @@ summary:focus-visible {
   .listing-card {
     grid-template-columns: 1fr;
     display: grid;
+  }
+
+  .areas-directory-heading {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .areas-directory-search {
+    width: 100%;
+    flex-basis: auto;
   }
 
   .metric-grid,

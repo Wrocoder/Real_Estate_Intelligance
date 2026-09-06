@@ -1,50 +1,41 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Bell, FileText, Newspaper, Search } from "lucide-react";
 
-import { getSeoArea, SEO_AREAS, siteUrl } from "@/lib/seoAreas";
-import { SEO_GUIDES } from "@/lib/seoGuides";
-import { CoverageNotice } from "@/components/CoverageNotice";
-import { AreaDynamicEvidence } from "@/components/AreaDynamicEvidence";
+import { AreaDetailPage } from "@/components/AreaDetailPage";
+import { api, type AreaStatistics } from "@/lib/api";
+import { siteUrl } from "@/lib/seoAreas";
 
 type PageProps = {
   params: Promise<{ areaId: string }>;
 };
 
-export function generateStaticParams() {
-  return SEO_AREAS.map((area) => ({ areaId: area.slug }));
+async function getArea(areaId: string): Promise<AreaStatistics | null> {
+  try {
+    return await api.getAreaStatistics(areaId);
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { areaId } = await params;
-  const area = getSeoArea(areaId);
-  if (!area) return {};
-
+  const area = await getArea(areaId);
+  const title = area
+    ? `${area.name}: ceny transakcyjne mieszkań | WartoMetr`
+    : "Dane osiedla we Wrocławiu | WartoMetr";
+  const description = area
+    ? `Mediana cen transakcyjnych mieszkań na osiedlu ${area.name}, liczba obserwacji, okres danych i źródło.`
+    : "Sprawdź dostępne dane transakcyjne dla osiedli Wrocławia.";
   return {
-    title: area.title,
-    description: area.description,
-    alternates: {
-      canonical: `${siteUrl()}/areas/${area.slug}`,
-    },
-    openGraph: {
-      title: area.title,
-      description: area.description,
-      type: "article",
-      url: `${siteUrl()}/areas/${area.slug}`,
-    },
+    title,
+    description,
+    alternates: { canonical: `${siteUrl()}/areas/${areaId}` },
   };
 }
 
 export default async function AreaPage({ params }: PageProps) {
   const { areaId } = await params;
-  const area = getSeoArea(areaId);
-  if (!area) notFound();
-  const relatedGuides = SEO_GUIDES.filter((guide) =>
-    guide.relatedAreaSlugs.includes(area.slug),
-  ).slice(0, 4);
-
-  const jsonLd = {
+  const area = await getArea(areaId);
+  const jsonLd = area ? {
     "@context": "https://schema.org",
     "@type": "Place",
     name: `${area.name}, ${area.city}`,
@@ -54,108 +45,18 @@ export default async function AreaPage({ params }: PageProps) {
       addressRegion: "Dolnośląskie",
       addressCountry: "PL",
     },
-    description: area.description,
-    url: `${siteUrl()}/areas/${area.slug}`,
-  };
+    url: `${siteUrl()}/areas/${area.area_id}`,
+  } : null;
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-
-      <header className="page-header">
-        <div>
-          <Link className="button" href="/areas">
-            <ArrowLeft size={16} /> Dzielnice
-          </Link>
-          <h1 style={{ marginTop: 14 }}>{area.title}</h1>
-          <p>{area.description}</p>
-        </div>
-        <div className="toolbar">
-          <Link className="button primary" href={`/?district=${encodeURIComponent(area.name)}`}>
-            <Search size={16} /> Znajdź mieszkania
-          </Link>
-          <Link className="button" href="/alerts">
-            <Bell size={16} /> Śledź
-          </Link>
-          <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
-            <Newspaper size={16} /> Aktualności
-          </Link>
-        </div>
-      </header>
-
-      <CoverageNotice />
-      <AreaDynamicEvidence areaId={area.areaId} city={area.city} district={area.district} />
-
-      <div className="detail-grid" style={{ marginTop: 16 }}>
-        <section className="panel">
-          <div className="panel-header">
-            <h2>Praktyczny wniosek</h2>
-            <span className="status-pill info">{area.district}</span>
-          </div>
-          <div className="panel-body seo-content">
-            <p>
-                {area.name} warto oceniać nie tylko po średniej cenie. Przy decyzji
-              o zakupie liczy się czas ekspozycji oferty, historia ceny, infrastruktura
-              w promieniu 500 m - 2 km oraz miejskie inwestycje, które mogą zmienić
-              płynność konkretnej ulicy.
-            </p>
-
-            <h2>Dla kogo dzielnica pasuje</h2>
-            <ul className="section-list">
-              {area.buyerFit.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-
-            <h2>Kontekst inwestycyjny</h2>
-            <ul className="section-list">
-              {area.investorFit.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-
-            <h2>Ryzyka</h2>
-            <ul className="section-list">
-              {area.risks.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        <aside className="panel">
-          <div className="panel-header">
-            <h2>Sygnały rynkowe</h2>
-            <FileText size={18} />
-          </div>
-          <div className="panel-body">
-            <h2>Przewodniki</h2>
-            <ul className="section-list compact">
-              {relatedGuides.map((guide) => (
-                <li key={guide.slug}>
-                  <Link href={`/guides/${guide.slug}`}>{guide.title}</Link>
-                  <small>{guide.category}</small>
-                </li>
-              ))}
-            </ul>
-
-            <h2>Dalej</h2>
-            <div className="area-link-list">
-              <Link className="button" href={`/news?area_id=${encodeURIComponent(area.areaId)}`}>
-                Aktualności dzielnicy
-              </Link>
-              {area.internalLinks.map((link) => (
-                <Link className="button" key={link.href} href={link.href}>
-                  {link.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-        </aside>
-      </div>
+      {jsonLd ? (
+        <script
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          type="application/ld+json"
+        />
+      ) : null}
+      <AreaDetailPage areaId={areaId} initialArea={area} />
     </>
   );
 }

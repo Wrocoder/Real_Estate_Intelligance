@@ -653,14 +653,34 @@ def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
 @router.get("/coverage", response_model=CoverageMetadata)
 def get_coverage(repository: RepositoryDep) -> CoverageMetadata:
     areas = repository.list_area_statistics()
+    district_areas = [
+        area for area in areas if area.name.strip().casefold() != area.city.strip().casefold()
+    ]
+    source_names = sorted(
+        {
+            area.data_provenance.source_name
+            for area in areas
+            if area.data_provenance.source_name
+        }
+    )
+    update_times = [
+        area.data_provenance.updated_at
+        for area in areas
+        if area.data_provenance.updated_at is not None
+    ]
+    checked_at = max(update_times) if update_times else datetime.now(UTC)
+    if checked_at.tzinfo is None:
+        checked_at = checked_at.replace(tzinfo=UTC)
     return CoverageMetadata(
         supported_cities=sorted({area.city for area in areas}),
-        supported_districts=sorted({f"{area.city}: {area.name}" for area in areas}),
-        source_name="WartoMetr structured market dataset",
-        checked_at=datetime.now(UTC),
+        supported_districts=sorted(
+            {f"{area.city}: {area.name}" for area in district_areas}
+        ),
+        source_name=", ".join(source_names) or "WartoMetr structured market dataset",
+        checked_at=checked_at,
         freshness_note=(
-            "Coverage is refreshed when the market dataset is rebuilt; "
-            "verify the date before relying on a local estimate."
+            "Coverage reflects the latest persisted area-statistics calculation. "
+            "Inspect each area's provenance and observation period before using it."
         ),
     )
 

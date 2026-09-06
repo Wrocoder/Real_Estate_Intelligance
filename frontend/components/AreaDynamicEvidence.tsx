@@ -9,48 +9,145 @@ import { dateValue, money, numberValue, percent } from "@/lib/format";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type InfrastructureSummary = {
-  transport: number;
-  schools: number;
-  kindergartens: number;
-  amenities: number;
-  industrialZones: number;
+  transport: number | null;
+  schools: number | null;
+  kindergartens: number | null;
+  amenities: number | null;
+  industrialZones: number | null;
 };
 
 const COPY = {
   pl: {
-    title: "Dane sprawdzalne dla tej dzielnicy",
+    title: "Dane sprawdzalne dla tego osiedla",
     market: "Rynek mieszkaniowy",
     infrastructure: "Infrastruktura w bazie",
     investments: "Planowane inwestycje",
     source: "Źródło",
-    checked: "Sprawdzono",
+    checked: "Aktualizacja",
     scope: "Zakres",
-    verified: "Źródło danych",
+    verified: "Dane źródłowe",
     days: "dni",
-    listings: "aktywnych ogłoszeń",
+    listings: "Aktywne ogłoszenia",
     transport: "przystanki",
     schools: "szkoły",
     kindergartens: "przedszkola",
     amenities: "udogodnienia",
     industrialZones: "strefy przemysłowe",
-    empty: "Brak zweryfikowanych rekordów dla tej dzielnicy.",
+    empty: "Brak zweryfikowanych rekordów dla tego osiedla.",
     unknown: "Brak danych",
-    loading: "Pobieramy aktualne dane dzielnicy...",
-    error: "Nie udało się pobrać danych dzielnicy.",
+    loading: "Pobieramy aktualne dane osiedla...",
+    error: "Nie udało się pobrać danych osiedla.",
     retry: "Spróbuj ponownie",
     demo: "Rekord demonstracyjny, nie jest potwierdzeniem miejskiej inwestycji.",
     noSource: "Źródło niepodane",
-    window: "zmiana w 90 dni",
-    supply: "podaż w 90 dni",
+    window: "Zmiana ceny w 90 dni",
+    supply: "Zmiana podaży w 90 dni",
+    median: "Mediana ceny transakcyjnej",
+    average: "Średnia cena transakcyjna",
+    transactions: "Zarejestrowane transakcje",
+    period: "Okres obserwacji",
+    averageTime: "Średni czas na rynku",
+    listingUnavailable: "Dynamika ofert i czas ekspozycji nie są dostępne w rejestrze transakcji.",
+    referenceNote: "Liczby obejmują wyłącznie rekordy referencyjne przypisane do osiedla; brak rekordu nie oznacza braku obiektu w rzeczywistości.",
   },
   en: {
-    title: "Verifiable data for this district", market: "Housing market", infrastructure: "Infrastructure in dataset", investments: "Planned investments", source: "Source", checked: "Checked", scope: "Scope", verified: "Data source", days: "days", listings: "active listings", transport: "transit stops", schools: "schools", kindergartens: "kindergartens", amenities: "amenities", industrialZones: "industrial zones", empty: "No verified records for this district.", unknown: "No data", loading: "Fetching current district data...", error: "District data could not be loaded.", retry: "Try again", demo: "Demo record; not confirmation of a municipal investment.", noSource: "Source not provided", window: "change in 90 days", supply: "supply in 90 days",
+    title: "Verifiable neighborhood data",
+    market: "Housing market",
+    infrastructure: "Infrastructure in dataset",
+    investments: "Planned investments",
+    source: "Source",
+    checked: "Updated",
+    scope: "Scope",
+    verified: "Source data",
+    days: "days",
+    listings: "Active listings",
+    transport: "transit stops",
+    schools: "schools",
+    kindergartens: "kindergartens",
+    amenities: "amenities",
+    industrialZones: "industrial zones",
+    empty: "No verified records for this neighborhood.",
+    unknown: "No data",
+    loading: "Fetching current neighborhood data...",
+    error: "Neighborhood data could not be loaded.",
+    retry: "Try again",
+    demo: "Demo record; not confirmation of a municipal investment.",
+    noSource: "Source not provided",
+    window: "90-day price change",
+    supply: "90-day supply change",
+    median: "Median transaction price",
+    average: "Average transaction price",
+    transactions: "Registered transactions",
+    period: "Observation period",
+    averageTime: "Average time on market",
+    listingUnavailable: "Listing trends and time on market are not available from the transaction register.",
+    referenceNote: "Counts include only reference records assigned to the neighborhood; no record does not prove the real-world absence of an amenity.",
   },
   ru: {
-    title: "Проверяемые данные по району", market: "Рынок жилья", infrastructure: "Инфраструктура в базе", investments: "Планируемые инвестиции", source: "Источник", checked: "Проверено", scope: "Охват", verified: "Источник данных", days: "дн.", listings: "активных объявлений", transport: "остановок", schools: "школ", kindergartens: "детских садов", amenities: "объектов сервиса", industrialZones: "промышленных зон", empty: "Проверенных записей по району нет.", unknown: "Нет данных", loading: "Загружаем текущие данные района...", error: "Не удалось загрузить данные района.", retry: "Повторить", demo: "Демонстрационная запись, не подтверждение городской инвестиции.", noSource: "Источник не указан", window: "изменение за 90 дней", supply: "изменение предложения за 90 дней",
+    title: "Проверяемые данные по району",
+    market: "Рынок жилья",
+    infrastructure: "Инфраструктура в базе",
+    investments: "Планируемые инвестиции",
+    source: "Источник",
+    checked: "Обновлено",
+    scope: "Охват",
+    verified: "Исходные данные",
+    days: "дн.",
+    listings: "Активные объявления",
+    transport: "остановок",
+    schools: "школ",
+    kindergartens: "детских садов",
+    amenities: "объектов сервиса",
+    industrialZones: "промышленных зон",
+    empty: "Проверенных записей по району нет.",
+    unknown: "Нет данных",
+    loading: "Загружаем текущие данные района...",
+    error: "Не удалось загрузить данные района.",
+    retry: "Повторить",
+    demo: "Демонстрационная запись, не подтверждение городской инвестиции.",
+    noSource: "Источник не указан",
+    window: "Изменение цены за 90 дней",
+    supply: "Изменение предложения за 90 дней",
+    median: "Медиана цены сделки",
+    average: "Средняя цена сделки",
+    transactions: "Зарегистрированные сделки",
+    period: "Период наблюдений",
+    averageTime: "Средний срок экспозиции",
+    listingUnavailable: "Динамика объявлений и срок экспозиции недоступны в реестре сделок.",
+    referenceNote: "Количество отражает только справочные записи, привязанные к району; отсутствие записи не означает отсутствие объекта в реальности.",
   },
   uk: {
-    title: "Перевірені дані району", market: "Ринок житла", infrastructure: "Інфраструктура в базі", investments: "Заплановані інвестиції", source: "Джерело", checked: "Перевірено", scope: "Охоплення", verified: "Джерело даних", days: "днів", listings: "активних оголошень", transport: "зупинок", schools: "шкіл", kindergartens: "дитсадків", amenities: "об'єктів сервісу", industrialZones: "промислових зон", empty: "Перевірених записів для району немає.", unknown: "Немає даних", loading: "Завантажуємо поточні дані району...", error: "Не вдалося завантажити дані району.", retry: "Повторити", demo: "Демонстраційний запис, не підтвердження міської інвестиції.", noSource: "Джерело не вказано", window: "зміна за 90 днів", supply: "зміна пропозиції за 90 днів",
+    title: "Перевірені дані району",
+    market: "Ринок житла",
+    infrastructure: "Інфраструктура в базі",
+    investments: "Заплановані інвестиції",
+    source: "Джерело",
+    checked: "Оновлено",
+    scope: "Охоплення",
+    verified: "Вихідні дані",
+    days: "днів",
+    listings: "Активні оголошення",
+    transport: "зупинок",
+    schools: "шкіл",
+    kindergartens: "дитсадків",
+    amenities: "об'єктів сервісу",
+    industrialZones: "промислових зон",
+    empty: "Перевірених записів для району немає.",
+    unknown: "Немає даних",
+    loading: "Завантажуємо поточні дані району...",
+    error: "Не вдалося завантажити дані району.",
+    retry: "Повторити",
+    demo: "Демонстраційний запис, не підтвердження міської інвестиції.",
+    noSource: "Джерело не вказано",
+    window: "Зміна ціни за 90 днів",
+    supply: "Зміна пропозиції за 90 днів",
+    median: "Медіана ціни угоди",
+    average: "Середня ціна угоди",
+    transactions: "Зареєстровані угоди",
+    period: "Період спостережень",
+    averageTime: "Середній строк експозиції",
+    listingUnavailable: "Динаміка оголошень і строк експозиції недоступні в реєстрі угод.",
+    referenceNote: "Кількість охоплює лише довідкові записи, прив'язані до району; відсутність запису не означає відсутність об'єкта в реальності.",
   },
 } as const;
 
@@ -59,46 +156,11 @@ function EvidenceMeta({ coverage, area }: { coverage: CoverageMetadata | null; a
   const copy = COPY[locale];
   return (
     <div className="area-evidence-meta">
-      <span><b>{copy.source}</b> {coverage?.source_name ?? copy.unknown}</span>
-      <span><b>{copy.checked}</b> {coverage ? dateValue(coverage.checked_at, locale) : copy.unknown}</span>
+      <span><b>{copy.source}</b> {area?.data_provenance.source_name ?? coverage?.source_name ?? copy.unknown}</span>
+      <span><b>{copy.checked}</b> {area?.data_provenance.updated_at ? dateValue(area.data_provenance.updated_at, locale) : coverage ? dateValue(coverage.checked_at, locale) : copy.unknown}</span>
       <span><b>{copy.scope}</b> {area ? `${area.city}: ${area.name}` : copy.unknown}</span>
     </div>
   );
-}
-
-export function AreaDynamicMetrics({ areaId, fallback }: { areaId: string; fallback: AreaStatistics }) {
-  const [area, setArea] = useState<AreaStatistics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
-  const load = useCallback(() => {
-    setLoading(true); setFailed(false);
-    void api.getAreaStatistics(areaId).then(setArea).catch(() => setFailed(true)).finally(() => setLoading(false));
-  }, [areaId]);
-  useEffect(load, [load]);
-  const { locale } = useLocalePreference();
-  const copy = COPY[locale];
-  const current = area ?? fallback;
-  if (loading) return <div className="area-dynamic-status" aria-live="polite">{copy.loading}</div>;
-  if (failed) return <div className="area-dynamic-status error" role="alert">{copy.error} <button className="button" onClick={load}><RefreshCw size={14} /> {copy.retry}</button></div>;
-  return <>
-    <div className="area-metrics">
-      <span><small>Mediana</small><strong>{money(current.median_price_per_m2)}/m2</strong></span>
-      <span><small>{copy.listings}</small><strong>{numberValue(current.active_listings)}</strong></span>
-      <span><small>{copy.window}</small><strong>{percent(current.price_change_90d_pct)}</strong></span>
-      <span><small>{copy.supply}</small><strong>{percent(current.supply_change_90d_pct)}</strong></span>
-    </div>
-    <ProvenanceDetails
-      locale={locale}
-      provenance={{
-        sourceType: current.data_provenance.source_type,
-        sampleSize: current.active_listings,
-        scope: `${current.city}: ${current.name}`,
-        timeRange: "90 days",
-        calculationType: "calculated",
-        mode: current.data_provenance.mode,
-      }}
-    />
-  </>;
 }
 
 export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string; city: string; district: string }) {
@@ -106,31 +168,50 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
   const copy = COPY[locale];
   const [area, setArea] = useState<AreaStatistics | null>(null);
   const [coverage, setCoverage] = useState<CoverageMetadata | null>(null);
-  const [investments, setInvestments] = useState<PlannedInvestment[]>([]);
+  const [investments, setInvestments] = useState<PlannedInvestment[] | null>(null);
   const [infrastructure, setInfrastructure] = useState<InfrastructureSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+
   const load = useCallback(async () => {
-    setLoading(true); setFailed(false);
+    setLoading(true);
+    setFailed(false);
     const results = await Promise.allSettled([
-      api.getAreaStatistics(areaId), api.getCoverage(), api.listPlannedInvestments({ city, district }),
-      api.listTransportStops({ district_id: areaId, limit: 500 }), api.listSchools({ district_id: areaId, limit: 500 }),
-      api.listKindergartens({ district_id: areaId, limit: 500 }), api.listAmenities({ district_id: areaId, limit: 500 }),
+      api.getAreaStatistics(areaId),
+      api.getCoverage(),
+      api.listPlannedInvestments({ city, district }),
+      api.listTransportStops({ district_id: areaId, limit: 500 }),
+      api.listSchools({ district_id: areaId, limit: 500 }),
+      api.listKindergartens({ district_id: areaId, limit: 500 }),
+      api.listAmenities({ district_id: areaId, limit: 500 }),
       api.listIndustrialZones({ district_id: areaId, limit: 500 }),
     ]);
-    if (results[0].status === "fulfilled") setArea(results[0].value);
-    if (results[1].status === "fulfilled") setCoverage(results[1].value);
-    if (results[2].status === "fulfilled") setInvestments(results[2].value);
-    const values = results.slice(3).map((result) =>
-      result.status === "fulfilled" && Array.isArray(result.value) ? result.value.length : 0,
+    setArea(results[0].status === "fulfilled" ? results[0].value : null);
+    setCoverage(results[1].status === "fulfilled" ? results[1].value : null);
+    setInvestments(results[2].status === "fulfilled" ? results[2].value : null);
+    const counts = results.slice(3).map((result) =>
+      result.status === "fulfilled" && Array.isArray(result.value) ? result.value.length : null,
     );
-    setInfrastructure({ transport: values[0], schools: values[1], kindergartens: values[2], amenities: values[3], industrialZones: values[4] });
-    setFailed(results[0].status === "rejected" && results[1].status === "rejected");
+    setInfrastructure({
+      transport: counts[0],
+      schools: counts[1],
+      kindergartens: counts[2],
+      amenities: counts[3],
+      industrialZones: counts[4],
+    });
+    setFailed(results[0].status === "rejected");
     setLoading(false);
   }, [areaId, city, district]);
+
   useEffect(() => { void load(); }, [load]);
+
   if (loading) return <section className="panel area-evidence" aria-live="polite"><div className="panel-body">{copy.loading}</div></section>;
   if (failed) return <section className="panel area-evidence" role="alert"><div className="panel-body area-dynamic-status error">{copy.error} <button className="button" onClick={() => void load()}><RefreshCw size={14} /> {copy.retry}</button></div></section>;
+
+  const sampleSize = area
+    ? area.data_provenance.sample_size ?? (area.transaction_observation_count || area.active_listings)
+    : null;
+
   return <section className="panel area-evidence">
     <div className="panel-header"><h2>{copy.title}</h2><span className="status-pill info">{area ? copy.verified : copy.unknown}</span></div>
     <div className="panel-body">
@@ -138,19 +219,73 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
       <ProvenanceDetails
         locale={locale}
         provenance={{
-          sourceName: coverage?.source_name,
+          sourceName: area?.data_provenance.source_name ?? coverage?.source_name,
           sourceType: area?.data_provenance.source_type,
-          updatedAt: coverage?.checked_at,
-          sampleSize: area?.active_listings,
-          scope: area ? `${area.city}: ${area.name}` : null,
-          timeRange: area ? "90 days" : null,
-          calculationType: area ? "calculated" : null,
+          updatedAt: area?.data_provenance.updated_at ?? coverage?.checked_at,
+          sampleSize,
+          scope: area?.data_provenance.geographic_scope ?? (area ? `${area.city}: ${area.name}` : null),
+          timeRange: area?.data_provenance.time_range,
+          calculationType: area?.data_provenance.calculation_type,
           mode: area?.data_provenance.mode,
         }}
       />
-      {area && <div className="area-evidence-market"><h3>{copy.market}</h3><div className="metric-grid"><div className="metric"><span>Mediana ceny</span><strong>{money(area.median_price_per_m2)}/m2</strong></div><div className="metric"><span>{copy.listings}</span><strong>{numberValue(area.active_listings)}</strong></div><div className="metric"><span>{copy.window}</span><strong>{percent(area.price_change_90d_pct)}</strong></div><div className="metric"><span>{copy.supply}</span><strong>{percent(area.supply_change_90d_pct)}</strong></div><div className="metric"><span>Średni czas</span><strong>{numberValue(area.average_days_on_market)} {copy.days}</strong></div></div></div>}
-      {infrastructure && <div className="area-evidence-section"><h3>{copy.infrastructure}</h3><div className="area-evidence-counts"><span>{infrastructure.transport} {copy.transport}</span><span>{infrastructure.schools} {copy.schools}</span><span>{infrastructure.kindergartens} {copy.kindergartens}</span><span>{infrastructure.amenities} {copy.amenities}</span><span>{infrastructure.industrialZones} {copy.industrialZones}</span></div><small>{copy.source}: rekordy referencyjne z zakresem dzielnicy; brak rekordu nie oznacza braku obiektu w rzeczywistości.</small></div>}
-      <div className="area-evidence-section"><h3>{copy.investments}</h3>{investments.length ? <ul className="section-list compact">{investments.map((item) => <li key={item.id}><strong>{item.name}</strong>{item.expected_year ? ` · ${item.expected_year}` : ""}<small>{item.notes?.toLowerCase().includes("demo") ? copy.demo : <>{copy.source}: {item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">{item.source_url} <ExternalLink size={12} /></a> : copy.noSource}</>}</small></li>)}</ul> : <p>{copy.empty}</p>}</div>
+      {area ? <MarketEvidence area={area} locale={locale} /> : null}
+      {infrastructure ? (
+        <div className="area-evidence-section">
+          <h3>{copy.infrastructure}</h3>
+          <div className="area-evidence-counts">
+            <span>{infrastructure.transport ?? copy.unknown} {copy.transport}</span>
+            <span>{infrastructure.schools ?? copy.unknown} {copy.schools}</span>
+            <span>{infrastructure.kindergartens ?? copy.unknown} {copy.kindergartens}</span>
+            <span>{infrastructure.amenities ?? copy.unknown} {copy.amenities}</span>
+            <span>{infrastructure.industrialZones ?? copy.unknown} {copy.industrialZones}</span>
+          </div>
+          <small>{copy.referenceNote}</small>
+        </div>
+      ) : null}
+      <div className="area-evidence-section">
+        <h3>{copy.investments}</h3>
+        {investments === null ? <p>{copy.unknown}</p> : investments.length ? (
+          <ul className="section-list compact">
+            {investments.map((item) => (
+              <li key={item.id}>
+                <strong>{item.name}</strong>{item.expected_year ? ` · ${item.expected_year}` : ""}
+                <small>{item.notes?.toLowerCase().includes("demo") ? copy.demo : <>{copy.source}: {item.source_url ? <a href={item.source_url} target="_blank" rel="noreferrer">{item.source_url} <ExternalLink size={12} /></a> : copy.noSource}</>}</small>
+              </li>
+            ))}
+          </ul>
+        ) : <p>{copy.empty}</p>}
+      </div>
     </div>
   </section>;
+}
+
+function MarketEvidence({ area, locale }: { area: AreaStatistics; locale: keyof typeof COPY }) {
+  const copy = COPY[locale];
+  if (area.price_basis === "transaction_observed") {
+    return (
+      <div className="area-evidence-market">
+        <h3>{copy.market}</h3>
+        <div className="metric-grid">
+          <div className="metric"><span>{copy.median}</span><strong>{money(area.median_price_per_m2, locale)}/m²</strong></div>
+          <div className="metric"><span>{copy.average}</span><strong>{money(area.average_price_per_m2, locale)}/m²</strong></div>
+          <div className="metric"><span>{copy.transactions}</span><strong>{numberValue(area.transaction_observation_count, locale)}</strong></div>
+          <div className="metric"><span>{copy.period}</span><strong>{area.data_provenance.time_range ?? copy.unknown}</strong></div>
+        </div>
+        <p className="muted">{copy.listingUnavailable}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="area-evidence-market">
+      <h3>{copy.market}</h3>
+      <div className="metric-grid">
+        <div className="metric"><span>{copy.median}</span><strong>{money(area.median_price_per_m2, locale)}/m²</strong></div>
+        <div className="metric"><span>{copy.listings}</span><strong>{numberValue(area.active_listings, locale)}</strong></div>
+        <div className="metric"><span>{copy.window}</span><strong>{percent(area.price_change_90d_pct, locale)}</strong></div>
+        <div className="metric"><span>{copy.supply}</span><strong>{percent(area.supply_change_90d_pct, locale)}</strong></div>
+        <div className="metric"><span>{copy.averageTime}</span><strong>{numberValue(area.average_days_on_market, locale)} {copy.days}</strong></div>
+      </div>
+    </div>
+  );
 }

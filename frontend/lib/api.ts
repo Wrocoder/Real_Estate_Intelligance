@@ -15,6 +15,12 @@ export type DataProvenance = {
   mode: "live" | "demo";
   source_type: string;
   notice_code: string | null;
+  source_name?: string | null;
+  calculation_type?: ProvenanceCalculationType;
+  sample_size?: number | null;
+  geographic_scope?: string | null;
+  time_range?: string | null;
+  updated_at?: string | null;
 };
 
 export type ProvenanceCalculationType =
@@ -127,6 +133,13 @@ export type AreaStatistics = {
   average_days_on_market: number;
   price_change_90d_pct: number;
   supply_change_90d_pct: number;
+  price_basis: string;
+  listing_metrics_available: boolean;
+  transaction_observation_count: number;
+  transaction_median_price_per_m2: number | null;
+  transaction_observed_from: string | null;
+  transaction_observed_to: string | null;
+  data_sources: string[];
 };
 
 export type LocationReferenceType =

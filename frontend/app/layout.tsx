@@ -19,6 +19,13 @@ const SKIP_TO_CONTENT = {
   uk: "Перейти до вмісту",
 } as const;
 
+const BRAND_TAGLINE = {
+  pl: "Sprawdzenie mieszkania",
+  en: "Apartment check",
+  ru: "Проверка квартиры",
+  uk: "Перевірка квартири",
+} as const;
+
 export const metadata: Metadata = {
   title: "WartoMetr",
   description: "Check an apartment before buying in Poland.",
@@ -42,7 +49,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
               <span className="brand-mark">W</span>
               <span>
                 <strong>WartoMetr</strong>
-                <small>Sprawdzenie mieszkania</small>
+                <small>{BRAND_TAGLINE[initialLocale]}</small>
               </span>
             </Link>
             <LocalizedNavigation initialLocale={initialLocale} />

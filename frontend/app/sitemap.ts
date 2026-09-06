@@ -1,11 +1,18 @@
 import type { MetadataRoute } from "next";
 
-import { SEO_AREAS, siteUrl } from "@/lib/seoAreas";
+import { api, type AreaStatistics } from "@/lib/api";
+import { siteUrl } from "@/lib/seoAreas";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteUrl();
   const now = new Date();
+  let areas: AreaStatistics[] = [];
+  try {
+    areas = await api.listAreas();
+  } catch {
+    // The base discovery routes remain valid when the API is temporarily unavailable.
+  }
   const publicDiscoveryRoutes = [
     "",
     "/check",
@@ -20,8 +27,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly" as const,
       priority: route === "" ? 1 : 0.7,
     })),
-    ...SEO_AREAS.map((area) => ({
-      url: `${baseUrl}/areas/${area.slug}`,
+    ...areas.filter((area) => area.area_id !== "wroclaw-city").map((area) => ({
+      url: `${baseUrl}/areas/${area.area_id}`,
       lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.85,

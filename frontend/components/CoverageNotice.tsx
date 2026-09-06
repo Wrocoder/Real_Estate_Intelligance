@@ -16,6 +16,8 @@ const COPY = {
     districts: "Districts",
     checked: "Coverage checked",
     source: "Coverage source",
+    areas: (count: number) => `${count} supported neighborhoods`,
+    freshness: "The date is the latest area-statistics calculation, not today's market observation.",
     note: "An unsupported city or district gets no confident market estimate. Start with a supported area or check the listing details manually.",
   },
   pl: {
@@ -26,6 +28,8 @@ const COPY = {
     districts: "Dzielnice",
     checked: "Sprawdzono zakres",
     source: "Źródło zakresu",
+    areas: (count: number) => `${count} obsługiwanych osiedli`,
+    freshness: "Data oznacza ostatnie obliczenie statystyk obszaru, a nie dzisiejszą obserwację rynku.",
     note: "Dla nieobsługiwanego miasta lub rejonu nie pokazujemy pewnej wyceny rynkowej. Wybierz obsługiwany obszar albo sprawdź dane ogłoszenia ręcznie.",
   },
   ru: {
@@ -36,6 +40,8 @@ const COPY = {
     districts: "Районы",
     checked: "Покрытие проверено",
     source: "Источник покрытия",
+    areas: (count: number) => `${count} районов с данными`,
+    freshness: "Дата означает последний расчёт районной статистики, а не сегодняшнее наблюдение рынка.",
     note: "Для неподдерживаемого города или района мы не показываем уверенную рыночную оценку. Выберите поддерживаемый район или проверьте данные объявления вручную.",
   },
   uk: {
@@ -46,6 +52,8 @@ const COPY = {
     districts: "Райони",
     checked: "Покриття перевірено",
     source: "Джерело покриття",
+    areas: (count: number) => `${count} районів із даними`,
+    freshness: "Дата означає останній розрахунок районної статистики, а не сьогоднішнє спостереження ринку.",
     note: "Для непідтримуваного міста або району ми не показуємо впевнену ринкову оцінку. Виберіть підтримуваний район або перевірте дані оголошення вручну.",
   },
 } as const;
@@ -76,12 +84,12 @@ export function CoverageNotice() {
         <>
           <div className="coverage-summary">
             <span><b>{copy.cities}</b> {coverage.supported_cities.join(", ") || "—"}</span>
-            <span><b>{copy.districts}</b> {coverage.supported_districts.join(", ") || "—"}</span>
+            <span><b>{copy.districts}</b> {copy.areas(coverage.supported_districts.length)}</span>
             <span><b>{copy.checked}</b> {dateValue(coverage.checked_at, locale)}</span>
             <span><b>{copy.source}</b> {coverage.source_name}</span>
           </div>
           <p>{copy.note}</p>
-          <small>{coverage.freshness_note}</small>
+          <small>{copy.freshness}</small>
         </>
       ) : (
         <p>{failed ? copy.unavailable : copy.loading}</p>

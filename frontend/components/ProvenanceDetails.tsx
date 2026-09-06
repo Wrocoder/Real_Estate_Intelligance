@@ -172,6 +172,12 @@ const SOURCE_TYPES: Record<string, Record<Locale, string>> = {
     ru: "Открытые или проверенные данные",
     uk: "Відкриті або перевірені дані",
   },
+  transaction_register: {
+    en: "Official transaction register",
+    pl: "Oficjalny rejestr transakcji",
+    ru: "Официальный реестр сделок",
+    uk: "Офіційний реєстр угод",
+  },
 };
 
 const CALCULATION_TYPES: Record<string, Record<Locale, string>> = {
