@@ -5,10 +5,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+COPY deploy/oracle/postgresql-pgdg.asc ./deploy/oracle/postgresql-pgdg.asc
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
-    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | \
-      gpg --dearmor -o /usr/share/keyrings/postgresql.gpg && \
+    gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
+      /app/deploy/oracle/postgresql-pgdg.asc && \
     echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > \
       /etc/apt/sources.list.d/pgdg.list && \
     apt-get update && \
