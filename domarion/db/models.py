@@ -529,6 +529,11 @@ class AreaStatistic(Base):
     transaction_median_price_per_m2: Mapped[int | None] = mapped_column(Integer)
     transaction_observed_from: Mapped[datetime | None] = mapped_column(DateTime)
     transaction_observed_to: Mapped[datetime | None] = mapped_column(DateTime)
+    transaction_history_observation_count: Mapped[int] = mapped_column(Integer, default=0)
+    transaction_history_observed_from: Mapped[datetime | None] = mapped_column(DateTime)
+    transaction_history_observed_to: Mapped[datetime | None] = mapped_column(DateTime)
+    transaction_monthly_history_json: Mapped[list[dict]] = mapped_column(JSONB, default=list)
+    transaction_yearly_history_json: Mapped[list[dict]] = mapped_column(JSONB, default=list)
     data_sources_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 

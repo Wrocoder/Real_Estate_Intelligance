@@ -79,6 +79,8 @@ const areasDirectory = read("components/AreasDirectory.tsx");
 const areaComparePage = read("app/areas/compare/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
 const areaDetailContent = read("components/AreaDetailPage.tsx");
+const areaDynamicEvidence = read("components/AreaDynamicEvidence.tsx");
+const areaPriceHistoryChart = read("components/AreaPriceHistoryChart.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
 const mortgagePage = read("app/mortgage/page.tsx");
@@ -559,6 +561,8 @@ expectIncludes("live area directory", areasPage + areasDirectory, [
   "api.listAreas()",
   "area.area_id !== \"wroclaw-city\"",
   "area.transaction_observation_count",
+  "area.transaction_yearly_history.map",
+  "Mediana - ostatnie 12 miesięcy",
   "area.data_provenance.time_range",
   "useLocalePreference()",
   "href={`/areas/${encodeURIComponent(area.area_id)}`}",
@@ -579,6 +583,14 @@ expectIncludes("live area detail", areaDetailPage + areaDetailContent, [
   "<AreaDynamicEvidence",
   "useLocalePreference()",
   "href={`/check?district=${encodeURIComponent(area.name)}`}",
+]);
+expectIncludes("area transaction price history", areaDynamicEvidence + areaPriceHistoryChart, [
+  "api.getAreaPriceHistory(areaId)",
+  "<AreaPriceHistoryChart",
+  "history.monthly",
+  "history.yearly.map",
+  "point.serial - segment[segment.length - 1].serial > 1",
+  "Monthly median price per m² across all available years",
 ]);
 
 expectIncludes("news page localization", newsPage, [

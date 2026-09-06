@@ -115,6 +115,7 @@ from domarion.schemas import (
     AreaComparison,
     AreaImpactSummary,
     AreaMarketSnapshotJobResult,
+    AreaPriceHistory,
     AreaStatistics,
     AuthIdentity,
     CheckoutSession,
@@ -4308,6 +4309,14 @@ def get_area_statistics(area_id: str, repository: RepositoryDep) -> AreaStatisti
     if stats is None:
         raise HTTPException(status_code=404, detail="Area statistics not found")
     return stats
+
+
+@router.get("/areas/{area_id}/price-history", response_model=AreaPriceHistory)
+def get_area_price_history(area_id: str, repository: RepositoryDep) -> AreaPriceHistory:
+    history = repository.get_area_price_history(area_id)
+    if history is None:
+        raise HTTPException(status_code=404, detail="Area price history not found")
+    return history
 
 
 @router.post("/compare", response_model=CompareResponse)

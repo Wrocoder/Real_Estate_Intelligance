@@ -80,12 +80,21 @@ identifier or Wrocław city are quarantined in `data_quality_logs`.
 
 ## Fair-price behavior
 
-`refresh_market_metrics` uses approved RCN observations from the last three
-years as the area price baseline when they exist. Listing snapshots continue
-to drive asking-price inventory, days on market, removals and supply changes.
-The existing fair-price scorer therefore receives the RCN median through
-`AreaStatistics`, while `price_basis`, transaction sample size, source and
-date range remain visible in the same contract.
+`refresh_market_metrics` uses approved RCN observations from the rolling last
+365 days as the current area price baseline when they exist. Listing snapshots
+continue to drive asking-price inventory, days on market, removals and supply
+changes. The fair-price scorer therefore receives a recent RCN median through
+`AreaStatistics`, while `price_basis`, current-window sample size, source and
+actual date range remain visible in the same contract.
+
+All available approved observations are retained separately as historical
+context. The daily refresh materializes monthly and calendar-year medians from
+only the latest source version of each logical transaction. Yearly aggregates
+are returned with area cards; `/api/v1/areas/{area_id}/price-history` returns
+the complete monthly and yearly series with observation counts and provenance.
+Historical observations never get mixed into the rolling 365-day fair-price
+baseline. Months with no accepted observations remain absent and are rendered
+as gaps rather than interpolated values.
 
 If only RCN records exist, the report can still estimate a fair-price range,
 but liquidity and listing supply are marked unavailable and do not receive a

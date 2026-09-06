@@ -2,6 +2,7 @@ from typing import Protocol
 
 from domarion.schemas import (
     AmenityReference,
+    AreaPriceHistory,
     AreaStatistics,
     DeveloperAlias,
     DeveloperProfile,
@@ -62,6 +63,9 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
+        raise NotImplementedError
+
+    def get_area_price_history(self, area_id: str) -> AreaPriceHistory | None:
         raise NotImplementedError
 
     def list_developer_reputations(

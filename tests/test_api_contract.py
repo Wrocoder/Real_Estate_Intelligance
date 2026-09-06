@@ -29,6 +29,7 @@ def test_openapi_exposes_recent_admin_analytics_and_report_endpoints() -> None:
         ("/api/v1/admin/price-history/rebuild", "post"): "PriceHistoryRebuildResult",
         ("/api/v1/admin/infrastructure/enrich", "post"): "InfrastructureEnrichmentJobResult",
         ("/api/v1/areas/compare", "get"): "AreaComparison",
+        ("/api/v1/areas/{area_id}/price-history", "get"): "AreaPriceHistory",
         ("/api/v1/api-lite/areas/compare", "get"): "AreaComparison",
         ("/api/v1/api-lite/listings", "get"): "ApiLiteListingSearchResponse",
         ("/api/v1/api-lite/listings/{listing_id}", "get"): "ApiLiteListingDetail",

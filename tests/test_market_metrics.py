@@ -120,6 +120,13 @@ def test_refresh_market_metrics_uses_rcn_without_active_listings(monkeypatch):
         SimpleNamespace(
             area_id="wroclaw-city",
             district=None,
+            price_per_m2=7000,
+            transaction_date=calculated_at - timedelta(days=500),
+            source=None,
+        ),
+        SimpleNamespace(
+            area_id="wroclaw-city",
+            district=None,
             price_per_m2=10000,
             transaction_date=calculated_at - timedelta(days=20),
             source=None,
@@ -154,11 +161,22 @@ def test_refresh_market_metrics_uses_rcn_without_active_listings(monkeypatch):
 
     assert result["status"] == "updated"
     assert result["active_listings"] == 0
-    assert result["transaction_observations"] == 2
+    assert result["transaction_observations"] == 3
+    assert result["decision_window_observations"] == 2
+    assert result["decision_window_days"] == 365
     area = session.added[0]
     assert area.area_id == "wroclaw-city"
     assert area.median_price_per_m2 == 10500
     assert area.transaction_observation_count == 2
+    assert area.transaction_history_observation_count == 3
+    assert [point["median_price_per_m2"] for point in area.transaction_yearly_history_json] == [
+        7000,
+        10500,
+    ]
+    assert [point["median_price_per_m2"] for point in area.transaction_monthly_history_json] == [
+        7000,
+        10500,
+    ]
     assert area.price_basis == "transaction_observed"
     assert area.listing_metrics_available is False
 

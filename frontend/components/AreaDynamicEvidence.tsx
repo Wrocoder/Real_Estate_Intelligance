@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { ExternalLink, RefreshCw } from "lucide-react";
 
+import { AreaPriceHistoryChart } from "@/components/AreaPriceHistoryChart";
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
-import { api, type AreaStatistics, type CoverageMetadata, type PlannedInvestment } from "@/lib/api";
+import { api, type AreaPriceHistory, type AreaStatistics, type CoverageMetadata, type PlannedInvestment } from "@/lib/api";
 import { dateValue, money, numberValue, percent } from "@/lib/format";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -42,10 +43,10 @@ const COPY = {
     noSource: "Źródło niepodane",
     window: "Zmiana ceny w 90 dni",
     supply: "Zmiana podaży w 90 dni",
-    median: "Mediana ceny transakcyjnej",
+    median: "Mediana ceny - ostatnie 12 miesięcy",
     average: "Średnia cena transakcyjna",
-    transactions: "Zarejestrowane transakcje",
-    period: "Okres obserwacji",
+    transactions: "Transakcje - ostatnie 12 miesięcy",
+    period: "Zakres bieżącej mediany",
     averageTime: "Średni czas na rynku",
     listingUnavailable: "Dynamika ofert i czas ekspozycji nie są dostępne w rejestrze transakcji.",
     referenceNote: "Liczby obejmują wyłącznie rekordy referencyjne przypisane do osiedla; brak rekordu nie oznacza braku obiektu w rzeczywistości.",
@@ -75,10 +76,10 @@ const COPY = {
     noSource: "Source not provided",
     window: "90-day price change",
     supply: "90-day supply change",
-    median: "Median transaction price",
+    median: "Median price - last 12 months",
     average: "Average transaction price",
-    transactions: "Registered transactions",
-    period: "Observation period",
+    transactions: "Transactions - last 12 months",
+    period: "Current median period",
     averageTime: "Average time on market",
     listingUnavailable: "Listing trends and time on market are not available from the transaction register.",
     referenceNote: "Counts include only reference records assigned to the neighborhood; no record does not prove the real-world absence of an amenity.",
@@ -108,10 +109,10 @@ const COPY = {
     noSource: "Источник не указан",
     window: "Изменение цены за 90 дней",
     supply: "Изменение предложения за 90 дней",
-    median: "Медиана цены сделки",
+    median: "Медиана цены - последние 12 месяцев",
     average: "Средняя цена сделки",
-    transactions: "Зарегистрированные сделки",
-    period: "Период наблюдений",
+    transactions: "Сделки - последние 12 месяцев",
+    period: "Период текущей медианы",
     averageTime: "Средний срок экспозиции",
     listingUnavailable: "Динамика объявлений и срок экспозиции недоступны в реестре сделок.",
     referenceNote: "Количество отражает только справочные записи, привязанные к району; отсутствие записи не означает отсутствие объекта в реальности.",
@@ -141,10 +142,10 @@ const COPY = {
     noSource: "Джерело не вказано",
     window: "Зміна ціни за 90 днів",
     supply: "Зміна пропозиції за 90 днів",
-    median: "Медіана ціни угоди",
+    median: "Медіана ціни - останні 12 місяців",
     average: "Середня ціна угоди",
-    transactions: "Зареєстровані угоди",
-    period: "Період спостережень",
+    transactions: "Угоди - останні 12 місяців",
+    period: "Період поточної медіани",
     averageTime: "Середній строк експозиції",
     listingUnavailable: "Динаміка оголошень і строк експозиції недоступні в реєстрі угод.",
     referenceNote: "Кількість охоплює лише довідкові записи, прив'язані до району; відсутність запису не означає відсутність об'єкта в реальності.",
@@ -167,17 +168,21 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
   const { locale } = useLocalePreference();
   const copy = COPY[locale];
   const [area, setArea] = useState<AreaStatistics | null>(null);
+  const [priceHistory, setPriceHistory] = useState<AreaPriceHistory | null>(null);
   const [coverage, setCoverage] = useState<CoverageMetadata | null>(null);
   const [investments, setInvestments] = useState<PlannedInvestment[] | null>(null);
   const [infrastructure, setInfrastructure] = useState<InfrastructureSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [historyFailed, setHistoryFailed] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     setFailed(false);
+    setHistoryFailed(false);
     const results = await Promise.allSettled([
       api.getAreaStatistics(areaId),
+      api.getAreaPriceHistory(areaId),
       api.getCoverage(),
       api.listPlannedInvestments({ city, district }),
       api.listTransportStops({ district_id: areaId, limit: 500 }),
@@ -187,9 +192,10 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
       api.listIndustrialZones({ district_id: areaId, limit: 500 }),
     ]);
     setArea(results[0].status === "fulfilled" ? results[0].value : null);
-    setCoverage(results[1].status === "fulfilled" ? results[1].value : null);
-    setInvestments(results[2].status === "fulfilled" ? results[2].value : null);
-    const counts = results.slice(3).map((result) =>
+    setPriceHistory(results[1].status === "fulfilled" ? results[1].value : null);
+    setCoverage(results[2].status === "fulfilled" ? results[2].value : null);
+    setInvestments(results[3].status === "fulfilled" ? results[3].value : null);
+    const counts = results.slice(4).map((result) =>
       result.status === "fulfilled" && Array.isArray(result.value) ? result.value.length : null,
     );
     setInfrastructure({
@@ -200,6 +206,7 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
       industrialZones: counts[4],
     });
     setFailed(results[0].status === "rejected");
+    setHistoryFailed(results[1].status === "rejected");
     setLoading(false);
   }, [areaId, city, district]);
 
@@ -230,6 +237,14 @@ export function AreaDynamicEvidence({ areaId, city, district }: { areaId: string
         }}
       />
       {area ? <MarketEvidence area={area} locale={locale} /> : null}
+      {area?.price_basis === "transaction_observed" ? (
+        <AreaPriceHistoryChart
+          history={priceHistory}
+          locale={locale}
+          onRetry={() => void load()}
+          unavailable={historyFailed}
+        />
+      ) : null}
       {infrastructure ? (
         <div className="area-evidence-section">
           <h3>{copy.infrastructure}</h3>

@@ -30,6 +30,8 @@ type Copy = {
   noPeriod: string;
   transactionBasis: string;
   limitedSample: string;
+  yearly: string;
+  transactionCount: string;
   details: string;
   resultCount: (visible: number, total: number) => string;
 };
@@ -41,19 +43,21 @@ const COPY: Record<Locale, Copy> = {
     compare: "Porównaj",
     check: "Sprawdź mieszkanie",
     sectionTitle: "Dane transakcyjne według osiedli",
-    sectionNote: "Każda mediana jest obliczona wyłącznie z transakcji przypisanych do oficjalnej granicy osiedla.",
+    sectionNote: "Bieżąca mediana obejmuje ostatnie 12 miesięcy. Mediany roczne pokazują pełny dostępny okres dla transakcji przypisanych do oficjalnej granicy osiedla.",
     searchLabel: "Znajdź osiedle",
     searchPlaceholder: "Np. Borek lub Ołbin",
     loading: "Pobieramy aktualne statystyki transakcji...",
     error: "Nie udało się pobrać statystyk osiedli.",
     retry: "Spróbuj ponownie",
     empty: "Brak osiedli pasujących do wyszukiwania.",
-    median: "Mediana ceny transakcyjnej",
-    observations: "Zarejestrowane transakcje",
-    period: "Okres obserwacji",
+    median: "Mediana - ostatnie 12 miesięcy",
+    observations: "Transakcje - ostatnie 12 miesięcy",
+    period: "Zakres bieżącej mediany",
     noPeriod: "Nie podano",
     transactionBasis: "Dane transakcyjne RCN",
     limitedSample: "Mała próba - interpretuj ostrożnie",
+    yearly: "Mediany według lat",
+    transactionCount: "transakcji",
     details: "Zobacz dane osiedla",
     resultCount: (visible, total) => `${visible} z ${total} osiedli`,
   },
@@ -63,19 +67,21 @@ const COPY: Record<Locale, Copy> = {
     compare: "Compare",
     check: "Check an apartment",
     sectionTitle: "Transaction data by neighborhood",
-    sectionNote: "Each median uses only transactions assigned to the neighborhood's official boundary.",
+    sectionNote: "The current median covers the last 12 months. Yearly medians show the full available period for transactions assigned to the neighborhood's official boundary.",
     searchLabel: "Find a neighborhood",
     searchPlaceholder: "For example Borek or Ołbin",
     loading: "Fetching current transaction statistics...",
     error: "Neighborhood statistics could not be loaded.",
     retry: "Try again",
     empty: "No neighborhoods match your search.",
-    median: "Median transaction price",
-    observations: "Registered transactions",
-    period: "Observation period",
+    median: "Median - last 12 months",
+    observations: "Transactions - last 12 months",
+    period: "Current median period",
     noPeriod: "Not supplied",
     transactionBasis: "RCN transaction data",
     limitedSample: "Small sample - interpret cautiously",
+    yearly: "Medians by year",
+    transactionCount: "transactions",
     details: "View neighborhood data",
     resultCount: (visible, total) => `${visible} of ${total} neighborhoods`,
   },
@@ -85,19 +91,21 @@ const COPY: Record<Locale, Copy> = {
     compare: "Сравнить",
     check: "Проверить квартиру",
     sectionTitle: "Данные о сделках по районам",
-    sectionNote: "Каждая медиана рассчитана только по сделкам внутри официальной границы района.",
+    sectionNote: "Текущая медиана охватывает последние 12 месяцев. Годовые медианы показывают весь доступный период по сделкам внутри официальной границы района.",
     searchLabel: "Найти район",
     searchPlaceholder: "Например, Borek или Ołbin",
     loading: "Загружаем актуальную статистику сделок...",
     error: "Не удалось загрузить статистику районов.",
     retry: "Повторить",
     empty: "Районы по этому запросу не найдены.",
-    median: "Медиана цены сделки",
-    observations: "Зарегистрированные сделки",
-    period: "Период наблюдений",
+    median: "Медиана - последние 12 месяцев",
+    observations: "Сделки - последние 12 месяцев",
+    period: "Период текущей медианы",
     noPeriod: "Не указан",
     transactionBasis: "Данные сделок RCN",
     limitedSample: "Малая выборка - интерпретируйте осторожно",
+    yearly: "Медианы по годам",
+    transactionCount: "сделок",
     details: "Данные района",
     resultCount: (visible, total) => `${visible} из ${total} районов`,
   },
@@ -107,19 +115,21 @@ const COPY: Record<Locale, Copy> = {
     compare: "Порівняти",
     check: "Перевірити квартиру",
     sectionTitle: "Дані про угоди за районами",
-    sectionNote: "Кожна медіана розрахована лише за угодами в офіційній межі району.",
+    sectionNote: "Поточна медіана охоплює останні 12 місяців. Річні медіани показують увесь доступний період за угодами в офіційній межі району.",
     searchLabel: "Знайти район",
     searchPlaceholder: "Наприклад, Borek або Ołbin",
     loading: "Завантажуємо актуальну статистику угод...",
     error: "Не вдалося завантажити статистику районів.",
     retry: "Повторити",
     empty: "Районів за цим запитом не знайдено.",
-    median: "Медіана ціни угоди",
-    observations: "Зареєстровані угоди",
-    period: "Період спостережень",
+    median: "Медіана - останні 12 місяців",
+    observations: "Угоди - останні 12 місяців",
+    period: "Період поточної медіани",
     noPeriod: "Не вказано",
     transactionBasis: "Дані угод RCN",
     limitedSample: "Мала вибірка - інтерпретуйте обережно",
+    yearly: "Медіани за роками",
+    transactionCount: "угод",
     details: "Дані району",
     resultCount: (visible, total) => `${visible} із ${total} районів`,
   },
@@ -260,6 +270,22 @@ function AreaCard({ area, copy, locale }: { area: AreaStatistics; copy: Copy; lo
           <strong>{timeRange}</strong>
         </span>
       </div>
+      {area.transaction_yearly_history.length ? (
+        <div className="area-card-yearly-history">
+          <h3>{copy.yearly}</h3>
+          <dl>
+            {area.transaction_yearly_history.map((point) => (
+              <div key={point.period_start}>
+                <dt>{new Date(`${point.period_start}T00:00:00Z`).getUTCFullYear()}</dt>
+                <dd>
+                  <strong>{money(point.median_price_per_m2, locale)}/m²</strong>
+                  <small>{numberValue(point.observation_count, locale)} {copy.transactionCount}</small>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
       <ProvenanceDetails
         locale={locale}
         provenance={{

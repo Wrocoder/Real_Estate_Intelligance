@@ -11,6 +11,7 @@ from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
+    AreaPriceHistory,
     AreaStatistics,
     DataProvenance,
     DeveloperAlias,
@@ -852,6 +853,9 @@ class InMemoryRealEstateRepository:
 
     def get_area_statistics(self, area_id: str) -> AreaStatistics | None:
         return self._areas.get(area_id)
+
+    def get_area_price_history(self, area_id: str) -> AreaPriceHistory | None:
+        return None
 
     def list_developer_reputations(
         self,

@@ -37,7 +37,9 @@ from domarion.db.models import (
 from domarion.repositories.base import BBox
 from domarion.schemas import (
     AmenityReference,
+    AreaPriceHistory,
     AreaStatistics,
+    AreaTransactionPricePoint,
     DataProvenance,
     DeveloperAlias,
     DeveloperProfile,
@@ -72,6 +74,12 @@ _SEARCH_TRANSLATE_FROM = (
     "\u0104\u0106\u0118\u0141\u0143\u00d3\u015a\u0179\u017b"
 )
 _SEARCH_TRANSLATE_TO = "acelnoszzACELNOSZZ"
+
+
+def _date_range(start: datetime | None, end: datetime | None) -> str | None:
+    if start is None or end is None:
+        return None
+    return f"{start.date().isoformat()}–{end.date().isoformat()}"
 
 _SNAPSHOT_SEARCH_TEXT_SQL = """
 coalesce(snap.title, '') || ' ' ||
@@ -368,6 +376,40 @@ class PostgresRealEstateRepository:
         if row is None:
             return None
         return self._area_to_schema(row)
+
+    def get_area_price_history(self, area_id: str) -> AreaPriceHistory | None:
+        row = self.session.get(AreaStatistic, area_id)
+        if row is None:
+            return None
+        source_names = row.data_sources_json or []
+        observation_count = row.transaction_history_observation_count or 0
+        observed_from = row.transaction_history_observed_from
+        observed_to = row.transaction_history_observed_to
+        return AreaPriceHistory(
+            area_id=row.area_id,
+            name=row.name,
+            city=row.city,
+            data_provenance=DataProvenance(
+                source_type="transaction_register",
+                source_name=source_names[0] if source_names else "RCN transaction register",
+                calculation_type="calculated",
+                sample_size=observation_count,
+                geographic_scope=row.name,
+                time_range=_date_range(observed_from, observed_to),
+                updated_at=row.calculated_at,
+            ),
+            observation_count=observation_count,
+            observed_from=observed_from,
+            observed_to=observed_to,
+            monthly=[
+                AreaTransactionPricePoint.model_validate(item)
+                for item in (row.transaction_monthly_history_json or [])
+            ],
+            yearly=[
+                AreaTransactionPricePoint.model_validate(item)
+                for item in (row.transaction_yearly_history_json or [])
+            ],
+        )
 
     def list_developer_reputations(
         self,
@@ -1162,11 +1204,9 @@ class PostgresRealEstateRepository:
                 calculation_type="calculated",
                 sample_size=transaction_count,
                 geographic_scope=row.name,
-                time_range=(
-                    f"{row.transaction_observed_from.date().isoformat()}–"
-                    f"{row.transaction_observed_to.date().isoformat()}"
-                    if row.transaction_observed_from and row.transaction_observed_to
-                    else None
+                time_range=_date_range(
+                    row.transaction_observed_from,
+                    row.transaction_observed_to,
                 ),
                 updated_at=row.calculated_at,
             )
@@ -1197,6 +1237,16 @@ class PostgresRealEstateRepository:
             transaction_median_price_per_m2=row.transaction_median_price_per_m2,
             transaction_observed_from=row.transaction_observed_from,
             transaction_observed_to=row.transaction_observed_to,
+            transaction_window_days=365,
+            transaction_history_observation_count=(
+                row.transaction_history_observation_count or 0
+            ),
+            transaction_history_observed_from=row.transaction_history_observed_from,
+            transaction_history_observed_to=row.transaction_history_observed_to,
+            transaction_yearly_history=[
+                AreaTransactionPricePoint.model_validate(item)
+                for item in (row.transaction_yearly_history_json or [])
+            ],
             data_sources=source_names,
         )
 

@@ -2192,6 +2192,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/areas/{area_id}/price-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Area Price History */
+        get: operations["get_area_price_history_api_v1_areas__area_id__price_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/compare": {
         parameters: {
             query?: never;
@@ -4036,6 +4053,22 @@ export interface components {
             transaction_observed_from?: string | null;
             /** Transaction Observed To */
             transaction_observed_to?: string | null;
+            /**
+             * Transaction Window Days
+             * @default 365
+             */
+            transaction_window_days: number;
+            /**
+             * Transaction History Observation Count
+             * @default 0
+             */
+            transaction_history_observation_count: number;
+            /** Transaction History Observed From */
+            transaction_history_observed_from?: string | null;
+            /** Transaction History Observed To */
+            transaction_history_observed_to?: string | null;
+            /** Transaction Yearly History */
+            transaction_yearly_history?: components["schemas"]["AreaTransactionPricePoint"][];
             /** Data Sources */
             data_sources?: string[];
             /** Liquidity Index */
@@ -4164,6 +4197,22 @@ export interface components {
             transaction_observed_from?: string | null;
             /** Transaction Observed To */
             transaction_observed_to?: string | null;
+            /**
+             * Transaction Window Days
+             * @default 365
+             */
+            transaction_window_days: number;
+            /**
+             * Transaction History Observation Count
+             * @default 0
+             */
+            transaction_history_observation_count: number;
+            /** Transaction History Observed From */
+            transaction_history_observed_from?: string | null;
+            /** Transaction History Observed To */
+            transaction_history_observed_to?: string | null;
+            /** Transaction Yearly History */
+            transaction_yearly_history?: components["schemas"]["AreaTransactionPricePoint"][];
             /** Data Sources */
             data_sources?: string[];
             /** Id */
@@ -4187,6 +4236,26 @@ export interface components {
             snapshots_created: number;
             /** Snapshots */
             snapshots?: components["schemas"]["AreaMarketSnapshot"][];
+        };
+        /** AreaPriceHistory */
+        AreaPriceHistory: {
+            /** Area Id */
+            area_id: string;
+            /** Name */
+            name: string;
+            /** City */
+            city: string;
+            data_provenance: components["schemas"]["DataProvenance"];
+            /** Observation Count */
+            observation_count: number;
+            /** Observed From */
+            observed_from?: string | null;
+            /** Observed To */
+            observed_to?: string | null;
+            /** Monthly */
+            monthly?: components["schemas"]["AreaTransactionPricePoint"][];
+            /** Yearly */
+            yearly?: components["schemas"]["AreaTransactionPricePoint"][];
         };
         /** AreaStatistics */
         AreaStatistics: {
@@ -4234,8 +4303,36 @@ export interface components {
             transaction_observed_from?: string | null;
             /** Transaction Observed To */
             transaction_observed_to?: string | null;
+            /**
+             * Transaction Window Days
+             * @default 365
+             */
+            transaction_window_days: number;
+            /**
+             * Transaction History Observation Count
+             * @default 0
+             */
+            transaction_history_observation_count: number;
+            /** Transaction History Observed From */
+            transaction_history_observed_from?: string | null;
+            /** Transaction History Observed To */
+            transaction_history_observed_to?: string | null;
+            /** Transaction Yearly History */
+            transaction_yearly_history?: components["schemas"]["AreaTransactionPricePoint"][];
             /** Data Sources */
             data_sources?: string[];
+        };
+        /** AreaTransactionPricePoint */
+        AreaTransactionPricePoint: {
+            /**
+             * Period Start
+             * Format: date
+             */
+            period_start: string;
+            /** Median Price Per M2 */
+            median_price_per_m2: number;
+            /** Observation Count */
+            observation_count: number;
         };
         /** AuthCredentials */
         AuthCredentials: {
@@ -15621,6 +15718,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AreaStatistics"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_area_price_history_api_v1_areas__area_id__price_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                area_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AreaPriceHistory"];
                 };
             };
             /** @description Validation Error */

@@ -515,6 +515,12 @@ class ListingCorrectionResult(BaseModel):
     corrected_by: str | None = None
 
 
+class AreaTransactionPricePoint(BaseModel):
+    period_start: date
+    median_price_per_m2: int = Field(ge=0)
+    observation_count: int = Field(ge=0)
+
+
 class AreaStatistics(BaseModel):
     area_id: str
     name: str
@@ -536,7 +542,24 @@ class AreaStatistics(BaseModel):
     transaction_median_price_per_m2: int | None = Field(default=None, ge=0)
     transaction_observed_from: datetime | None = None
     transaction_observed_to: datetime | None = None
+    transaction_window_days: int = Field(default=365, ge=1)
+    transaction_history_observation_count: int = Field(default=0, ge=0)
+    transaction_history_observed_from: datetime | None = None
+    transaction_history_observed_to: datetime | None = None
+    transaction_yearly_history: list[AreaTransactionPricePoint] = Field(default_factory=list)
     data_sources: list[str] = Field(default_factory=list)
+
+
+class AreaPriceHistory(BaseModel):
+    area_id: str
+    name: str
+    city: str
+    data_provenance: DataProvenance
+    observation_count: int = Field(ge=0)
+    observed_from: datetime | None = None
+    observed_to: datetime | None = None
+    monthly: list[AreaTransactionPricePoint] = Field(default_factory=list)
+    yearly: list[AreaTransactionPricePoint] = Field(default_factory=list)
 
 
 class AreaComparisonItem(AreaStatistics):

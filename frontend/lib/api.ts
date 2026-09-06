@@ -139,7 +139,30 @@ export type AreaStatistics = {
   transaction_median_price_per_m2: number | null;
   transaction_observed_from: string | null;
   transaction_observed_to: string | null;
+  transaction_window_days: number;
+  transaction_history_observation_count: number;
+  transaction_history_observed_from: string | null;
+  transaction_history_observed_to: string | null;
+  transaction_yearly_history: AreaTransactionPricePoint[];
   data_sources: string[];
+};
+
+export type AreaTransactionPricePoint = {
+  period_start: string;
+  median_price_per_m2: number;
+  observation_count: number;
+};
+
+export type AreaPriceHistory = {
+  area_id: string;
+  name: string;
+  city: string;
+  data_provenance: DataProvenance;
+  observation_count: number;
+  observed_from: string | null;
+  observed_to: string | null;
+  monthly: AreaTransactionPricePoint[];
+  yearly: AreaTransactionPricePoint[];
 };
 
 export type LocationReferenceType =
@@ -3213,6 +3236,8 @@ export const api = {
   listAreas: () => request<AreaStatistics[]>("/api/v1/areas"),
   getAreaStatistics: (areaId: string) =>
     request<AreaStatistics>(`/api/v1/areas/${encodeURIComponent(areaId)}/statistics`),
+  getAreaPriceHistory: (areaId: string) =>
+    request<AreaPriceHistory>(`/api/v1/areas/${encodeURIComponent(areaId)}/price-history`),
   getCoverage: () => request<CoverageMetadata>("/api/v1/coverage"),
   compareAreas: (params: { city?: string; sort?: string; limit?: number } = {}) =>
     request<AreaComparison>(`/api/v1/areas/compare${toQueryString(params)}`),

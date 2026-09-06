@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     ? `${area.name}: ceny transakcyjne mieszkań | WartoMetr`
     : "Dane osiedla we Wrocławiu | WartoMetr";
   const description = area
-    ? `Mediana cen transakcyjnych mieszkań na osiedlu ${area.name}, liczba obserwacji, okres danych i źródło.`
+    ? `Mediana cen transakcyjnych mieszkań z ostatnich 12 miesięcy na osiedlu ${area.name} oraz miesięczna historia cen i źródło danych.`
     : "Sprawdź dostępne dane transakcyjne dla osiedli Wrocławia.";
   return {
     title,

@@ -20,7 +20,8 @@ from domarion.ingestion.partner_csv import slugify
 from domarion.repositories.postgres import PostgresRealEstateRepository
 from domarion.services.transaction_versions import latest_transaction_versions
 
-TRANSACTION_LOOKBACK_DAYS = 1095
+TRANSACTION_DECISION_WINDOW_DAYS = 365
+TRANSACTION_TREND_WINDOW_DAYS = 90
 
 
 def refresh_market_metrics(
@@ -39,12 +40,21 @@ def refresh_market_metrics(
         for listing in repository.list_listings(city=city)
         if listing.data_quality_score >= minimum_quality
     ]
-    transactions = _load_transactions(
-        session,
-        city=city,
-        minimum_quality=minimum_quality,
-        cutoff=calculated_at - timedelta(days=TRANSACTION_LOOKBACK_DAYS),
-    )
+    transaction_history = [
+        transaction
+        for transaction in _load_transactions(
+            session,
+            city=city,
+            minimum_quality=minimum_quality,
+        )
+        if transaction.transaction_date <= calculated_at
+    ]
+    transaction_cutoff = calculated_at - timedelta(days=TRANSACTION_DECISION_WINDOW_DAYS)
+    transactions = [
+        transaction
+        for transaction in transaction_history
+        if transaction.transaction_date >= transaction_cutoff
+    ]
 
     session.execute(delete(AreaStatistic).where(AreaStatistic.city == city))
     if not listings and not transactions:
@@ -86,6 +96,11 @@ def refresh_market_metrics(
         transactions_by_area[transaction.area_id or city_area_id].append(transaction)
     if transactions:
         transactions_by_area[city_area_id] = list(transactions)
+    transaction_history_by_area: dict[str, list[TransactionObservation]] = defaultdict(list)
+    for transaction in transaction_history:
+        transaction_history_by_area[transaction.area_id or city_area_id].append(transaction)
+    if transaction_history:
+        transaction_history_by_area[city_area_id] = list(transaction_history)
 
     new_cutoff = calculated_at - timedelta(days=30)
     baseline_cutoff = calculated_at - timedelta(days=90)
@@ -94,6 +109,7 @@ def refresh_market_metrics(
     for area_id in sorted(set(current_by_area) | set(transactions_by_area)):
         area_listings = current_by_area.get(area_id, [])
         area_transactions = transactions_by_area.get(area_id, [])
+        area_transaction_history = transaction_history_by_area.get(area_id, [])
         listing_prices = [item.price_per_m2 for item in area_listings]
         transaction_prices = [float(item.price_per_m2) for item in area_transactions]
         prices = transaction_prices or listing_prices
@@ -103,12 +119,7 @@ def refresh_market_metrics(
         if area_transactions:
             current_median = median(transaction_prices)
             current_average = mean(transaction_prices)
-            transaction_baseline = [
-                float(item.price_per_m2)
-                for item in area_transactions
-                if item.transaction_date <= baseline_cutoff
-            ]
-            baseline_median = median(transaction_baseline) if transaction_baseline else None
+            price_change = _transaction_price_change(area_transactions, calculated_at)
             price_basis = "transaction_observed"
         else:
             current_median = median(listing_prices)
@@ -119,11 +130,11 @@ def refresh_market_metrics(
                 baseline_cutoff,
             )
             price_basis = "listing_observed"
-        price_change = (
-            round((current_median - baseline_median) / baseline_median * 100, 2)
-            if baseline_median
-            else 0.0
-        )
+            price_change = (
+                round((current_median - baseline_median) / baseline_median * 100, 2)
+                if baseline_median
+                else 0.0
+            )
 
         baseline_supply = _listing_baseline_supply(
             area_listings,
@@ -171,7 +182,26 @@ def refresh_market_metrics(
         existing.transaction_observed_to = (
             max(item.transaction_date for item in area_transactions) if area_transactions else None
         )
-        existing.data_sources_json = _source_names(area_transactions)
+        existing.transaction_history_observation_count = len(area_transaction_history)
+        existing.transaction_history_observed_from = (
+            min(item.transaction_date for item in area_transaction_history)
+            if area_transaction_history
+            else None
+        )
+        existing.transaction_history_observed_to = (
+            max(item.transaction_date for item in area_transaction_history)
+            if area_transaction_history
+            else None
+        )
+        existing.transaction_monthly_history_json = _aggregate_transaction_history(
+            area_transaction_history,
+            period="month",
+        )
+        existing.transaction_yearly_history_json = _aggregate_transaction_history(
+            area_transaction_history,
+            period="year",
+        )
+        existing.data_sources_json = _source_names(area_transaction_history or area_transactions)
         existing.calculated_at = calculated_at
         areas_updated += 1
 
@@ -180,7 +210,9 @@ def refresh_market_metrics(
         "city": city,
         "areas_updated": areas_updated,
         "active_listings": len(listings),
-        "transaction_observations": len(transactions),
+        "transaction_observations": len(transaction_history),
+        "decision_window_observations": len(transactions),
+        "decision_window_days": TRANSACTION_DECISION_WINDOW_DAYS,
         "minimum_quality": minimum_quality,
         "calculated_at": calculated_at.isoformat(),
         "status": "updated",
@@ -192,7 +224,7 @@ def _load_transactions(
     *,
     city: str,
     minimum_quality: int,
-    cutoff: datetime,
+    cutoff: datetime | None = None,
 ) -> list[TransactionObservation]:
     rows = session.scalars(
         select(TransactionObservation)
@@ -209,10 +241,47 @@ def _load_transactions(
     return [
         row
         for row in current_versions
-        if row.transaction_date >= cutoff
+        if (cutoff is None or row.transaction_date >= cutoff)
         and row.data_quality_score >= minimum_quality
         and getattr(row, "price_per_m2", None) is not None
         and float(row.price_per_m2) > 0
+    ]
+
+
+def _transaction_price_change(
+    rows: list[TransactionObservation], calculated_at: datetime
+) -> float:
+    current_cutoff = calculated_at - timedelta(days=TRANSACTION_TREND_WINDOW_DAYS)
+    previous_cutoff = current_cutoff - timedelta(days=TRANSACTION_TREND_WINDOW_DAYS)
+    current_prices = [
+        float(row.price_per_m2) for row in rows if row.transaction_date >= current_cutoff
+    ]
+    previous_prices = [
+        float(row.price_per_m2)
+        for row in rows
+        if previous_cutoff <= row.transaction_date < current_cutoff
+    ]
+    if not current_prices or not previous_prices:
+        return 0.0
+    current_median = median(current_prices)
+    previous_median = median(previous_prices)
+    return round((current_median - previous_median) / previous_median * 100, 2)
+
+
+def _aggregate_transaction_history(
+    rows: list[TransactionObservation], *, period: str
+) -> list[dict[str, object]]:
+    grouped: dict[tuple[int, int], list[float]] = defaultdict(list)
+    for row in rows:
+        month = row.transaction_date.month if period == "month" else 1
+        grouped[(row.transaction_date.year, month)].append(float(row.price_per_m2))
+    return [
+        {
+            "period_start": f"{year:04d}-{month:02d}-01",
+            "median_price_per_m2": round(median(prices)),
+            "observation_count": len(prices),
+        }
+        for (year, month), prices in sorted(grouped.items())
     ]
 
 

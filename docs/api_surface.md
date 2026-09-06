@@ -1,6 +1,6 @@
 # API Surface
 
-Дата сверки: 2026-08-27. Список ниже получен из `domarion.main.app.openapi()`
+Дата сверки: 2026-09-06. Список ниже получен из `domarion.main.app.openapi()`
 для текущего FastAPI приложения. Swagger UI на `/docs` остается источником
 истины для параметров, request bodies и response schemas.
 
@@ -28,6 +28,7 @@
 | `GET` | `/api/v1/areas` |
 | `GET` | `/api/v1/areas/compare` |
 | `GET` | `/api/v1/areas/{area_id}/statistics` |
+| `GET` | `/api/v1/areas/{area_id}/price-history` |
 | `GET` | `/api/v1/map/features` |
 | `GET` | `/api/v1/locations` |
 | `GET` | `/api/v1/locations/districts` |

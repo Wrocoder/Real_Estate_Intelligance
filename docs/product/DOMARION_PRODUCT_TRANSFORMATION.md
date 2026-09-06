@@ -736,8 +736,9 @@ Partial and follow-up requirements:
 - **VERIFIED locally (2026-09-06):** A complete sorted WFS run read 47,420
   source rows and accepted 22,388 residential Wrocław transactions. An
   immediate second run reported `0 new`, `0 changed`, and `22,388
-  reconfirmed`; market metrics rebuilt 47 geographic aggregates from 13,633
-  current transaction versions in the three-year window.
+  reconfirmed`; before the rolling-window change, market metrics rebuilt 47
+  geographic aggregates from 13,633 current transaction versions in the
+  then-current three-year window.
 - **VERIFIED locally:** 48 official boundaries imported, 17,248 existing RCN
   observations assigned to 43 osiedle areas, 2,166 geocoded observations
   remained unresolved, and 44 area statistics were rebuilt from 12,107 recent
@@ -746,3 +747,29 @@ Partial and follow-up requirements:
   configure `RCN_DISTRICT_BOUNDARIES_LOCATION`, install the 08:00
   `Europe/Warsaw` cron entry, and add Telegram token/chat id when notification
   is desired.
+
+## RCN Area Price Window and History Update (2026-09-06)
+
+- **DONE:** Changed the transaction-derived `AreaStatistics` baseline from a
+  three-year pool to a rolling 365-day window. Fair-price, scoring and area
+  comparison consumers continue using the same field, but it now represents
+  recent accepted transactions only.
+- **DONE:** Added separately materialized monthly and calendar-year medians for
+  the full available RCN period. Every point contains its accepted observation
+  count and uses only the latest retained source version of a logical deal.
+- **DONE:** Added yearly medians to `/areas` cards and a provenance-aware monthly
+  price chart to `/areas/{area_id}`. Missing months are shown as gaps, not
+  inferred values.
+- **VERIFIED locally (2026-09-06):** Migration `0036` applied to PostgreSQL and
+  a real-data refresh rebuilt 46 area aggregates from 22,538 retained current
+  transaction versions, of which 5,176 fall inside the rolling 365-day
+  decision window. For Borek, the API returned a current median of 12,358
+  PLN/m2 from 125 transactions and 24 observed monthly points across four
+  calendar years; 2024 is absent because no accepted observations exist.
+- **VERIFIED release gate:** Backend suite `400 passed, 1 skipped`; Ruff,
+  frontend lint, typecheck, 525 UI smoke assertions, production build and npm
+  audit passed. Standalone Playwright verified `/areas` and the Borek detail on
+  1440x900 and 390x844 viewports with no failed requests, runtime errors or
+  horizontal overflow. The in-app browser remained unavailable because of its
+  environment `sandboxPolicy`, so repository Playwright was used for actual
+  desktop/mobile browser verification.
