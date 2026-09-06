@@ -362,18 +362,7 @@ export default function AccountPage() {
     setAuthRequired(false);
     setStatus(copy.statuses.loadingAccount);
     try {
-      const sessionResponse = await fetch("/api/auth/session-status", {
-        cache: "no-store",
-        credentials: "include",
-      });
-      if (!sessionResponse.ok) throw new Error(copy.statuses.backendUnavailable);
-      const sessionStatus = (await sessionResponse.json()) as { authenticated: boolean };
-      if (!sessionStatus.authenticated) {
-        setAccount(null);
-        setAuthRequired(true);
-        setStatus("");
-        return;
-      }
+      await api.getSession();
 
       const [accountData, planData, orderData] = await Promise.all([
         api.getMe(),

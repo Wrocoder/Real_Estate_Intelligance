@@ -3202,7 +3202,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify(payload),
     }),
-  getSession: () => request<AuthSession>("/api/v1/auth/session"),
+  getSession: () =>
+    request<AuthSession>("/api/v1/auth/session", undefined, { suppressAuthRequired: true }),
   logout: () => request<void>("/api/v1/auth/logout", { method: "POST" }),
   getRuntimeContext: (init?: RequestInit) => request<RuntimeContext>("/runtime-context", init),
   listListings: (params: ListingSearchQuery = {}) =>

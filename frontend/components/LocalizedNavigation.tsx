@@ -14,7 +14,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import type { AuthSession } from "@/lib/api";
+import { ApiError, api, type AuthSession } from "@/lib/api";
 import { NAVIGATION_LABELS, type Locale, type NavigationLabelKey } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
@@ -54,18 +54,12 @@ export function LocalizedNavigation({ initialLocale }: { initialLocale: Locale }
 
     const refreshSession = async () => {
       try {
-        const response = await fetch("/api/auth/session-status", {
-          cache: "no-store",
-          credentials: "include",
-        });
-        if (!response.ok) throw new Error("session status unavailable");
-        const result = (await response.json()) as {
-          authenticated: boolean;
-          session?: AuthSession;
-        };
-        if (active) setSession(result.authenticated ? result.session : null);
-      } catch {
-        if (active) setSession(undefined);
+        const result = await api.getSession();
+        if (active) setSession(result);
+      } catch (caught) {
+        if (active) {
+          setSession(caught instanceof ApiError && caught.status === 401 ? null : undefined);
+        }
       }
     };
 

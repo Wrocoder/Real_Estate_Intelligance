@@ -69,7 +69,6 @@ const listingCard = read("components/ListingCard.tsx");
 const demoModeBanner = read("components/DemoModeBanner.tsx");
 const authForm = read("components/AuthForm.tsx");
 const authSessionNotice = read("components/AuthSessionNotice.tsx");
-const authSessionStatus = read("app/api/auth/session-status/route.ts");
 const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const alertsPage = read("app/alerts/page.tsx");
@@ -196,12 +195,6 @@ expectIncludes("expired session handling", authSessionNotice, [
   "notice.status === 403",
   "/account?returnTo=",
 ]);
-expectIncludes("navigation session status", authSessionStatus, [
-  "await cookies()",
-  "/api/v1/auth/session",
-  "response.status === 401",
-  "authenticated: false",
-]);
 expectIncludes("consumer navigation hierarchy", localizedNavigation, [
   "PRIMARY_NAVIGATION_ITEMS",
   "DISCOVERY_NAVIGATION_ITEMS",
@@ -213,8 +206,12 @@ expectIncludes("anonymous session handling", apiTransport, [
   "authenticatedFetch",
   'credentials: "include"',
   'path === "/api/v1/auth/login"',
+  "!options.suppressAuthRequired",
   'detail === "Sign in is required"',
   "detail: { status: response.status, reason }",
+]);
+expectIncludes("passive session check", apiClient, [
+  'request<AuthSession>("/api/v1/auth/session", undefined, { suppressAuthRequired: true })',
 ]);
 for (const [label, page] of [
   ["my apartments auth boundary", savedApartmentsPage],
@@ -228,8 +225,8 @@ for (const [label, page] of [
 expectIncludes("account CRM workspace", accountPage, [
   "ACCOUNT_PAGE_COPY[locale]",
   "useLocalePreference()",
-  'fetch("/api/auth/session-status"',
-  "if (!sessionStatus.authenticated)",
+  "await api.getSession()",
+  "caught instanceof ApiError && caught.status === 401",
   "createAgencyCrmClient",
   "createAgencyCrmShortlist",
   "previewAgencyCrmShortlistShare",
@@ -746,7 +743,8 @@ expectIncludes("localized navigation", localizedNavigation, [
   'href="/account?mode=login"',
   'href="/account?mode=register"',
   'className="nav-create-account"',
-  'fetch("/api/auth/session-status"',
+  "await api.getSession()",
+  "caught instanceof ApiError && caught.status === 401",
   'window.addEventListener("domarion:auth-changed"',
   "NAVIGATION_LABELS[locale]",
 ]);

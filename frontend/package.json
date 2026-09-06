@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "generate:openapi": "node scripts/generate-openapi.mjs",
     "browser:quality": "node scripts/browser-quality.mjs",
+    "browser:account": "node scripts/browser-account.mjs",
     "browser:check-recovery": "node scripts/check-recovery.mjs"
   },
   "dependencies": {

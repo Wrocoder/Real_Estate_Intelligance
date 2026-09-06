@@ -17,7 +17,15 @@ export function currentApiBaseUrl() {
   return API_BASE_URL;
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestOptions = {
+  suppressAuthRequired?: boolean;
+};
+
+export async function request<T>(
+  path: string,
+  init?: RequestInit,
+  options: RequestOptions = {},
+): Promise<T> {
   const apiBaseUrl = currentApiBaseUrl();
   let response: Response;
   try {
@@ -66,6 +74,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     if (
       typeof window !== "undefined" &&
       !isCredentialAttempt &&
+      !options.suppressAuthRequired &&
       (response.status === 401 || response.status === 403)
     ) {
       const reason =
