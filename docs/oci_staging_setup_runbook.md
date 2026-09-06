@@ -184,6 +184,9 @@ RCN_TRANSACTIONS_INTERVAL_SECONDS=86400
 # sudo mkdir -p /srv/domarion/data
 # sudo curl -fL https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip -o /srv/domarion/data/granice-osiedli.zip
 # sudo chown -R domarion:domarion /srv/domarion/data
+# The container runs as a non-root app user; this public boundary file must be
+# readable through the read-only bind mount.
+# sudo chmod 644 /srv/domarion/data/granice-osiedli.zip
 RCN_DISTRICT_BOUNDARIES_LOCATION=/srv/domarion/data/granice-osiedli.zip
 RCN_DISTRICT_BOUNDARIES_SOURCE_NAME=Wrocław Geoportal osiedle boundaries
 RCN_DISTRICT_BOUNDARIES_SOURCE_URL=https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip
