@@ -132,6 +132,16 @@ def test_oracle_backup_systemd_timer_runs_containerized_backup() -> None:
     assert "Persistent=true" in backup_timer
 
 
+def test_oracle_rcn_cron_launcher_is_one_shot_and_locked() -> None:
+    launcher = (ROOT / "scripts" / "run_rcn_daily_oracle.sh").read_text(encoding="utf-8")
+
+    assert "flock" in launcher
+    assert "--task rcn-transactions --run-once --apply" in launcher
+    assert "--env-file \"$ENV_FILE\"" in launcher
+    assert "--no-deps worker" in launcher
+    assert '"$status" -eq 75' in launcher
+
+
 def test_oracle_vm_bootstrap_script_sets_runtime_guardrails() -> None:
     bootstrap_script = (ROOT / "scripts" / "bootstrap_oracle_vm.sh").read_text(
         encoding="utf-8"

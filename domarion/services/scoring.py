@@ -206,10 +206,15 @@ def calculate_scores(
     area_trend = clamp(50 + area_statistics.price_change_90d_pct * 6)
     transport = clamp(100 - max(0, nearest_stop_m - 200) / 8)
     future_infrastructure = clamp(45 + planned_investments_within_2km * 13)
-    liquidity = clamp(
-        100
-        - area_statistics.average_days_on_market * 0.45
-        + max(0, area_statistics.removed_listings_30d - area_statistics.new_listings_30d) * 0.2
+    liquidity = (
+        clamp(
+            100
+            - area_statistics.average_days_on_market * 0.45
+            + max(0, area_statistics.removed_listings_30d - area_statistics.new_listings_30d)
+            * 0.2
+        )
+        if area_statistics.listing_metrics_available
+        else 50
     )
     lifestyle_infrastructure = clamp(
         35 + schools_within_1km * 12 + parks_within_1km * 10 - max(0, nearest_school_m - 700) / 20
@@ -288,6 +293,11 @@ def calculate_scores(
         warnings.append("Промышленная зона находится относительно близко.")
     if listing.data_quality_score < 70:
         warnings.append("Качество данных ниже желательного уровня, выводы нужно перепроверить.")
+    if not area_statistics.listing_metrics_available:
+        warnings.append(
+            "Dla tego obszaru nie ma aktywnej historii ofert; fair-price opiera się na "
+            f"obserwacjach transakcyjnych RCN ({area_statistics.transaction_observation_count})."
+        )
     if missing_inputs:
         warnings.append(
             "Недостающие поля инфраструктуры не подставлялись; зависимые сигналы имеют "
@@ -314,8 +324,10 @@ def calculate_scores(
         driver_codes.append({"code": "price_reduction_history", "direction": "positive"})
     if missing_inputs:
         driver_codes.append({"code": "missing_infrastructure_data", "direction": "unknown"})
-    if not comparables:
+    if not comparables and area_statistics.transaction_observation_count == 0:
         driver_codes.append({"code": "comparable_sample_insufficient", "direction": "unknown"})
+    if area_statistics.transaction_observation_count:
+        driver_codes.append({"code": "rcn_transaction_baseline", "direction": "positive"})
     explainability = ScoreExplainability(
         coverage_score=max(0, min(100, listing.data_quality_score - len(missing_inputs) * 5)),
         drivers=driver_codes,
@@ -419,7 +431,14 @@ def build_listing_analysis(
     scores = calculate_scores(listing, area_statistics, comparables)
     confidence_cap = {0: 92, 1: 78, 2: 64, 3: 52}.get(comparable_selection.level, 40)
     if len(comparables) < 3:
-        confidence_cap = min(confidence_cap, 55)
+        transaction_cap = (
+            82
+            if area_statistics.transaction_observation_count >= 15
+            else 72
+            if area_statistics.transaction_observation_count >= 5
+            else 55
+        )
+        confidence_cap = min(confidence_cap, transaction_cap)
     scores = scores.model_copy(
         update={
             "fair_price_confidence_score": min(scores.fair_price_confidence_score, confidence_cap),
@@ -427,8 +446,13 @@ def build_listing_analysis(
                 *scores.warnings,
                 *(
                     [
-                        "Слабая выборка comparables: fair-price диапазон носит только "
-                        "ориентировочный характер."
+                        (
+                            "Brak wystarczającej liczby aktualnych ofert porównawczych; "
+                            "fair-price opiera się głównie na transakcjach RCN."
+                            if area_statistics.transaction_observation_count
+                            else "Слабая выборка comparables: fair-price диапазон носит только "
+                            "ориентировочный характер."
+                        )
                     ]
                     if len(comparables) < 3
                     else []
@@ -545,7 +569,11 @@ def _fair_price_confidence_score(
     return clamp(
         listing.data_quality_score * 0.35
         + min(len(comparables), 5) * 8
-        + min(area_statistics.active_listings, 80) * 0.25
+        + max(
+            min(area_statistics.active_listings, 80),
+            min(area_statistics.transaction_observation_count, 80),
+        )
+        * 0.25
         + (10 if area_statistics.median_price_per_m2 > 0 else 0)
     )
 

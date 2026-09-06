@@ -33,6 +33,7 @@ VALID_WORKER_TASKS = {
     "daily-email-alerts",
     "area-market-snapshots",
     "price-history-rebuild",
+    "rcn-transactions",
 }
 MONITORING_ENV_VARS = {
     "UPTIME_MONITOR_URL": "uptime probe",
@@ -421,7 +422,11 @@ def _check_worker_configuration(
     if unknown_tasks:
         failures.append("Unknown WORKER_TASKS values: " + ", ".join(unknown_tasks) + ".")
 
-    needs_apply = {"area-market-snapshots", "price-history-rebuild"} & set(tasks)
+    needs_apply = {
+        "area-market-snapshots",
+        "price-history-rebuild",
+        "rcn-transactions",
+    } & set(tasks)
     if needs_apply and not _env_bool(env.get("WORKER_APPLY"), default=False):
         warnings.append("WORKER_APPLY is false, so maintenance tasks will not persist changes.")
     if (

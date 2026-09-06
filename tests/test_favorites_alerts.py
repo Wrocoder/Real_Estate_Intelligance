@@ -728,3 +728,35 @@ def test_telegram_delivery_sends_bot_api_payload(monkeypatch) -> None:
     assert '"chat_id": "123456"' in payload
     assert "Fabryczna" in payload
     get_settings.cache_clear()
+
+
+def test_operator_telegram_message_uses_explicit_chat_id(monkeypatch) -> None:
+    requests = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return b'{"ok":true}'
+
+    monkeypatch.setenv("ALERT_TELEGRAM_ENABLED", "true")
+    monkeypatch.setenv("ALERT_TELEGRAM_BOT_TOKEN", "token-operator")
+    monkeypatch.setenv("ALERT_TELEGRAM_API_BASE_URL", "https://telegram.local")
+    monkeypatch.setattr(
+        alert_delivery,
+        "urlopen",
+        lambda request, timeout: (requests.append((request, timeout)) or FakeResponse()),
+    )
+    get_settings.cache_clear()
+
+    result = alert_delivery.send_telegram_message("2 nowe rekordy", target="987654")
+
+    assert result.status == "sent"
+    request, _ = requests[0]
+    assert request.full_url == "https://telegram.local/bottoken-operator/sendMessage"
+    assert '"chat_id": "987654"' in request.data.decode("utf-8")
+    get_settings.cache_clear()

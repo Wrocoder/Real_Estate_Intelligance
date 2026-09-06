@@ -41,6 +41,7 @@ VALID_WORKER_TASKS = {
     "daily-email-alerts",
     "area-market-snapshots",
     "price-history-rebuild",
+    "rcn-transactions",
 }
 
 PLACEHOLDER_TOKENS = ("example.com", "change-me", "<domain>")

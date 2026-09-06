@@ -3191,7 +3191,7 @@ export const api = {
     }),
   getSession: () => request<AuthSession>("/api/v1/auth/session"),
   logout: () => request<void>("/api/v1/auth/logout", { method: "POST" }),
-  getRuntimeContext: () => request<RuntimeContext>("/runtime-context"),
+  getRuntimeContext: (init?: RequestInit) => request<RuntimeContext>("/runtime-context", init),
   listListings: (params: ListingSearchQuery = {}) =>
     request<ListingSearchResponse>(`/api/v1/listings${toQueryString(params)}`),
   listHiddenGems: (params: HiddenGemQuery = {}) =>

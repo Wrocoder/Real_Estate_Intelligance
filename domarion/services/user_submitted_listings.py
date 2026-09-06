@@ -499,6 +499,9 @@ def _resolve_area_statistics(
     for item in repository.list_area_statistics():
         if item.city.casefold() == city_key and item.name.casefold() == district_key:
             return item
+    city_statistics = repository.get_area_statistics(f"{_slug(city)}-city")
+    if city_statistics is not None and city_statistics.city.casefold() == city_key:
+        return city_statistics
     if lat is not None and lon is not None:
         return _nearest_area_statistics_by_coordinates(repository, lat, lon)
     return None

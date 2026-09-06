@@ -150,6 +150,106 @@ After every deploy, record the deployed commit SHA, image tags and smoke result
 outside git. If `/ready` is `degraded`, capture the warning list and decide
 whether it is acceptable for staging; do not treat `blocked` as healthy.
 
+## 4a. Approved Market Feed
+
+The live Wrocław listing worker is opt-in. Before enabling it, create the source
+registry entry with `legal_status=approved`, `is_demo=false`, an authorized feed
+method, market/report allowed use, retention and Terms/licence notes. Then set
+these values in `/srv/domarion/env/oracle.env`:
+
+```bash
+# Keep rcn-transactions out of WORKER_TASKS: the dedicated cron job below owns
+# the once-daily RCN refresh at 08:00 Europe/Warsaw.
+WORKER_TASKS=daily-email-alerts,area-market-snapshots,price-history-rebuild,authorized-market-feed
+WORKER_APPLY=true
+MARKET_DATA_FEED_LOCATION=https://approved-provider.example/wroclaw/listings.json
+MARKET_DATA_FEED_SOURCE_NAME=Approved Wroclaw Partner
+MARKET_DATA_FEED_COMPLETE_SNAPSHOT=false
+MARKET_DATA_FEED_MAX_LISTINGS=10000
+MARKET_DATA_FEED_TIMEOUT_SECONDS=20
+
+# Optional official RCN/GUGiK transaction import. Keep disabled until the
+# source registry entry is approved and the bbox-scoped WFS URL is tested.
+RCN_TRANSACTIONS_LOCATION=https://mapy.geoportal.gov.pl/wss/service/rcn?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3Alokale&outputFormat=GML3&count=1000&BBOX=<wroclaw-bbox>,EPSG%3A2180
+# Must exactly match the approved Source Registry entry in PostgreSQL.
+RCN_TRANSACTIONS_SOURCE_NAME=RCN GUGiK
+RCN_TRANSACTIONS_MAX_ROWS=100000
+RCN_TRANSACTIONS_MAX_PAGES=500
+RCN_TRANSACTIONS_TIMEOUT_SECONDS=30
+RCN_TRANSACTIONS_INTERVAL_SECONDS=86400
+
+# Download the official Wrocław osiedle boundary ZIP to the VM first.
+# The worker mounts this host directory read-only into /srv/domarion/data.
+# Run as the VM administrator, for example:
+# sudo mkdir -p /srv/domarion/data
+# sudo curl -fL https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip -o /srv/domarion/data/granice-osiedli.zip
+# sudo chown -R domarion:domarion /srv/domarion/data
+RCN_DISTRICT_BOUNDARIES_LOCATION=/srv/domarion/data/granice-osiedli.zip
+RCN_DISTRICT_BOUNDARIES_SOURCE_NAME=Wrocław Geoportal osiedle boundaries
+RCN_DISTRICT_BOUNDARIES_SOURCE_URL=https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip
+RCN_DISTRICT_BOUNDARIES_SOURCE_CRS=2177
+
+# Optional operator notification after a successful RCN refresh.
+ALERT_TELEGRAM_ENABLED=true
+ALERT_TELEGRAM_BOT_TOKEN=<bot-token>
+RCN_TRANSACTIONS_TELEGRAM_CHAT_ID=<chat-id>
+```
+
+Install the daily Oracle staging schedule as an administrator. Use `sudoedit`
+to create `/etc/cron.d/domarion-rcn-daily` with exactly:
+
+```cron
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=Europe/Warsaw
+0 8 * * * domarion /srv/domarion/app/scripts/run_rcn_daily_oracle.sh >> /srv/domarion/data/rcn-daily.log 2>&1
+```
+
+Then apply permissions and verify the schedule:
+
+```bash
+sudo chmod 644 /etc/cron.d/domarion-rcn-daily
+sudo chown root:root /etc/cron.d/domarion-rcn-daily
+sudo chmod 750 /srv/domarion/app/scripts/run_rcn_daily_oracle.sh
+sudo chown domarion:domarion /srv/domarion/app/scripts/run_rcn_daily_oracle.sh
+sudo systemctl restart cron
+sudo runuser -u domarion -- /srv/domarion/app/scripts/run_rcn_daily_oracle.sh
+tail -n 100 /srv/domarion/data/rcn-daily.log
+```
+
+The manual run uses the same one-shot path and is useful for validating the
+Telegram credentials before waiting for 08:00. The cron entry must run as a
+user that can access the Docker socket; add `domarion` to the `docker` group
+only if the VM setup has not already done so.
+
+Run a dry validation before enabling writes:
+
+```bash
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps api \
+  domarion import-authorized-feed "$MARKET_DATA_FEED_LOCATION" \
+  --source-name "$MARKET_DATA_FEED_SOURCE_NAME" --dry-run
+```
+
+For RCN, use the separate transaction command. The source registry must have
+`source_type=transaction_register`, `legal_status=approved`,
+`ingestion_method=rcn_wfs`, `is_demo=false` and market-report usage enabled:
+
+```bash
+domarion import-rcn-transactions "$RCN_TRANSACTIONS_LOCATION" \
+  --source-name "$RCN_TRANSACTIONS_SOURCE_NAME" --dry-run
+```
+
+The command stores transaction observations separately from listing snapshots.
+It uses the `ms:lokale` GML fields exposed by the official RCN WFS and does not
+infer a district when the source only provides city/address and EPSG:2180
+geometry.
+
+The worker refuses unregistered, unapproved, inactive or demo sources. It does
+not crawl Otodom/OLX HTML pages, bypass access controls or follow arbitrary
+pagination links. Use an approved provider API/export instead. After the first
+successful run inspect ingestion jobs, quality logs, source freshness and the
+Check Apartment flow before setting `MARKET_DATA_FEED_COMPLETE_SNAPSHOT=true`.
+
 ## 5. Routine Updates
 
 Use GitHub Actions deploy for the normal path:

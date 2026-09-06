@@ -277,6 +277,56 @@ class ListingSnapshot(Base):
     property_source: Mapped[PropertySource] = relationship()
 
 
+class TransactionObservation(Base):
+    """Immutable, normalized observation from a transaction register."""
+
+    __tablename__ = "transaction_observations"
+    __table_args__ = (UniqueConstraint("source_id", "source_observation_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("listing_sources.id"), index=True)
+    ingestion_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ingestion_jobs.id"), index=True
+    )
+    source_observation_id: Mapped[str] = mapped_column(String(180))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    source_namespace: Mapped[str | None] = mapped_column(String(180))
+    source_version: Mapped[str | None] = mapped_column(String(80))
+    teryt: Mapped[str | None] = mapped_column(String(20), index=True)
+    transaction_date: Mapped[datetime] = mapped_column(DateTime, index=True)
+    observed_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    district: Mapped[str | None] = mapped_column(String(80), index=True)
+    area_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    municipality: Mapped[str | None] = mapped_column(String(120))
+    address: Mapped[str | None] = mapped_column(String(255))
+    property_type: Mapped[str | None] = mapped_column(String(80), index=True)
+    property_right: Mapped[str | None] = mapped_column(String(120))
+    transaction_type: Mapped[str | None] = mapped_column(String(80))
+    market_type: Mapped[str | None] = mapped_column(String(40), index=True)
+    property_price_gross: Mapped[int] = mapped_column(Integer)
+    transaction_price_gross: Mapped[int | None] = mapped_column(Integer)
+    vat_amount: Mapped[int | None] = mapped_column(Integer)
+    price_basis: Mapped[str] = mapped_column(String(30), default="property")
+    currency: Mapped[str] = mapped_column(String(8), default="PLN")
+    area_m2: Mapped[Decimal] = mapped_column(Numeric(8, 2))
+    price_per_m2: Mapped[Decimal] = mapped_column(Numeric(12, 2), index=True)
+    rooms: Mapped[int | None] = mapped_column(Integer)
+    floor: Mapped[int | None] = mapped_column(Integer)
+    ancillary_area_m2: Mapped[Decimal | None] = mapped_column(Numeric(8, 2))
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    geometry_x: Mapped[Decimal | None] = mapped_column(Numeric(14, 3))
+    geometry_y: Mapped[Decimal | None] = mapped_column(Numeric(14, 3))
+    geometry_crs: Mapped[str | None] = mapped_column(String(80))
+    data_quality_score: Mapped[int] = mapped_column(Integer, default=50)
+    normalized_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    source: Mapped[ListingSource] = relationship()
+
+
 class ListingEvent(Base):
     __tablename__ = "listing_events"
     __table_args__ = (
@@ -473,6 +523,13 @@ class AreaStatistic(Base):
     average_days_on_market: Mapped[int] = mapped_column(Integer)
     price_change_90d_pct: Mapped[float] = mapped_column(Float)
     supply_change_90d_pct: Mapped[float] = mapped_column(Float)
+    price_basis: Mapped[str] = mapped_column(String(40), default="listing_observed")
+    listing_metrics_available: Mapped[bool] = mapped_column(Boolean, default=True)
+    transaction_observation_count: Mapped[int] = mapped_column(Integer, default=0)
+    transaction_median_price_per_m2: Mapped[int | None] = mapped_column(Integer)
+    transaction_observed_from: Mapped[datetime | None] = mapped_column(DateTime)
+    transaction_observed_to: Mapped[datetime | None] = mapped_column(DateTime)
+    data_sources_json: Mapped[list[str]] = mapped_column(JSONB, default=list)
     calculated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -528,6 +585,25 @@ class District(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     municipality: Mapped[Municipality] = relationship()
+
+
+class DistrictBoundary(Base):
+    """Authoritative polygon used to assign geocoded observations to a district."""
+
+    __tablename__ = "district_boundaries"
+    __table_args__ = (UniqueConstraint("city", "slug"),)
+
+    id: Mapped[str] = mapped_column(String(160), primary_key=True)
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    district: Mapped[str] = mapped_column(String(120), index=True)
+    slug: Mapped[str] = mapped_column(String(120), index=True)
+    source_name: Mapped[str] = mapped_column(String(160))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    source_crs: Mapped[int] = mapped_column(Integer)
+    geometry_wkt: Mapped[str] = mapped_column(Text)
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class LocationReference(Base):

@@ -338,6 +338,12 @@ class DataProvenance(BaseModel):
     mode: DataMode = "live"
     source_type: str
     notice_code: str | None = None
+    source_name: str | None = None
+    calculation_type: ProvenanceCalculationType = "unknown"
+    sample_size: int | None = Field(default=None, ge=0)
+    geographic_scope: str | None = None
+    time_range: str | None = None
+    updated_at: datetime | None = None
 
 
 class CoverageMetadata(BaseModel):
@@ -524,6 +530,13 @@ class AreaStatistics(BaseModel):
     average_days_on_market: int
     price_change_90d_pct: float
     supply_change_90d_pct: float
+    price_basis: str = "listing_observed"
+    listing_metrics_available: bool = True
+    transaction_observation_count: int = Field(default=0, ge=0)
+    transaction_median_price_per_m2: int | None = Field(default=None, ge=0)
+    transaction_observed_from: datetime | None = None
+    transaction_observed_to: datetime | None = None
+    data_sources: list[str] = Field(default_factory=list)
 
 
 class AreaComparisonItem(AreaStatistics):

@@ -55,8 +55,10 @@ export function DemoModeBanner({ initialLocale }: { initialLocale: Locale }) {
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 8000);
     setStatus("checking");
-    api.getRuntimeContext()
+    api.getRuntimeContext({ signal: controller.signal })
       .then((context) => {
         if (!cancelled) setStatus(context.data_mode === "demo" ? "demo" : "live");
       })
@@ -65,6 +67,8 @@ export function DemoModeBanner({ initialLocale }: { initialLocale: Locale }) {
       });
     return () => {
       cancelled = true;
+      window.clearTimeout(timeout);
+      controller.abort();
     };
   }, [attempt]);
 

@@ -174,6 +174,68 @@ class TelegramAlertProvider:
         )
 
 
+def send_telegram_message(
+    text_body: str,
+    *,
+    target: str | None = None,
+) -> AlertDeliveryResult:
+    """Send an operator notification without coupling it to saved-property alerts."""
+
+    settings = get_settings()
+    resolved_target = target or getattr(settings, "alert_telegram_chat_id", None)
+    if not resolved_target:
+        return _skipped_result(
+            TelegramAlertProvider.provider,
+            "Telegram chat id is missing.",
+            resolved_target,
+        )
+    if not settings.alert_telegram_enabled or not settings.alert_telegram_bot_token:
+        return _skipped_result(
+            TelegramAlertProvider.provider,
+            "Telegram delivery is not configured. Set ALERT_TELEGRAM_ENABLED=true and token.",
+            resolved_target,
+        )
+
+    url = (
+        f"{settings.alert_telegram_api_base_url.rstrip('/')}"
+        f"/bot{settings.alert_telegram_bot_token}/sendMessage"
+    )
+    body = json.dumps(
+        {
+            "chat_id": resolved_target,
+            "text": text_body,
+            "disable_web_page_preview": True,
+        },
+        ensure_ascii=False,
+    ).encode("utf-8")
+    request = Request(
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=settings.alert_delivery_timeout_seconds) as response:
+            response_body = response.read()
+    except (OSError, URLError) as exc:
+        return _failed_result(
+            TelegramAlertProvider.provider,
+            f"Telegram delivery failed: {exc}",
+            resolved_target,
+        )
+    return AlertDeliveryResult(
+        provider=TelegramAlertProvider.provider,
+        status="sent",
+        delivered_count=1,
+        message=f"Telegram report sent to {resolved_target}.",
+        metadata={
+            "target": resolved_target,
+            "bot_name": settings.alert_telegram_bot_name,
+            "response_bytes": len(response_body),
+        },
+    )
+
+
 def build_alert_delivery_job(
     owner_id: str,
     owner_email: str | None,

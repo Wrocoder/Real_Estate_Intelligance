@@ -1111,6 +1111,10 @@ class PostgresRealEstateRepository:
             source = latest_snapshot.property_source.source
             if bool(source.is_demo) != self.include_demo_data:
                 continue
+            if not source.is_demo and (
+                not source.is_active or source.legal_status != "approved"
+            ):
+                continue
             provenance = DataProvenance(
                 mode="demo" if source.is_demo else "live",
                 source_type=source.source_type,
@@ -1149,10 +1153,36 @@ class PostgresRealEstateRepository:
 
     @staticmethod
     def _area_to_schema(row: AreaStatistic) -> AreaStatistics:
+        transaction_count = row.transaction_observation_count or 0
+        source_names = row.data_sources_json or []
+        if row.price_basis == "transaction_observed":
+            provenance = DataProvenance(
+                source_type="transaction_register",
+                source_name=source_names[0] if source_names else "RCN transaction register",
+                calculation_type="calculated",
+                sample_size=transaction_count,
+                geographic_scope=row.name,
+                time_range=(
+                    f"{row.transaction_observed_from.date().isoformat()}–"
+                    f"{row.transaction_observed_to.date().isoformat()}"
+                    if row.transaction_observed_from and row.transaction_observed_to
+                    else None
+                ),
+                updated_at=row.calculated_at,
+            )
+        else:
+            provenance = DataProvenance(
+                source_type="listing_market_statistics",
+                calculation_type="calculated",
+                sample_size=row.active_listings,
+                geographic_scope=row.name,
+                updated_at=row.calculated_at,
+            )
         return AreaStatistics(
             area_id=row.area_id,
             name=row.name,
             city=row.city,
+            data_provenance=provenance,
             median_price_per_m2=row.median_price_per_m2,
             average_price_per_m2=row.average_price_per_m2,
             active_listings=row.active_listings,
@@ -1161,6 +1191,13 @@ class PostgresRealEstateRepository:
             average_days_on_market=row.average_days_on_market,
             price_change_90d_pct=row.price_change_90d_pct,
             supply_change_90d_pct=row.supply_change_90d_pct,
+            price_basis=row.price_basis,
+            listing_metrics_available=row.listing_metrics_available,
+            transaction_observation_count=transaction_count,
+            transaction_median_price_per_m2=row.transaction_median_price_per_m2,
+            transaction_observed_from=row.transaction_observed_from,
+            transaction_observed_to=row.transaction_observed_to,
+            data_sources=source_names,
         )
 
     @staticmethod

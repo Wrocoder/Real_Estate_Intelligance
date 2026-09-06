@@ -703,8 +703,9 @@ Partial and follow-up requirements:
 
 - similarity is a deterministic comparison of available listing attributes,
   not a confidence score and not a substitute for transaction comparables;
-- the current repository has listing observations rather than a complete RCN
-  transaction feed, so the UI keeps source class and limitations visible;
+- RCN coverage depends on the official register's published geographic and
+  temporal scope and is not a census of every Polish transaction, so the UI
+  keeps source class, sample size and limitations visible;
 - T3-03 is next: formalize HIGH/MEDIUM/LOW confidence explanations and
   unknowns across all decision surfaces.
 
@@ -716,3 +717,22 @@ Partial and follow-up requirements:
 - Demo/sample data remains valid only in explicitly marked local/test/demo
   contexts; it must never be used as evidence of commercial product traction.
 - No transformation task is complete based only on a successful build.
+
+## RCN Refresh Automation Update (2026-09-05)
+
+- **DONE:** Added an idempotent `rcn-transactions` worker task with a
+  persisted 24-hour cadence based on the last successful ingestion job.
+- **DONE:** Added `district_boundaries` and an importer for the official
+  Wrocław Geoportal osiedle SHP/ZIP. PostGIS assigns EPSG:2180 RCN points to
+  EPSG:2177 boundaries; unmatched points stay at city level.
+- **DONE:** Added optional Telegram operator reporting with counts for new,
+  updated, rejected and district-assigned rows. Missing Telegram credentials
+  skip delivery without invalidating a successful import.
+- **VERIFIED locally:** 48 official boundaries imported, 17,248 existing RCN
+  observations assigned to 43 osiedle areas, 2,166 geocoded observations
+  remained unresolved, and 44 area statistics were rebuilt from 12,107 recent
+  transaction observations.
+- **OPERATOR SETUP REQUIRED:** Copy the official boundary ZIP to the VM,
+  configure `RCN_DISTRICT_BOUNDARIES_LOCATION`, install the 08:00
+  `Europe/Warsaw` cron entry, and add Telegram token/chat id when notification
+  is desired.

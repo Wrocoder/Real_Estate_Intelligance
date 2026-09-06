@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     alert_telegram_enabled: bool = False
     alert_telegram_bot_name: str = "WartoMetrBot"
     alert_telegram_bot_token: str | None = None
+    alert_telegram_chat_id: str | None = None
     alert_telegram_api_base_url: str = "https://api.telegram.org"
     scoring_weights_json: str | None = None
     demo_mode_enabled: bool = False
