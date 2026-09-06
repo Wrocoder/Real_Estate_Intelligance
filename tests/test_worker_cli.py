@@ -66,7 +66,8 @@ def test_worker_cli_reports_rcn_import_to_telegram(monkeypatch, capsys) -> None:
         def as_dict(self):  # noqa: ANN001
             return {
                 "transactions_created": 4,
-                "transactions_updated": 2,
+                "transactions_changed": 2,
+                "transactions_reconfirmed": 8,
                 "rows_rejected": 1,
                 "districts_assigned": 3,
                 "transactions_with_unresolved_district": 1,
@@ -105,3 +106,8 @@ def test_worker_cli_reports_rcn_import_to_telegram(monkeypatch, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["results"][0]["transactions_created"] == 4
     assert payload["results"][0]["telegram"]["status"] == "sent"
+    message = payload["results"][0]["telegram"]["metadata"]["message"]
+    assert "New transactions: 4" in message
+    assert "Changed transactions: 2" in message
+    assert "Reconfirmed transactions: 8" in message
+    assert "Nowe rekordy" not in message

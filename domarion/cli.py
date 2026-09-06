@@ -742,12 +742,16 @@ def _send_rcn_telegram_report(payload: dict[str, object]) -> dict[str, object]:
 
     message = "\n".join(
         [
-            "WartoMetr: dzienna aktualizacja transakcji RCN dla Wrocławia",
-            f"Nowe rekordy: {payload.get('transactions_created', 0)}",
-            f"Zaktualizowane rekordy: {payload.get('transactions_updated', 0)}",
-            f"Odrzucone wiersze: {payload.get('rows_rejected', 0)}",
-            f"Przypisane do osiedli: {payload.get('districts_assigned', 0)}",
-            f"Bez przypisanego osiedla: {payload.get('transactions_with_unresolved_district', 0)}",
+            "WartoMetr: daily Wrocław RCN transaction update",
+            f"New transactions: {payload.get('transactions_created', 0)}",
+            f"Changed transactions: {payload.get('transactions_changed', 0)}",
+            f"Reconfirmed transactions: {payload.get('transactions_reconfirmed', 0)}",
+            f"Rejected source rows: {payload.get('rows_rejected', 0)}",
+            f"Assigned to districts: {payload.get('districts_assigned', 0)}",
+            (
+                "Without a district assignment: "
+                f"{payload.get('transactions_with_unresolved_district', 0)}"
+            ),
         ]
     )
     result = send_telegram_message(

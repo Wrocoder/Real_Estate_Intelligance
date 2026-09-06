@@ -14,7 +14,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 from uuid import uuid4
 from xml.etree import ElementTree
@@ -31,10 +31,13 @@ from domarion.db.models import (
 from domarion.ingestion.district_boundaries import assign_transaction_districts
 from domarion.ingestion.partner_csv import slugify
 from domarion.services.market_metrics import refresh_market_metrics
+from domarion.services.transaction_versions import transaction_identity
 
 MAX_RCN_RESPONSE_BYTES = 25_000_000
 DEFAULT_RCN_TIMEOUT_SECONDS = 30.0
 DEFAULT_RCN_MAX_PAGES = 500
+DEFAULT_RCN_PAGE_SIZE = 1_000
+DEFAULT_RCN_SORT_BY = "tran_lokalny_id_iip A,lok_id_lokalu A,tran_wersja_id A"
 ALLOWED_RCN_METHODS = {
     "rcn_wfs",
     "authorized_api",
@@ -103,7 +106,8 @@ class RcnImportResult:
     rows_rejected: int
     dry_run: bool
     transactions_created: int = 0
-    transactions_updated: int = 0
+    transactions_changed: int = 0
+    transactions_reconfirmed: int = 0
     districts_assigned: int = 0
     transactions_with_unresolved_district: int = 0
     market_metrics: dict[str, object] | None = None
@@ -117,7 +121,8 @@ class RcnImportResult:
             "rows_rejected": self.rows_rejected,
             "dry_run": self.dry_run,
             "transactions_created": self.transactions_created,
-            "transactions_updated": self.transactions_updated,
+            "transactions_changed": self.transactions_changed,
+            "transactions_reconfirmed": self.transactions_reconfirmed,
             "districts_assigned": self.districts_assigned,
             "transactions_with_unresolved_district": self.transactions_with_unresolved_district,
             "market_metrics": self.market_metrics,
@@ -140,7 +145,7 @@ def load_rcn_features(
         if not any(key.casefold() == "bbox" for key in parse_qs(parsed.query)):
             raise RcnTransactionError("Remote RCN WFS URL must contain an explicit bbox.")
         features: list[dict[str, object]] = []
-        next_url: str | None = location_text
+        next_url: str | None = _prepare_wfs_url(location_text)
         total_bytes = 0
         for _ in range(max_pages):
             if next_url is None:
@@ -149,8 +154,13 @@ def load_rcn_features(
             total_bytes += len(body)
             if total_bytes > max_bytes * max_pages:
                 raise RcnTransactionError("RCN WFS transfer exceeds the safety limit.")
-            page_features, next_url = _parse_response(body, next_url)
+            current_url = next_url
+            page_features, provider_next_url = _parse_response(body, current_url)
             features.extend(page_features)
+            next_url = provider_next_url or _next_start_index_url(
+                current_url,
+                returned_count=len(page_features),
+            )
             if next_url is None:
                 return features
         raise RcnTransactionError(f"RCN WFS exceeded the {max_pages} page safety limit.")
@@ -404,13 +414,19 @@ def import_rcn_transactions(
             )
         )
 
-    created = updated = 0
+    existing_rows = session.scalars(
+        select(TransactionObservation).where(TransactionObservation.source_id == source.id)
+    ).all()
+    existing_by_observation_id = {row.source_observation_id: row for row in existing_rows}
+    known_transaction_ids = {
+        transaction_identity(row.source_observation_id, row.source_version) for row in existing_rows
+    }
+    created = changed = reconfirmed = 0
     for record in records:
-        row = session.scalar(
-            select(TransactionObservation).where(
-                TransactionObservation.source_id == source.id,
-                TransactionObservation.source_observation_id == record.source_observation_id,
-            )
+        row = existing_by_observation_id.get(record.source_observation_id)
+        transaction_id = transaction_identity(
+            record.source_observation_id,
+            record.source_version,
         )
         if row is None:
             row = TransactionObservation(
@@ -419,9 +435,14 @@ def import_rcn_transactions(
                 created_at=record.observed_at,
             )
             session.add(row)
-            created += 1
+            existing_by_observation_id[record.source_observation_id] = row
+            if transaction_id in known_transaction_ids:
+                changed += 1
+            else:
+                created += 1
+                known_transaction_ids.add(transaction_id)
         else:
-            updated += 1
+            reconfirmed += 1
         _copy_record(row, record, ingestion_job_id=job.id)
     job.rows_seen = len(features)
     job.errors_count = len(rejected)
@@ -430,6 +451,7 @@ def import_rcn_transactions(
     job.updated_at = job.finished_at
     session.flush()
     district_assignment = assign_transaction_districts(session)
+    session.expire_all()
     metrics = refresh_market_metrics(session, city="Wrocław")
     return RcnImportResult(
         source_name=source_name,
@@ -438,7 +460,8 @@ def import_rcn_transactions(
         rows_rejected=len(rejected),
         dry_run=False,
         transactions_created=created,
-        transactions_updated=updated,
+        transactions_changed=changed,
+        transactions_reconfirmed=reconfirmed,
         districts_assigned=district_assignment["matched"],
         transactions_with_unresolved_district=district_assignment["unresolved"],
         market_metrics=metrics,
@@ -537,6 +560,36 @@ def _assert_url_scope(source: ListingSource, location: str) -> None:
     requested = urlparse(location)
     if (registered.hostname or "").casefold() != (requested.hostname or "").casefold():
         raise RcnTransactionError("RCN URL is outside the registered source domain scope.")
+
+
+def _prepare_wfs_url(url: str) -> str:
+    parsed = urlparse(url)
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    keys = {key.casefold() for key, _ in query}
+    if "count" not in keys:
+        query.append(("count", str(DEFAULT_RCN_PAGE_SIZE)))
+    if "sortby" not in keys:
+        query.append(("sortBy", DEFAULT_RCN_SORT_BY))
+    return urlunparse(parsed._replace(query=urlencode(query)))
+
+
+def _next_start_index_url(url: str, *, returned_count: int) -> str | None:
+    parsed = urlparse(url)
+    query = parse_qsl(parsed.query, keep_blank_values=True)
+    values = {key.casefold(): value for key, value in query}
+    try:
+        page_size = int(values.get("count", str(DEFAULT_RCN_PAGE_SIZE)))
+        start_index = int(values.get("startindex", "0"))
+    except ValueError as exc:
+        raise RcnTransactionError("RCN WFS count and STARTINDEX must be integers.") from exc
+    if page_size <= 0:
+        raise RcnTransactionError("RCN WFS count must be positive.")
+    if returned_count < page_size:
+        return None
+
+    next_query = [(key, value) for key, value in query if key.casefold() != "startindex"]
+    next_query.append(("STARTINDEX", str(start_index + returned_count)))
+    return urlunparse(parsed._replace(query=urlencode(next_query)))
 
 
 def _fetch(url: str, *, timeout_seconds: float, max_bytes: int) -> bytes:

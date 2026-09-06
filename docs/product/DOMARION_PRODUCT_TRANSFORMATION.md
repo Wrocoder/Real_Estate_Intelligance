@@ -725,9 +725,19 @@ Partial and follow-up requirements:
 - **DONE:** Added `district_boundaries` and an importer for the official
   Wrocław Geoportal osiedle SHP/ZIP. PostGIS assigns EPSG:2180 RCN points to
   EPSG:2177 boundaries; unmatched points stay at city level.
-- **DONE:** Added optional Telegram operator reporting with counts for new,
-  updated, rejected and district-assigned rows. Missing Telegram credentials
-  skip delivery without invalidating a successful import.
+- **DONE:** Added optional English Telegram operator reporting with separate
+  counts for new logical transactions, changed source versions, reconfirmed
+  versions, rejected source rows and district assignments. Missing Telegram
+  credentials skip delivery without invalidating a successful import.
+- **DONE (2026-09-06):** Stabilized RCN WFS traversal with deterministic
+  sorting and explicit `STARTINDEX` fallback pagination. Historical source
+  versions remain stored, while market metrics use only the latest version of
+  each logical transaction.
+- **VERIFIED locally (2026-09-06):** A complete sorted WFS run read 47,420
+  source rows and accepted 22,388 residential Wrocław transactions. An
+  immediate second run reported `0 new`, `0 changed`, and `22,388
+  reconfirmed`; market metrics rebuilt 47 geographic aggregates from 13,633
+  current transaction versions in the three-year window.
 - **VERIFIED locally:** 48 official boundaries imported, 17,248 existing RCN
   observations assigned to 43 osiedle areas, 2,166 geocoded observations
   remained unresolved, and 44 area statistics were rebuilt from 12,107 recent

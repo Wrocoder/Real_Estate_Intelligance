@@ -11,8 +11,11 @@ offers. They are stored in `transaction_observations` and are never written to
 
 Remote WFS requests must include an explicit `BBOX`. The importer follows the
 provider's `next` URL only while the scheme, host and path remain unchanged,
-and stops at the configured page/row/response budgets. It does not crawl
-portal pages or bypass authentication, robots, rate limits or other controls.
+and otherwise advances the bounded result set with `STARTINDEX`. A stable
+`sortBy=tran_lokalny_id_iip,lok_id_lokalu,tran_wersja_id` order is added when
+the URL does not provide one. The importer stops at the configured
+page/row/response budgets. It does not crawl portal pages or bypass
+authentication, robots, rate limits or other controls.
 
 The official GUGiK layer may contain an address and EPSG:2180 point without a
 district. In that case the importer keeps `geometry_x`, `geometry_y` and
@@ -89,11 +92,16 @@ but liquidity and listing supply are marked unavailable and do not receive a
 positive default. With no RCN or approved listing observations, the system
 returns no market baseline rather than showing demo data as evidence.
 
-The daily task is idempotent: it uses the RCN source/version identifier as the
-unique key, so unchanged rows become updates rather than duplicate facts. The
-worker checks the last successful `transaction_register` job in the database
-and will not run again before `RCN_TRANSACTIONS_INTERVAL_SECONDS` (86400 by
-default) when invoked by the persistent worker. The Oracle cron launcher uses a
-single explicit run at 08:00 and a filesystem lock. A successful write returns
-counts for new, updated, rejected and district-assigned rows. Telegram is
-optional and never turns a successful data import into a failed import.
+The daily task is idempotent: it uses the immutable RCN source/version
+identifier as the unique key. An exact version seen again is `reconfirmed`; a
+new source version of an existing logical transaction is `changed` and remains
+stored beside the older version; an unseen logical transaction is `new`.
+Market metrics select only the latest source version of each logical
+transaction, so retained history does not inflate sample sizes or medians.
+The worker checks the last successful `transaction_register` job in the
+database and will not run again before `RCN_TRANSACTIONS_INTERVAL_SECONDS`
+(86400 by default) when invoked by the persistent worker. The Oracle cron
+launcher uses a single explicit run at 08:00 and a filesystem lock. A
+successful write returns English Telegram counts for new, changed,
+reconfirmed, rejected and district-assigned rows. Telegram is optional and
+never turns a successful data import into a failed import.

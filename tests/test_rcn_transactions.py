@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from decimal import Decimal
 from types import SimpleNamespace
+from urllib.parse import parse_qs, urlparse
 
 from domarion.db.models import TransactionObservation
 from domarion.ingestion import rcn_transactions
@@ -95,12 +96,18 @@ def test_import_rcn_transactions_writes_transaction_table_only(monkeypatch, tmp_
 
         def scalar(self, statement):
             self.scalar_calls += 1
-            return source if self.scalar_calls == 1 else None
+            return source
+
+        def scalars(self, statement):
+            return SimpleNamespace(all=lambda: [])
 
         def add(self, row):
             self.added.append(row)
 
         def flush(self):
+            return None
+
+        def expire_all(self):
             return None
 
     session = Session()
@@ -112,8 +119,114 @@ def test_import_rcn_transactions_writes_transaction_table_only(monkeypatch, tmp_
     )
 
     assert result.transactions_created == 1
+    assert result.transactions_changed == 0
+    assert result.transactions_reconfirmed == 0
     assert any(isinstance(row, TransactionObservation) for row in session.added)
     assert not any(row.__class__.__name__ == "ListingSnapshot" for row in session.added)
+
+
+def test_load_rcn_features_adds_stable_sort_and_paginates_with_start_index(monkeypatch):
+    requested_urls = []
+
+    def page(*ids):
+        members = "".join(
+            f'<wfs:member><ms:lokale gml:id="lokale.{item}">'
+            f"<ms:tran_lokalny_id_iip>{item}</ms:tran_lokalny_id_iip>"
+            "</ms:lokale></wfs:member>"
+            for item in ids
+        )
+        return (
+            '<wfs:FeatureCollection xmlns:wfs="http://www.opengis.net/wfs/2.0" '
+            'xmlns:ms="http://mapserver.gis.umn.edu/mapserver" '
+            'xmlns:gml="http://www.opengis.net/gml">'
+            f"{members}</wfs:FeatureCollection>"
+        ).encode()
+
+    def fake_fetch(url, **kwargs):  # noqa: ANN001
+        requested_urls.append(url)
+        start_index = int(parse_qs(urlparse(url).query).get("STARTINDEX", ["0"])[0])
+        return page("1", "2") if start_index == 0 else page("3")
+
+    monkeypatch.setattr(rcn_transactions, "_fetch", fake_fetch)
+
+    features = rcn_transactions.load_rcn_features(
+        "https://mapy.geoportal.gov.pl/wss/service/rcn?service=WFS&request=GetFeature"
+        "&typeNames=ms%3Alokale&count=2&BBOX=1,2,3,4,EPSG%3A2180"
+    )
+
+    assert [item["tran_lokalny_id_iip"] for item in features] == ["1", "2", "3"]
+    first_query = parse_qs(urlparse(requested_urls[0]).query)
+    second_query = parse_qs(urlparse(requested_urls[1]).query)
+    assert first_query["sortBy"] == [rcn_transactions.DEFAULT_RCN_SORT_BY]
+    assert second_query["STARTINDEX"] == ["2"]
+
+
+def test_import_rcn_transactions_distinguishes_new_changed_and_reconfirmed(monkeypatch, tmp_path):
+    path = tmp_path / "rcn.json"
+    features = [
+        _feature(tran_wersja_id="2026-01-10T12:00:00"),
+        _feature(tran_wersja_id="2026-02-10T12:00:00"),
+        _feature(
+            tran_lokalny_id_iip="transaction-2",
+            tran_wersja_id="2026-02-11T12:00:00",
+        ),
+    ]
+    path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
+    source = SimpleNamespace(
+        id=7,
+        name="RCN GUGiK",
+        base_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+        source_type="transaction_register",
+        legal_status="approved",
+        ingestion_method="rcn_wfs",
+        allowed_use_json=["market_metrics", "reports"],
+        is_demo=False,
+        is_active=True,
+    )
+    existing = SimpleNamespace(
+        source_id=7,
+        source_observation_id=("PL.PZGiK.RCN:transaction-1:2026-01-10T12:00:00"),
+        source_version="2026-01-10T12:00:00",
+    )
+
+    class Session:
+        def __init__(self):
+            self.added = []
+
+        def scalar(self, statement):
+            return source
+
+        def scalars(self, statement):
+            return SimpleNamespace(all=lambda: [existing])
+
+        def add(self, row):
+            self.added.append(row)
+
+        def flush(self):
+            return None
+
+        def expire_all(self):
+            return None
+
+    monkeypatch.setattr(
+        rcn_transactions,
+        "assign_transaction_districts",
+        lambda session: {
+            "matched": 0,
+            "unresolved": 0,
+        },
+    )
+    monkeypatch.setattr(rcn_transactions, "refresh_market_metrics", lambda *args, **kwargs: {})
+
+    result = rcn_transactions.import_rcn_transactions(
+        Session(),
+        path,
+        source_name="RCN GUGiK",
+    )
+
+    assert result.transactions_created == 1
+    assert result.transactions_changed == 1
+    assert result.transactions_reconfirmed == 1
 
 
 def test_load_district_boundaries_reads_geojson_without_inventing_names(tmp_path):

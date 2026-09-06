@@ -18,6 +18,7 @@ from domarion.db.models import (
 )
 from domarion.ingestion.partner_csv import slugify
 from domarion.repositories.postgres import PostgresRealEstateRepository
+from domarion.services.transaction_versions import latest_transaction_versions
 
 TRANSACTION_LOOKBACK_DAYS = 1095
 
@@ -198,18 +199,20 @@ def _load_transactions(
         .join(ListingSource, ListingSource.id == TransactionObservation.source_id)
         .where(
             TransactionObservation.city == city,
-            TransactionObservation.transaction_date >= cutoff,
-            TransactionObservation.data_quality_score >= minimum_quality,
             ListingSource.is_demo.is_(False),
             ListingSource.is_active.is_(True),
             ListingSource.legal_status == "approved",
         )
         .order_by(TransactionObservation.transaction_date)
     ).all()
+    current_versions = latest_transaction_versions(rows)
     return [
         row
-        for row in rows
-        if getattr(row, "price_per_m2", None) is not None and float(row.price_per_m2) > 0
+        for row in current_versions
+        if row.transaction_date >= cutoff
+        and row.data_quality_score >= minimum_quality
+        and getattr(row, "price_per_m2", None) is not None
+        and float(row.price_per_m2) > 0
     ]
 
 
