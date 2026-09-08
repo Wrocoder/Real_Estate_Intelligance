@@ -397,9 +397,10 @@ def _next_action_section(analysis: ListingAnalysis) -> ReportSection:
             "окон/электрики/воды/вентиляции."
         ),
         (
-            f"Локация: остановка {listing.nearest_stop_m} m, школа {listing.nearest_school_m} m, "
-            f"major road {listing.nearest_major_road_m} m, industrial zone "
-            f"{listing.nearest_industrial_zone_m} m."
+            f"Локация: остановка {_distance_text(listing.nearest_stop_m)}, "
+            f"школа {_distance_text(listing.nearest_school_m)}, "
+            f"major road {_distance_text(listing.nearest_major_road_m)}, industrial zone "
+            f"{_distance_text(listing.nearest_industrial_zone_m)}."
         ),
         (
             f"Переговоры: Negotiation Score {scores.negotiation_score}/100; "
@@ -413,6 +414,10 @@ def _next_action_section(analysis: ListingAnalysis) -> ReportSection:
     if listing.floor == 0:
         items.append("Parter/нулевой этаж: проверить приватность, шум, влажность и безопасность.")
     return ReportSection(title="Что делать дальше", items=_deduplicate(items))
+
+
+def _distance_text(value: int | None) -> str:
+    return "нет данных" if value is None else f"{value} m"
 
 
 def _buyer_target_price(analysis: ListingAnalysis) -> int:

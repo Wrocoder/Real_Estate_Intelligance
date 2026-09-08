@@ -44,81 +44,6 @@ URL_IMPORT_USER_AGENT = (
 )
 MAX_URL_IMPORT_BYTES = 1_500_000
 
-DISTRICT_DEFAULTS = {
-    "wroclaw-fabryczna": {
-        "distance_to_center_km": 6.6,
-        "nearest_stop_m": 420,
-        "nearest_school_m": 650,
-        "nearest_major_road_m": 520,
-        "nearest_industrial_zone_m": 1800,
-        "parks_within_1km": 1,
-        "schools_within_1km": 1,
-    },
-    "wroclaw-krzyki": {
-        "distance_to_center_km": 5.8,
-        "nearest_stop_m": 520,
-        "nearest_school_m": 820,
-        "nearest_major_road_m": 380,
-        "nearest_industrial_zone_m": 2600,
-        "parks_within_1km": 1,
-        "schools_within_1km": 1,
-    },
-    "wroclaw-psie-pole": {
-        "distance_to_center_km": 7.1,
-        "nearest_stop_m": 470,
-        "nearest_school_m": 610,
-        "nearest_major_road_m": 760,
-        "nearest_industrial_zone_m": 1500,
-        "parks_within_1km": 2,
-        "schools_within_1km": 1,
-    },
-    "medlow-medlow": {
-        "distance_to_center_km": 12.8,
-        "nearest_stop_m": 560,
-        "nearest_school_m": 1450,
-        "nearest_major_road_m": 820,
-        "nearest_industrial_zone_m": 3100,
-        "parks_within_1km": 1,
-        "schools_within_1km": 0,
-    },
-    "kobierzyce-kobierzyce": {
-        "distance_to_center_km": 16.5,
-        "nearest_stop_m": 640,
-        "nearest_school_m": 780,
-        "nearest_major_road_m": 740,
-        "nearest_industrial_zone_m": 2400,
-        "parks_within_1km": 1,
-        "schools_within_1km": 1,
-    },
-    "wysoka-wysoka": {
-        "distance_to_center_km": 8.9,
-        "nearest_stop_m": 420,
-        "nearest_school_m": 920,
-        "nearest_major_road_m": 520,
-        "nearest_industrial_zone_m": 2600,
-        "parks_within_1km": 1,
-        "schools_within_1km": 1,
-    },
-    "bielany-wroclawskie-bielany-wroclawskie": {
-        "distance_to_center_km": 10.8,
-        "nearest_stop_m": 560,
-        "nearest_school_m": 1180,
-        "nearest_major_road_m": 360,
-        "nearest_industrial_zone_m": 1800,
-        "parks_within_1km": 1,
-        "schools_within_1km": 0,
-    },
-    "olawa-olawa": {
-        "distance_to_center_km": 27.5,
-        "nearest_stop_m": 480,
-        "nearest_school_m": 650,
-        "nearest_major_road_m": 620,
-        "nearest_industrial_zone_m": 2200,
-        "parks_within_1km": 2,
-        "schools_within_1km": 1,
-    },
-}
-
 AREA_ALIASES = {
     ("medlow", "dolnoslaskie"): "medlow-medlow",
     ("medlow", "wroclawski"): "medlow-medlow",
@@ -1882,24 +1807,6 @@ def _clean_optional(value: str | None) -> str | None:
         return None
     cleaned = value.strip()
     return cleaned or None
-
-
-def _int_value(
-    value: int | None,
-    defaults: dict[str, float | int],
-    key: str,
-    fallback: int,
-) -> int:
-    return int(value if value is not None else defaults.get(key, fallback))
-
-
-def _float_value(
-    value: float | None,
-    defaults: dict[str, float | int],
-    key: str,
-    fallback: float,
-) -> float:
-    return float(value if value is not None else defaults.get(key, fallback))
 
 
 def _haversine_km(lat_1: float, lon_1: float, lat_2: float, lon_2: float) -> float:

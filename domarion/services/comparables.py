@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import timedelta
+from dataclasses import dataclass, field
+from datetime import date, timedelta
 from math import asin, cos, radians, sin, sqrt
+from statistics import median
 
 from domarion.schemas import ComparableEvidence, Listing
+
+MINIMUM_COMPARABLE_SAMPLE = 3
+COMPARABLE_FRESHNESS_DAYS = 180
+
+
+@dataclass(frozen=True)
+class ComparableExclusion:
+    code: str
+    count: int
 
 
 @dataclass(frozen=True)
@@ -14,29 +24,73 @@ class ComparableSelection:
     scope: str
     freshness_days: int
     excluded_reasons: list[str]
+    status: str = "insufficient"
+    target_sample_size: int = MINIMUM_COMPARABLE_SAMPLE
+    stage_counts: dict[str, int] = field(default_factory=dict)
+    exclusions: list[ComparableExclusion] = field(default_factory=list)
+    observed_from: date | None = None
+    observed_to: date | None = None
+    source_names: list[str] = field(default_factory=list)
+    median_similarity_score: int | None = None
 
 
 def select_comparables(repository, listing: Listing, limit: int = 5) -> ComparableSelection:
     candidates = [item for item in repository.list_listings() if item.id != listing.id]
-    fresh_cutoff = listing.last_seen_at - timedelta(days=180)
-    fresh = [item for item in candidates if item.last_seen_at >= fresh_cutoff]
-    excluded = []
-    if len(fresh) < len(candidates):
-        excluded.append(f"{len(candidates) - len(fresh)} stale listings (>180 days)")
+    fresh_cutoff = listing.last_seen_at - timedelta(days=COMPARABLE_FRESHNESS_DAYS)
+    exclusions = _exclusion_summary(candidates, listing, fresh_cutoff)
+    fresh = [
+        item
+        for item in candidates
+        if item.last_seen_at >= fresh_cutoff
+        and item.city.casefold() == listing.city.casefold()
+        and item.market_type == listing.market_type
+    ]
 
     levels = (
-        (0, "same district, market, type, size and rooms", lambda item: _strict(item, listing)),
-        (1, "same city, market, type, size and rooms", lambda item: _same_city(item, listing)),
-        (2, "same city and market, widened size/rooms", lambda item: _widened(item, listing)),
-        (3, "same city, widened market fallback", lambda item: item.city == listing.city),
+        (0, "same district, market, type, condition, size and rooms", _strict),
+        (1, "same district and market, widened property attributes", _same_district),
+        (2, "same city and market, similar size and rooms", _same_city),
+        (3, "same city and market, widened size and rooms", _widened),
     )
-    for level, scope, predicate in levels:
-        selected = [item for item in fresh if predicate(item)]
-        if selected:
-            selected.sort(key=lambda item: _distance(item, listing))
-            return ComparableSelection(selected[:limit], level, scope, 180, excluded)
+    stage_counts: dict[str, int] = {}
+    fallback: tuple[int, str, list[Listing]] | None = None
+    selected_level = len(levels)
+    selected_scope = "no relevant fresh comparables"
+    selected: list[Listing] = []
 
-    return ComparableSelection([], len(levels), "no relevant fresh comparables", 180, excluded)
+    for level, scope, predicate in levels:
+        stage_items = [item for item in fresh if predicate(item, listing)]
+        stage_counts[f"level_{level}"] = len(stage_items)
+        if stage_items:
+            fallback = (level, scope, stage_items)
+        if len(stage_items) >= MINIMUM_COMPARABLE_SAMPLE:
+            selected_level, selected_scope, selected = level, scope, stage_items
+            break
+    else:
+        if fallback is not None:
+            selected_level, selected_scope, selected = fallback
+
+    selected.sort(key=lambda item: _relevance_sort_key(item, listing))
+    selected = selected[:limit]
+    similarities = [_similarity_score(listing, item) for item in selected]
+    status = _selection_status(selected_level, similarities, len(selected))
+    observed_dates = [item.last_seen_at for item in selected]
+    source_names = sorted({item.source_name for item in selected})
+    legacy_exclusions = [f"{item.code}:{item.count}" for item in exclusions]
+    return ComparableSelection(
+        items=selected,
+        level=selected_level,
+        scope=selected_scope,
+        freshness_days=COMPARABLE_FRESHNESS_DAYS,
+        excluded_reasons=legacy_exclusions,
+        status=status,
+        stage_counts=stage_counts,
+        exclusions=exclusions,
+        observed_from=min(observed_dates) if observed_dates else None,
+        observed_to=max(observed_dates) if observed_dates else None,
+        source_names=source_names,
+        median_similarity_score=round(median(similarities)) if similarities else None,
+    )
 
 
 def build_comparable_evidence(
@@ -74,32 +128,51 @@ def build_comparable_evidence(
     ]
 
 
+def _exclusion_summary(
+    candidates: list[Listing], listing: Listing, fresh_cutoff: date
+) -> list[ComparableExclusion]:
+    counts = {
+        "stale": sum(item.last_seen_at < fresh_cutoff for item in candidates),
+        "different_city": sum(
+            item.city.casefold() != listing.city.casefold() for item in candidates
+        ),
+        "different_market": sum(
+            item.city.casefold() == listing.city.casefold()
+            and item.market_type != listing.market_type
+            for item in candidates
+        ),
+    }
+    return [ComparableExclusion(code=code, count=count) for code, count in counts.items() if count]
+
+
 def _strict(item: Listing, listing: Listing) -> bool:
     return (
-        item.city == listing.city
-        and item.district == listing.district
-        and item.market_type == listing.market_type
+        item.district.casefold() == listing.district.casefold()
         and _optional_match(item.building_type, listing.building_type)
         and _optional_match(item.renovation_state, listing.renovation_state)
         and abs(item.area_m2 - listing.area_m2) <= max(10, listing.area_m2 * 0.15)
+        and item.rooms == listing.rooms
+    )
+
+
+def _same_district(item: Listing, listing: Listing) -> bool:
+    return (
+        item.district.casefold() == listing.district.casefold()
+        and abs(item.area_m2 - listing.area_m2) <= max(15, listing.area_m2 * 0.20)
         and abs(item.rooms - listing.rooms) <= 1
     )
 
 
 def _same_city(item: Listing, listing: Listing) -> bool:
     return (
-        item.city == listing.city
-        and item.market_type == listing.market_type
-        and abs(item.area_m2 - listing.area_m2) <= max(15, listing.area_m2 * 0.20)
+        abs(item.area_m2 - listing.area_m2) <= max(15, listing.area_m2 * 0.20)
         and abs(item.rooms - listing.rooms) <= 1
     )
 
 
 def _widened(item: Listing, listing: Listing) -> bool:
     return (
-        item.city == listing.city
-        and item.market_type == listing.market_type
-        and abs(item.area_m2 - listing.area_m2) <= max(25, listing.area_m2 * 0.30)
+        abs(item.area_m2 - listing.area_m2) <= max(25, listing.area_m2 * 0.30)
         and abs(item.rooms - listing.rooms) <= 2
     )
 
@@ -108,12 +181,24 @@ def _optional_match(left: str | None, right: str | None) -> bool:
     return left is None or right is None or left == right
 
 
-def _distance(item: Listing, listing: Listing) -> tuple[int, float, int]:
+def _relevance_sort_key(item: Listing, listing: Listing) -> tuple:
+    distance = _distance_m(item, listing)
     return (
-        0 if item.district == listing.district else 1,
-        abs(item.area_m2 - listing.area_m2) + abs(item.price_per_m2 - listing.price_per_m2) / 1000,
+        -_similarity_score(listing, item),
+        distance if distance is not None else 10_000_000,
+        abs(item.area_m2 - listing.area_m2),
         abs(item.rooms - listing.rooms),
+        -item.last_seen_at.toordinal(),
+        item.id,
     )
+
+
+def _selection_status(level: int, similarities: list[int], count: int) -> str:
+    if count < MINIMUM_COMPARABLE_SAMPLE:
+        return "insufficient"
+    if level <= 1 and median(similarities) >= 70:
+        return "strong"
+    return "limited"
 
 
 def _distance_m(left: Listing, right: Listing) -> int | None:
@@ -132,9 +217,9 @@ def _distance_m(left: Listing, right: Listing) -> int | None:
 
 def _similarity_score(subject: Listing, comparable: Listing) -> int:
     score = 0
-    if subject.district == comparable.district:
+    if subject.district.casefold() == comparable.district.casefold():
         score += 25
-    elif subject.city == comparable.city:
+    elif subject.city.casefold() == comparable.city.casefold():
         score += 12
     if subject.market_type == comparable.market_type:
         score += 20
@@ -161,9 +246,9 @@ def _similarity_score(subject: Listing, comparable: Listing) -> int:
 
 def _similarity_factors(subject: Listing, comparable: Listing) -> list[str]:
     factors = []
-    if subject.district == comparable.district:
+    if subject.district.casefold() == comparable.district.casefold():
         factors.append("same_district")
-    elif subject.city == comparable.city:
+    elif subject.city.casefold() == comparable.city.casefold():
         factors.append("same_city_different_district")
     else:
         factors.append("different_city")

@@ -50,7 +50,7 @@ def build_listing_risk_profile(
         factors,
         key=lambda factor: (
             _severity_rank(factor.severity),
-            -factor.score,
+            -(factor.score if factor.score is not None else -1),
             factor.category,
         ),
     )
@@ -108,6 +108,18 @@ def _market_liquidity_factor(
     area_statistics: AreaStatistics,
     scores: PropertyScores,
 ) -> ListingRiskFactor:
+    if not area_statistics.listing_metrics_available or scores.liquidity_score is None:
+        return ListingRiskFactor(
+            code="market_liquidity",
+            category="market",
+            severity="unknown",
+            score=None,
+            summary="Local listing liquidity is unavailable for this area.",
+            evidence=["Active-listing history: unavailable."],
+            recommended_checks=[
+                "Check current comparable listings and how long similar offers remain active."
+            ],
+        )
     evidence = [
         f"Days on market: {listing.days_on_market}.",
         f"Area average days on market: {area_statistics.average_days_on_market}.",
@@ -140,21 +152,20 @@ def _market_liquidity_factor(
 
 
 def _transport_factor(listing: Listing) -> ListingRiskFactor:
-    nearest_stop_m = listing.nearest_stop_m or 500
     if listing.nearest_stop_m is None:
         return ListingRiskFactor(
             code="weak_transport",
             category="location",
-            severity="medium",
-            score=50,
+            severity="unknown",
+            score=None,
             summary="Public transport distance is unknown; verify before deciding.",
             evidence=["Nearest stop: unknown."],
             recommended_checks=["Check the real walking route and service frequency."],
         )
-    if nearest_stop_m > 1000:
+    if listing.nearest_stop_m > 1000:
         severity = "high"
         summary = "Public transport access appears weak."
-    elif nearest_stop_m > 700:
+    elif listing.nearest_stop_m > 700:
         severity = "medium"
         summary = "Public transport access needs on-site validation."
     else:
@@ -179,8 +190,8 @@ def _road_noise_factor(listing: Listing) -> ListingRiskFactor:
         return ListingRiskFactor(
             code="major_road_noise",
             category="environment",
-            severity="medium",
-            score=50,
+            severity="unknown",
+            score=None,
             summary="Major-road distance is unknown; verify on site.",
             evidence=["Nearest major road: unknown."],
             recommended_checks=["Visit during rush hour and check noise maps."],
@@ -213,8 +224,8 @@ def _industrial_factor(listing: Listing) -> ListingRiskFactor:
         return ListingRiskFactor(
             code="industrial_zone",
             category="environment",
-            severity="medium",
-            score=50,
+            severity="unknown",
+            score=None,
             summary="Industrial-zone distance is unknown; verify on site.",
             evidence=["Nearest industrial zone: unknown."],
             recommended_checks=["Check land-use plan, traffic and emissions."],
@@ -243,7 +254,7 @@ def _industrial_factor(listing: Listing) -> ListingRiskFactor:
 
 def _building_factor(listing: Listing) -> ListingRiskFactor:
     if listing.building_year is None:
-        severity = "medium"
+        severity = "unknown"
         summary = "Building year is missing; technical age risk is unknown."
         evidence = ["Building year: unknown."]
     elif listing.building_year < 1980:
@@ -258,7 +269,7 @@ def _building_factor(listing: Listing) -> ListingRiskFactor:
         code="building_age",
         category="technical",
         severity=severity,
-        score=_score_from_severity(severity),
+        score=None if severity == "unknown" else _score_from_severity(severity),
         summary=summary,
         evidence=evidence,
         recommended_checks=[
@@ -268,6 +279,18 @@ def _building_factor(listing: Listing) -> ListingRiskFactor:
 
 
 def _rental_factor(scores: PropertyScores) -> ListingRiskFactor:
+    if scores.rental_potential_score is None:
+        return ListingRiskFactor(
+            code="weak_rental_yield",
+            category="investment",
+            severity="unknown",
+            score=None,
+            summary="Rental potential is unavailable because required market inputs are missing.",
+            evidence=["Rental Potential Score: unavailable."],
+            recommended_checks=[
+                "Check real rent listings, vacancy, furnishing costs, taxes and HOA fees."
+            ],
+        )
     if scores.rental_potential_score < 40:
         severity = "high"
         summary = "Rental potential is weak; do not rely on rental exit."
@@ -370,7 +393,7 @@ def _future_area_factor(future_area_impact: ListingFutureImpact) -> ListingRiskF
 def _priority_checks(factors: list[ListingRiskFactor]) -> list[str]:
     checks: list[str] = []
     for factor in factors:
-        if factor.severity not in {"high", "medium"}:
+        if factor.severity not in {"high", "medium", "unknown"}:
             continue
         checks.extend(factor.recommended_checks[:2])
     if not checks:
@@ -402,8 +425,9 @@ def _severity_rank(severity: str) -> int:
     return {
         "high": 0,
         "medium": 1,
-        "low": 2,
-        "minimal": 3,
+        "unknown": 2,
+        "low": 3,
+        "minimal": 4,
     }.get(severity, 4)
 
 

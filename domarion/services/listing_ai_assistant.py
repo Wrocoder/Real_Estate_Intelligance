@@ -571,13 +571,16 @@ def _family_fit_answer(
     score = analysis.scores.liquidity_score
     answer = (
         f"Family fit is a screening fit, not a personal recommendation. The object has "
-        f"{listing.rooms} rooms, nearest school {listing.nearest_school_m} m, "
-        f"{listing.schools_within_1km} schools and {listing.parks_within_1km} parks within 1 km."
+        f"{listing.rooms} rooms. School distance, nearby schools and parks are "
+        "reported only where source data is available."
     )
     key_points = [
-        f"Liquidity Score: {score}/100.",
-        f"Nearest major road: {listing.nearest_major_road_m} m.",
-        f"Nearest industrial zone: {listing.nearest_industrial_zone_m} m.",
+        f"Liquidity Score: {_score_text(score)}.",
+        f"Nearest school: {_distance_text(listing.nearest_school_m)}.",
+        f"Schools within 1 km: {_count_text(listing.schools_within_1km)}.",
+        f"Parks within 1 km: {_count_text(listing.parks_within_1km)}.",
+        f"Nearest major road: {_distance_text(listing.nearest_major_road_m)}.",
+        f"Nearest industrial zone: {_distance_text(listing.nearest_industrial_zone_m)}.",
         "Verify school catchment, commute route, noise and building condition on site.",
     ]
     return answer, key_points, [_listing_citation(analysis), _growth_citation(analysis)]
@@ -587,12 +590,24 @@ def _rental_fit_answer(
     analysis: ListingAnalysis,
 ) -> tuple[str, list[str], list[AIAnswerCitation]]:
     rental = analysis.rental_estimate
-    if rental is None:
+    if rental is None or rental.status == "insufficient_data":
+        sample_size = rental.sample_size if rental is not None else 0
         return (
-            "Rental estimate is not available for this object.",
-            [f"Rental Potential Score: {analysis.scores.rental_potential_score}/100."],
+            "Rental estimate is not available because the independent rental sample "
+            "is insufficient.",
+            [
+                "Rental Potential Score: "
+                f"{_score_text(analysis.scores.rental_potential_score)}.",
+                f"Relevant rental observations: {sample_size}/3 required.",
+            ],
             [_score_citation(analysis)],
         )
+    assert rental.monthly_rent_low_pln is not None
+    assert rental.monthly_rent_mid_pln is not None
+    assert rental.monthly_rent_high_pln is not None
+    assert rental.gross_yield_pct is not None
+    assert rental.net_yield_pct is not None
+    assert rental.net_operating_income_monthly_pln is not None
     answer = (
         f"Estimated rent range is {_money(rental.monthly_rent_low_pln)}-"
         f"{_money(rental.monthly_rent_high_pln)} per month, with midpoint "
@@ -600,9 +615,11 @@ def _rental_fit_answer(
         f"{rental.gross_yield_pct:.1f}%."
     )
     key_points = [
-        f"Rental Potential Score: {analysis.scores.rental_potential_score}/100.",
+        f"Rental Potential Score: {_score_text(analysis.scores.rental_potential_score)}.",
         f"NOI before financing: {_money(rental.net_operating_income_monthly_pln)}/month.",
         f"Rental estimate confidence: {rental.confidence_score}/100.",
+        f"Net yield before income tax and financing: {rental.net_yield_pct:.1f}%.",
+        f"Evidence: {rental.sample_size} observations, {rental.period}.",
         *rental.risk_notes[:3],
     ]
     return answer, _dedupe(key_points), [_rental_citation(analysis), _score_citation(analysis)]
@@ -812,12 +829,15 @@ def _growth_citation(analysis: ListingAnalysis) -> AIAnswerCitation:
 
 def _rental_citation(analysis: ListingAnalysis) -> AIAnswerCitation:
     rental = analysis.rental_estimate
-    if rental is None:
+    if rental is None or rental.status == "insufficient_data":
         excerpt = "Rental estimate is not available."
     else:
+        assert rental.monthly_rent_mid_pln is not None
+        assert rental.gross_yield_pct is not None
         excerpt = (
             f"Rent midpoint {_money(rental.monthly_rent_mid_pln)}, gross yield "
-            f"{rental.gross_yield_pct:.1f}%, confidence {rental.confidence_score}/100."
+            f"{rental.gross_yield_pct:.1f}%, confidence {rental.confidence_score}/100, "
+            f"sample {rental.sample_size}."
         )
     return AIAnswerCitation(
         source_id=f"rental:{analysis.listing.id}",
@@ -882,9 +902,17 @@ def _compare_tradeoffs(comparison: CompareResponse) -> list[str]:
             better_than_best.append("lower monthly payment")
         if metric.price_delta_to_fair_mid_pct < best.price_delta_to_fair_mid_pct:
             better_than_best.append("better price-to-fair position")
-        if metric.rental_potential_score > best.rental_potential_score:
+        if (
+            metric.rental_potential_score is not None
+            and best.rental_potential_score is not None
+            and metric.rental_potential_score > best.rental_potential_score
+        ):
             better_than_best.append("stronger rental potential")
-        if metric.liquidity_score > best.liquidity_score:
+        if (
+            metric.liquidity_score is not None
+            and best.liquidity_score is not None
+            and metric.liquidity_score > best.liquidity_score
+        ):
             better_than_best.append("stronger liquidity")
         if metric.risk_score < best.risk_score:
             better_than_best.append("lower risk score")
@@ -932,7 +960,8 @@ def _compare_listing_citation(
             f"{metric.investment_score}/100, risk {metric.risk_score}/100, "
             f"monthly payment {_money(metric.estimated_monthly_payment_pln)}, "
             f"total move-in {_money(metric.total_move_in_cost_pln)}, "
-            f"gross rental yield {metric.estimated_gross_rental_yield_pct:.2f}%."
+            "gross rental yield "
+            f"{_yield_text(metric.estimated_gross_rental_yield_pct)}."
         ),
     )
 
@@ -968,6 +997,22 @@ def _clean_question(question: str | None) -> str | None:
 
 def _money(value: int | float) -> str:
     return f"{round(value):,} PLN".replace(",", " ")
+
+
+def _score_text(value: int | None) -> str:
+    return "unavailable" if value is None else f"{value}/100"
+
+
+def _distance_text(value: int | None) -> str:
+    return "unavailable" if value is None else f"{value} m"
+
+
+def _count_text(value: int | None) -> str:
+    return "unavailable" if value is None else str(value)
+
+
+def _yield_text(value: float | None) -> str:
+    return "unavailable" if value is None else f"{value:.2f}%"
 
 
 def _dedupe(items: list[str]) -> list[str]:

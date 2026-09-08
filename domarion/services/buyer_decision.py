@@ -352,9 +352,15 @@ def _verdict_status(
         scores.price_delta_to_fair_mid_pct >= 15 and due_diligence.score < 50
     ):
         return "avoid"
+    if scores.fair_price_confidence_score < 50:
+        return "verify_first"
     if scores.risk_score >= 62 or due_diligence.score < 55:
         return "verify_first"
-    if selected_intent_fit.intent != "unsure" and selected_intent_fit.score < 40:
+    if (
+        selected_intent_fit.intent != "unsure"
+        and selected_intent_fit.score is not None
+        and selected_intent_fit.score < 40
+    ):
         return "verify_first"
     if scores.price_delta_to_fair_mid_pct >= 5 or scores.negotiation_score >= 60:
         return "negotiate"
@@ -370,17 +376,21 @@ def _buyer_score(
     total_cost_penalty = 0
     if total_acquisition.post_renovation_value_gap_pln:
         total_cost_penalty = min(total_acquisition.post_renovation_value_gap_pln / 10_000, 8)
-    value = (
-        scores.investment_score * 0.32
-        + (100 - scores.risk_score) * 0.24
-        + scores.liquidity_score * 0.13
-        + scores.negotiation_score * 0.09
-        + scores.fair_price_confidence_score * 0.08
-        + due_diligence.score * 0.14
-        - max(scores.price_delta_to_fair_mid_pct, 0) * 0.45
-        - total_cost_penalty
-    )
+    components = [
+        (scores.investment_score, 0.32),
+        (100 - scores.risk_score, 0.24),
+        (scores.liquidity_score, 0.13),
+        (scores.negotiation_score, 0.09),
+        (scores.fair_price_confidence_score, 0.08),
+        (due_diligence.score, 0.14),
+    ]
+    available = [(value, weight) for value, weight in components if value is not None]
+    total_weight = sum(weight for _, weight in available)
+    value = sum(value * weight for value, weight in available) / total_weight if total_weight else 0
+    value -= max(scores.price_delta_to_fair_mid_pct, 0) * 0.45 + total_cost_penalty
     base_score = max(0, min(value, 100)) / 10
+    if selected_intent_fit.score is None:
+        return round(base_score, 1)
     for_you_score = selected_intent_fit.score / 10
     return round(base_score * 0.75 + for_you_score * 0.25, 1)
 
@@ -906,9 +916,7 @@ def _knowledge_matrix(
     comparables_scope: str | None,
     comparables_freshness_days: int | None,
 ) -> BuyerKnowledgeMatrix:
-    comparable_window = (
-        comparables_freshness_days if comparables_scope is not None else None
-    )
+    comparable_window = comparables_freshness_days if comparables_scope is not None else None
     known = [
         f"Asking price {_money(listing.price)} and {_money(listing.price_per_m2)}/m2.",
         (
@@ -928,11 +936,15 @@ def _knowledge_matrix(
 
     estimated = [
         f"Fair price range {_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}.",
-        f"Liquidity score {scores.liquidity_score}/100 and risk score {scores.risk_score}/100.",
+        f"Risk score {scores.risk_score}/100.",
     ]
+    if scores.liquidity_score is not None:
+        estimated.append(f"Liquidity score {scores.liquidity_score}/100.")
     if future_area_impact is not None:
         estimated.append(f"Future infrastructure impact {future_area_impact.impact_score}/100.")
-    if rental_estimate is not None:
+    if rental_estimate is not None and rental_estimate.status == "estimated":
+        assert rental_estimate.monthly_rent_low_pln is not None
+        assert rental_estimate.monthly_rent_high_pln is not None
         estimated.append(
             f"Rent range {_money(rental_estimate.monthly_rent_low_pln)}-"
             f"{_money(rental_estimate.monthly_rent_high_pln)}/month."
@@ -946,7 +958,12 @@ def _knowledge_matrix(
                 + scores.fair_price_confidence_score * 0.34
                 + min(len(comparables), 6) * 4
                 + (8 if future_area_impact is not None else 0)
-                + (5 if rental_estimate is not None else 0),
+                + (
+                    5
+                    if rental_estimate is not None
+                    and rental_estimate.status == "estimated"
+                    else 0
+                ),
                 100,
             ),
         )
@@ -971,11 +988,7 @@ def _knowledge_matrix(
             source_type="market_snapshot",
             sample_size=len(comparables),
             geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
-            time_range=(
-                f"{comparable_window} days"
-                if comparable_window is not None
-                else None
-            ),
+            time_range=(f"{comparable_window} days" if comparable_window is not None else None),
             calculation_type="model_estimate",
             confidence_score=scores.fair_price_confidence_score,
         ),
@@ -1008,16 +1021,22 @@ def _knowledge_matrix(
                 note=future_area_impact.methodology_note,
             )
         )
-    if rental_estimate is not None:
+    if rental_estimate is not None and rental_estimate.status == "estimated":
         source_evidence.append(
             BuyerSourceEvidence(
                 topic="rental estimate",
-                basis="rental heuristic from object, location and comparable-density signals",
-                source_name="WartoMetr rental estimate",
-                source_type="derived_model",
+                basis=(
+                    f"median rent per m2 from {rental_estimate.sample_size} relevant "
+                    "long-term rental observations"
+                ),
+                source_name=", ".join(rental_estimate.source_names),
+                source_type="rental_listings",
                 geographic_scope=f"{listing.city}: {listing.district}",
+                time_range=rental_estimate.period,
                 calculation_type="model_estimate",
                 confidence_score=rental_estimate.confidence_score,
+                sample_size=rental_estimate.sample_size,
+                note=rental_estimate.methodology_note,
             )
         )
     return BuyerKnowledgeMatrix(
@@ -1190,8 +1209,12 @@ def _intent_fit(
     family_score = _clamp(
         45
         + (18 if listing.rooms >= 3 else -8)
-        + (12 if listing.nearest_school_m is not None and listing.nearest_school_m <= 900 else -8)
-        + (listing.parks_within_1km or 0) * 5
+        + (
+            (12 if listing.nearest_school_m <= 900 else -8)
+            if listing.nearest_school_m is not None
+            else 0
+        )
+        + (listing.parks_within_1km * 5 if listing.parks_within_1km is not None else 0)
         - (
             10
             if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 250
@@ -1200,28 +1223,46 @@ def _intent_fit(
     )
     self_score = _clamp(
         48
-        + (16 if listing.nearest_stop_m is not None and listing.nearest_stop_m <= 600 else -8)
         + (
-            10
-            if listing.distance_to_center_km is not None and listing.distance_to_center_km <= 8
-            else -6
+            (16 if listing.nearest_stop_m <= 600 else -8)
+            if listing.nearest_stop_m is not None
+            else 0
         )
-        + (listing.parks_within_1km or 0) * 4
+        + (
+            (10 if listing.distance_to_center_km <= 8 else -6)
+            if listing.distance_to_center_km is not None
+            else 0
+        )
+        + (listing.parks_within_1km * 4 if listing.parks_within_1km is not None else 0)
         - (8 if listing.floor == 0 else 0)
     )
-    rental_score = _clamp(
-        scores.rental_potential_score * 0.72
-        + scores.liquidity_score * 0.18
-        + (rental_estimate.confidence_score if rental_estimate is not None else 50) * 0.10
-        - max(scores.price_delta_to_fair_mid_pct, 0) * 0.5
+    rental_score = _optional_weighted_score(
+        [
+            (scores.rental_potential_score, 0.72),
+            (scores.liquidity_score, 0.18),
+            (
+                rental_estimate.confidence_score
+                if rental_estimate is not None and rental_estimate.status == "estimated"
+                else None,
+                0.10,
+            ),
+        ],
+        penalty=max(scores.price_delta_to_fair_mid_pct, 0) * 0.5,
     )
-    investment_score = _clamp(
-        scores.investment_score * 0.48
-        + scores.liquidity_score * 0.22
-        + scores.negotiation_score * 0.14
-        + (100 - scores.risk_score) * 0.16
-        - max(total_acquisition.post_renovation_value_gap_pln or 0, 0) / 8_000
+    investment_score = _optional_weighted_score(
+        [
+            (scores.investment_score, 0.48),
+            (scores.liquidity_score, 0.22),
+            (scores.negotiation_score, 0.14),
+            (100 - scores.risk_score, 0.16),
+        ],
+        penalty=max(total_acquisition.post_renovation_value_gap_pln or 0, 0) / 8_000,
     )
+    intent_scores = [
+        score
+        for score in (self_score, family_score, rental_score, investment_score)
+        if score is not None
+    ]
     return [
         _fit("self", self_score, ["transport", "daily convenience"], ["inside condition"]),
         _fit(
@@ -1239,7 +1280,7 @@ def _intent_fit(
         ),
         _fit(
             "unsure",
-            round((self_score + family_score + rental_score + investment_score) / 4),
+            round(sum(intent_scores) / len(intent_scores)) if intent_scores else None,
             [],
             [],
         ),
@@ -1248,11 +1289,13 @@ def _intent_fit(
 
 def _fit(
     intent: PurchaseIntent,
-    score: int,
+    score: int | None,
     reasons: list[str],
     tradeoffs: list[str],
 ) -> BuyerIntentFit:
-    if score >= 75:
+    if score is None:
+        label = "insufficient data"
+    elif score >= 75:
         label = "strong fit"
     elif score >= 60:
         label = "good fit"
@@ -1279,7 +1322,7 @@ def _selected_intent_fit(
     for fit in intent_fit:
         if fit.intent == "unsure":
             return fit
-    return _fit("unsure", 50, [], [])
+    return _fit("unsure", None, [], [])
 
 
 def _pre_viewing_assistant(
@@ -1574,14 +1617,22 @@ def _building_checks(listing: Listing) -> list[str]:
 
 
 def _surroundings_checks(listing: Listing) -> list[str]:
-    checks = [
-        f"walk to nearest stop: declared {listing.nearest_stop_m} m",
-        (
-            f"school/greenery context: {listing.schools_within_1km} schools and "
-            f"{listing.parks_within_1km} parks in 1 km"
-        ),
-        "parking pressure in the evening",
-    ]
+    checks = ["parking pressure in the evening"]
+    if listing.nearest_stop_m is not None:
+        checks.insert(0, f"walk to nearest stop: declared {listing.nearest_stop_m} m")
+    else:
+        checks.insert(0, "walk to nearest public transport stop and check service frequency")
+    if listing.schools_within_1km is not None or listing.parks_within_1km is not None:
+        schools = (
+            str(listing.schools_within_1km) if listing.schools_within_1km is not None else "unknown"
+        )
+        parks = str(listing.parks_within_1km) if listing.parks_within_1km is not None else "unknown"
+        checks.insert(
+            1,
+            f"school/greenery context: {schools} schools and {parks} parks in 1 km",
+        )
+    else:
+        checks.insert(1, "school and greenery access because source coverage is unavailable")
     if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 700:
         checks.append(f"traffic noise from major road at {listing.nearest_major_road_m} m")
     if listing.nearest_industrial_zone_m is not None and listing.nearest_industrial_zone_m < 1500:
@@ -1628,7 +1679,7 @@ def _top_reasons(
     selected_intent_fit: BuyerIntentFit,
 ) -> list[str]:
     reasons: list[str] = []
-    if selected_intent_fit.score >= 55:
+    if selected_intent_fit.score is not None and selected_intent_fit.score >= 55:
         reasons.append(_intent_reason(selected_intent_fit))
     if scores.price_delta_to_fair_mid_pct <= 3:
         reasons.append("Asking price is close to or below the fair-price midpoint.")
@@ -1670,7 +1721,7 @@ def _top_risks(
     selected_intent_fit: BuyerIntentFit,
 ) -> list[str]:
     risks: list[str] = []
-    if selected_intent_fit.score < 55:
+    if selected_intent_fit.score is not None and selected_intent_fit.score < 55:
         risks.append(_intent_risk(selected_intent_fit))
     if scores.price_delta_to_fair_mid_pct >= 5:
         risks.append(
@@ -1730,6 +1781,21 @@ def _round_price(value: int | float) -> int:
 
 def _clamp(value: int | float) -> int:
     return round(max(0, min(float(value), 100)))
+
+
+def _optional_weighted_score(
+    components: list[tuple[int | None, float]],
+    *,
+    penalty: float = 0,
+) -> int | None:
+    available = [
+        (value, weight) for value, weight in components if value is not None and weight > 0
+    ]
+    total_weight = sum(weight for _, weight in available)
+    if not available or total_weight <= 0:
+        return None
+    value = sum(value * weight for value, weight in available) / total_weight
+    return _clamp(value - penalty)
 
 
 def _floor_label(listing: Listing) -> str:

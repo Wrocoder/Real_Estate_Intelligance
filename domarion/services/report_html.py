@@ -7,6 +7,7 @@ from domarion.schemas import (
     MarketDashboardArea,
     MarketDistributionBucket,
     ObjectReport,
+    PropertyScores,
 )
 from domarion.services.provenance import provenance_evidence_details
 
@@ -21,6 +22,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
     footer_html = _render_report_footer(report.disclaimer, branding)
     primary_color = _brand_color(branding.primary_color if branding else None, "#0f766e")
     accent_color = _brand_color(branding.accent_color if branding else None, "#b42318")
+    fair_price_confidence_html = _render_fair_price_confidence(scores)
 
     score_cards = "".join(
         [
@@ -88,9 +90,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
             "do not treat the fair-price estimate as a strong comparable-based valuation."
         )
     comparable_headers = (
-        "<th>Наблюдалось</th><th>Расстояние</th><th>Сходство</th>"
-        if comparable_evidence
-        else ""
+        "<th>Наблюдалось</th><th>Расстояние</th><th>Сходство</th>" if comparable_evidence else ""
     )
     comparable_empty_colspan = 9 if comparable_evidence else 6
     comparable_header_row = (
@@ -322,10 +322,14 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
       {_metric("Отопление", _attribute_label(listing.heating_type))}
       {_metric("Дней на рынке", str(listing.days_on_market))}
       {_metric("Снижений цены", str(listing.price_reductions))}
-      {_metric("Fair price mid", _money(scores.fair_price_mid))}
+      {_metric(
+          "Fair price range",
+          f"{_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}",
+      )}
       {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
       {_metric("Отклонение", f"{scores.price_delta_to_fair_mid_pct:+.1f}%")}
     </section>
+    {fair_price_confidence_html}
 
     <section class="scores">{score_cards}</section>
 
@@ -657,12 +661,13 @@ def _list_items(items: list[str]) -> str:
     return "".join(f"<li>{escape(item)}</li>" for item in items)
 
 
-def _score_card(label: str, value: int, helper: str) -> str:
+def _score_card(label: str, value: int | None, helper: str) -> str:
     css_class = "score risk" if label == "Risk" else "score"
+    display_value = "-" if value is None else str(value)
     return (
         f'<div class="{css_class}">'
         f"<span>{escape(label)}</span>"
-        f"<strong>{value}</strong>"
+        f"<strong>{display_value}</strong>"
         f'<span class="muted">{escape(_label_text(helper))}</span>'
         "</div>"
     )
@@ -676,6 +681,37 @@ def _metric(label: str, value: str) -> str:
         f'<div class="label">{escape(label)}</div>'
         f'<div class="value">{escape(value)}</div>'
         "</div>"
+    )
+
+
+def _render_fair_price_confidence(scores: PropertyScores) -> str:
+    confidence = scores.fair_price_confidence
+    if confidence is None:
+        return ""
+    factor_labels = {
+        "sample_size": "Sample size",
+        "relevance": "Property similarity",
+        "freshness": "Data freshness",
+        "geographic_scope": "Geographic relevance",
+        "price_consistency": "Price consistency",
+        "source_quality": "Source quality",
+        "property_completeness": "Property data completeness",
+    }
+    factors = "".join(
+        "<li>"
+        f"<span>{escape(factor_labels.get(item.code, item.code))}</span>"
+        f"<strong>{item.score}/100</strong>"
+        "</li>"
+        for item in confidence.factors
+    )
+    return (
+        '<section class="confidence-evidence">'
+        "<h2>Fair price evidence quality</h2>"
+        f"<p><strong>{escape(confidence.level.upper())}: {confidence.score}/100</strong> · "
+        f"{confidence.comparable_count} comparable listings · "
+        f"{confidence.transaction_observation_count} transaction observations</p>"
+        f"<ul>{factors}</ul>"
+        "</section>"
     )
 
 
@@ -719,8 +755,7 @@ def _render_logo(branding) -> str:
     if branding is None or not branding.logo_url:
         return ""
     return (
-        f'<img class="brand-logo" src="{escape(branding.logo_url, quote=True)}" '
-        'alt="Agency logo">'
+        f'<img class="brand-logo" src="{escape(branding.logo_url, quote=True)}" alt="Agency logo">'
     )
 
 
@@ -804,12 +839,7 @@ def _area_distribution_rows(dashboard: MarketDashboard) -> str:
         price_per_m2 = _bucket_cell(dashboard.price_per_m2_distribution, index)
         area = _bucket_cell(dashboard.area_distribution, index)
         rows.append(
-            "<tr>"
-            f"<td>{index + 1}</td>"
-            f"<td>{price}</td>"
-            f"<td>{price_per_m2}</td>"
-            f"<td>{area}</td>"
-            "</tr>"
+            f"<tr><td>{index + 1}</td><td>{price}</td><td>{price_per_m2}</td><td>{area}</td></tr>"
         )
     return "\n".join(rows)
 

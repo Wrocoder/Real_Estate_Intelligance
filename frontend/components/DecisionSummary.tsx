@@ -254,11 +254,13 @@ export function DecisionSummary({
       </div>
 
       <div className="buyer-decision-metrics decision-summary-metrics">
-        {selectedIntent ? <SummaryMetric label={copy.forYou} value={selectedIntent} /> : null}
-        {numberValue(data.seller_price_pln) ? (
-          <SummaryMetric label={copy.askingPrice} value={money(data.seller_price_pln!, locale)} />
+        {selectedIntent ? (
+          <SummaryMetric className="summary-metric-personalized" label={copy.forYou} value={selectedIntent} />
         ) : null}
-        {fairPrice ? <SummaryMetric label={copy.fairPrice} value={fairPrice} /> : null}
+        {numberValue(data.seller_price_pln) ? (
+          <SummaryMetric className="summary-metric-asking" label={copy.askingPrice} value={money(data.seller_price_pln!, locale)} />
+        ) : null}
+        {fairPrice ? <SummaryMetric className="summary-metric-fair-price" label={copy.fairPrice} value={fairPrice} /> : null}
         {numberValue(data.recommended_offer_pln) ? (
           <SummaryMetric label={copy.recommendedOffer} value={money(data.recommended_offer_pln!, locale)} />
         ) : null}
@@ -266,7 +268,7 @@ export function DecisionSummary({
           <SummaryMetric label={copy.maxOffer} value={money(data.max_reasonable_offer_pln!, locale)} />
         ) : null}
         {numberValue(data.total_move_in_cost_pln) ? (
-          <SummaryMetric label={copy.totalCost} value={money(data.total_move_in_cost_pln!, locale)} />
+          <SummaryMetric className="summary-metric-secondary" label={copy.totalCost} value={money(data.total_move_in_cost_pln!, locale)} />
         ) : null}
         {numberValue(data.confidence_score) ? (
           <SummaryMetric label={copy.confidence} value={confidenceLabel(data.confidence_score!, copy)} />
@@ -316,9 +318,9 @@ export function decisionSummaryFromScores(
   };
 }
 
-function SummaryMetric({ label, value }: { label: string; value: string }) {
+function SummaryMetric({ className, label, value }: { className?: string; label: string; value: string }) {
   return (
-    <div className="metric">
+    <div className={`metric${className ? ` ${className}` : ""}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>

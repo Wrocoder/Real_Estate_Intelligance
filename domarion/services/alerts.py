@@ -241,13 +241,17 @@ def find_alert_matches(
         ]
     if filters.min_liquidity_score is not None:
         analyses = [
-            item for item in analyses if item.scores.liquidity_score >= filters.min_liquidity_score
+            item
+            for item in analyses
+            if item.scores.liquidity_score is not None
+            and item.scores.liquidity_score >= filters.min_liquidity_score
         ]
     if filters.min_rental_potential_score is not None:
         analyses = [
             item
             for item in analyses
-            if item.scores.rental_potential_score >= filters.min_rental_potential_score
+            if item.scores.rental_potential_score is not None
+            and item.scores.rental_potential_score >= filters.min_rental_potential_score
         ]
     if filters.min_price_reductions is not None:
         analyses = [
@@ -273,8 +277,8 @@ def _alert_sort_key(analysis: ListingAnalysis, filters: AlertFilters) -> tuple:
         return (
             scores.price_delta_to_fair_mid_pct,
             -listing.price_reductions,
-            -scores.rental_potential_score,
-            -scores.liquidity_score,
+            _descending_optional_score(scores.rental_potential_score),
+            _descending_optional_score(scores.liquidity_score),
             -scores.negotiation_score,
             -scores.investment_score,
             scores.risk_score,
@@ -285,6 +289,10 @@ def _alert_sort_key(analysis: ListingAnalysis, filters: AlertFilters) -> tuple:
         scores.risk_score,
         listing.price,
     )
+
+
+def _descending_optional_score(score: int | None) -> int:
+    return 101 if score is None else -score
 
 
 def _has_advanced_investor_filters(filters: AlertFilters) -> bool:

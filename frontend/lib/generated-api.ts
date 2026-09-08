@@ -3865,12 +3865,12 @@ export interface components {
              * Liquidity Label
              * @enum {string}
              */
-            liquidity_label: "weak" | "moderate" | "good" | "strong";
+            liquidity_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /**
              * Rental Potential Label
              * @enum {string}
              */
-            rental_potential_label: "weak" | "moderate" | "good" | "strong";
+            rental_potential_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /** Investment Score */
             investment_score: number;
             /** Risk Score */
@@ -3878,9 +3878,9 @@ export interface components {
             /** Negotiation Score */
             negotiation_score: number;
             /** Liquidity Score */
-            liquidity_score: number;
+            liquidity_score?: number | null;
             /** Rental Potential Score */
-            rental_potential_score: number;
+            rental_potential_score?: number | null;
             /** Fair Price Low */
             fair_price_low: number;
             /** Fair Price Mid */
@@ -4520,7 +4520,7 @@ export interface components {
              */
             intent: "self" | "family" | "rental" | "investment" | "unsure";
             /** Score */
-            score: number;
+            score?: number | null;
             /** Label */
             label: string;
             /** Reasons */
@@ -4693,6 +4693,13 @@ export interface components {
             /** Price Per M2 Delta To Subject Pct */
             price_per_m2_delta_to_subject_pct: number;
         };
+        /** ComparableExclusionSummary */
+        ComparableExclusionSummary: {
+            /** Code */
+            code: string;
+            /** Count */
+            count: number;
+        };
         /** CompareItemMetrics */
         CompareItemMetrics: {
             /** Listing Id */
@@ -4720,12 +4727,12 @@ export interface components {
              * Liquidity Label
              * @enum {string}
              */
-            liquidity_label: "weak" | "moderate" | "good" | "strong";
+            liquidity_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /**
              * Rental Potential Label
              * @enum {string}
              */
-            rental_potential_label: "weak" | "moderate" | "good" | "strong";
+            rental_potential_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /** Investment Score */
             investment_score: number;
             /** Risk Score */
@@ -4733,9 +4740,9 @@ export interface components {
             /** Negotiation Score */
             negotiation_score: number;
             /** Liquidity Score */
-            liquidity_score: number;
+            liquidity_score?: number | null;
             /** Rental Potential Score */
-            rental_potential_score: number;
+            rental_potential_score?: number | null;
             /** Price Per M2 Pln */
             price_per_m2_pln: number;
             /** Fair Price Mid Pln */
@@ -4773,9 +4780,9 @@ export interface components {
             /** Opening Offer Pln */
             opening_offer_pln: number;
             /** Estimated Gross Rental Yield Pct */
-            estimated_gross_rental_yield_pct: number;
+            estimated_gross_rental_yield_pct?: number | null;
             /** Estimated Monthly Rent Pln */
-            estimated_monthly_rent_pln: number;
+            estimated_monthly_rent_pln?: number | null;
             /** Recommendation */
             recommendation: string;
             /** Reasons */
@@ -4828,9 +4835,9 @@ export interface components {
             /** Lowest Monthly Payment Listing Id */
             lowest_monthly_payment_listing_id: string;
             /** Strongest Liquidity Listing Id */
-            strongest_liquidity_listing_id: string;
+            strongest_liquidity_listing_id?: string | null;
             /** Strongest Rental Listing Id */
-            strongest_rental_listing_id: string;
+            strongest_rental_listing_id?: string | null;
             /** Riskiest Listing Id */
             riskiest_listing_id: string;
             /** Average Price Per M2 */
@@ -4840,9 +4847,9 @@ export interface components {
             /** Average Total Move In Cost Pln */
             average_total_move_in_cost_pln: number;
             /** Average Liquidity Score */
-            average_liquidity_score: number;
+            average_liquidity_score?: number | null;
             /** Average Rental Potential Score */
-            average_rental_potential_score: number;
+            average_rental_potential_score?: number | null;
             /** Notes */
             notes?: string[];
         };
@@ -5282,9 +5289,9 @@ export interface components {
             /** Negotiation Score */
             negotiation_score: number;
             /** Liquidity Score */
-            liquidity_score: number;
+            liquidity_score?: number | null;
             /** Rental Potential Score */
-            rental_potential_score: number;
+            rental_potential_score?: number | null;
             /** Fair Price Mid Pln */
             fair_price_mid_pln: number;
             /** Price Delta To Fair Mid Pct */
@@ -5928,6 +5935,42 @@ export interface components {
             status: "known" | "estimated" | "verify_required" | "unknown" | "not_applicable";
             /** Rationale */
             rationale: string;
+        };
+        /** FairPriceConfidence */
+        FairPriceConfidence: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "high" | "medium" | "low";
+            /** Score */
+            score: number;
+            /** Comparable Count */
+            comparable_count: number;
+            /** Transaction Observation Count */
+            transaction_observation_count: number;
+            /** Median Similarity Score */
+            median_similarity_score?: number | null;
+            /** Price Dispersion Pct */
+            price_dispersion_pct?: number | null;
+            /** Factors */
+            factors?: components["schemas"]["FairPriceConfidenceFactor"][];
+            /** Limitation Codes */
+            limitation_codes?: string[];
+        };
+        /** FairPriceConfidenceFactor */
+        FairPriceConfidenceFactor: {
+            /** Code */
+            code: string;
+            /** Score */
+            score: number;
+            /** Weight */
+            weight: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "supporting" | "neutral" | "limiting";
         };
         /** Favorite */
         Favorite: {
@@ -6597,6 +6640,29 @@ export interface components {
             /** Comparables Excluded Reasons */
             comparables_excluded_reasons?: string[];
             /**
+             * Comparables Status
+             * @default insufficient
+             * @enum {string}
+             */
+            comparables_status: "strong" | "limited" | "insufficient";
+            /**
+             * Comparables Target Sample Size
+             * @default 3
+             */
+            comparables_target_sample_size: number;
+            /** Comparables Stage Counts */
+            comparables_stage_counts?: {
+                [key: string]: number;
+            };
+            /** Comparables Exclusions */
+            comparables_exclusions?: components["schemas"]["ComparableExclusionSummary"][];
+            /** Comparables Observed From */
+            comparables_observed_from?: string | null;
+            /** Comparables Observed To */
+            comparables_observed_to?: string | null;
+            /** Comparables Source Names */
+            comparables_source_names?: string[];
+            /**
              * Disclaimer
              * @default Scoring outputs are decision-support screening signals, not financial, legal or investment advice, not a valuation certificate and not a guarantee of price, financing, legal status or future performance.
              */
@@ -6748,12 +6814,12 @@ export interface components {
             /** Listing Id */
             listing_id: string;
             /** Growth Score */
-            growth_score: number;
+            growth_score?: number | null;
             /**
              * Growth Label
              * @enum {string}
              */
-            growth_label: "strong_growth" | "moderate_growth" | "mixed_growth" | "weak_growth";
+            growth_label: "insufficient_data" | "strong_growth" | "moderate_growth" | "mixed_growth" | "weak_growth";
             /** Factors */
             factors?: components["schemas"]["ListingGrowthFactor"][];
             /** Positive Signals */
@@ -6777,7 +6843,7 @@ export interface components {
             /** Label */
             label: string;
             /** Score */
-            score: number;
+            score?: number | null;
             /** Weight */
             weight: number;
             /**
@@ -6798,52 +6864,75 @@ export interface components {
             listing_id: string;
             /**
              * Status
-             * @default estimated
              * @enum {string}
              */
             status: "estimated" | "insufficient_data";
             /**
              * Source
-             * @default derived_model
+             * @default independent_rental_observations
              */
             source: string;
+            /** Source Names */
+            source_names?: string[];
             /**
              * Method
-             * @default deterministic screening heuristic
+             * @default median rent per m2 from relevant rental observations
              */
             method: string;
+            /** Period */
+            period?: string | null;
+            /** Observed From */
+            observed_from?: string | null;
+            /** Observed To */
+            observed_to?: string | null;
+            /** Geographic Scope */
+            geographic_scope: string;
+            /** Sample Size */
+            sample_size: number;
             /**
-             * Period
-             * @default current listing snapshot
+             * Target Sample Size
+             * @default 3
              */
-            period: string;
-            /** Monthly Rent Low Pln */
-            monthly_rent_low_pln: number;
-            /** Monthly Rent Mid Pln */
-            monthly_rent_mid_pln: number;
-            /** Monthly Rent High Pln */
-            monthly_rent_high_pln: number;
-            /** Rent Per M2 Mid Pln */
-            rent_per_m2_mid_pln: number;
-            /** Gross Yield Pct */
-            gross_yield_pct: number;
+            target_sample_size: number;
             /**
-             * Net Yield On Cash Pct
+             * Selection Level
              * @default 0
              */
-            net_yield_on_cash_pct: number;
+            selection_level: number;
+            /**
+             * Freshness Days
+             * @default 120
+             */
+            freshness_days: number;
+            /** Monthly Rent Low Pln */
+            monthly_rent_low_pln?: number | null;
+            /** Monthly Rent Mid Pln */
+            monthly_rent_mid_pln?: number | null;
+            /** Monthly Rent High Pln */
+            monthly_rent_high_pln?: number | null;
+            /** Rent Per M2 Mid Pln */
+            rent_per_m2_mid_pln?: number | null;
+            /** Gross Yield Pct */
+            gross_yield_pct?: number | null;
+            /** Net Yield Pct */
+            net_yield_pct?: number | null;
+            /** Net Yield On Cash Pct */
+            net_yield_on_cash_pct?: number | null;
             /** Vacancy Rate Pct */
             vacancy_rate_pct: number;
             /** Operating Costs Monthly Pln */
-            operating_costs_monthly_pln: number;
+            operating_costs_monthly_pln?: number | null;
             /** Net Operating Income Monthly Pln */
-            net_operating_income_monthly_pln: number;
+            net_operating_income_monthly_pln?: number | null;
             /** Confidence Score */
             confidence_score: number;
+            confidence: components["schemas"]["RentalConfidence"];
+            /** Comparables */
+            comparables?: components["schemas"]["RentalComparableEvidence"][];
             /** Cashflow Scenarios */
             cashflow_scenarios?: components["schemas"]["RentalCashflowScenario"][];
             /** Assumptions */
-            assumptions?: string[];
+            assumptions?: components["schemas"]["RentalAssumption"][];
             /** Risk Notes */
             risk_notes?: string[];
             /** Methodology Note */
@@ -6858,7 +6947,7 @@ export interface components {
             /** Severity */
             severity: string;
             /** Score */
-            score: number;
+            score?: number | null;
             /** Summary */
             summary: string;
             /** Evidence */
@@ -8466,12 +8555,12 @@ export interface components {
              * Liquidity Label
              * @enum {string}
              */
-            liquidity_label: "weak" | "moderate" | "good" | "strong";
+            liquidity_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /**
              * Rental Potential Label
              * @enum {string}
              */
-            rental_potential_label: "weak" | "moderate" | "good" | "strong";
+            rental_potential_label: "unknown" | "weak" | "moderate" | "good" | "strong";
             /** Investment Score */
             investment_score: number;
             /** Risk Score */
@@ -8479,9 +8568,9 @@ export interface components {
             /** Negotiation Score */
             negotiation_score: number;
             /** Liquidity Score */
-            liquidity_score: number;
+            liquidity_score?: number | null;
             /** Rental Potential Score */
-            rental_potential_score: number;
+            rental_potential_score?: number | null;
             /** Fair Price Low */
             fair_price_low: number;
             /** Fair Price Mid */
@@ -8490,6 +8579,7 @@ export interface components {
             fair_price_high: number;
             /** Fair Price Confidence Score */
             fair_price_confidence_score: number;
+            fair_price_confidence?: components["schemas"]["FairPriceConfidence"] | null;
             /** Price Delta To Fair Mid Pct */
             price_delta_to_fair_mid_pct: number;
             breakdown: components["schemas"]["ScoreBreakdown"];
@@ -8585,9 +8675,9 @@ export interface components {
             /** Upfront Cash Needed Pln */
             upfront_cash_needed_pln: number;
             /** Estimated Monthly Rent Pln */
-            estimated_monthly_rent_pln: number;
+            estimated_monthly_rent_pln?: number | null;
             /** Estimated Gross Rental Yield Pct */
-            estimated_gross_rental_yield_pct: number;
+            estimated_gross_rental_yield_pct?: number | null;
             /** Recommendation */
             recommendation: string;
             /** Client Pitch */
@@ -8680,9 +8770,9 @@ export interface components {
             /** Negotiation Score */
             negotiation_score: number;
             /** Liquidity Score */
-            liquidity_score: number;
+            liquidity_score?: number | null;
             /** Rental Potential Score */
-            rental_potential_score: number;
+            rental_potential_score?: number | null;
             /** Client Pitch */
             client_pitch: string;
             /** Talking Points */
@@ -8709,6 +8799,30 @@ export interface components {
              */
             include_source_links: boolean;
         };
+        /** RentalAssumption */
+        RentalAssumption: {
+            /** Code */
+            code: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: number;
+            /**
+             * Unit
+             * @enum {string}
+             */
+            unit: "percent" | "pln_per_m2_month" | "pln_month";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "scenario_default" | "user_input" | "observed";
+            /**
+             * Editable
+             * @default false
+             */
+            editable: boolean;
+        };
         /** RentalCashflowScenario */
         RentalCashflowScenario: {
             /** Code */
@@ -8733,6 +8847,60 @@ export interface components {
             gross_yield_pct: number;
             /** Net Yield On Cash Pct */
             net_yield_on_cash_pct: number;
+        };
+        /** RentalComparableEvidence */
+        RentalComparableEvidence: {
+            /** Observation Id */
+            observation_id: string;
+            /** Source Name */
+            source_name: string;
+            /** Source Type */
+            source_type: string;
+            /**
+             * Observed At
+             * Format: date
+             */
+            observed_at: string;
+            /** District */
+            district?: string | null;
+            /** Monthly Rent Pln */
+            monthly_rent_pln: number;
+            /** Rent Per M2 Pln */
+            rent_per_m2_pln: number;
+            /** Area M2 */
+            area_m2: number;
+            /** Rooms */
+            rooms?: number | null;
+            /** Similarity Score */
+            similarity_score: number;
+        };
+        /** RentalConfidence */
+        RentalConfidence: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "high" | "medium" | "low";
+            /** Score */
+            score: number;
+            /** Factors */
+            factors?: components["schemas"]["RentalConfidenceFactor"][];
+            /** Limitation Codes */
+            limitation_codes?: string[];
+        };
+        /** RentalConfidenceFactor */
+        RentalConfidenceFactor: {
+            /** Code */
+            code: string;
+            /** Score */
+            score: number;
+            /** Weight */
+            weight: number;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "supporting" | "neutral" | "limiting";
         };
         /** ReportBranding */
         ReportBranding: {
@@ -9031,19 +9199,45 @@ export interface components {
             /** Area Trend */
             area_trend: number;
             /** Transport */
-            transport: number;
+            transport?: number | null;
             /** Future Infrastructure */
-            future_infrastructure: number;
+            future_infrastructure?: number | null;
             /** Liquidity */
-            liquidity: number;
+            liquidity?: number | null;
             /** Lifestyle Infrastructure */
-            lifestyle_infrastructure: number;
+            lifestyle_infrastructure?: number | null;
             /** Rental Potential */
-            rental_potential: number;
+            rental_potential?: number | null;
             /** Data Quality */
             data_quality: number;
             /** Risk Penalty */
             risk_penalty: number;
+        };
+        /** ScoreDimensionExplainability */
+        ScoreDimensionExplainability: {
+            /**
+             * Score Code
+             * @enum {string}
+             */
+            score_code: "investment" | "risk" | "negotiation" | "liquidity" | "rental";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "available" | "partial" | "insufficient_data";
+            /** Calculation Version */
+            calculation_version: string;
+            /** Coverage Score */
+            coverage_score: number;
+            /**
+             * Confidence Level
+             * @enum {string}
+             */
+            confidence_level: "high" | "medium" | "low";
+            /** Drivers */
+            drivers?: components["schemas"]["ScoreDriver"][];
+            /** Missing Data Codes */
+            missing_data_codes?: string[];
         };
         /** ScoreDriver */
         ScoreDriver: {
@@ -9071,6 +9265,8 @@ export interface components {
             drivers?: components["schemas"]["ScoreDriver"][];
             /** Missing Data Codes */
             missing_data_codes?: string[];
+            /** Score Details */
+            score_details?: components["schemas"]["ScoreDimensionExplainability"][];
         };
         /** ScoringBacktestDriftSegment */
         ScoringBacktestDriftSegment: {

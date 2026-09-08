@@ -142,15 +142,16 @@ def _shortlist_item(analysis: ListingAnalysis, *, rank: int) -> CrmShortlistItem
 def _decision_score(analysis: ListingAnalysis) -> int:
     scores = analysis.scores
     overpricing_penalty = max(scores.price_delta_to_fair_mid_pct, 0) * 0.55
-    value = (
-        scores.investment_score * 0.42
-        + (100 - scores.risk_score) * 0.18
-        + scores.liquidity_score * 0.18
-        + scores.rental_potential_score * 0.12
-        + scores.negotiation_score * 0.10
-        - overpricing_penalty
+    value = _weighted_available_score(
+        (
+            (scores.investment_score, 0.42),
+            (100 - scores.risk_score, 0.18),
+            (scores.liquidity_score, 0.18),
+            (scores.rental_potential_score, 0.12),
+            (scores.negotiation_score, 0.10),
+        )
     )
-    return round(max(0, min(value, 100)))
+    return round(max(0, min(value - overpricing_penalty, 100)))
 
 
 def _recommendation(analysis: ListingAnalysis) -> str:
@@ -159,10 +160,22 @@ def _recommendation(analysis: ListingAnalysis) -> str:
         return "High-risk candidate: verify legal, building and area constraints before viewing."
     if scores.price_delta_to_fair_mid_pct >= 12:
         return "Likely overpriced versus fair range; use for negotiation or wait for repricing."
-    if scores.investment_score >= 75 and scores.liquidity_score >= 60:
+    if (
+        scores.investment_score >= 75
+        and scores.liquidity_score is not None
+        and scores.liquidity_score >= 60
+    ):
         return "Strong shortlist candidate with balanced value, liquidity and risk signals."
-    if scores.rental_potential_score >= 70:
+    if scores.rental_potential_score is not None and scores.rental_potential_score >= 70:
         return "Good investor-fit candidate; confirm achievable rent and recurring costs."
-    if scores.liquidity_score < 40:
+    if scores.liquidity_score is not None and scores.liquidity_score < 40:
         return "Possible fit, but resale liquidity may be weaker than average."
     return "Worth client review after confirming documents, monthly costs and real condition."
+
+
+def _weighted_available_score(components: tuple[tuple[int | None, float], ...]) -> float:
+    available = [(value, weight) for value, weight in components if value is not None]
+    total_weight = sum(weight for _, weight in available)
+    if not total_weight:
+        return 0.0
+    return sum(value * weight for value, weight in available) / total_weight

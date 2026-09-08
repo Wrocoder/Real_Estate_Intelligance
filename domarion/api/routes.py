@@ -4285,8 +4285,7 @@ def get_listing_rental_estimate(
     if listing is None:
         raise HTTPException(status_code=404, detail="Listing not found")
     analysis = build_listing_analysis(repository, listing)
-    if analysis.rental_estimate is None:
-        raise HTTPException(status_code=404, detail="Rental estimate not found")
+    assert analysis.rental_estimate is not None
     return analysis.rental_estimate
 
 

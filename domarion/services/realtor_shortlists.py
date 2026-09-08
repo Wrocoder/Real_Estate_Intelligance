@@ -171,10 +171,7 @@ def _client_item_lines(item: RealtorClientShortlistItem) -> list[str]:
             f"   Monthly baseline: {_money(item.estimated_monthly_payment_pln, 'PLN')} | "
             f"cash needed: {_money(item.upfront_cash_needed_pln, 'PLN')}"
         ),
-        (
-            f"   Rental estimate: {_money(item.estimated_monthly_rent_pln, 'PLN')}/month | "
-            f"{item.estimated_gross_rental_yield_pct:.2f}% gross yield"
-        ),
+        _rental_estimate_line(item),
         f"   Why it is on the list: {item.client_pitch}",
     ]
     if item.talking_points:
@@ -188,6 +185,18 @@ def _client_item_lines(item: RealtorClientShortlistItem) -> list[str]:
 
 def _money(value: int | float, currency: str) -> str:
     return f"{value:,.0f}".replace(",", " ") + f" {currency}"
+
+
+def _rental_estimate_line(item: RealtorClientShortlistItem) -> str:
+    if (
+        item.estimated_monthly_rent_pln is None
+        or item.estimated_gross_rental_yield_pct is None
+    ):
+        return "   Rental estimate: unavailable due to insufficient data"
+    return (
+        f"   Rental estimate: {_money(item.estimated_monthly_rent_pln, 'PLN')}/month | "
+        f"{item.estimated_gross_rental_yield_pct:.2f}% gross yield"
+    )
 
 
 def _clean_optional(value: str | None) -> str | None:

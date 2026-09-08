@@ -554,10 +554,10 @@ def _full_analysis_due_diligence_section(analysis: ListingAnalysis) -> ReportSec
         "Request building/community documents: fees, renovation fund, planned repairs and debts.",
         "Check technical state: windows, electrical, plumbing, heating, ventilation and moisture.",
         (
-            f"Location checks: stop {listing.nearest_stop_m} m, "
-            f"school {listing.nearest_school_m} m, "
-            f"major road {listing.nearest_major_road_m} m, industrial zone "
-            f"{listing.nearest_industrial_zone_m} m."
+            f"Location checks: stop {_distance_text(listing.nearest_stop_m)}, "
+            f"school {_distance_text(listing.nearest_school_m)}, "
+            f"major road {_distance_text(listing.nearest_major_road_m)}, industrial zone "
+            f"{_distance_text(listing.nearest_industrial_zone_m)}."
         ),
     ]
     if listing.market_type == "primary":
@@ -602,7 +602,8 @@ def _full_analysis_scenarios_section(analysis: ListingAnalysis) -> ReportSection
                 f"{_money(scores.fair_price_low)} if legal/technical checks reveal issues."
             ),
             (
-                f"Base case: fair mid {_money(scores.fair_price_mid)} with "
+                f"Base case: fair range {_money(scores.fair_price_low)}-"
+                f"{_money(scores.fair_price_high)} with "
                 f"{scores.fair_price_confidence_score}/100 confidence."
             ),
             (
@@ -629,6 +630,10 @@ def _decision_posture(risk_score: int, negotiation_score: int) -> str:
     if risk_score <= 35:
         return "standard diligence"
     return "balanced, verify object-specific facts"
+
+
+def _distance_text(value: int | None) -> str:
+    return "unavailable" if value is None else f"{value} m"
 
 
 def _opening_offer(price: int, price_delta_pct: float) -> int:

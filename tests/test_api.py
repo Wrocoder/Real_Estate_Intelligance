@@ -174,7 +174,11 @@ def test_listings_support_consumer_intent_sorts() -> None:
     assert rental_response.status_code == 200
     rental_items = rental_response.json()["items"]
     rental_scores = [item["scores"]["rental_potential_score"] for item in rental_items]
-    assert rental_scores == sorted(rental_scores, reverse=True)
+    known_rental_scores = [score for score in rental_scores if score is not None]
+    assert known_rental_scores == sorted(known_rental_scores, reverse=True)
+    assert rental_scores == known_rental_scores + [None] * (
+        len(rental_scores) - len(known_rental_scores)
+    )
 
 
 def test_listings_support_developer_reputation_filters_and_sort() -> None:
@@ -196,9 +200,7 @@ def test_listings_support_developer_reputation_filters_and_sort() -> None:
     assert payload["filters"]["min_developer_confidence_score"] == 59
     assert payload["filters"]["require_developer_reputation"] is True
     assert payload["total"] >= 2
-    reputations = [
-        item["developer_reputation"]["reputation_score"] for item in payload["items"]
-    ]
+    reputations = [item["developer_reputation"]["reputation_score"] for item in payload["items"]]
     assert reputations == sorted(reputations, reverse=True)
     for item in payload["items"]:
         reputation = item["developer_reputation"]
@@ -221,7 +223,7 @@ def test_listings_support_text_query_search() -> None:
     assert "Nowy Dwór" in payload["items"][0]["listing"]["address"]
 
 
-def test_hidden_gems_support_municipality_filter() -> None:
+def test_hidden_gems_does_not_treat_unknown_market_scores_as_zero() -> None:
     response = client.get(
         "/api/v1/listings/hidden-gems",
         params={
@@ -230,7 +232,6 @@ def test_hidden_gems_support_municipality_filter() -> None:
             "min_investment_score": 0,
             "max_risk_score": 100,
             "min_liquidity_score": 0,
-            "min_rental_potential_score": 0,
             "min_data_quality_score": 0,
             "page_size": 20,
         },
@@ -239,10 +240,8 @@ def test_hidden_gems_support_municipality_filter() -> None:
 
     assert response.status_code == 200
     assert payload["filters"]["municipality"] == "Wysoka"
-    assert payload["total"] == 2
-    assert {item["analysis"]["listing"]["municipality"] for item in payload["items"]} == {
-        "Wysoka"
-    }
+    assert payload["total"] == 0
+    assert payload["items"] == []
 
 
 def test_hidden_gems_support_building_attribute_filters() -> None:
@@ -474,6 +473,17 @@ def test_areas() -> None:
     assert response.json()[0]["data_provenance"]["source_type"]
 
 
+def test_area_without_price_history_returns_an_empty_observation_set() -> None:
+    response = client.get("/api/v1/areas/wroclaw-fabryczna/price-history")
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["area_id"] == "wroclaw-fabryczna"
+    assert payload["observation_count"] == 0
+    assert payload["monthly"] == []
+    assert payload["yearly"] == []
+
+
 def test_public_area_evidence_endpoints_preserve_scope_and_unknowns() -> None:
     infrastructure = client.get(
         "/api/v1/infrastructure/transport-stops",
@@ -581,6 +591,29 @@ def test_listing_analysis() -> None:
     assert response.status_code == 200
     assert payload["listing"]["id"] == "wr-001"
     assert 0 <= payload["scores"]["investment_score"] <= 100
+    score_details = payload["scores"]["explainability"]["score_details"]
+    assert {detail["score_code"] for detail in score_details} == {
+        "investment",
+        "risk",
+        "negotiation",
+        "liquidity",
+        "rental",
+    }
+    assert payload["scores"]["explainability"]["version"] == "score-explanation-v2"
+    assert all(
+        detail["calculation_version"] == "domarion-scoring-v1"
+        for detail in score_details
+    )
+    assert all(0 <= detail["coverage_score"] <= 100 for detail in score_details)
+    assert all(
+        detail["confidence_level"] in {"high", "medium", "low"}
+        for detail in score_details
+    )
+    assert all(
+        set(driver) == {"code", "direction"}
+        for detail in score_details
+        for driver in detail["drivers"]
+    )
     assert payload["price_history"]
     assert payload["listing_events"]
     assert payload["listing_events"][0]["event_type"] == "first_seen"
@@ -607,6 +640,12 @@ def test_listing_analysis() -> None:
     assert payload["rental_estimate"]["listing_id"] == "wr-001"
     assert payload["rental_estimate"]["monthly_rent_mid_pln"] > 0
     assert payload["rental_estimate"]["cashflow_scenarios"]
+    assert payload["comparables_status"] in {"strong", "limited", "insufficient"}
+    assert payload["comparables_target_sample_size"] == 3
+    assert payload["comparables_stage_counts"]
+    assert payload["scores"]["fair_price_confidence"]["factors"]
+    assert payload["scores"]["fair_price_low"] % 5_000 == 0
+    assert payload["scores"]["fair_price_high"] % 5_000 == 0
     assert "not financial, legal or investment advice" in payload["disclaimer"]
     assert "not a guarantee" in payload["disclaimer"]
 
@@ -705,6 +744,10 @@ def test_listing_rental_estimate_returns_cashflow_scenarios() -> None:
 
     assert response.status_code == 200
     assert payload["listing_id"] == "wr-001"
+    assert payload["status"] == "estimated"
+    assert payload["source"] == "independent_rental_observations"
+    assert payload["sample_size"] >= 3
+    assert payload["source_names"]
     assert payload["monthly_rent_low_pln"] < payload["monthly_rent_mid_pln"]
     assert payload["monthly_rent_high_pln"] > payload["monthly_rent_mid_pln"]
     assert payload["gross_yield_pct"] > 0
@@ -712,8 +755,10 @@ def test_listing_rental_estimate_returns_cashflow_scenarios() -> None:
     scenario_codes = {scenario["code"] for scenario in payload["cashflow_scenarios"]}
     assert scenario_codes == {"cash_purchase", "financed_80_ltv"}
     assert payload["confidence_score"] > 0
+    assert payload["confidence"]["factors"]
     assert payload["assumptions"]
-    assert "screening" in payload["methodology_note"]
+    assert payload["net_yield_pct"] < payload["gross_yield_pct"]
+    assert "independently sourced" in payload["methodology_note"]
 
 
 def test_ai_assistant_contract_and_questions_are_public() -> None:
@@ -885,10 +930,14 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
         assert "ready_to_move_alternative_price_pln" in metric
         assert "post_renovation_value_gap_pln" in metric
         assert metric["opening_offer_pln"] <= metric["max_reasonable_offer_pln"]
-        assert metric["estimated_gross_rental_yield_pct"] > 0
-        assert metric["estimated_monthly_rent_pln"] > 0
-        assert metric["liquidity_score"] >= 0
-        assert metric["rental_potential_score"] >= 0
+        if metric["estimated_gross_rental_yield_pct"] is not None:
+            assert metric["estimated_gross_rental_yield_pct"] > 0
+        if metric["estimated_monthly_rent_pln"] is not None:
+            assert metric["estimated_monthly_rent_pln"] > 0
+        if metric["liquidity_score"] is not None:
+            assert metric["liquidity_score"] >= 0
+        if metric["rental_potential_score"] is not None:
+            assert metric["rental_potential_score"] >= 0
         assert metric["recommendation"]
 
     summary = payload["summary"]
@@ -971,9 +1020,7 @@ def test_object_report() -> None:
     assert "Growth analysis:" in fit_items
     assert "Growth positives:" in fit_items
     developer_section = next(
-        section
-        for section in payload["sections"]
-        if section["title"] == "Застройщик и репутация"
+        section for section in payload["sections"] if section["title"] == "Застройщик и репутация"
     )
     developer_items = "\n".join(developer_section["items"])
     assert "Позиция по застройщику" in developer_items

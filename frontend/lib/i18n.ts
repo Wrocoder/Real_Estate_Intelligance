@@ -905,7 +905,7 @@ export type AccountPageCopy = {
     pinnedPrefix: string;
     listingsUpdated: (count: number, updatedAt: string) => string;
     fairMid: (value: string) => string;
-    scoreDetails: (risk: number, liquidity: number) => string;
+    scoreDetails: (risk: number, liquidity: number | null) => string;
     developerReputation: (score: number, label: string | null) => string;
     noReputationData: string;
     budgetTo: (value: string) => string;
@@ -1182,6 +1182,9 @@ export type ListingDetailCopy = {
   };
   sections: {
     decisionDetails: string;
+    marketEvidence: string;
+    nextActions: string;
+    additionalAnalysis: string;
     aiAssistant: string;
     insights: string;
     negotiation: string;
@@ -4047,7 +4050,8 @@ export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
       listingsUpdated: (count, updatedAt) =>
         `${count} listing${count === 1 ? "" : "s"} · ${updatedAt}`,
       fairMid: (value) => `Fair mid ${value}`,
-      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      scoreDetails: (risk, liquidity) =>
+        `Risk ${risk}/100 · liquidity ${liquidity === null ? "unavailable" : `${liquidity}/100`}`,
       developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
       noReputationData: "no reputation data",
       budgetTo: (value) => `to ${value}`,
@@ -4200,7 +4204,8 @@ export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
       listingsUpdated: (count, updatedAt) =>
         `${count} ${pluralPl(count, "listing", "listingi", "listingów")} · ${updatedAt}`,
       fairMid: (value) => `Fair mid ${value}`,
-      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      scoreDetails: (risk, liquidity) =>
+        `Risk ${risk}/100 · płynność ${liquidity === null ? "brak danych" : `${liquidity}/100`}`,
       developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
       noReputationData: "brak danych reputacji",
       budgetTo: (value) => `do ${value}`,
@@ -4353,7 +4358,8 @@ export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
       listingsUpdated: (count, updatedAt) =>
         `${count} ${pluralRu(count, "объект", "объекта", "объектов")} · ${updatedAt}`,
       fairMid: (value) => `Fair mid ${value}`,
-      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      scoreDetails: (risk, liquidity) =>
+        `Риск ${risk}/100 · ликвидность ${liquidity === null ? "нет данных" : `${liquidity}/100`}`,
       developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
       noReputationData: "нет данных репутации",
       budgetTo: (value) => `до ${value}`,
@@ -4506,7 +4512,8 @@ export const ACCOUNT_PAGE_COPY: Record<Locale, AccountPageCopy> = {
       listingsUpdated: (count, updatedAt) =>
         `${count} ${pluralUk(count, "об'єкт", "об'єкти", "об'єктів")} · ${updatedAt}`,
       fairMid: (value) => `Fair mid ${value}`,
-      scoreDetails: (risk, liquidity) => `Risk ${risk}/100 · liquidity ${liquidity}/100`,
+      scoreDetails: (risk, liquidity) =>
+        `Ризик ${risk}/100 · ліквідність ${liquidity === null ? "немає даних" : `${liquidity}/100`}`,
       developerReputation: (score, label) => `${score}/100 · ${label ?? ""}`,
       noReputationData: "немає даних репутації",
       budgetTo: (value) => `до ${value}`,
@@ -5797,6 +5804,9 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     },
     sections: {
       decisionDetails: "Why this is the verdict",
+      marketEvidence: "Market evidence behind the estimate",
+      nextActions: "What to do next",
+      additionalAnalysis: "Additional apartment analysis",
       aiAssistant: "Apartment assistant",
       insights: "Object insights",
       negotiation: "Negotiation arguments",
@@ -5959,6 +5969,9 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     },
     sections: {
       decisionDetails: "Dlaczego taki werdykt",
+      marketEvidence: "Dane rynkowe stojące za szacunkiem",
+      nextActions: "Co zrobić teraz",
+      additionalAnalysis: "Dodatkowa analiza mieszkania",
       aiAssistant: "Asystent mieszkania",
       insights: "Wnioski o obiekcie",
       negotiation: "Argumenty negocjacyjne",
@@ -6121,6 +6134,9 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     },
     sections: {
       decisionDetails: "Почему такой вывод",
+      marketEvidence: "Рыночные данные, на которых основана оценка",
+      nextActions: "Что делать дальше",
+      additionalAnalysis: "Дополнительный анализ квартиры",
       aiAssistant: "Помощник по квартире",
       insights: "Выводы по объекту",
       negotiation: "Аргументы для торга",
@@ -6285,6 +6301,9 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
     },
     sections: {
       decisionDetails: "Чому такий висновок",
+      marketEvidence: "Ринкові дані, на яких ґрунтується оцінка",
+      nextActions: "Що робити далі",
+      additionalAnalysis: "Додатковий аналіз квартири",
       aiAssistant: "Помічник щодо квартири",
       insights: "Висновки щодо об'єкта",
       negotiation: "Аргументи для торгу",

@@ -296,7 +296,8 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
         key=lambda item: (
             item.price > max_offer,
             item.price_per_m2,
-            item.nearest_stop_m,
+            item.nearest_stop_m is None,
+            item.nearest_stop_m or 0,
             item.id,
         ),
     )[:3]
@@ -309,6 +310,7 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
             reasons.append("ниже цена за m2")
         if (
             listing.nearest_stop_m is not None
+            and comparable.nearest_stop_m is not None
             and comparable.nearest_stop_m < listing.nearest_stop_m
         ):
             reasons.append("лучше транспортная близость")
@@ -431,36 +433,52 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
     listing = analysis.listing
     area = analysis.area_statistics
     scores = analysis.scores
-    gross_yield = (
-        analysis.rental_estimate.gross_yield_pct
-        if analysis.rental_estimate is not None
-        else _estimate_gross_yield_pct(analysis)
+    rental_item = f"Для аренды: {_rental_fit(analysis)}"
+    if (
+        analysis.rental_estimate is not None
+        and analysis.rental_estimate.status == "estimated"
+        and analysis.rental_estimate.gross_yield_pct is not None
+    ):
+        rental_item += (
+            f" Rental Potential {_score_text(scores.rental_potential_score)}; "
+            f"ориентировочная gross yield {analysis.rental_estimate.gross_yield_pct:.1f}%."
+        )
+    else:
+        rental_item += " Оценка доходности недоступна без достаточных арендных данных."
+
+    liquidity_item = (
+        f"Ликвидность: {_liquidity_fit(analysis)} Liquidity Score "
+        f"{_score_text(scores.liquidity_score)}."
     )
+    if area.listing_metrics_available:
+        liquidity_item += (
+            f" Средняя экспозиция района {area.average_days_on_market} дней, "
+            f"объект {listing.days_on_market} дней."
+        )
+
+    development_item = f"Развитие района: {_future_area_outlook(analysis)}"
+    if listing.planned_investments_within_2km is not None:
+        development_item += (
+            f" Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}."
+        )
+    if area.listing_metrics_available:
+        development_item += (
+            f" Цены 90d {area.price_change_90d_pct:+.1f}%, "
+            f"предложение 90d {area.supply_change_90d_pct:+.1f}%."
+        )
     items = [
         f"Для жизни: {_own_living_fit(analysis)}",
         f"Для семьи: {_family_fit(analysis)}",
-        (
-            f"Для аренды: {_rental_fit(analysis)} Rental Potential "
-            f"{scores.rental_potential_score}/100; ориентировочная gross yield "
-            f"{gross_yield:.1f}%."
-        ),
-        (
-            f"Ликвидность: {_liquidity_fit(analysis)} Liquidity Score "
-            f"{scores.liquidity_score}/100; средняя экспозиция района "
-            f"{area.average_days_on_market} дней, объект {listing.days_on_market} дней."
-        ),
-        (
-            f"Развитие района: {_future_area_outlook(analysis)} "
-            f"Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}; "
-            f"цены 90d {area.price_change_90d_pct:+.1f}%, "
-            f"предложение 90d {area.supply_change_90d_pct:+.1f}%."
-        ),
+        rental_item,
+        liquidity_item,
+        development_item,
     ]
     items.extend(_future_impact_report_items(analysis))
     if analysis.growth_analysis is not None:
         growth = analysis.growth_analysis
         items.append(
-            f"Growth analysis: {growth.growth_score}/100 ({growth.growth_label}). {growth.summary}"
+            f"Growth analysis: {_score_text(growth.growth_score)} "
+            f"({growth.growth_label}). {growth.summary}"
         )
         if growth.positive_signals:
             items.append(f"Growth positives: {'; '.join(growth.positive_signals[:3])}.")
@@ -468,7 +486,13 @@ def _buyer_lifestyle_rental_outlook_section(analysis: ListingAnalysis | None) ->
             items.append(f"Growth drags/checks: {'; '.join(growth.drag_signals[:3])}.")
         if growth.missing_layers:
             items.append(f"Growth data gaps to verify: {'; '.join(growth.missing_layers[:3])}.")
-    if analysis.rental_estimate is not None:
+    if (
+        analysis.rental_estimate is not None
+        and analysis.rental_estimate.status == "estimated"
+        and analysis.rental_estimate.monthly_rent_low_pln is not None
+        and analysis.rental_estimate.monthly_rent_mid_pln is not None
+        and analysis.rental_estimate.monthly_rent_high_pln is not None
+    ):
         rental = analysis.rental_estimate
         items.append(
             f"Rental estimate: {_money(rental.monthly_rent_low_pln)}-"
@@ -686,8 +710,8 @@ def _investor_section(analysis: ListingAnalysis | None) -> ReportSection:
     return ReportSection(
         title="Инвестиционная оценка",
         items=[
-            f"Liquidity Score: {scores.liquidity_score}/100",
-            f"Rental Potential Score: {scores.rental_potential_score}/100",
+            f"Liquidity Score: {_score_text(scores.liquidity_score)}",
+            f"Rental Potential Score: {_score_text(scores.rental_potential_score)}",
             f"Investment Score: {scores.investment_score}/100",
             *scores.reasons,
         ],
@@ -699,27 +723,32 @@ def _investor_rental_yield_section(analysis: ListingAnalysis | None) -> ReportSe
         return ReportSection(title="Арендная доходность", items=[])
 
     listing = analysis.listing
-    if analysis.rental_estimate is None:
-        yield_pct = _estimate_gross_yield_pct(analysis)
-        monthly_rent = round(listing.price * yield_pct / 100 / 12)
-        annual_rent = monthly_rent * 12
+    if analysis.rental_estimate is None or analysis.rental_estimate.status == "insufficient_data":
+        sample_size = analysis.rental_estimate.sample_size if analysis.rental_estimate else 0
         return ReportSection(
             title="Арендная доходность",
             items=[
                 (
-                    "MVP estimate: gross yield "
-                    f"{yield_pct:.1f}% при ориентировочной аренде {_money(monthly_rent)}/мес."
+                    "Недостаточно подтверждённых арендных данных для оценки доходности: "
+                    f"{sample_size}/3 релевантных наблюдений."
                 ),
-                f"Ориентировочная годовая аренда brutto: {_money(annual_rent)}.",
-                f"Rental Potential Score: {analysis.scores.rental_potential_score}/100.",
+                f"Rental Potential Score: {_score_text(analysis.scores.rental_potential_score)}.",
                 (
-                    "Это грубая эвристика для первичного отбора; перед покупкой нужна проверка "
-                    "реальных арендных comparables, vacancy и налогов."
+                    "Перед инвестиционным решением проверьте реальные арендные аналоги, "
+                    "vacancy, расходы, налоги и ремонт."
                 ),
             ],
         )
 
     rental = analysis.rental_estimate
+    assert rental.monthly_rent_low_pln is not None
+    assert rental.monthly_rent_mid_pln is not None
+    assert rental.monthly_rent_high_pln is not None
+    assert rental.rent_per_m2_mid_pln is not None
+    assert rental.gross_yield_pct is not None
+    assert rental.net_yield_pct is not None
+    assert rental.operating_costs_monthly_pln is not None
+    assert rental.net_operating_income_monthly_pln is not None
     scenario_items = [
         (
             f"{scenario.label}: cashflow {_money(scenario.net_cashflow_monthly_pln)}/мес., "
@@ -741,14 +770,17 @@ def _investor_rental_yield_section(analysis: ListingAnalysis | None) -> ReportSe
                 f"{rental.vacancy_rate_pct:.1f}%, operating costs "
                 f"{_money(rental.operating_costs_monthly_pln)}/мес."
             ),
+            f"Net yield before tax and financing: {rental.net_yield_pct:.1f}%.",
+            (
+                f"Rental evidence: {rental.sample_size} observations, "
+                f"{rental.geographic_scope}, {rental.period or 'period unavailable'}, "
+                f"sources: {', '.join(rental.source_names)}."
+            ),
             f"NOI before financing: {_money(rental.net_operating_income_monthly_pln)}/мес.",
             *scenario_items,
             f"Rental estimate confidence: {rental.confidence_score}/100.",
-            f"Rental Potential Score: {analysis.scores.rental_potential_score}/100.",
-            (
-                f"Транспортный фактор: остановка {listing.nearest_stop_m} m, "
-                f"до центра {listing.distance_to_center_km:.1f} km."
-            ),
+            f"Rental Potential Score: {_score_text(analysis.scores.rental_potential_score)}.",
+            _transport_context(listing.nearest_stop_m, listing.distance_to_center_km),
             *rental.risk_notes[:3],
             (
                 "Это screening estimate; перед покупкой нужна проверка реальных "
@@ -774,7 +806,7 @@ def _investor_alternatives_section(analysis: ListingAnalysis | None) -> ReportSe
         key=lambda item: (
             item.price_per_m2,
             item.days_on_market,
-            -item.planned_investments_within_2km,
+            -(item.planned_investments_within_2km or 0),
         ),
     )
     items = [
@@ -789,7 +821,8 @@ def _investor_alternatives_section(analysis: ListingAnalysis | None) -> ReportSe
                 f"({price_delta:+,} PLN/m2), "
                 f"{comparable.days_on_market} дней на рынке "
                 f"({exposure_delta:+} к объекту), "
-                f"planned investments: {comparable.planned_investments_within_2km}."
+                "planned investments: "
+                f"{_optional_count(comparable.planned_investments_within_2km)}."
             ).replace(",", " ")
         )
     return ReportSection(title="Сравнение с альтернативами", items=items)
@@ -802,19 +835,30 @@ def _investor_liquidity_growth_section(analysis: ListingAnalysis | None) -> Repo
     listing = analysis.listing
     area = analysis.area_statistics
     scores = analysis.scores
-    thesis = [
-        f"Liquidity Score: {scores.liquidity_score}/100.",
-        (
-            f"Average days on market в районе: {area.average_days_on_market}; "
-            f"объект: {listing.days_on_market}."
-        ),
-        f"Динамика цены района за 90 дней: {area.price_change_90d_pct:+.1f}%.",
-        f"Динамика предложения за 90 дней: {area.supply_change_90d_pct:+.1f}%.",
-        f"Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}.",
-    ]
-    if area.price_change_90d_pct > 0 and listing.planned_investments_within_2km > 0:
+    thesis = [f"Liquidity Score: {_score_text(scores.liquidity_score)}."]
+    if area.listing_metrics_available:
+        thesis.extend(
+            [
+                (
+                    f"Average days on market в районе: {area.average_days_on_market}; "
+                    f"объект: {listing.days_on_market}."
+                ),
+                f"Динамика цены района за 90 дней: {area.price_change_90d_pct:+.1f}%.",
+                f"Динамика предложения за 90 дней: {area.supply_change_90d_pct:+.1f}%.",
+            ]
+        )
+    if listing.planned_investments_within_2km is not None:
+        thesis.append(
+            f"Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}."
+        )
+    if (
+        area.listing_metrics_available
+        and area.price_change_90d_pct > 0
+        and listing.planned_investments_within_2km is not None
+        and listing.planned_investments_within_2km > 0
+    ):
         thesis.append("Growth thesis: район растет и рядом есть future infrastructure catalysts.")
-    elif area.supply_change_90d_pct > 15:
+    elif area.listing_metrics_available and area.supply_change_90d_pct > 15:
         thesis.append("Risk thesis: предложение быстро растет; проверьте риск oversupply.")
     else:
         thesis.append("Growth thesis: нейтральный сценарий, решение зависит от цены входа.")
@@ -822,7 +866,7 @@ def _investor_liquidity_growth_section(analysis: ListingAnalysis | None) -> Repo
     if analysis.growth_analysis is not None:
         growth = analysis.growth_analysis
         thesis.append(
-            f"Growth analysis score: {growth.growth_score}/100 "
+            f"Growth analysis score: {_score_text(growth.growth_score)} "
             f"({growth.growth_label}). {growth.summary}"
         )
         thesis.extend(f"Growth positive: {item}" for item in growth.positive_signals[:3])
@@ -918,10 +962,11 @@ def _realtor_location_section(analysis: ListingAnalysis | None) -> ReportSection
         items=[
             f"Адрес/район: {listing.address}, {listing.district}, {listing.city}.",
             f"Mapa: {map_url}",
-            f"До центра: {listing.distance_to_center_km:.1f} km.",
-            f"Ближайшая остановка: {listing.nearest_stop_m} m.",
-            f"Ближайшая школа: {listing.nearest_school_m} m.",
-            f"Планируемые инвестиции в 2 km: {listing.planned_investments_within_2km}.",
+            f"До центра: {_optional_distance_km(listing.distance_to_center_km)}.",
+            f"Ближайшая остановка: {_optional_distance_m(listing.nearest_stop_m)}.",
+            f"Ближайшая школа: {_optional_distance_m(listing.nearest_school_m)}.",
+            "Планируемые инвестиции в 2 km: "
+            f"{_optional_count(listing.planned_investments_within_2km)}.",
         ],
     )
 
@@ -1023,19 +1068,19 @@ def _own_living_fit(analysis: ListingAnalysis) -> str:
     listing = analysis.listing
     strengths: list[str] = []
     tradeoffs: list[str] = []
-    if listing.distance_to_center_km <= 8:
+    if listing.distance_to_center_km is not None and listing.distance_to_center_km <= 8:
         strengths.append(f"до центра {listing.distance_to_center_km:.1f} km")
-    else:
+    elif listing.distance_to_center_km is not None:
         tradeoffs.append(f"до центра {listing.distance_to_center_km:.1f} km")
-    if listing.nearest_stop_m <= 600:
+    if listing.nearest_stop_m is not None and listing.nearest_stop_m <= 600:
         strengths.append(f"остановка {listing.nearest_stop_m} m")
-    else:
+    elif listing.nearest_stop_m is not None:
         tradeoffs.append(f"остановка {listing.nearest_stop_m} m")
     if listing.parks_within_1km:
         strengths.append(f"парки в 1 km: {listing.parks_within_1km}")
     if listing.floor == 0:
         tradeoffs.append("parter/нулевой этаж")
-    if listing.nearest_major_road_m < 150:
+    if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 150:
         tradeoffs.append(f"близко к major road: {listing.nearest_major_road_m} m")
 
     if strengths and not tradeoffs:
@@ -1053,15 +1098,20 @@ def _family_fit(analysis: ListingAnalysis) -> str:
         strengths.append(f"{listing.rooms} комнаты")
     else:
         constraints.append(f"{listing.rooms} комнаты")
-    if listing.nearest_school_m <= 1000 or listing.schools_within_1km > 0:
-        strengths.append(f"школа {listing.nearest_school_m} m")
-    else:
+    if (
+        listing.nearest_school_m is not None
+        and listing.nearest_school_m <= 1000
+    ) or (listing.schools_within_1km is not None and listing.schools_within_1km > 0):
+        strengths.append(
+            f"школа {_optional_distance_m(listing.nearest_school_m)}"
+        )
+    elif listing.nearest_school_m is not None or listing.schools_within_1km is not None:
         constraints.append(f"школа {listing.nearest_school_m} m")
     if listing.parks_within_1km:
         strengths.append(f"парки в 1 km: {listing.parks_within_1km}")
-    else:
-        constraints.append("нет парка в 1 km в MVP-данных")
-    if listing.nearest_major_road_m < 150:
+    elif listing.parks_within_1km is not None:
+        constraints.append("в доступных данных нет парка в 1 km")
+    if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 150:
         constraints.append(f"major road {listing.nearest_major_road_m} m")
 
     if len(strengths) >= 3 and not constraints:
@@ -1074,7 +1124,9 @@ def _family_fit(analysis: ListingAnalysis) -> str:
 def _rental_fit(analysis: ListingAnalysis) -> str:
     listing = analysis.listing
     score = analysis.scores.rental_potential_score
-    if score >= 65 and listing.nearest_stop_m <= 600:
+    if score is None:
+        return "недостаточно данных для оценки арендного сценария."
+    if score >= 65 and listing.nearest_stop_m is not None and listing.nearest_stop_m <= 600:
         return "выглядит интересно для аренды благодаря rental score и транспорту."
     if score >= 50:
         return "средний арендный сценарий; проверить реальные ставки аренды и vacancy."
@@ -1085,6 +1137,8 @@ def _liquidity_fit(analysis: ListingAnalysis) -> str:
     listing = analysis.listing
     area = analysis.area_statistics
     score = analysis.scores.liquidity_score
+    if score is None or not area.listing_metrics_available:
+        return "недостаточно listing-данных для оценки ликвидности."
     if score >= 65 and listing.days_on_market <= area.average_days_on_market:
         return "ликвидность выглядит сильной относительно района."
     if score >= 50:
@@ -1097,11 +1151,16 @@ def _future_area_outlook(analysis: ListingAnalysis) -> str:
         return analysis.future_area_impact.summary
     listing = analysis.listing
     area = analysis.area_statistics
-    if listing.planned_investments_within_2km >= 2 and area.price_change_90d_pct >= 0:
+    if (
+        listing.planned_investments_within_2km is not None
+        and listing.planned_investments_within_2km >= 2
+        and area.listing_metrics_available
+        and area.price_change_90d_pct >= 0
+    ):
         return "есть позитивный infrastructure/growth сигнал, но проверить сроки реализации."
-    if area.supply_change_90d_pct > 15:
+    if area.listing_metrics_available and area.supply_change_90d_pct > 15:
         return "предложение растет быстро, проверить риск oversupply и давление на цену."
-    if area.price_change_90d_pct < -3:
+    if area.listing_metrics_available and area.price_change_90d_pct < -3:
         return "район просел по цене за 90 дней, нужен консервативный сценарий."
     if listing.planned_investments_within_2km:
         return "есть planned-investment сигнал, но влияние зависит от конкретного проекта."
@@ -1113,15 +1172,25 @@ def _location_risk_flags(analysis: ListingAnalysis) -> list[str]:
     risks: list[str] = []
     if analysis.future_area_impact is not None:
         risks.extend(analysis.future_area_impact.risk_signals[:2])
-    if listing.nearest_major_road_m < 200:
+    if listing.nearest_major_road_m is not None and listing.nearest_major_road_m < 200:
         risks.append(f"шум/трафик от major road {listing.nearest_major_road_m} m")
-    if listing.nearest_industrial_zone_m < 1000:
+    if (
+        listing.nearest_industrial_zone_m is not None
+        and listing.nearest_industrial_zone_m < 1000
+    ):
         risks.append(f"промзона {listing.nearest_industrial_zone_m} m")
-    if listing.nearest_stop_m > 900:
+    if listing.nearest_stop_m is not None and listing.nearest_stop_m > 900:
         risks.append(f"остановка далеко: {listing.nearest_stop_m} m")
-    if listing.nearest_school_m > 1200 and listing.rooms >= 3:
+    if (
+        listing.nearest_school_m is not None
+        and listing.nearest_school_m > 1200
+        and listing.rooms >= 3
+    ):
         risks.append(f"для семьи школа далековато: {listing.nearest_school_m} m")
-    if analysis.area_statistics.supply_change_90d_pct > 15:
+    if (
+        analysis.area_statistics.listing_metrics_available
+        and analysis.area_statistics.supply_change_90d_pct > 15
+    ):
         risks.append("рост предложения может снижать переговорную позицию продавцов")
     return risks[:4]
 
@@ -1137,18 +1206,27 @@ def _deduplicate(items: list[str]) -> list[str]:
     return result
 
 
-def _estimate_gross_yield_pct(analysis: ListingAnalysis) -> float:
-    scores = analysis.scores
-    listing = analysis.listing
-    estimate = 4.0 + (scores.rental_potential_score - 50) * 0.035
-    estimate -= max(scores.price_delta_to_fair_mid_pct, 0) * 0.015
-    if listing.nearest_stop_m <= 300:
-        estimate += 0.25
-    if listing.distance_to_center_km <= 4:
-        estimate += 0.2
-    if listing.planned_investments_within_2km > 0:
-        estimate += 0.15
-    return round(min(max(estimate, 2.5), 6.5), 1)
+def _score_text(score: int | None) -> str:
+    return "нет данных" if score is None else f"{score}/100"
+
+
+def _optional_distance_m(value: int | None) -> str:
+    return "нет данных" if value is None else f"{value} m"
+
+
+def _optional_distance_km(value: float | None) -> str:
+    return "нет данных" if value is None else f"{value:.1f} km"
+
+
+def _optional_count(value: int | None) -> str:
+    return "нет данных" if value is None else str(value)
+
+
+def _transport_context(stop_m: int | None, center_km: float | None) -> str:
+    return (
+        f"Транспортный фактор: остановка {_optional_distance_m(stop_m)}, "
+        f"до центра {_optional_distance_km(center_km)}."
+    )
 
 
 REPORT_TEMPLATES: dict[ReportAudience, ReportTemplate] = {

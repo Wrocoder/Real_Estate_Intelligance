@@ -16,8 +16,18 @@ type ComparableCopy = {
   title: string;
   description: string;
   sample: (count: number) => string;
+  selectionQuality: string;
+  selectionStatuses: Record<"strong" | "limited" | "insufficient", string>;
+  stage: (current: number, total: number) => string;
   scope: string;
   freshness: string;
+  period: string;
+  sources: string;
+  confidence: string;
+  confidenceLevels: Record<"high" | "medium" | "low", string>;
+  confidenceFactors: Record<string, string>;
+  exclusions: string;
+  exclusionMap: Record<string, string>;
   observed: string;
   distance: string;
   market: string;
@@ -51,8 +61,30 @@ const COPY: Record<Locale, ComparableCopy> = {
     description:
       "These properties are reference points for the estimate. They are not a transaction valuation or a guarantee of the achievable price.",
     sample: (count) => `${count} comparable ${count === 1 ? "property" : "properties"}`,
+    selectionQuality: "Evidence quality",
+    selectionStatuses: { strong: "Strong sample", limited: "Widened sample", insufficient: "Insufficient sample" },
+    stage: (current, total) => `selection stage ${current} of ${total}`,
     scope: "Selection scope",
     freshness: "Observation window",
+    period: "Observed period",
+    sources: "Sources",
+    confidence: "Estimate confidence",
+    confidenceLevels: { high: "High", medium: "Medium", low: "Low" },
+    confidenceFactors: {
+      sample_size: "Sample size",
+      relevance: "Property similarity",
+      freshness: "Data freshness",
+      geographic_scope: "Geographic relevance",
+      price_consistency: "Price consistency",
+      source_quality: "Source quality",
+      property_completeness: "Property data completeness",
+    },
+    exclusions: "Excluded",
+    exclusionMap: {
+      stale: "outdated observations",
+      different_city: "properties in another city",
+      different_market: "properties from another market segment",
+    },
     observed: "Observed",
     distance: "Distance",
     market: "Market",
@@ -112,8 +144,30 @@ const COPY: Record<Locale, ComparableCopy> = {
     description:
       "Te nieruchomości są punktami odniesienia dla szacunku. Nie są wyceną transakcyjną ani gwarancją ceny, którą można uzyskać.",
     sample: (count) => `${count} ${count === 1 ? "porównywana nieruchomość" : "porównywane nieruchomości"}`,
+    selectionQuality: "Jakość dowodów",
+    selectionStatuses: { strong: "Mocna próba", limited: "Rozszerzona próba", insufficient: "Niewystarczająca próba" },
+    stage: (current, total) => `etap wyboru ${current} z ${total}`,
     scope: "Zakres wyboru",
     freshness: "Okno obserwacji",
+    period: "Okres obserwacji",
+    sources: "Źródła",
+    confidence: "Pewność szacunku",
+    confidenceLevels: { high: "Wysoka", medium: "Średnia", low: "Niska" },
+    confidenceFactors: {
+      sample_size: "Liczebność próby",
+      relevance: "Podobieństwo nieruchomości",
+      freshness: "Aktualność danych",
+      geographic_scope: "Dopasowanie geograficzne",
+      price_consistency: "Spójność cen",
+      source_quality: "Jakość źródeł",
+      property_completeness: "Kompletność danych nieruchomości",
+    },
+    exclusions: "Wykluczono",
+    exclusionMap: {
+      stale: "nieaktualne obserwacje",
+      different_city: "nieruchomości z innego miasta",
+      different_market: "nieruchomości z innego segmentu rynku",
+    },
     observed: "Zaobserwowano",
     distance: "Odległość",
     market: "Rynek",
@@ -173,8 +227,30 @@ const COPY: Record<Locale, ComparableCopy> = {
     description:
       "Эти объекты служат ориентиром для оценки. Это не оценка сделки и не гарантия достижимой цены.",
     sample: (count) => `${count} ${count === 1 ? "сравнимый объект" : "сравнимых объекта"}`,
+    selectionQuality: "Качество доказательств",
+    selectionStatuses: { strong: "Сильная выборка", limited: "Расширенная выборка", insufficient: "Недостаточная выборка" },
+    stage: (current, total) => `этап отбора ${current} из ${total}`,
     scope: "Охват выборки",
     freshness: "Окно наблюдения",
+    period: "Период наблюдений",
+    sources: "Источники",
+    confidence: "Уверенность оценки",
+    confidenceLevels: { high: "Высокая", medium: "Средняя", low: "Низкая" },
+    confidenceFactors: {
+      sample_size: "Размер выборки",
+      relevance: "Сходство объектов",
+      freshness: "Свежесть данных",
+      geographic_scope: "Географическая релевантность",
+      price_consistency: "Согласованность цен",
+      source_quality: "Качество источников",
+      property_completeness: "Полнота данных объекта",
+    },
+    exclusions: "Исключено",
+    exclusionMap: {
+      stale: "устаревшие наблюдения",
+      different_city: "объекты из другого города",
+      different_market: "объекты из другого сегмента рынка",
+    },
     observed: "Наблюдалось",
     distance: "Расстояние",
     market: "Рынок",
@@ -234,8 +310,30 @@ const COPY: Record<Locale, ComparableCopy> = {
     description:
       "Ці об'єкти є орієнтирами для оцінки. Це не оцінка угоди й не гарантія досяжної ціни.",
     sample: (count) => `${count} ${count === 1 ? "порівнянний об'єкт" : "порівнянних об'єкти"}`,
+    selectionQuality: "Якість доказів",
+    selectionStatuses: { strong: "Сильна вибірка", limited: "Розширена вибірка", insufficient: "Недостатня вибірка" },
+    stage: (current, total) => `етап відбору ${current} з ${total}`,
     scope: "Охоплення вибірки",
     freshness: "Період спостереження",
+    period: "Період спостережень",
+    sources: "Джерела",
+    confidence: "Впевненість оцінки",
+    confidenceLevels: { high: "Висока", medium: "Середня", low: "Низька" },
+    confidenceFactors: {
+      sample_size: "Розмір вибірки",
+      relevance: "Подібність об'єктів",
+      freshness: "Актуальність даних",
+      geographic_scope: "Географічна релевантність",
+      price_consistency: "Узгодженість цін",
+      source_quality: "Якість джерел",
+      property_completeness: "Повнота даних об'єкта",
+    },
+    exclusions: "Виключено",
+    exclusionMap: {
+      stale: "застарілі спостереження",
+      different_city: "об'єкти з іншого міста",
+      different_market: "об'єкти з іншого сегмента ринку",
+    },
     observed: "Спостерігалося",
     distance: "Відстань",
     market: "Ринок",
@@ -293,29 +391,29 @@ const COPY: Record<Locale, ComparableCopy> = {
 };
 
 const SCOPE_LABELS: Record<string, Record<Locale, string>> = {
-  "same district, market, type, size and rooms": {
-    en: "same district, market, type, size and rooms",
-    pl: "ta sama dzielnica, rynek, typ, metraż i liczba pokoi",
-    ru: "тот же район, рынок, тип, площадь и число комнат",
-    uk: "той самий район, ринок, тип, площа й кількість кімнат",
+  "same district, market, type, condition, size and rooms": {
+    en: "same district, market, type, condition, size and rooms",
+    pl: "ta sama dzielnica, rynek, typ, stan, metraż i liczba pokoi",
+    ru: "тот же район, рынок, тип, состояние, площадь и число комнат",
+    uk: "той самий район, ринок, тип, стан, площа й кількість кімнат",
   },
-  "same city, market, type, size and rooms": {
-    en: "same city, market, type, size and rooms",
-    pl: "to samo miasto, rynek, typ, metraż i liczba pokoi",
-    ru: "тот же город, рынок, тип, площадь и число комнат",
-    uk: "те саме місто, ринок, тип, площа й кількість кімнат",
+  "same district and market, widened property attributes": {
+    en: "same district and market; wider property attributes",
+    pl: "ta sama dzielnica i rynek; szerszy zakres cech",
+    ru: "тот же район и рынок; расширенный диапазон характеристик",
+    uk: "той самий район і ринок; ширший діапазон характеристик",
   },
-  "same city and market, widened size/rooms": {
+  "same city and market, similar size and rooms": {
+    en: "same city and market; similar size and rooms",
+    pl: "to samo miasto i rynek; podobny metraż i liczba pokoi",
+    ru: "тот же город и рынок; похожая площадь и число комнат",
+    uk: "те саме місто й ринок; схожа площа й кількість кімнат",
+  },
+  "same city and market, widened size and rooms": {
     en: "same city and market; wider size/room range",
     pl: "to samo miasto i rynek; szerszy zakres metrażu/pokoi",
     ru: "тот же город и рынок; более широкий диапазон площади/комнат",
     uk: "те саме місто й ринок; ширший діапазон площі/кімнат",
-  },
-  "same city, widened market fallback": {
-    en: "same city; market scope widened",
-    pl: "to samo miasto; rozszerzony zakres rynku",
-    ru: "тот же город; охват рынка расширен",
-    uk: "те саме місто; охоплення ринку розширено",
   },
   "no relevant fresh comparables": {
     en: "no relevant fresh comparables",
@@ -335,6 +433,17 @@ export function ComparableEvidencePanel({ analysis, locale }: Props) {
   const copy = COPY[locale];
   const evidence = analysis.comparable_evidence ?? [];
   const scope = SCOPE_LABELS[analysis.comparables_scope]?.[locale] ?? copy.unknown;
+  const status = analysis.comparables_status ?? "insufficient";
+  const confidence = analysis.scores.fair_price_confidence;
+  const period =
+    analysis.comparables_observed_from && analysis.comparables_observed_to
+      ? `${dateValue(analysis.comparables_observed_from, locale)}–${dateValue(
+          analysis.comparables_observed_to,
+          locale,
+        )}`
+      : copy.unknown;
+  const selectionStage = Math.min((analysis.comparables_selection_level ?? 4) + 1, 4);
+  const exclusions = analysis.comparables_exclusions ?? [];
 
   return (
     <section className="comparable-evidence-section" aria-labelledby="comparable-evidence-title">
@@ -346,12 +455,57 @@ export function ComparableEvidencePanel({ analysis, locale }: Props) {
         <span className="status-pill info">{copy.sample(evidence.length)}</span>
       </div>
       <div className="comparable-evidence-summary">
+        <span>
+          <strong>{copy.selectionQuality}:</strong> {copy.selectionStatuses[status]} (
+          {copy.stage(selectionStage, 4)})
+        </span>
         <span><strong>{copy.scope}:</strong> {scope}</span>
         <span>
           <strong>{copy.freshness}:</strong> {numberValue(analysis.comparables_freshness_days, locale)} {copy.days}
         </span>
+        <span><strong>{copy.period}:</strong> {period}</span>
+        <span>
+          <strong>{copy.sources}:</strong>{" "}
+          {analysis.comparables_source_names?.length
+            ? analysis.comparables_source_names.join(", ")
+            : copy.unknown}
+        </span>
         <span>{copy.limitations}</span>
       </div>
+      {confidence ? (
+        <div className="comparable-confidence" aria-label={copy.confidence}>
+          <div>
+            <strong>
+              {copy.confidence}: {copy.confidenceLevels[confidence.level]} ({confidence.score}/100)
+            </strong>
+            <span>
+              {copy.sample(confidence.comparable_count)}
+              {confidence.transaction_observation_count > 0
+                ? ` · RCN: ${numberValue(confidence.transaction_observation_count, locale)}`
+                : ""}
+            </span>
+          </div>
+          <ul>
+            {confidence.factors.map((factor) => (
+              <li key={factor.code} data-status={factor.status}>
+                <span>{copy.confidenceFactors[factor.code] ?? copy.unknown}</span>
+                <strong>{factor.score}/100</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {exclusions.length > 0 ? (
+        <p className="comparable-exclusions">
+          <strong>{copy.exclusions}:</strong>{" "}
+          {exclusions
+            .map(
+              (item) =>
+                `${numberValue(item.count, locale)} ${copy.exclusionMap[item.code] ?? copy.unknown}`,
+            )
+            .join("; ")}
+        </p>
+      ) : null}
       {evidence.length > 0 ? (
         <div className="comparable-evidence-list">
           {evidence.map((item, index) => (

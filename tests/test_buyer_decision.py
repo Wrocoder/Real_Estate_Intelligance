@@ -41,6 +41,17 @@ def test_buyer_decision_returns_actionable_verdicts(
     assert decision.verdict.critical_unknowns
 
 
+def test_low_fair_price_confidence_requires_verification_before_buying() -> None:
+    decision = _build_decision(
+        price_delta_pct=0,
+        risk_score=15,
+        negotiation_score=35,
+        fair_price_confidence_score=35,
+    )
+
+    assert decision.verdict.status == "verify_first"
+
+
 def test_buyer_decision_exposes_due_diligence_total_cost_and_source_confidence() -> None:
     decision = _build_decision(
         price_delta_pct=8.0,
@@ -199,6 +210,7 @@ def _build_decision(
     custom_renovation_budget_pln: int | None = None,
     relisted: bool = False,
     purchase_intent: PurchaseIntent = "unsure",
+    fair_price_confidence_score: int = 82,
 ):
     repository = InMemoryRealEstateRepository(include_demo_data=True)
     base_listing = repository.get_listing("wr-001")
@@ -233,7 +245,7 @@ def _build_decision(
             "fair_price_low": round(fair_mid * 0.94),
             "fair_price_mid": fair_mid,
             "fair_price_high": round(fair_mid * 1.06),
-            "fair_price_confidence_score": 82,
+            "fair_price_confidence_score": fair_price_confidence_score,
             "price_delta_to_fair_mid_pct": price_delta_pct,
             "reasons": ["Comparable base supports the fair-price range."],
             "warnings": [],

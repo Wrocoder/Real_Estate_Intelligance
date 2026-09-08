@@ -91,16 +91,30 @@ def _transport_factor(
         for investment in planned_investments
         if _contains_any(investment.investment_type, ("tram", "bus", "transport", "metro"))
     ]
-    score = _clamp(
-        88
-        - max(0, (listing.nearest_stop_m or 500) - 250) / 7
-        + min(len(nearby_stops), 3) * 4
-        + min(len(planned_transport), 2) * 8
+    if listing.nearest_stop_m is None and not nearby_stops and not planned_transport:
+        return _missing_factor(
+            code="transport",
+            label="Transport access",
+            missing_layer="public-transport distance and stop references",
+            evidence=["Nearest stop and named stop coverage are unavailable."],
+            recommended_checks=[
+                "Check the real walking route to the stop, service frequency and "
+                "night/weekend coverage."
+            ],
+        )
+    score = (
+        _clamp(
+            88
+            - max(0, listing.nearest_stop_m - 250) / 7
+            + min(len(nearby_stops), 3) * 4
+            + min(len(planned_transport), 2) * 8
+        )
+        if listing.nearest_stop_m is not None
+        else _clamp(35 + min(len(nearby_stops), 3) * 18 + min(len(planned_transport), 2) * 8)
     )
-    evidence = [
-        f"Nearest public transport stop: {listing.nearest_stop_m} m.",
-        f"Stops within 800 m in current data: {len(nearby_stops)}.",
-    ]
+    evidence = [f"Stops within 800 m in current data: {len(nearby_stops)}."]
+    if listing.nearest_stop_m is not None:
+        evidence.insert(0, f"Nearest public transport stop: {listing.nearest_stop_m} m.")
     if nearby_stops:
         evidence.append(f"Nearest named stops: {_names(nearby_stops, limit=2)}.")
     if planned_transport:
@@ -114,7 +128,11 @@ def _transport_factor(
             "Check real walking route to the stop, service frequency and night/weekend coverage.",
             "Verify planned transport status, funding and delivery timeline.",
         ],
-        data_status="listing distances + transport stop/open-data references",
+        data_status=(
+            "listing distance + transport stop/open-data references"
+            if listing.nearest_stop_m is not None
+            else "transport stop/open-data references; listing distance unavailable"
+        ),
     )
 
 
@@ -125,17 +143,40 @@ def _education_factor(
 ) -> ListingGrowthFactor:
     nearby_schools = _nearby_refs(listing, schools, radius_km=1.5)
     nearby_kindergartens = _nearby_refs(listing, kindergartens, radius_km=1.5)
+    if (
+        listing.schools_within_1km is None
+        and listing.nearest_school_m is None
+        and not nearby_schools
+        and not nearby_kindergartens
+    ):
+        return _missing_factor(
+            code="education",
+            label="Schools and childcare",
+            missing_layer="school distance/count and education references",
+            evidence=["School proximity and education coverage are unavailable."],
+            recommended_checks=[
+                "Check school catchment, capacity, commute route and actual quality indicators."
+            ],
+        )
     score = _clamp(
         36
-        + min(listing.schools_within_1km or 1, 4) * 12
+        + (
+            min(listing.schools_within_1km, 4) * 12
+            if listing.schools_within_1km is not None
+            else 0
+        )
         + min(len(nearby_kindergartens), 3) * 9
-        - max(0, (listing.nearest_school_m or 900) - 800) / 24
+        - (
+            max(0, listing.nearest_school_m - 800) / 24
+            if listing.nearest_school_m is not None
+            else 0
+        )
     )
-    evidence = [
-        f"Schools within 1 km: {listing.schools_within_1km}.",
-        f"Nearest school: {listing.nearest_school_m} m.",
-        f"Kindergartens within 1.5 km in current data: {len(nearby_kindergartens)}.",
-    ]
+    evidence = [f"Kindergartens within 1.5 km in current data: {len(nearby_kindergartens)}."]
+    if listing.schools_within_1km is not None:
+        evidence.insert(0, f"Schools within 1 km: {listing.schools_within_1km}.")
+    if listing.nearest_school_m is not None:
+        evidence.append(f"Nearest school: {listing.nearest_school_m} m.")
     if nearby_schools:
         evidence.append(f"Nearby schools: {_names(nearby_schools, limit=2)}.")
     return _factor(
@@ -163,16 +204,29 @@ def _parks_greenery_factor(
         for investment in planned_investments
         if _contains_any(investment.investment_type, ("park", "green", "public_space"))
     ]
+    if listing.parks_within_1km is None and not nearby_parks and not planned_greenery:
+        return _missing_factor(
+            code="parks_greenery",
+            label="Parks and greenery",
+            missing_layer="park count and greenery references",
+            evidence=["Park proximity and greenery coverage are unavailable."],
+            recommended_checks=[
+                "Check exact park access, noise, lighting and whether green areas are protected."
+            ],
+        )
     score = _clamp(
         35
-        + min(listing.parks_within_1km or 1, 4) * 14
+        + (
+            min(listing.parks_within_1km, 4) * 14
+            if listing.parks_within_1km is not None
+            else 0
+        )
         + min(len(nearby_parks), 3) * 8
         + min(len(planned_greenery), 2) * 7
     )
-    evidence = [
-        f"Parks within 1 km: {listing.parks_within_1km}.",
-        f"Park/green amenities within 1.5 km in current data: {len(nearby_parks)}.",
-    ]
+    evidence = [f"Park/green amenities within 1.5 km in current data: {len(nearby_parks)}."]
+    if listing.parks_within_1km is not None:
+        evidence.insert(0, f"Parks within 1 km: {listing.parks_within_1km}.")
     if planned_greenery:
         evidence.append(
             f"Planned greenery/public-space projects within 5 km: {len(planned_greenery)}."
@@ -251,15 +305,20 @@ def _retail_services_factor(
                 "Check groceries, pharmacies, gyms, parcel lockers and everyday services manually.",
             ],
         )
-    center_access_bonus = 6 if listing.distance_to_center_km <= 5 else 0
+    center_access_bonus = (
+        6
+        if listing.distance_to_center_km is not None and listing.distance_to_center_km <= 5
+        else 0
+    )
     score = _clamp(
         34 + min(len(nearby_15), 4) * 13 + min(len(nearby_25), 5) * 5 + center_access_bonus
     )
     evidence = [
         f"Retail/services amenities within 1.5 km: {len(nearby_15)}.",
         f"Retail/services amenities within 2.5 km: {len(nearby_25)}.",
-        f"Distance to center: {listing.distance_to_center_km:.1f} km.",
     ]
+    if listing.distance_to_center_km is not None:
+        evidence.append(f"Distance to center: {listing.distance_to_center_km:.1f} km.")
     return _factor(
         code="retail_services",
         label="Retail and everyday services",
@@ -302,15 +361,20 @@ def _offices_jobs_factor(
                 "Check commute to major employment nodes and planned business parks manually.",
             ],
         )
-    center_access_score = max(0, 24 - listing.distance_to_center_km * 3)
+    center_access_score = (
+        max(0, 24 - listing.distance_to_center_km * 3)
+        if listing.distance_to_center_km is not None
+        else 0
+    )
     score = _clamp(
         35 + min(len(nearby_offices), 4) * 11 + min(len(planned_jobs), 3) * 9 + center_access_score
     )
     evidence = [
         f"Office/job amenities within 3 km: {len(nearby_offices)}.",
         f"Planned job/economic catalysts within 5 km: {len(planned_jobs)}.",
-        f"Center access proxy: {listing.distance_to_center_km:.1f} km from center.",
     ]
+    if listing.distance_to_center_km is not None:
+        evidence.append(f"Center access proxy: {listing.distance_to_center_km:.1f} km from center.")
     return _factor(
         code="offices_jobs",
         label="Offices and jobs access",
@@ -369,22 +433,45 @@ def _population_jobs_growth_factor(
     future_area_impact: ListingFutureImpact | None,
     planned_investments: list[PlannedInvestment],
 ) -> ListingGrowthFactor:
-    future_score = future_area_impact.impact_score if future_area_impact is not None else 0
+    future_score = future_area_impact.impact_score if future_area_impact is not None else None
     planned_count = len(planned_investments)
-    score = _clamp(
-        48
-        + area_statistics.price_change_90d_pct * 4.2
-        - max(0, area_statistics.supply_change_90d_pct - 8) * 1.4
-        + max(0, 65 - area_statistics.average_days_on_market) * 0.22
-        + min(listing.planned_investments_within_2km, 4) * 5
-        + min(future_score, 80) * 0.12
-    )
-    evidence = [
-        f"Area price change 90d: {area_statistics.price_change_90d_pct:+.1f}%.",
-        f"Area supply change 90d: {area_statistics.supply_change_90d_pct:+.1f}%.",
-        f"Average days on market: {area_statistics.average_days_on_market}.",
-        f"Planned investments within 2 km: {listing.planned_investments_within_2km}.",
-    ]
+    if (
+        not area_statistics.listing_metrics_available
+        and listing.planned_investments_within_2km is None
+        and future_score in {None, 0}
+        and planned_count == 0
+    ):
+        return _missing_factor(
+            code="population_jobs_growth",
+            label="Population/jobs growth momentum",
+            missing_layer="local supply/demand and planned-investment signals",
+            evidence=["Local growth inputs are unavailable."],
+            recommended_checks=[
+                "Validate population/jobs growth with GUS/BDL, municipal plans and "
+                "the employer pipeline."
+            ],
+        )
+    score = 48.0
+    evidence: list[str] = []
+    if area_statistics.listing_metrics_available:
+        score += area_statistics.price_change_90d_pct * 4.2
+        score -= max(0, area_statistics.supply_change_90d_pct - 8) * 1.4
+        score += max(0, 65 - area_statistics.average_days_on_market) * 0.22
+        evidence.extend(
+            [
+                f"Area price change 90d: {area_statistics.price_change_90d_pct:+.1f}%.",
+                f"Area supply change 90d: {area_statistics.supply_change_90d_pct:+.1f}%.",
+                f"Average days on market: {area_statistics.average_days_on_market}.",
+            ]
+        )
+    if listing.planned_investments_within_2km is not None:
+        score += min(listing.planned_investments_within_2km, 4) * 5
+        evidence.append(
+            f"Planned investments within 2 km: {listing.planned_investments_within_2km}."
+        )
+    if future_score is not None:
+        score += min(future_score, 80) * 0.12
+    score = _clamp(score)
     if future_area_impact is not None:
         evidence.append(f"Future impact score: {future_area_impact.impact_score}/100.")
     else:
@@ -434,7 +521,7 @@ def _missing_factor(
     return ListingGrowthFactor(
         code=code,  # type: ignore[arg-type]
         label=label,
-        score=35,
+        score=None,
         weight=FACTOR_WEIGHTS[code],
         posture="missing",
         evidence=evidence,
@@ -467,17 +554,20 @@ def _nearby_refs(listing: Listing, refs: list[Any], *, radius_km: float) -> list
     return [ref for _, ref in sorted(nearby, key=lambda item: (item[0], item[1].name))]
 
 
-def _weighted_score(factors: list[ListingGrowthFactor]) -> int:
-    weighted = sum(factor.score * factor.weight for factor in factors)
-    total_weight = sum(factor.weight for factor in factors) or 1
-    return round(weighted / total_weight)
+def _weighted_score(factors: list[ListingGrowthFactor]) -> int | None:
+    available = [factor for factor in factors if factor.score is not None]
+    if not available:
+        return None
+    weighted = sum(factor.score * factor.weight for factor in available if factor.score is not None)
+    total_weight = sum(factor.weight for factor in available)
+    return round(weighted / total_weight) if total_weight else None
 
 
 def _positive_signals(factors: list[ListingGrowthFactor]) -> list[str]:
     signals = [
         f"{factor.label}: {factor.score}/100 ({factor.posture})"
         for factor in factors
-        if factor.score >= 65 and factor.posture != "missing"
+        if factor.score is not None and factor.score >= 65 and factor.posture != "missing"
     ]
     return signals[:5] or ["No strong growth catalyst is visible in current data."]
 
@@ -500,9 +590,12 @@ def _missing_layers(factors: list[ListingGrowthFactor]) -> list[str]:
     return sorted(set(layers))
 
 
-def _summary(growth_score: int, factors: list[ListingGrowthFactor]) -> str:
-    strongest = max(factors, key=lambda factor: factor.score)
-    weakest = min(factors, key=lambda factor: factor.score)
+def _summary(growth_score: int | None, factors: list[ListingGrowthFactor]) -> str:
+    available = [factor for factor in factors if factor.score is not None]
+    if growth_score is None or not available:
+        return "Insufficient verified inputs for a growth score; review the missing layers."
+    strongest = max(available, key=lambda factor: factor.score or 0)
+    weakest = min(available, key=lambda factor: factor.score or 0)
     if growth_score >= 70:
         label = "strong growth setup"
     elif growth_score >= 58:
@@ -517,7 +610,9 @@ def _summary(growth_score: int, factors: list[ListingGrowthFactor]) -> str:
     )
 
 
-def _growth_label(growth_score: int) -> str:
+def _growth_label(growth_score: int | None) -> str:
+    if growth_score is None:
+        return "insufficient_data"
     if growth_score >= 70:
         return "strong_growth"
     if growth_score >= 58:

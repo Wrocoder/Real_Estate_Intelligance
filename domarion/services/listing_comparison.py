@@ -76,8 +76,18 @@ def _build_item_metrics(
         )
     )
     fair_price_gap = listing.price - scores.fair_price_mid
-    estimated_rental_yield = _estimated_gross_rental_yield_pct(analysis)
-    estimated_monthly_rent = round(listing.price * estimated_rental_yield / 100 / 12)
+    estimated_rental_yield = (
+        analysis.rental_estimate.gross_yield_pct
+        if analysis.rental_estimate is not None
+        and analysis.rental_estimate.status == "estimated"
+        else None
+    )
+    estimated_monthly_rent = (
+        analysis.rental_estimate.monthly_rent_mid_pln
+        if analysis.rental_estimate is not None
+        and analysis.rental_estimate.status == "estimated"
+        else None
+    )
     decision_score = _decision_score(analysis)
 
     return CompareItemMetrics(
@@ -146,13 +156,31 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
             metric.listing_id,
         ),
     )
-    strongest_liquidity = max(
-        metrics,
-        key=lambda metric: (metric.liquidity_score, -metric.risk_score, metric.listing_id),
+    liquidity_metrics = [item for item in metrics if item.liquidity_score is not None]
+    rental_metrics = [item for item in metrics if item.rental_potential_score is not None]
+    strongest_liquidity = (
+        max(
+            liquidity_metrics,
+            key=lambda metric: (
+                metric.liquidity_score,
+                -metric.risk_score,
+                metric.listing_id,
+            ),
+        )
+        if liquidity_metrics
+        else None
     )
-    strongest_rental = max(
-        metrics,
-        key=lambda metric: (metric.rental_potential_score, -metric.risk_score, metric.listing_id),
+    strongest_rental = (
+        max(
+            rental_metrics,
+            key=lambda metric: (
+                metric.rental_potential_score,
+                -metric.risk_score,
+                metric.listing_id,
+            ),
+        )
+        if rental_metrics
+        else None
     )
     riskiest = max(metrics, key=lambda metric: (metric.risk_score, metric.listing_id))
 
@@ -161,8 +189,12 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
         best_value_listing_id=best_value.listing_id,
         best_total_cost_listing_id=best_total_cost.listing_id,
         lowest_monthly_payment_listing_id=lowest_payment.listing_id,
-        strongest_liquidity_listing_id=strongest_liquidity.listing_id,
-        strongest_rental_listing_id=strongest_rental.listing_id,
+        strongest_liquidity_listing_id=(
+            strongest_liquidity.listing_id if strongest_liquidity is not None else None
+        ),
+        strongest_rental_listing_id=(
+            strongest_rental.listing_id if strongest_rental is not None else None
+        ),
         riskiest_listing_id=riskiest.listing_id,
         average_price_per_m2=round(mean(metric.price_per_m2_pln for metric in metrics)),
         average_estimated_monthly_payment_pln=round(
@@ -171,15 +203,17 @@ def _build_summary(metrics: list[CompareItemMetrics]) -> CompareSummary:
         average_total_move_in_cost_pln=round(
             mean(metric.total_move_in_cost_pln for metric in metrics)
         ),
-        average_liquidity_score=round(mean(metric.liquidity_score for metric in metrics)),
-        average_rental_potential_score=round(
-            mean(metric.rental_potential_score for metric in metrics)
+        average_liquidity_score=_optional_mean(
+            [metric.liquidity_score for metric in metrics]
+        ),
+        average_rental_potential_score=_optional_mean(
+            [metric.rental_potential_score for metric in metrics]
         ),
         notes=[
             "Ипотека рассчитана на едином baseline: 20% wkład własny, 25 лет, 7.5% fixed.",
             (
-                "Decision score балансирует investment, risk, liquidity, "
-                "rental potential и переплату к fair price."
+                "Decision score балансирует только доступные investment, risk, liquidity, "
+                "rental potential и negotiation signals, затем учитывает переплату."
             ),
             (
                 "Total move-in cost включает цену, transaction costs, ремонт "
@@ -194,25 +228,16 @@ def _decision_score(analysis: ListingAnalysis) -> int:
     total_acquisition = _buyer_decision(analysis).total_acquisition
     overpricing_penalty = max(scores.price_delta_to_fair_mid_pct, 0) * 0.65
     renovation_gap_penalty = max(total_acquisition.post_renovation_value_gap_pln or 0, 0) / 8000
-    value = (
-        scores.investment_score * 0.42
-        + (100 - scores.risk_score) * 0.16
-        + scores.liquidity_score * 0.17
-        + scores.rental_potential_score * 0.15
-        + scores.negotiation_score * 0.10
-        - overpricing_penalty
-        - renovation_gap_penalty
+    value = _weighted_available_score(
+        (
+            (scores.investment_score, 0.42),
+            (100 - scores.risk_score, 0.16),
+            (scores.liquidity_score, 0.17),
+            (scores.rental_potential_score, 0.15),
+            (scores.negotiation_score, 0.10),
+        )
     )
-    return round(_clamp(value, 0, 100))
-
-
-def _estimated_gross_rental_yield_pct(analysis: ListingAnalysis) -> float:
-    scores = analysis.scores
-    area = analysis.area_statistics
-    estimate = 4.0 + (scores.rental_potential_score - 50) * 0.035
-    estimate += max(min(area.price_change_90d_pct, 8), -8) * 0.03
-    estimate -= max(analysis.listing.distance_to_center_km - 6, 0) * 0.04
-    return round(_clamp(estimate, 2.5, 7.5), 2)
+    return round(_clamp(value - overpricing_penalty - renovation_gap_penalty, 0, 100))
 
 
 def _recommendation(analysis: ListingAnalysis, decision_score: int) -> str:
@@ -233,11 +258,15 @@ def _recommendation(analysis: ListingAnalysis, decision_score: int) -> str:
             "После ремонта и мебели объект теряет ценовое преимущество; сравнить с готовыми "
             "вариантами перед оффером."
         )
-    if decision_score >= 75 and scores.liquidity_score >= 60:
+    if (
+        decision_score >= 75
+        and scores.liquidity_score is not None
+        and scores.liquidity_score >= 60
+    ):
         return "Лучший кандидат для короткого списка: хорошее сочетание цены, ликвидности и рисков."
-    if scores.rental_potential_score >= 70:
+    if scores.rental_potential_score is not None and scores.rental_potential_score >= 70:
         return "Сильнее подходит инвестору: стоит проверить реалистичную аренду и расходы."
-    if scores.liquidity_score < 40:
+    if scores.liquidity_score is not None and scores.liquidity_score < 40:
         return "Покупка возможна, но выход из объекта может быть медленнее среднего."
     return "Можно рассматривать после проверки документов, состояния здания и реальных расходов."
 
@@ -263,3 +292,14 @@ def _buyer_decision(analysis: ListingAnalysis) -> BuyerDecisionPackage:
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(value, high))
+
+
+def _weighted_available_score(components: tuple[tuple[int | None, float], ...]) -> float:
+    available = [(value, weight) for value, weight in components if value is not None]
+    total_weight = sum(weight for _, weight in available)
+    return sum(value * weight for value, weight in available) / total_weight
+
+
+def _optional_mean(values: list[int | None]) -> int | None:
+    available = [value for value in values if value is not None]
+    return round(mean(available)) if available else None

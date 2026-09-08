@@ -152,17 +152,21 @@ def _key_findings(analysis: ListingAnalysis) -> list[str]:
             f"versus fair range {scores.fair_price_low}-{scores.fair_price_high} PLN."
         ),
         (
-            f"{area.name}, {area.city}: median {area.median_price_per_m2} PLN/m2, "
-            f"{area.active_listings} active listings and {area.average_days_on_market} "
-            "average days on market."
+            f"{area.name}, {area.city}: median {area.median_price_per_m2} PLN/m2."
         ),
         (
-            f"Liquidity {scores.liquidity_score}/100, negotiation "
+            f"Liquidity {_score_text(scores.liquidity_score)}, negotiation "
             f"{scores.negotiation_score}/100 and rental potential "
-            f"{scores.rental_potential_score}/100."
+            f"{_score_text(scores.rental_potential_score)}."
         ),
-        f"Comparable listings used: {len(analysis.comparables)}.",
+        f"Comparable observations used: {len(analysis.comparables)}.",
     ]
+    if area.listing_metrics_available:
+        findings.insert(
+            2,
+            f"Listing market: {area.active_listings} active listings and "
+            f"{area.average_days_on_market} average days on market.",
+        )
     if analysis.developer_reputation is not None:
         reputation = analysis.developer_reputation
         findings.append(
@@ -171,6 +175,10 @@ def _key_findings(analysis: ListingAnalysis) -> list[str]:
             f"{reputation.confidence_score}/100."
         )
     return findings
+
+
+def _score_text(score: int | None) -> str:
+    return "unavailable" if score is None else f"{score}/100"
 
 
 def _risk_flags(analysis: ListingAnalysis, wrapper_warnings: list[str]) -> list[str]:

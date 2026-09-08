@@ -301,7 +301,7 @@ def test_advanced_investor_alert_filters() -> None:
             "filters": {
                 "city": "Wrocław",
                 "district": "Fabryczna",
-                "max_price_delta_to_fair_mid_pct": -4,
+                "max_price_delta_to_fair_mid_pct": -1,
                 "min_negotiation_score": 80,
                 "min_liquidity_score": 60,
                 "min_rental_potential_score": 75,
@@ -313,7 +313,7 @@ def test_advanced_investor_alert_filters() -> None:
     payload = created.json()
 
     assert created.status_code == 201
-    assert payload["filters"]["max_price_delta_to_fair_mid_pct"] == -4
+    assert payload["filters"]["max_price_delta_to_fair_mid_pct"] == -1
     assert payload["filters"]["min_rental_potential_score"] == 75
     assert payload["filters"]["min_price_reductions"] == 2
 
@@ -327,7 +327,7 @@ def test_advanced_investor_alert_filters() -> None:
     assert match["listing"]["id"] == "wr-001"
     assert match["listing"]["price_reductions"] >= 2
     assert match["listing"]["days_on_market"] <= 90
-    assert match["scores"]["price_delta_to_fair_mid_pct"] <= -4
+    assert match["scores"]["price_delta_to_fair_mid_pct"] <= -1
     assert match["scores"]["negotiation_score"] >= 80
     assert match["scores"]["liquidity_score"] >= 60
     assert match["scores"]["rental_potential_score"] >= 75
@@ -357,9 +357,7 @@ def test_listing_object_watch_creates_alert_and_preview_events() -> None:
     assert alert["filters"]["baseline_days_on_market"] == 139
     assert alert["frequency"] == "instant"
 
-    preview = client.get(
-        f"/api/v1/alerts/{alert['id']}/preview?owner_id=object-watch-owner"
-    ).json()
+    preview = client.get(f"/api/v1/alerts/{alert['id']}/preview?owner_id=object-watch-owner").json()
     trigger_types = {event["trigger_type"] for event in preview["watch_events"]}
     listing_ids = {item["listing"]["id"] for item in preview["matches"]}
 
@@ -749,7 +747,7 @@ def test_operator_telegram_message_uses_explicit_chat_id(monkeypatch) -> None:
     monkeypatch.setattr(
         alert_delivery,
         "urlopen",
-        lambda request, timeout: (requests.append((request, timeout)) or FakeResponse()),
+        lambda request, timeout: requests.append((request, timeout)) or FakeResponse(),
     )
     get_settings.cache_clear()
 

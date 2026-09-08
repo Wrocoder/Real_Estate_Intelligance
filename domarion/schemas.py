@@ -210,7 +210,7 @@ ScoreNegotiationLabel = Literal[
     "negotiable",
     "strong_negotiation",
 ]
-ScorePotentialLabel = Literal["weak", "moderate", "good", "strong"]
+ScorePotentialLabel = Literal["unknown", "weak", "moderate", "good", "strong"]
 BuyerVerdictStatus = Literal["buy", "negotiate", "avoid", "verify_first"]
 PurchaseIntent = Literal["self", "family", "rental", "investment", "unsure"]
 DueDiligencePriority = Literal["critical", "high", "medium", "low"]
@@ -238,6 +238,7 @@ GrowthFactorCode = Literal[
 ]
 GrowthFactorPosture = Literal["strong", "moderate", "weak", "missing"]
 GrowthAnalysisLabel = Literal[
+    "insufficient_data",
     "strong_growth",
     "moderate_growth",
     "mixed_growth",
@@ -451,6 +452,11 @@ class ComparableEvidence(BaseModel):
     similarity_factors: list[str] = Field(default_factory=list)
     price_delta_to_subject_pct: float
     price_per_m2_delta_to_subject_pct: float
+
+
+class ComparableExclusionSummary(BaseModel):
+    code: str
+    count: int = Field(ge=1)
 
 
 class ListingCorrectionRequest(BaseModel):
@@ -948,7 +954,7 @@ class ListingFutureImpact(BaseModel):
 class ListingGrowthFactor(BaseModel):
     code: GrowthFactorCode
     label: str
-    score: int = Field(ge=0, le=100)
+    score: int | None = Field(default=None, ge=0, le=100)
     weight: float = Field(ge=0, le=1)
     posture: GrowthFactorPosture
     evidence: list[str] = Field(default_factory=list)
@@ -958,7 +964,7 @@ class ListingGrowthFactor(BaseModel):
 
 class ListingGrowthAnalysis(BaseModel):
     listing_id: str
-    growth_score: int = Field(ge=0, le=100)
+    growth_score: int | None = Field(default=None, ge=0, le=100)
     growth_label: GrowthAnalysisLabel
     factors: list[ListingGrowthFactor] = Field(default_factory=list)
     positive_signals: list[str] = Field(default_factory=list)
@@ -972,7 +978,7 @@ class ListingRiskFactor(BaseModel):
     code: str
     category: str
     severity: str
-    score: int = Field(ge=0, le=100)
+    score: int | None = Field(default=None, ge=0, le=100)
     summary: str
     evidence: list[str] = Field(default_factory=list)
     recommended_checks: list[str] = Field(default_factory=list)
@@ -1003,24 +1009,97 @@ class RentalCashflowScenario(BaseModel):
     net_yield_on_cash_pct: float
 
 
+class RentalObservation(BaseModel):
+    id: str
+    source_name: str
+    source_type: str
+    source_url: str | None = None
+    observed_at: date
+    last_confirmed_at: date
+    city: str
+    district: str | None = None
+    area_id: str | None = None
+    address: str | None = None
+    property_type: str = "apartment"
+    building_type: str | None = None
+    monthly_rent_pln: int = Field(gt=0)
+    admin_fee_monthly_pln: int | None = Field(default=None, ge=0)
+    area_m2: float = Field(gt=0)
+    rent_per_m2_pln: float = Field(gt=0)
+    rooms: int | None = Field(default=None, ge=1)
+    floor: int | None = None
+    building_year: int | None = None
+    furnished: bool | None = None
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lon: float | None = Field(default=None, ge=-180, le=180)
+    data_quality_score: int = Field(ge=0, le=100)
+
+
+class RentalComparableEvidence(BaseModel):
+    observation_id: str
+    source_name: str
+    source_type: str
+    observed_at: date
+    district: str | None = None
+    monthly_rent_pln: int = Field(gt=0)
+    rent_per_m2_pln: float = Field(gt=0)
+    area_m2: float = Field(gt=0)
+    rooms: int | None = Field(default=None, ge=1)
+    similarity_score: int = Field(ge=0, le=100)
+
+
+class RentalConfidenceFactor(BaseModel):
+    code: str
+    score: int = Field(ge=0, le=100)
+    weight: int = Field(ge=0, le=100)
+    status: Literal["supporting", "neutral", "limiting"]
+
+
+class RentalConfidence(BaseModel):
+    level: Literal["high", "medium", "low"]
+    score: int = Field(ge=0, le=100)
+    factors: list[RentalConfidenceFactor] = Field(default_factory=list)
+    limitation_codes: list[str] = Field(default_factory=list)
+
+
+class RentalAssumption(BaseModel):
+    code: str
+    label: str
+    value: float
+    unit: Literal["percent", "pln_per_m2_month", "pln_month"]
+    source: Literal["scenario_default", "user_input", "observed"]
+    editable: bool = False
+
+
 class ListingRentalEstimate(BaseModel):
     listing_id: str
-    status: Literal["estimated", "insufficient_data"] = "estimated"
-    source: str = "derived_model"
-    method: str = "deterministic screening heuristic"
-    period: str = "current listing snapshot"
-    monthly_rent_low_pln: int = Field(ge=0)
-    monthly_rent_mid_pln: int = Field(ge=0)
-    monthly_rent_high_pln: int = Field(ge=0)
-    rent_per_m2_mid_pln: int = Field(ge=0)
-    gross_yield_pct: float = Field(ge=0)
-    net_yield_on_cash_pct: float = Field(default=0, ge=-100)
+    status: Literal["estimated", "insufficient_data"]
+    source: str = "independent_rental_observations"
+    source_names: list[str] = Field(default_factory=list)
+    method: str = "median rent per m2 from relevant rental observations"
+    period: str | None = None
+    observed_from: date | None = None
+    observed_to: date | None = None
+    geographic_scope: str
+    sample_size: int = Field(ge=0)
+    target_sample_size: int = Field(default=3, ge=1)
+    selection_level: int = Field(default=0, ge=0)
+    freshness_days: int = Field(default=120, ge=0)
+    monthly_rent_low_pln: int | None = Field(default=None, ge=0)
+    monthly_rent_mid_pln: int | None = Field(default=None, ge=0)
+    monthly_rent_high_pln: int | None = Field(default=None, ge=0)
+    rent_per_m2_mid_pln: int | None = Field(default=None, ge=0)
+    gross_yield_pct: float | None = Field(default=None, ge=0)
+    net_yield_pct: float | None = Field(default=None, ge=-100)
+    net_yield_on_cash_pct: float | None = Field(default=None, ge=-100)
     vacancy_rate_pct: float = Field(ge=0, le=100)
-    operating_costs_monthly_pln: int = Field(ge=0)
-    net_operating_income_monthly_pln: int
+    operating_costs_monthly_pln: int | None = Field(default=None, ge=0)
+    net_operating_income_monthly_pln: int | None = None
     confidence_score: int = Field(ge=0, le=100)
+    confidence: RentalConfidence
+    comparables: list[RentalComparableEvidence] = Field(default_factory=list)
     cashflow_scenarios: list[RentalCashflowScenario] = Field(default_factory=list)
-    assumptions: list[str] = Field(default_factory=list)
+    assumptions: list[RentalAssumption] = Field(default_factory=list)
     risk_notes: list[str] = Field(default_factory=list)
     methodology_note: str
 
@@ -1469,11 +1548,11 @@ class MapFeatureCollection(BaseModel):
 class ScoreBreakdown(BaseModel):
     price_position: int
     area_trend: int
-    transport: int
-    future_infrastructure: int
-    liquidity: int
-    lifestyle_infrastructure: int
-    rental_potential: int
+    transport: int | None = Field(default=None, ge=0, le=100)
+    future_infrastructure: int | None = Field(default=None, ge=0, le=100)
+    liquidity: int | None = Field(default=None, ge=0, le=100)
+    lifestyle_infrastructure: int | None = Field(default=None, ge=0, le=100)
+    rental_potential: int | None = Field(default=None, ge=0, le=100)
     data_quality: int
     risk_penalty: int
 
@@ -1483,11 +1562,40 @@ class ScoreDriver(BaseModel):
     direction: Literal["positive", "negative", "unknown"]
 
 
+class ScoreDimensionExplainability(BaseModel):
+    score_code: Literal["investment", "risk", "negotiation", "liquidity", "rental"]
+    status: Literal["available", "partial", "insufficient_data"]
+    calculation_version: str
+    coverage_score: int = Field(ge=0, le=100)
+    confidence_level: Literal["high", "medium", "low"]
+    drivers: list[ScoreDriver] = Field(default_factory=list)
+    missing_data_codes: list[str] = Field(default_factory=list)
+
+
 class ScoreExplainability(BaseModel):
     version: str = "score-explanation-v1"
     coverage_score: int = Field(default=0, ge=0, le=100)
     drivers: list[ScoreDriver] = Field(default_factory=list)
     missing_data_codes: list[str] = Field(default_factory=list)
+    score_details: list[ScoreDimensionExplainability] = Field(default_factory=list)
+
+
+class FairPriceConfidenceFactor(BaseModel):
+    code: str
+    score: int = Field(ge=0, le=100)
+    weight: int = Field(ge=0, le=100)
+    status: Literal["supporting", "neutral", "limiting"]
+
+
+class FairPriceConfidence(BaseModel):
+    level: Literal["high", "medium", "low"]
+    score: int = Field(ge=0, le=100)
+    comparable_count: int = Field(ge=0)
+    transaction_observation_count: int = Field(ge=0)
+    median_similarity_score: int | None = Field(default=None, ge=0, le=100)
+    price_dispersion_pct: float | None = Field(default=None, ge=0)
+    factors: list[FairPriceConfidenceFactor] = Field(default_factory=list)
+    limitation_codes: list[str] = Field(default_factory=list)
 
 
 class PropertyScores(BaseModel):
@@ -1502,12 +1610,13 @@ class PropertyScores(BaseModel):
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
-    liquidity_score: int = Field(ge=0, le=100)
-    rental_potential_score: int = Field(ge=0, le=100)
+    liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     fair_price_low: int
     fair_price_mid: int
     fair_price_high: int
     fair_price_confidence_score: int = Field(ge=0, le=100)
+    fair_price_confidence: FairPriceConfidence | None = None
     price_delta_to_fair_mid_pct: float
     breakdown: ScoreBreakdown
     reasons: list[str]
@@ -1523,8 +1632,8 @@ class PropertyScores(BaseModel):
         investment_score = _int_label_input(next_data.get("investment_score"))
         risk_score = _int_label_input(next_data.get("risk_score"))
         negotiation_score = _int_label_input(next_data.get("negotiation_score"))
-        liquidity_score = _int_label_input(next_data.get("liquidity_score"))
-        rental_potential_score = _int_label_input(next_data.get("rental_potential_score"))
+        liquidity_score = next_data.get("liquidity_score")
+        rental_potential_score = next_data.get("rental_potential_score")
         price_delta = _float_label_input(next_data.get("price_delta_to_fair_mid_pct"))
 
         next_data.setdefault(
@@ -1661,7 +1770,7 @@ class TotalAcquisitionCost(BaseModel):
 
 class BuyerIntentFit(BaseModel):
     intent: PurchaseIntent
-    score: int = Field(ge=0, le=100)
+    score: int | None = Field(default=None, ge=0, le=100)
     label: str
     reasons: list[str] = Field(default_factory=list)
     tradeoffs: list[str] = Field(default_factory=list)
@@ -1787,7 +1896,9 @@ def _score_negotiation_label(negotiation_score: int) -> ScoreNegotiationLabel:
     return "weak_negotiation"
 
 
-def _score_potential_label(score: int) -> ScorePotentialLabel:
+def _score_potential_label(score: int | None) -> ScorePotentialLabel:
+    if score is None:
+        return "unknown"
     if score >= 75:
         return "strong"
     if score >= 60:
@@ -1884,6 +1995,13 @@ class ListingAnalysis(BaseModel):
     comparables_selection_level: int = Field(default=0, ge=0)
     comparables_freshness_days: int = Field(default=180, ge=0)
     comparables_excluded_reasons: list[str] = Field(default_factory=list)
+    comparables_status: Literal["strong", "limited", "insufficient"] = "insufficient"
+    comparables_target_sample_size: int = Field(default=3, ge=1)
+    comparables_stage_counts: dict[str, int] = Field(default_factory=dict)
+    comparables_exclusions: list[ComparableExclusionSummary] = Field(default_factory=list)
+    comparables_observed_from: date | None = None
+    comparables_observed_to: date | None = None
+    comparables_source_names: list[str] = Field(default_factory=list)
     disclaimer: str = (
         "Scoring outputs are decision-support screening signals, not financial, legal or "
         "investment advice, not a valuation certificate and not a guarantee of price, financing, "
@@ -1903,8 +2021,8 @@ class ApiLiteListingScore(BaseModel):
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
-    liquidity_score: int = Field(ge=0, le=100)
-    rental_potential_score: int = Field(ge=0, le=100)
+    liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     fair_price_low: int
     fair_price_mid: int
     fair_price_high: int
@@ -2304,8 +2422,8 @@ class CompareItemMetrics(BaseModel):
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
-    liquidity_score: int = Field(ge=0, le=100)
-    rental_potential_score: int = Field(ge=0, le=100)
+    liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     price_per_m2_pln: int = Field(ge=0)
     fair_price_mid_pln: int
     price_delta_to_fair_mid_pct: float
@@ -2324,8 +2442,8 @@ class CompareItemMetrics(BaseModel):
     post_renovation_value_gap_pln: int | None = None
     max_reasonable_offer_pln: int = Field(ge=0)
     opening_offer_pln: int = Field(ge=0)
-    estimated_gross_rental_yield_pct: float = Field(ge=0)
-    estimated_monthly_rent_pln: int = Field(ge=0)
+    estimated_gross_rental_yield_pct: float | None = Field(default=None, ge=0)
+    estimated_monthly_rent_pln: int | None = Field(default=None, ge=0)
     recommendation: str
     reasons: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
@@ -2336,14 +2454,14 @@ class CompareSummary(BaseModel):
     best_value_listing_id: str
     best_total_cost_listing_id: str
     lowest_monthly_payment_listing_id: str
-    strongest_liquidity_listing_id: str
-    strongest_rental_listing_id: str
+    strongest_liquidity_listing_id: str | None = None
+    strongest_rental_listing_id: str | None = None
     riskiest_listing_id: str
     average_price_per_m2: int = Field(ge=0)
     average_estimated_monthly_payment_pln: int = Field(ge=0)
     average_total_move_in_cost_pln: int = Field(ge=0)
-    average_liquidity_score: int = Field(ge=0, le=100)
-    average_rental_potential_score: int = Field(ge=0, le=100)
+    average_liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    average_rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     notes: list[str] = Field(default_factory=list)
 
 
@@ -2378,8 +2496,8 @@ class RealtorClientShortlistItem(BaseModel):
     price_delta_to_fair_mid_pct: float
     estimated_monthly_payment_pln: int = Field(ge=0)
     upfront_cash_needed_pln: int = Field(ge=0)
-    estimated_monthly_rent_pln: int = Field(ge=0)
-    estimated_gross_rental_yield_pct: float = Field(ge=0)
+    estimated_monthly_rent_pln: int | None = Field(default=None, ge=0)
+    estimated_gross_rental_yield_pct: float | None = Field(default=None, ge=0)
     recommendation: str
     client_pitch: str
     talking_points: list[str] = Field(default_factory=list)
@@ -3686,8 +3804,8 @@ class CrmShortlistItem(BaseModel):
     investment_score: int = Field(ge=0, le=100)
     risk_score: int = Field(ge=0, le=100)
     negotiation_score: int = Field(ge=0, le=100)
-    liquidity_score: int = Field(ge=0, le=100)
-    rental_potential_score: int = Field(ge=0, le=100)
+    liquidity_score: int | None = Field(default=None, ge=0, le=100)
+    rental_potential_score: int | None = Field(default=None, ge=0, le=100)
     fair_price_mid_pln: int
     price_delta_to_fair_mid_pct: float
     recommendation: str
@@ -4000,8 +4118,8 @@ class RealtorSavedSearchDigestItem(BaseModel):
     price_delta_to_fair_mid_pct: float
     decision_label: ScoreDecisionLabel
     negotiation_score: int
-    liquidity_score: int
-    rental_potential_score: int
+    liquidity_score: int | None = None
+    rental_potential_score: int | None = None
     client_pitch: str
     talking_points: list[str] = Field(default_factory=list)
     cautions: list[str] = Field(default_factory=list)

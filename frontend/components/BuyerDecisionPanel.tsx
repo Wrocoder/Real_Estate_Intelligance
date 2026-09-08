@@ -8,7 +8,7 @@ import {
   Target,
   WalletCards,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import { DecisionSummary } from "@/components/DecisionSummary";
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
@@ -421,6 +421,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
 };
 
 export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props) {
+  const detailsRef = useRef<HTMLDetailsElement>(null);
   if (!decision) return null;
 
   const copy = COPY[locale];
@@ -436,33 +437,38 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props)
         locale={locale}
       />
 
-      <a className="button primary buyer-decision-cta" href="#buyer-negotiation">
-        <ClipboardCheck size={16} /> {copy.cta}
-      </a>
-
-      <details className="buyer-decision-details">
-        <summary>{copy.sections.decisionDetails}</summary>
-        <div className="buyer-decision-details-body">
-      <div className="buyer-decision-columns">
+      <div className="buyer-decision-key-factors">
         <DecisionList
           icon={<CheckCircle2 size={16} />}
           title={copy.sections.reasons}
-          items={decision.verdict.top_reasons}
+          items={decision.verdict.top_reasons.slice(0, 3)}
           emptyLabel={copy.labels.empty}
         />
         <DecisionList
           icon={<ShieldAlert size={16} />}
           title={copy.sections.risks}
-          items={decision.verdict.top_risks}
-          emptyLabel={copy.labels.empty}
-        />
-        <DecisionList
-          icon={<HelpCircle size={16} />}
-          title={copy.sections.unknowns}
-          items={decision.verdict.critical_unknowns}
+          items={decision.verdict.top_risks.slice(0, 3)}
           emptyLabel={copy.labels.empty}
         />
       </div>
+
+      <button
+        className="button primary buyer-decision-cta"
+        type="button"
+        onClick={() => revealDecisionSection(detailsRef.current, "buyer-negotiation")}
+      >
+        <ClipboardCheck size={16} /> {copy.cta}
+      </button>
+
+      <details className="buyer-decision-details" id="buyer-decision-details" ref={detailsRef}>
+        <summary>{copy.sections.decisionDetails}</summary>
+        <div className="buyer-decision-details-body">
+          <DecisionList
+            icon={<HelpCircle size={16} />}
+            title={copy.sections.unknowns}
+            items={decision.verdict.critical_unknowns}
+            emptyLabel={copy.labels.empty}
+          />
 
       <div className="buyer-decision-detail-grid">
         <section id="buyer-negotiation" className="buyer-decision-block">
@@ -628,7 +634,8 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props)
                 className={`score-pill ${fit.intent === decision.selected_intent ? "selected" : ""}`}
                 key={fit.intent}
               >
-                {copy.intents[fit.intent] ?? fit.intent}: {Math.round(fit.score / 10)}/10
+                {copy.intents[fit.intent] ?? fit.intent}:{" "}
+                {fit.score === null ? copy.labels.empty : `${Math.round(fit.score / 10)}/10`}
               </span>
             ))}
           </div>
@@ -763,4 +770,12 @@ function confidenceLabel(score: number, copy: BuyerDecisionCopy) {
   if (score >= 75) return copy.labels.confidenceHigh;
   if (score >= 50) return copy.labels.confidenceMedium;
   return copy.labels.confidenceLow;
+}
+
+function revealDecisionSection(details: HTMLDetailsElement | null, sectionId: string) {
+  if (!details) return;
+  details.open = true;
+  window.requestAnimationFrame(() => {
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }

@@ -64,7 +64,7 @@ async function runCase(browser, viewport, locale) {
   const page = await context.newPage();
   const observation = await observe(page, `${locale}/${viewport.name}`);
   try {
-    await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(250);
     if (await page.locator("html").getAttribute("lang") !== locale) throw new Error(`${locale}/${viewport.name}: locale was not applied`);
     await assertHealthy(page, observation);
@@ -79,7 +79,7 @@ async function runFailureState(browser) {
   const page = await context.newPage();
   const observation = await observe(page, "failure-state");
   try {
-    await page.goto(`${baseUrl}/check`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/check`, { waitUntil: "domcontentloaded" });
     const urlInput = page.getByLabel("Link Otodom lub OLX");
     await urlInput.fill("https://example.com/not-a-supported-listing");
     await page.getByRole("checkbox").check();
@@ -105,7 +105,7 @@ async function runCriticalFlow(browser) {
   const page = await context.newPage();
   const observation = await observe(page, "critical-flow");
   try {
-    await page.goto(`${baseUrl}/check`, { waitUntil: "networkidle" });
+    await page.goto(`${baseUrl}/check`, { waitUntil: "domcontentloaded" });
     await page.getByText("Wpisz dane mieszkania ręcznie", { exact: true }).click();
     await page.getByLabel("Adres").fill("ul. Testowa 1");
     await page.getByLabel("Miasto").fill("Wrocław");
@@ -118,6 +118,12 @@ async function runCriticalFlow(browser) {
     if (submitButtonCount < 2) throw new Error("manual check submit button is missing");
     await submitButtons.nth(submitButtonCount - 1).click();
     await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    const dataGap = page.locator(".score-data-gap");
+    await dataGap.waitFor({ state: "visible", timeout: 5000 });
+    const dataGapText = await dataGap.innerText();
+    if (!/Brakujące dane|odległość od transportu publicznego|sprawdź podczas oględzin/i.test(dataGapText)) {
+      throw new Error("partial-data guidance is missing from the apartment check result");
+    }
     const save = page.getByRole("button", { name: "Zapisz mieszkanie" });
     await save.waitFor({ state: "visible", timeout: 5000 });
     await save.click();
@@ -143,15 +149,27 @@ async function runProvenanceSurfaces(browser) {
   const observation = await observe(page, "provenance-surfaces");
   try {
     for (const route of ["/listings/wr-001", "/areas/wroclaw-fabryczna"]) {
-      await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle" });
+      await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
       if (route.startsWith("/listings/")) {
+        await page.locator(".listing-evidence-disclosure > summary").click();
         const comparableSection = page.locator(".comparable-evidence-section");
         await comparableSection.waitFor({ state: "visible", timeout: 10000 });
         const comparableText = await comparableSection.innerText();
-        if (!/Dlaczego taka cena\?|Dopasowanie techniczne|Zaobserwowano|Odległość/.test(comparableText)) {
+        if (
+          !/Dlaczego taka cena\?|Dopasowanie techniczne|Zaobserwowano|Odległość/.test(
+            comparableText,
+          )
+        ) {
           throw new Error(`${route}: comparable evidence details are missing`);
         }
-        if (/same_district|same_market|similar_size|condition_unknown/.test(comparableText)) {
+        if (!/Jakość dowodów|etap wyboru|Pewność szacunku|Źródła/.test(comparableText)) {
+          throw new Error(`${route}: comparable confidence explanation is missing`);
+        }
+        if (
+          /same_district|same_market|similar_size|condition_unknown|sample_size|source_quality/.test(
+            comparableText,
+          )
+        ) {
           throw new Error(`${route}: comparable factor code leaked into the UI`);
         }
       }
@@ -168,6 +186,158 @@ async function runProvenanceSurfaces(browser) {
       }
       await assertHealthy(page, observation);
     }
+  } finally {
+    await context.close();
+  }
+}
+
+async function runRentalEvidence(browser, listingId, expectedStatus, locale, viewport) {
+  const labels = {
+    pl: {
+      estimated: "Szacunek oparty na ofertach najmu",
+      insufficient: "Za mało danych o najmie",
+      method: "Mediana czynszu za m² z trafnych obserwacji",
+    },
+    en: {
+      estimated: "Estimate based on rental observations",
+      insufficient: "Not enough rental data",
+      method: "Median rent per m² from relevant observations",
+    },
+    ru: {
+      estimated: "Оценка по арендным объявлениям",
+      insufficient: "Недостаточно данных об аренде",
+      method: "Медиана аренды за м² по релевантным наблюдениям",
+    },
+    uk: {
+      estimated: "Оцінка за орендними оголошеннями",
+      insufficient: "Недостатньо даних про оренду",
+      method: "Медіана оренди за м² за релевантними спостереженнями",
+    },
+  };
+  const context = await browser.newContext({ viewport, locale: locale === "pl" ? "pl-PL" : locale });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `rental-${expectedStatus}-${locale}-${viewport.width}`);
+  try {
+    await page.goto(`${baseUrl}/listings/${listingId}`, { waitUntil: "domcontentloaded" });
+    await page.locator(".listing-evidence-disclosure > summary").click();
+    const panel = page.locator(".rental-evidence");
+    await panel.waitFor({ state: "visible", timeout: 10000 });
+    const content = await panel.innerText();
+    const expectedLabel = expectedStatus === "estimated" ? labels[locale].estimated : labels[locale].insufficient;
+    if (!content.includes(expectedLabel)) {
+      throw new Error(`${observation.label}: expected rental status was not rendered`);
+    }
+    if (!content.includes(labels[locale].method)) {
+      throw new Error(`${observation.label}: localized rental method was not rendered`);
+    }
+    if (expectedStatus === "estimated" && !/%/.test(content)) {
+      throw new Error(`${observation.label}: rental yields were not rendered`);
+    }
+    if (expectedStatus === "insufficient" && /Rentowność brutto|Gross yield|Валовая доходность|Валова дохідність/.test(content)) {
+      throw new Error(`${observation.label}: numeric yield leaked into insufficient-data state`);
+    }
+    if (/same_district|same_city|rental_sample_insufficient|median rent per m2/.test(content)) {
+      throw new Error(`${observation.label}: internal rental code leaked into the UI`);
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `rental-${expectedStatus}-${locale}-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
+async function runScoreExplainability(browser, locale, viewport) {
+  const labels = {
+    pl: { why: "Dlaczego", coverage: "Pokrycie danych", confidence: "Pewność" },
+    en: { why: "Why", coverage: "Data coverage", confidence: "Confidence" },
+    ru: { why: "Почему", coverage: "Покрытие данных", confidence: "Уверенность" },
+    uk: { why: "Чому", coverage: "Покриття даних", confidence: "Впевненість" },
+  };
+  const context = await browser.newContext({ viewport, locale: locale === "pl" ? "pl-PL" : locale });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `score-explainability-${locale}-${viewport.width}`);
+  try {
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    await page.locator(".listing-secondary-disclosure > summary").click();
+    const scoreBars = page.locator("[data-score-code]");
+    await scoreBars.first().waitFor({ state: "visible", timeout: 10000 });
+    if ((await scoreBars.count()) !== 5) {
+      throw new Error(`${observation.label}: expected five independently explained scores`);
+    }
+    const explanation = scoreBars.first().locator(".score-explanation-details");
+    if (!(await explanation.locator("summary").getByText(labels[locale].why, { exact: true }).count())) {
+      throw new Error(`${observation.label}: localized explanation control is missing`);
+    }
+    await explanation.locator("summary").click();
+    const content = await explanation.innerText();
+    if (!content.includes(labels[locale].coverage) || !content.includes(labels[locale].confidence)) {
+      throw new Error(`${observation.label}: coverage or confidence is missing`);
+    }
+    if (/price_position_supportive|missing_listing_market_metrics|score-explanation-v2/.test(content)) {
+      throw new Error(`${observation.label}: internal score code leaked into the UI`);
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `score-explainability-${locale}-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
+async function runListingDecisionHierarchy(browser, viewport) {
+  const context = await browser.newContext({ viewport, locale: "pl-PL" });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `listing-decision-${viewport.width}`);
+  try {
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    const decision = page.locator(".buyer-decision");
+    const evidence = page.locator(".listing-evidence-disclosure");
+    const actions = page.locator(".listing-decision-actions");
+    const secondary = page.locator(".listing-secondary-disclosure");
+    await decision.waitFor({ state: "visible", timeout: 10000 });
+    await page.locator(".buyer-decision-key-factors").waitFor({ state: "visible" });
+    await actions.waitFor({ state: "visible" });
+    if (await page.locator("section.metric-grid").count()) {
+      throw new Error(`${observation.label}: duplicate decision metric grid is still rendered`);
+    }
+    if ((await evidence.getAttribute("open")) !== null || (await secondary.getAttribute("open")) !== null) {
+      throw new Error(`${observation.label}: secondary content should start collapsed`);
+    }
+    const positions = await Promise.all([decision, evidence, actions, secondary].map((locator) => locator.boundingBox()));
+    if (positions.some((position) => position === null)) {
+      throw new Error(`${observation.label}: a hierarchy section has no layout box`);
+    }
+    const topValues = positions.map((position) => position.y);
+    if (!topValues.every((value, index) => index === 0 || value > topValues[index - 1])) {
+      throw new Error(`${observation.label}: decision, evidence, actions and secondary analysis are out of order`);
+    }
+    for (const label of ["Ulubione", "Porównaj", "Przygotuj negocjację", "Śledź zmiany"]) {
+      if (!(await page.getByRole(/Porównaj/.test(label) ? "link" : "button", { name: label }).count())) {
+        throw new Error(`${observation.label}: contextual action ${label} is missing`);
+      }
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `listing-decision-initial-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await page.getByRole("button", { name: "Przygotuj negocjację", exact: true }).last().click();
+    if (!(await page.locator("#buyer-decision-details").evaluate((node) => node.open))) {
+      throw new Error(`${observation.label}: negotiation action did not reveal its evidence`);
+    }
+    await page.locator("#buyer-negotiation").waitFor({ state: "visible" });
+    await page.screenshot({
+      path: path.join(artifactDir, `listing-decision-expanded-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
   } finally {
     await context.close();
   }
@@ -200,6 +370,57 @@ try {
   try {
     await runProvenanceSurfaces(browser);
     console.log("browser quality passed: provenance-surfaces");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
+    try {
+      await runListingDecisionHierarchy(browser, viewport);
+      console.log(`browser quality passed: listing-decision/${viewport.width}`);
+    } catch (error) {
+      failures.push(error.message);
+    }
+  }
+  for (const locale of locales) {
+    try {
+      await runScoreExplainability(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: score-explainability/${locale}/mobile`);
+    } catch (error) {
+      failures.push(error.message);
+    }
+    for (const rentalCase of [
+      { listingId: "wr-001", status: "estimated" },
+      { listingId: "wys-001", status: "insufficient" },
+    ]) {
+      try {
+        await runRentalEvidence(
+          browser,
+          rentalCase.listingId,
+          rentalCase.status,
+          locale,
+          { width: 390, height: 844 },
+        );
+        console.log(`browser quality passed: rental-${rentalCase.status}/${locale}/mobile`);
+      } catch (error) {
+        failures.push(error.message);
+      }
+    }
+  }
+  try {
+    await runScoreExplainability(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: score-explainability/pl/desktop");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    await runRentalEvidence(
+      browser,
+      "wr-001",
+      "estimated",
+      "pl",
+      { width: 1440, height: 900 },
+    );
+    console.log("browser quality passed: rental-estimated/pl/desktop");
   } catch (error) {
     failures.push(error.message);
   }

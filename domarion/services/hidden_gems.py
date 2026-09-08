@@ -105,21 +105,34 @@ def find_hidden_gems(
             continue
         if (
             max_distance_to_center_km is not None
-            and listing.distance_to_center_km > max_distance_to_center_km
+            and (
+                listing.distance_to_center_km is None
+                or listing.distance_to_center_km > max_distance_to_center_km
+            )
         ):
             continue
-        if max_nearest_stop_m is not None and listing.nearest_stop_m > max_nearest_stop_m:
+        if max_nearest_stop_m is not None and (
+            listing.nearest_stop_m is None or listing.nearest_stop_m > max_nearest_stop_m
+        ):
             continue
-        if max_nearest_school_m is not None and listing.nearest_school_m > max_nearest_school_m:
+        if max_nearest_school_m is not None and (
+            listing.nearest_school_m is None or listing.nearest_school_m > max_nearest_school_m
+        ):
             continue
         if (
             min_nearest_major_road_m is not None
-            and listing.nearest_major_road_m < min_nearest_major_road_m
+            and (
+                listing.nearest_major_road_m is None
+                or listing.nearest_major_road_m < min_nearest_major_road_m
+            )
         ):
             continue
         if (
             min_nearest_industrial_zone_m is not None
-            and listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+            and (
+                listing.nearest_industrial_zone_m is None
+                or listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+            )
         ):
             continue
 
@@ -136,9 +149,12 @@ def find_hidden_gems(
             continue
         if scores.risk_score > max_risk_score:
             continue
-        if scores.liquidity_score < min_liquidity_score:
+        if scores.liquidity_score is None or scores.liquidity_score < min_liquidity_score:
             continue
-        if scores.rental_potential_score < min_rental_potential_score:
+        if (
+            scores.rental_potential_score is None
+            or scores.rental_potential_score < min_rental_potential_score
+        ):
             continue
         if not matches_developer_reputation_filters(
             analysis,
@@ -230,16 +246,17 @@ def find_hidden_gems(
 def _gem_score(analysis: ListingAnalysis) -> int:
     scores = analysis.scores
     discount_signal = _clamp((5 - scores.price_delta_to_fair_mid_pct) * 2.4, 0, 35)
-    value = (
-        scores.investment_score * 0.30
-        + (100 - scores.risk_score) * 0.18
-        + scores.negotiation_score * 0.16
-        + scores.liquidity_score * 0.16
-        + scores.rental_potential_score * 0.12
-        + analysis.listing.data_quality_score * 0.08
-        + discount_signal
+    value = _weighted_available_score(
+        (
+            (scores.investment_score, 0.30),
+            (100 - scores.risk_score, 0.18),
+            (scores.negotiation_score, 0.16),
+            (scores.liquidity_score, 0.16),
+            (scores.rental_potential_score, 0.12),
+            (analysis.listing.data_quality_score, 0.08),
+        )
     )
-    return round(_clamp(value, 0, 100))
+    return round(_clamp(value + discount_signal, 0, 100))
 
 
 def _signals(analysis: ListingAnalysis) -> list[str]:
@@ -256,9 +273,9 @@ def _signals(analysis: ListingAnalysis) -> list[str]:
 
     if scores.negotiation_score >= 60:
         signals.append("Negotiation leverage is above average.")
-    if scores.liquidity_score >= 60:
+    if scores.liquidity_score is not None and scores.liquidity_score >= 60:
         signals.append("Liquidity signal is healthy.")
-    if scores.rental_potential_score >= 60:
+    if scores.rental_potential_score is not None and scores.rental_potential_score >= 60:
         signals.append("Rental potential is above average.")
     if scores.risk_score <= 40:
         signals.append("Risk score is within a conservative range.")
@@ -274,3 +291,9 @@ def _filters_payload(**values: Any) -> dict[str, Any]:
 
 def _clamp(value: float, low: float, high: float) -> float:
     return max(low, min(value, high))
+
+
+def _weighted_available_score(components: tuple[tuple[int | None, float], ...]) -> float:
+    available = [(value, weight) for value, weight in components if value is not None]
+    total_weight = sum(weight for _, weight in available)
+    return sum(value * weight for value, weight in available) / total_weight

@@ -18,6 +18,7 @@ from domarion.db.models import (
     IndustrialZone,
     Kindergarten,
     ListingSnapshot,
+    ListingSource,
     Municipality,
     Property,
     PropertySource,
@@ -33,6 +34,9 @@ from domarion.db.models import (
 )
 from domarion.db.models import (
     PlannedInvestment as PlannedInvestmentRow,
+)
+from domarion.db.models import (
+    RentalObservation as RentalObservationRow,
 )
 from domarion.repositories.base import BBox
 from domarion.schemas import (
@@ -60,6 +64,7 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    RentalObservation,
     SchoolReference,
     TransportRouteReference,
     TransportStopReference,
@@ -959,6 +964,71 @@ class PostgresRealEstateRepository:
                 abs(candidate.rooms - listing.rooms),
                 abs(candidate.price_per_m2 - listing.price_per_m2),
             ),
+        )[:limit]
+
+    def find_rental_observations(
+        self,
+        listing: Listing,
+        limit: int = 200,
+    ) -> list[RentalObservation]:
+        rows = self.session.execute(
+            select(RentalObservationRow, ListingSource)
+            .join(ListingSource, ListingSource.id == RentalObservationRow.source_id)
+            .where(RentalObservationRow.city.ilike(listing.city))
+            .order_by(
+                RentalObservationRow.source_id,
+                RentalObservationRow.source_observation_id,
+                RentalObservationRow.observed_at.desc(),
+                RentalObservationRow.id.desc(),
+            )
+        ).all()
+        latest: dict[tuple[int, str], tuple[RentalObservationRow, ListingSource]] = {}
+        for row, source in rows:
+            latest.setdefault((row.source_id, row.source_observation_id), (row, source))
+
+        observations = []
+        for row, source in latest.values():
+            if row.active_status != "active":
+                continue
+            if bool(source.is_demo) != self.include_demo_data:
+                continue
+            if not source.is_demo and (
+                not source.is_active
+                or source.legal_status != "approved"
+                or "rental_analytics" not in set(source.allowed_use_json or [])
+            ):
+                continue
+            observations.append(
+                RentalObservation(
+                    id=f"rental-{row.id}",
+                    source_name=source.name,
+                    source_type=source.source_type,
+                    source_url=row.source_url,
+                    observed_at=row.observed_at.date(),
+                    last_confirmed_at=row.last_confirmed_at.date(),
+                    city=row.city,
+                    district=row.district,
+                    area_id=row.area_id,
+                    address=row.address,
+                    property_type=row.property_type,
+                    building_type=row.building_type,
+                    monthly_rent_pln=row.monthly_rent_pln,
+                    admin_fee_monthly_pln=row.admin_fee_monthly_pln,
+                    area_m2=float(row.area_m2),
+                    rent_per_m2_pln=float(row.rent_per_m2_pln),
+                    rooms=row.rooms,
+                    floor=row.floor,
+                    building_year=row.building_year,
+                    furnished=row.furnished,
+                    lat=_optional_decimal_float(row.lat),
+                    lon=_optional_decimal_float(row.lon),
+                    data_quality_score=row.data_quality_score,
+                )
+            )
+        return sorted(
+            observations,
+            key=lambda item: (item.last_confirmed_at, item.observed_at, item.id),
+            reverse=True,
         )[:limit]
 
     def _listing_ids_matching_spatial_window(

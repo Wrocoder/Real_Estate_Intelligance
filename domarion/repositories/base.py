@@ -23,6 +23,7 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    RentalObservation,
     SchoolReference,
     TransportRouteReference,
     TransportStopReference,
@@ -229,4 +230,11 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
+        raise NotImplementedError
+
+    def find_rental_observations(
+        self,
+        listing: Listing,
+        limit: int = 200,
+    ) -> list[RentalObservation]:
         raise NotImplementedError

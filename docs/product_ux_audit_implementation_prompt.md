@@ -72,6 +72,13 @@
 
 ---
 
+## Правила статуса checklist
+
+- `[x]` означает, что все критерии приемки подтверждены release gate.
+- `[ ]` означает `PARTIAL`, `BLOCKED` или `NOT STARTED`; подробный статус указан внутри блока.
+- Частично реализованный блок остается `[ ]`, даже если отдельные его части уже работают.
+- External blocker не закрывается локальными тестами, mock provider или успешным deployment.
+
 ## P0 - доверие, изоляция данных и корректность решения
 
 ### [x] P0-01. Отделить demo/sample data от реального продукта
@@ -129,6 +136,8 @@
 
 **Сложность:** XL. **Зависимости:** importer schemas, DB models/migrations, score calculators, API contracts.
 
+**Текущий статус (2026-09-07): DONE.** Partner/manual ingestion сохраняет отсутствующий location/infrastructure context как `null`, а явный zero не теряется. Scoring агрегирует только доступные компоненты; неизвестные liquidity/rental/context factors не получают нейтральных чисел, снижают coverage/confidence и передаются через nullable DB/API contracts. Risk, growth, negotiation, comparison, CRM и reports не создают listing-derived выводы для RCN-only areas. `/check` и listing result показывают локализованный список отсутствующих данных и следующий шаг. Добавлена миграция `0037_nullable_context_scores`; regression tests покрывают partial/manual input, parse absence и zero. Release gate: Ruff, ESLint, TypeScript, `525` frontend smoke assertions, npm audit (`0` vulnerabilities), Alembic head, production build, IDE build, `403 passed, 1 skipped`; standalone Playwright прошел PL/EN/RU/UK на desktop/tablet/mobile, critical flow, partial-data guidance, provenance и error/retry. Встроенный browser недоступен из-за environment `sandboxPolicy`, поэтому использован repository Playwright fallback.
+
 ### [x] P0-04. Пересобрать comparables, fair-price range и confidence
 
 **Область:** comparable selection; fair-price service; confidence; `/listings/:id`; reports; comparison.
@@ -148,6 +157,41 @@
 - unit/property-based tests покрывают сильную, слабую, противоречивую и пустую выборку.
 
 **Сложность:** XL. **Зависимости:** P0-03, market taxonomy, geocoding/district data, analytics versioning.
+
+**Текущий статус (2026-09-07): DONE.** Comparable selection теперь расширяется четырьмя
+явными ступенями: от той же dzielnica/market/type/condition/size/rooms до более
+широкой выборки по тому же городу и тому же primary/secondary market. Переход на
+другой market запрещён, minimum sample равен 3, а сортировка детерминирована
+similarity, расстоянием, размером, комнатами и freshness и не зависит от asking
+price проверяемого объекта. API и UI показывают ступень, статус выборки, sample,
+scope, фактический time range, sources, freshness и агрегированные exclusion
+reasons. Fair-price использует listing comparable median только при sample >= 3;
+результат округляется до 5 000 PLN, а диапазон расширяется от 6% до 20% в
+зависимости от confidence и price dispersion. Confidence формируется из sample
+size, relevance, freshness, geography, consistency, source quality и property
+completeness; слабая или противоречивая выборка ограничивает confidence и
+переводит BUY/NEGOTIATE в VERIFY FIRST. Отчёты показывают range вместо точного
+midpoint и включают confidence factors. Regression tests покрывают strong, staged,
+weak, contradictory, empty, stale и cross-market cases. Release gate: Ruff,
+ESLint, TypeScript, 530 frontend smoke assertions, npm audit (0
+vulnerabilities), production build, 410 passed, 1 skipped; отдельные report
+tests: 44 passed. Production-mode Playwright прошёл PL/EN/RU/UK на
+desktop/tablet/mobile, critical check flow, error state, provenance и новый
+confidence block без console/network errors и horizontal overflow. Встроенный
+browser недоступен из-за environment sandboxPolicy, поэтому использован
+repository Playwright fallback.
+
+### [ ] P0-05. Закрыть production operational и commercial release gate
+
+**Область:** billing, report artifacts, backups, monitoring, legal/source approval, OCI staging/production.
+
+**Результат:** платный production запуск опирается на проверенную оплату, восстановимые данные, наблюдаемую инфраструктуру и документированное право использования источников.
+
+**Критерии приемки:** реальный staging checkout и webhook fulfillment; idempotency/refund проверены; backup timer, offsite backup и restore drill подтверждены; report artifacts вынесены из локального ephemeral storage; настроены uptime/error/data-freshness/cost alerts; source/legal approval и manual paid-report QA зафиксированы.
+
+**Текущий статус (2026-09-07): BLOCKED / EXTERNAL.** Нужны credentials, OCI-доступ и юридическая/ручная проверка; успешный локальный build этот блок не закрывает.
+
+**Сложность:** XL. **Зависимости:** P0-01, P0-02, production credentials, OCI access, legal review.
 
 ---
 
@@ -183,6 +227,8 @@
 
 **Сложность:** L. **Зависимости:** P0-03, P0-04, rental data source.
 
+**Текущий статус (2026-09-08): DONE.** Rental estimate больше не выводится из asking price или sale comparables: месячная аренда строится только по последним версиям независимо полученных rental observations, а asking price используется лишь как знаменатель yield. Добавлены отдельная версионируемая таблица и legal-gated CSV ingestion, staged comparable selection, minimum sample `3`, freshness `120 дней`, диапазон аренды, gross/net yield, явные vacancy/operating assumptions и структурированный confidence. При слабой выборке API/UI возвращают `insufficient_data` и `null` вместо чисел; UNKNOWN не проходит rental-фильтры как zero. `/check` и listing result показывают локализованные source/sample/scope/method/period, assumptions и evidence. Release gate: Ruff, Alembic single head и полный offline SQL upgrade, `419 passed, 1 skipped`, ESLint, TypeScript, `542` smoke assertions, npm audit (`0` vulnerabilities), production build и repository Playwright на PL/EN/RU/UK desktop/tablet/mobile, critical/error/provenance flows, estimated и insufficient rental states; console/network/overflow ошибок нет. Встроенный browser tool в текущем окружении не предоставлен, поэтому использован разрешенный project Playwright fallback. Production rental estimate останется `insufficient_data`, пока оператор не зарегистрирует и не импортирует реально разрешенный независимый feed; demo observations не считаются production evidence.
+
 ### [x] P1-04. Сделать result page ориентированной на решение
 
 **Область:** `/listings/:id`; `ListingDetailPage`; analytical sections.
@@ -192,6 +238,8 @@
 **Критерии приемки:** структура `decision -> explanation -> evidence -> action`; secondary analytics раскрываются прогрессивно; нет равного визуального веса у всех metrics; save/compare/negotiate/track доступны в контексте.
 
 **Сложность:** L. **Зависимости:** P0-03, P0-04, P1-02, UI primitives.
+
+**Текущий статус (2026-09-08): DONE.** `/listings/:id` теперь строится в порядке `decision -> explanation -> evidence -> action`: verdict, asking price, fair-price range, отклонение, confidence и следующий шаг находятся в главном блоке; ключевые причины и риски видны без раскрытия; market evidence и secondary analytics разделены на независимые disclosure-разделы. Дублирующая сетка verdict/price удалена, а save/compare/negotiate/track/mortgage/report доступны в контексте после вывода; negotiation action раскрывает соответствующее evidence. Mobile summary скрывает вторичные total/personalization metrics, использует двухколоночную композицию для главных чисел и не создаёт horizontal overflow. Release gate: ESLint, TypeScript, `554` smoke assertions, production build и repository Playwright на PL/EN/RU/UK desktop/tablet/mobile; отдельно проверены initial/expanded result states на `1440x900` и `390x844`, loading/error/partial-data regression flow, actions, console/network/hydration и overflow. Встроенный browser tool недоступен, поэтому использован project Playwright fallback. Полная структурированная локализация backend reason prose остаётся областью P1-05.
 
 ### [x] P1-05. Сделать score explainable
 
@@ -203,7 +251,11 @@
 
 **Сложность:** L. **Зависимости:** P0-03, P1-02, localization contract.
 
-### [x] P1-06. Завершить локализацию и безопасные ошибки
+**Текущий статус (2026-09-07): PARTIAL.** Missing-data codes, coverage и nullable unknown states выведены на `/check` и listing result. Не все scores имеют полный набор structured positive/negative reason codes и пользовательское объяснение confidence; часть decision content по-прежнему приходит как backend prose.
+
+**Текущий статус (2026-09-08): DONE.** Backend теперь отдаёт отдельный structured explainability block для Investment, Risk, Negotiation, Liquidity и Rental scores: стабильные reason codes, направление драйвера, status, coverage, confidence, missing-data codes и версию формулы. `/check` и listing result локализуют эти коды в PL/EN/RU/UK, показывают основные положительные, отрицательные и неизвестные факторы через progressive disclosure и не выводят внутренние коды или backend-generated score prose. Недоступные Liquidity/Rental scores остаются `insufficient_data`, а не превращаются в ноль. Release gate: Ruff, Alembic single head и полный offline SQL upgrade, `420 passed, 1 skipped`, ESLint, TypeScript, `567` smoke assertions, npm audit (`0` vulnerabilities), production Next.js build и repository Playwright для score explainability в PL/EN/RU/UK на mobile и PL desktop; также повторно пройдены desktop/tablet/mobile, error, critical, provenance и rental states без console/network/hydration/overflow ошибок. Встроенный browser tool недоступен из-за отсутствующего sandboxPolicy, поэтому actual browser QA выполнен через project Playwright fallback.
+
+### [ ] P1-06. Завершить локализацию и безопасные ошибки
 
 **Область:** все consumer routes; API error schema; mutation feedback.
 
@@ -212,6 +264,8 @@
 **Критерии приемки:** отсутствующие ключи обнаруживаются автоматически; API отдает stable error code + params + correlation id; UI локализует сообщения; проверены loading/empty/partial/error/retry и failed mutation rollback.
 
 **Сложность:** XL. **Зависимости:** error taxonomy, translation ownership, API contracts.
+
+**Текущий статус (2026-09-07): PARTIAL.** Основная оболочка локализована, но reasons, risks, negotiation, due-diligence и report product copy могут смешивать PL/EN/RU. Нужен contract `stable code + params` и browser QA всех локалей и error/retry states.
 
 ### [x] P1-07. Объединить saved apartments в одну ментальную модель
 
@@ -223,7 +277,7 @@
 
 **Сложность:** L. **Зависимости:** P0-02, data model ownership, routing migration.
 
-### [x] P1-08. Исправить comparison flow и contract
+### [ ] P1-08. Исправить comparison flow и contract
 
 **Область:** `/compare`; comparison API; contextual add-to-compare actions.
 
@@ -231,9 +285,11 @@
 
 **Критерии приемки:** contract принимает стабильный список IDs; минимум/максимум объяснены; unavailable property не ломает весь экран; mobile использует не широкую desktop-таблицу, а пригодное для последовательного сравнения представление; различия и recommendation зависят от intent.
 
-**Сложность:** L. **Зависимости:** P0-02, P1-02, P1-07.
+**Сложность:** L. **Зависимости:** P0-02, P1-02, P1-07, P1-16.
 
-### [x] P1-09. Довести alerts до понятного пользовательского сервиса
+**Текущий статус (2026-09-07): PARTIAL.** Явный набор объектов сохранен, но recommendation/trade-offs еще не опираются на durable buyer profile, а detailed metric matrix остается слишком доминирующей на mobile.
+
+### [ ] P1-09. Довести alerts до понятного пользовательского сервиса
 
 **Область:** `/alerts`; listing tracking; delivery channels; notification preferences.
 
@@ -241,9 +297,11 @@
 
 **Критерии приемки:** нет мнимой доставки при отсутствии provider; permission/error states; pause/resume/delete; timezone и frequency понятны; audit trail доступен пользователю.
 
-**Сложность:** L. **Зависимости:** P0-02, provider readiness, event model.
+**Сложность:** L. **Зависимости:** P0-02, P0-05, provider readiness, event model.
 
-### [x] P1-10. Исправить mortgage и полную стоимость покупки
+**Текущий статус (2026-09-07): PARTIAL.** Event/history foundation существует, но object-watch lifecycle, baseline updates и реальная delivery semantics не проверены end-to-end для пользовательских alerts; недоступные source capabilities должны быть явно заблокированы в UI.
+
+### [ ] P1-10. Исправить mortgage и полную стоимость покупки
 
 **Область:** `/mortgage`; listing CTA; purchase costs; affordability.
 
@@ -253,7 +311,9 @@
 
 **Сложность:** L. **Зависимости:** legal/product review, P0-03, source freshness.
 
-### [x] P1-11. Сделать negotiation output сценарным и доказуемым
+**Текущий статус (2026-09-07): PARTIAL.** Основные расчеты реализованы, но legal/product review и freshness налогов/сборов не подтверждены для production release.
+
+### [ ] P1-11. Сделать negotiation output сценарным и доказуемым
 
 **Область:** negotiation section; report; comparable evidence.
 
@@ -263,7 +323,9 @@
 
 **Сложность:** M. **Зависимости:** P0-04, P1-05.
 
-### [x] P1-12. Прояснить pricing, reports и entitlement
+**Текущий статус (2026-09-07): PARTIAL.** Сценарные значения и аргументы существуют, но часть аргументов зависит от неполных listing metrics/backend prose; требуется evidence link для каждого аргумента и полное отсутствие совета при unknown inputs.
+
+### [ ] P1-12. Прояснить pricing, reports и entitlement
 
 **Область:** `/pricing`; `/reports`; checkout/subscription mutations.
 
@@ -271,7 +333,9 @@
 
 **Критерии приемки:** feature/limit matrix; понятная граница free/paid; никакой fake payment mutation; loading/failure/idempotency; report freshness/version; доступ после оплаты проверяется server-side.
 
-**Сложность:** L. **Зависимости:** P0-02, billing provider/product model, report versioning.
+**Сложность:** L. **Зависимости:** P0-02, P0-05, billing provider/product model, report versioning.
+
+**Текущий статус (2026-09-07): PARTIAL / BLOCKED.** Каталог централизован, но consumer/B2B предложения и языки смешаны; live provider checkout/webhook и server-side fulfillment не подтверждены реальным staging платежом. Зависит от P0-05.
 
 ### [x] P1-13. Явно показать географическое покрытие
 
@@ -293,6 +357,30 @@
 
 **Сложность:** M. **Зависимости:** importer provenance, media pipeline.
 
+### [ ] P1-15. Сделать action layer адаптивным к фактам и рискам
+
+**Область:** listing result; report; viewing checklist; seller questions; document/legal checklist; negotiation preparation.
+
+**Результат:** отчет заканчивается конкретными проверяемыми действиями, сформированными только из известных характеристик и выявленных рисков объекта.
+
+**Критерии приемки:** действия имеют structured codes и evidence references; unknown не превращается в факт; risk-specific actions добавляются детерминированно; пользователь может отметить/экспортировать checklist; PL/EN/RU/UK локализуются во frontend.
+
+**Текущий статус (2026-09-07): PARTIAL.** Базовые due-diligence и negotiation actions существуют, но не все связаны с evidence и не все локализуются через structured contract.
+
+**Сложность:** L. **Зависимости:** P0-03, P1-05, P1-06, P1-11.
+
+### [ ] P1-16. Добавить компактный профиль покупателя
+
+**Область:** account/preferences; `/check`; listing fit; compare; areas.
+
+**Результат:** небольшой набор действительно полезных предпочтений сохраняется и прозрачно влияет на fit, explanations и comparison recommendation.
+
+**Критерии приемки:** сохраняются intent, budget и ограниченный набор lifestyle/investment priorities; onboarding не превращается в длинную анкету; персонализированные выводы обозначены; исходные market facts не меняются; пользователь может изменить или удалить профиль.
+
+**Текущий статус (2026-09-07): NOT STARTED.** Сейчас intent существует локально в отдельных flows, но durable cross-route buyer profile отсутствует.
+
+**Сложность:** L. **Зависимости:** P0-02, P1-02, P1-06.
+
 ---
 
 ## P2 - навигация, discovery и системное качество
@@ -305,7 +393,7 @@
 
 **Сложность:** M. **Зависимости:** P1-07, route inventory.
 
-### [x] P2-02. Сделать search прозрачным и управляемым
+### [ ] P2-02. Сделать search прозрачным и управляемым
 
 **Область:** `/search`; filters; sort; result cards.
 
@@ -313,7 +401,9 @@
 
 **Сложность:** M. **Зависимости:** P1-02, P1-13, P1-14.
 
-### [x] P2-03. Перевести areas на динамические и проверяемые данные
+**Текущий статус (2026-09-07): PARTIAL.** Search работает, но default surface все еще содержит/опирается на internal analytical thresholds и нуждается в упрощении до location, budget, rooms, size и intent с пользовательскими ranking modes.
+
+### [ ] P2-03. Перевести areas на динамические и проверяемые данные
 
 **Область:** `/areas`; `/areas/:slug`; infrastructure; trends; planned investments.
 
@@ -321,7 +411,9 @@
 
 **Сложность:** L. **Зависимости:** `$domarion-analytics-integrity`, source registry, P1-13.
 
-### [x] P2-04. Укрепить guides как редакционный продукт
+**Текущий статус (2026-09-07): PARTIAL.** RCN rolling median, yearly medians и monthly history verified. Остается decision-first narrative (`dla kogo`, `kto powinien unikać`, risks, alternatives), честное отображение отсутствующего infrastructure coverage вместо подтвержденных нулей и разделение positive catalyst от supply/disruption impact.
+
+### [ ] P2-04. Укрепить guides как редакционный продукт
 
 **Область:** `/guides`; `/guides/:slug`; все существующие guide slugs.
 
@@ -329,7 +421,9 @@
 
 **Сложность:** M. **Зависимости:** editorial ownership, localization.
 
-### [x] P2-05. Привести mobile UX к отдельной композиции
+**Текущий статус (2026-09-07): PARTIAL.** Основные guide routes и CTA существуют, но source/editorial/legal review, локализация и систематическая связь с актуальным coverage требуют завершения после P2-03.
+
+### [ ] P2-05. Привести mobile UX к отдельной композиции
 
 **Область:** все consumer routes на 390 px и tablet viewport.
 
@@ -337,7 +431,9 @@
 
 **Сложность:** L. **Зависимости:** P1 result/compare/navigation tasks.
 
-### [x] P2-06. Снизить визуальную плотность и унифицировать компоненты
+**Текущий статус (2026-09-07): PARTIAL.** Критические переполнения исправлялись, но listing/report/compare и длинный список areas требуют повторной композиционной проверки на 390 px, tablet и zoom, включая sticky actions и expanded states.
+
+### [ ] P2-06. Снизить визуальную плотность и унифицировать компоненты
 
 **Область:** cards, badges, buttons, spacing, typography, chart hierarchy.
 
@@ -345,13 +441,17 @@
 
 **Сложность:** L. **Зависимости:** `$domarion-ui-quality`, P1-04.
 
-### [x] P2-07. Разделить крупные frontend/backend модули и типизировать API
+**Текущий статус (2026-09-07): PARTIAL.** Общая система стала последовательнее, но listing/report/compare все еще дают secondary metrics слишком большой визуальный вес и требуют сокращения повторяющихся cards/panels.
+
+### [ ] P2-07. Разделить крупные frontend/backend модули и типизировать API
 
 **Область:** большие page/API modules; generated OpenAPI client; domain boundaries.
 
 **Результат:** аналитический contract не дублируется вручную, а изменения проще тестировать без переписывания приложения.
 
 **Сложность:** XL. **Зависимости:** стабилизация P0/P1 API; не выполнять как отдельный rewrite.
+
+**Текущий статус (2026-09-07): PARTIAL.** Generated API contract используется, но крупные page/domain modules остаются сложными. Делить только по мере работы над открытыми P0/P1 vertical slices, без отдельного rewrite.
 
 ### [x] P2-08. Добавить browser quality gate в CI
 
@@ -378,6 +478,30 @@
 
 **Сложность:** S. **Зависимости:** стабильные entity identifiers.
 
+### [ ] P2-10. Реализовать продуктовую аналитику decision funnel
+
+**Область:** `/check`; listing/report; comparables; risks; negotiation; saved; compare; pricing; checkout.
+
+**Результат:** команда видит, где пользователь получает ценность и где покидает основной buying journey, без сбора лишних персональных данных.
+
+**Критерии приемки:** документированы и реализованы `check_started`, `check_completed`, `report_opened`, `verdict_viewed`, `comparables_opened`, `risk_opened`, `negotiation_opened`, `negotiation_message_generated`, `property_saved`, `comparison_started`, `comparison_completed`, `pricing_viewed`, `checkout_started`, `purchase_completed`; свойства событий не содержат URL объявления, полного адреса или иных ненужных PII; naming/versioning проверены тестами.
+
+**Текущий статус (2026-09-07): NOT STARTED.** Обязательные funnel events в текущем приложении не обнаружены.
+
+**Сложность:** L. **Зависимости:** P0-02, P1-04, P1-08, P1-12.
+
+### [ ] P2-11. Провести финальный product review и убрать низкоценную сложность
+
+**Область:** полный consumer journey на desktop/mobile; production/internal route separation; product documentation.
+
+**Результат:** подтверждены сценарии check, incomplete data, negotiation, comparison и saved/monitoring; оставшаяся сложность не конкурирует с решением пользователя.
+
+**Критерии приемки:** пройдены сценарии A-E из transformation roadmap; проверены loading/empty/partial/error/retry, console/network и локали; internal/debug/demo surfaces недоступны production users; выполнен полный relevant test suite; создан `docs/product/DOMARION_FINAL_PRODUCT_REVIEW.md` с limitations, data gaps, metrics и remaining P0/P1/P2.
+
+**Текущий статус (2026-09-07): NOT STARTED.** Выполнять только после P0-05, P2-10 и завершения открытых core-flow блоков.
+
+**Сложность:** L. **Зависимости:** P0-05, P1-04, P1-06, P1-08, P1-09, P2-05, P2-10.
+
 ---
 
 ## P3 - polish
@@ -398,15 +522,13 @@
 
 ## Рекомендуемый порядок реализации
 
-1. **Production safety:** P0-01 -> P0-02.
-2. **Data semantics:** P0-03 -> P0-04.
-3. **Core analytical trust:** P1-02 -> P1-03 -> P1-05 -> P1-06.
-4. **Primary apartment-check flow:** P1-01 -> P1-04 -> P1-11 -> P1-14.
-5. **Personal workflow:** P1-07 -> P1-08 -> P1-09.
-6. **Financial/action layer:** P1-10 -> P1-12.
-7. **Coverage and discovery:** P1-13 -> P2-01 -> P2-02 -> P2-03 -> P2-04.
-8. **Cross-device UI:** P2-05 -> P2-06 -> P2-09 -> P3-01 -> P3-02.
-9. **Architecture and continuous verification:** P2-07 выполнять постепенно внутри предыдущих задач; P2-08 закрыть после стабилизации основных flows.
+1. **Data integrity release blocker:** P0-03 -> P0-04 -> P1-03 -> P1-05.
+2. **Localization and decision flow:** P1-06 -> P1-04 -> P1-11 -> P1-15.
+3. **Personal decision support:** P1-16 -> P1-08 -> P1-09.
+4. **Financial/commercial flow:** P1-10 -> P1-12; P0-05 закрывается параллельно только при наличии external access и evidence.
+5. **Discovery:** P2-02 -> P2-03 -> P2-04.
+6. **Cross-device quality:** P2-05 -> P2-06; P2-07 выполнять постепенно внутри этих vertical slices.
+7. **Measurement and final gate:** P2-10 -> P2-11.
 
 P0 является release blocker. P1 должен быть завершен до расширения feature surface. P2/P3 не должны маскировать нерешенные проблемы доверия косметическими изменениями.
 

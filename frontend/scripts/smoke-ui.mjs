@@ -43,6 +43,19 @@ function expectRegex(label, content, pattern) {
   }
 }
 
+function expectOrder(label, content, tokens) {
+  let previous = -1;
+  for (const token of tokens) {
+    assertions += 1;
+    const position = content.indexOf(token);
+    if (position < 0 || position <= previous) {
+      failures.push(`${label}: expected ${JSON.stringify(token)} after the previous hierarchy token`);
+      return;
+    }
+    previous = position;
+  }
+}
+
 function expectMinSize(label, content, minBytes) {
   assertions += 1;
   if (content.length < minBytes) {
@@ -58,6 +71,7 @@ const generatedApi = read("lib/generated-api.ts");
 const decisionSummary = read("components/DecisionSummary.tsx");
 const provenanceDetails = read("components/ProvenanceDetails.tsx");
 const comparableEvidence = read("components/ComparableEvidencePanel.tsx");
+const rentalEvidence = read("components/RentalEvidencePanel.tsx");
 const stateBlocks = read("components/StateBlocks.tsx");
 const explorerPage = read("app/page.tsx");
 const checkPage = read("app/check/page.tsx");
@@ -620,6 +634,7 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "useLocalePreference()",
   "copy.sections.priceHistory",
   "<ComparableEvidencePanel analysis={analysis} locale={locale} />",
+  "<RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />",
   "copy.actions.openReport",
   "copy.actions.compare",
   "copy.actions.track",
@@ -628,7 +643,6 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "<BuyerDecisionPanel",
   "decision={displayedDecision}",
   "scoreLabel(scores.decision_label, locale)",
-  "money(listing.price, locale)",
   "dateValue(point.observed_at, locale)",
   "<ScoreBars locale={locale}",
   "SEO_GUIDES.slice(0, 3)",
@@ -641,27 +655,83 @@ expectIncludes("comparable evidence component", comparableEvidence, [
   "Technical match",
   "similarity_score",
   "similarity_factors",
+  "fair_price_confidence",
+  "selectionStage",
+  "comparables_exclusions",
+  "Estimate confidence",
+  "Pewność szacunku",
   "<ProvenanceDetails",
   "No sufficiently similar properties found",
 ]);
 expectIncludes("check comparable evidence", checkPage, [
   "<ComparableEvidencePanel analysis={analysis} locale={locale} />",
+  "<RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />",
+]);
+expectIncludes("rental evidence component", rentalEvidence, [
+  "Not enough rental data",
+  "Za mało danych o najmie",
+  "Недостаточно данных об аренде",
+  "Недостатньо даних про оренду",
+  'estimate.status === "estimated"',
+  "estimate.sample_size",
+  "estimate.source_names",
+  "estimate.assumptions",
+  "estimate.comparables",
+  "estimate.net_yield_pct",
 ]);
 expectIncludes("listing detail decision hierarchy", read("components/BuyerDecisionPanel.tsx"), [
-  "<details className=\"buyer-decision-details\">",
+  "buyer-decision-key-factors",
+  "revealDecisionSection",
+  "buyer-decision-details",
   "<summary>{copy.sections.decisionDetails}</summary>",
   "buyer-decision-details-body",
+]);
+expectIncludes("listing detail progressive disclosure", listingDetailPage, [
+  "listing-evidence-disclosure",
+  "copy.sections.marketEvidence",
+  "copy.sections.nextActions",
+  "listing-secondary-disclosure",
+  "copy.sections.additionalAnalysis",
+  "revealNegotiation",
+]);
+expectNotIncludes("listing detail duplicate decision metrics", listingDetailPage, [
+  '<section className="metric-grid">',
+]);
+expectOrder("listing detail content hierarchy", listingDetailPage, [
+  "<BuyerDecisionPanel",
+  "listing-evidence-disclosure",
+  "listing-decision-actions",
+  "listing-secondary-disclosure",
 ]);
 expectIncludes("score explainability", read("components/ScoreBars.tsx"), [
   "scores.explainability",
   "data-score-explanation-version",
-  "DRIVER_LABELS",
-  "coverage",
+  "scoreDimension(scores, row.code)",
+  "score-explanation-details",
+  "confidence_level",
+  "calculation_version",
 ]);
 expectIncludes("score explainability API contract", read("lib/api.ts"), [
   "explainability:",
   "coverage_score",
   "missing_data_codes",
+  "score_details",
+  "ScoreDimensionExplainability",
+]);
+expectIncludes("localized score drivers", scoreLabels, [
+  "DRIVER_LABELS",
+  "price_premium_leverage",
+  "premia cenowa wspiera negocjacje",
+  "ценовая премия усиливает переговорную позицию",
+  "цінова премія посилює переговорну позицію",
+]);
+expectIncludes("check uses structured score reasons", checkPage, [
+  "scoreExplanationReasons(analysis.scores, \"investment\", locale)",
+  "scoreExplanationReasons(analysis.scores, \"risk\", locale)",
+]);
+expectNotIncludes("check excludes backend score prose", checkPage, [
+  "analysis.scores.reasons",
+  "analysis.scores.warnings",
 ]);
 expectIncludes("safe localized API errors", read("lib/errorMessages.ts"), [
   "network_error",

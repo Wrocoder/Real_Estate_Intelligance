@@ -34,6 +34,7 @@ from domarion.schemas import (
     PlannedInvestmentCreate,
     PlannedInvestmentUpdate,
     PriceHistoryPoint,
+    RentalObservation,
     SchoolReference,
     TransportRouteReference,
     TransportStopReference,
@@ -63,6 +64,7 @@ class InMemoryRealEstateRepository:
             self._amenities: list[AmenityReference] = []
             self._industrial_zones: list[IndustrialZoneReference] = []
             self._history: dict[str, list[PriceHistoryPoint]] = {}
+            self._rental_observations: list[RentalObservation] = []
             return
 
         self._areas = {
@@ -257,6 +259,48 @@ class InMemoryRealEstateRepository:
             ),
         }
         self._load_partner_listing_sample("partner_listings_suburban.csv")
+
+        rental_rows = [
+            ("rent-fab-1", "Fabryczna", "wroclaw-fabryczna", 3150, 58.0, 3, "apartment_block"),
+            ("rent-fab-2", "Fabryczna", "wroclaw-fabryczna", 3250, 61.0, 3, "apartment_block"),
+            ("rent-fab-3", "Fabryczna", "wroclaw-fabryczna", 3000, 55.0, 3, "apartment_block"),
+            ("rent-krz-1", "Krzyki", "wroclaw-krzyki", 3000, 48.0, 2, "apartment_block"),
+            ("rent-krz-2", "Krzyki", "wroclaw-krzyki", 3200, 51.0, 2, "apartment_block"),
+            ("rent-krz-3", "Krzyki", "wroclaw-krzyki", 2950, 46.0, 2, "apartment_block"),
+            ("rent-psp-1", "Psie Pole", "wroclaw-psie-pole", 3500, 72.0, 4, "low_rise_block"),
+            ("rent-psp-2", "Psie Pole", "wroclaw-psie-pole", 3650, 76.0, 4, "low_rise_block"),
+            ("rent-psp-3", "Psie Pole", "wroclaw-psie-pole", 3400, 70.0, 4, "low_rise_block"),
+        ]
+        self._rental_observations = [
+            RentalObservation(
+                id=observation_id,
+                source_name="Demo Rental Partner",
+                source_type="demo_rental_fixture",
+                source_url=None,
+                observed_at=date(2026, 8, 15 + index % 10),
+                last_confirmed_at=date(2026, 8, 28),
+                city="Wrocław",
+                district=district,
+                area_id=area_id,
+                property_type="apartment",
+                building_type=building_type,
+                monthly_rent_pln=monthly_rent,
+                admin_fee_monthly_pln=None,
+                area_m2=area_m2,
+                rent_per_m2_pln=round(monthly_rent / area_m2, 2),
+                rooms=rooms,
+                data_quality_score=85,
+            )
+            for index, (
+                observation_id,
+                district,
+                area_id,
+                monthly_rent,
+                area_m2,
+                rooms,
+                building_type,
+            ) in enumerate(rental_rows)
+        ]
 
         self._developer_profiles = {
             "demo-development": DeveloperProfile(
@@ -855,7 +899,16 @@ class InMemoryRealEstateRepository:
         return self._areas.get(area_id)
 
     def get_area_price_history(self, area_id: str) -> AreaPriceHistory | None:
-        return None
+        area = self._areas.get(area_id)
+        if area is None:
+            return None
+        return AreaPriceHistory(
+            area_id=area.area_id,
+            name=area.name,
+            city=area.city,
+            data_provenance=area.data_provenance,
+            observation_count=0,
+        )
 
     def list_developer_reputations(
         self,
@@ -1401,6 +1454,17 @@ class InMemoryRealEstateRepository:
                 abs(candidate.price_per_m2 - listing.price_per_m2),
             ),
         )[:limit]
+
+    def find_rental_observations(
+        self,
+        listing: Listing,
+        limit: int = 200,
+    ) -> list[RentalObservation]:
+        return [
+            item
+            for item in self._rental_observations
+            if item.city.casefold() == listing.city.casefold()
+        ][:limit]
 
     def _district_centroid(self, district: str) -> tuple[float | None, float | None]:
         return _centroid(

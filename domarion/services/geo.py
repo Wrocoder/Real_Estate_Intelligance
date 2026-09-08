@@ -617,7 +617,10 @@ def _risk_features(
         features.append(_industrial_risk_zone_to_feature(zone))
 
     for listing in listings:
-        if listing.nearest_major_road_m > MAJOR_ROAD_NOISE_THRESHOLD_M:
+        if (
+            listing.nearest_major_road_m is None
+            or listing.nearest_major_road_m > MAJOR_ROAD_NOISE_THRESHOLD_M
+        ):
             continue
         if not _is_inside_spatial_window(listing.lat, listing.lon, bbox, lat, lon, radius_km):
             continue
@@ -793,12 +796,17 @@ def _future_transport_to_feature(
 
 
 def _industrial_risk_zone_to_feature(zone: Any) -> MapFeature:
-    impact_radius_m = zone.impact_radius_m or 900
+    impact_radius_m = zone.impact_radius_m
+    geometry = (
+        MapPolygonGeometry(
+            coordinates=_circle_polygon(zone.lon, zone.lat, impact_radius_m / 1000),
+        )
+        if impact_radius_m is not None
+        else MapPointGeometry(coordinates=(zone.lon, zone.lat))
+    )
     return MapFeature(
         id=f"industrial-risk-zone-{zone.id}",
-        geometry=MapPolygonGeometry(
-            coordinates=_circle_polygon(zone.lon, zone.lat, impact_radius_m / 1000),
-        ),
+        geometry=geometry,
         properties={
             "feature_type": "industrial_risk_zone",
             "risk_layer": "industrial",
@@ -810,8 +818,14 @@ def _industrial_risk_zone_to_feature(zone: Any) -> MapFeature:
             "risk_level": zone.risk_level,
             "impact_radius_m": impact_radius_m,
             "source_url": zone.source_url,
-            "geometry_accuracy": "source_radius_proxy",
-            "geometry_source": "industrial zone point and impact radius",
+            "geometry_accuracy": (
+                "source_radius_proxy" if impact_radius_m is not None else "source_point"
+            ),
+            "geometry_source": (
+                "industrial zone point and impact radius"
+                if impact_radius_m is not None
+                else "industrial zone point; impact radius unavailable"
+            ),
             "review_reason": "Verify exact land-use, truck routes, smell and noise on site.",
         },
     )

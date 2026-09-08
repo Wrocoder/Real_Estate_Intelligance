@@ -26,6 +26,10 @@ from domarion.ingestion.rcn_transactions import (
     import_rcn_transactions,
     rcn_import_is_due,
 )
+from domarion.ingestion.rental_observations import (
+    RentalObservationError,
+    import_rental_observations,
+)
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
 from domarion.repositories.factory import get_repository
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
@@ -93,6 +97,18 @@ def main() -> None:
     rcn_parser.add_argument("--max-rows", type=int, default=100_000)
     rcn_parser.add_argument("--max-pages", type=int, default=500)
     rcn_parser.add_argument("--timeout-seconds", type=float, default=30.0)
+    rental_parser = subparsers.add_parser(
+        "import-rental-observations",
+        help="Import an approved long-term apartment rental CSV into PostgreSQL.",
+    )
+    rental_parser.add_argument("path", help="Path to a UTF-8 rental observation CSV.")
+    rental_parser.add_argument(
+        "--source-name",
+        required=True,
+        help="Approved source registry name.",
+    )
+    rental_parser.add_argument("--dry-run", action="store_true", help="Validate without writing.")
+    rental_parser.add_argument("--max-rows", type=int, default=100_000)
     boundary_parser = subparsers.add_parser(
         "import-district-boundaries",
         help="Import authoritative Wrocław district/osiedle polygons from GeoJSON or SHP/ZIP.",
@@ -368,6 +384,26 @@ def main() -> None:
                 if not args.dry_run:
                     session.commit()
         except RcnTransactionError as exc:
+            raise SystemExit(str(exc)) from exc
+        _print_json(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+    elif args.command == "import-rental-observations":
+        settings = get_settings()
+        if not args.dry_run and settings.data_repository_backend != "postgres":
+            raise SystemExit(
+                "import-rental-observations writes require DATA_REPOSITORY_BACKEND=postgres."
+            )
+        try:
+            with SessionLocal() as session:
+                result = import_rental_observations(
+                    session,
+                    args.path,
+                    source_name=args.source_name,
+                    dry_run=args.dry_run,
+                    max_rows=args.max_rows,
+                )
+                if not args.dry_run:
+                    session.commit()
+        except RentalObservationError as exc:
             raise SystemExit(str(exc)) from exc
         _print_json(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     elif args.command == "import-district-boundaries":

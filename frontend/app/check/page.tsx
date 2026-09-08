@@ -24,6 +24,8 @@ import { DecisionSummary, decisionSummaryFromScores } from "@/components/Decisio
 import { safeHttpsUrl } from "@/components/ListingProvenance";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
+import { RentalEvidencePanel } from "@/components/RentalEvidencePanel";
+import { ScoreDataGap } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import {
   api,
@@ -50,7 +52,7 @@ import {
 import { dateValue, money } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { CHECK_PAGE_COPY, type CheckPageCopy, type Locale } from "@/lib/i18n";
-import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
+import { decisionTone, scoreExplanationReasons, scoreLabel } from "@/lib/scoreLabels";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type CheckFormState = {
@@ -809,14 +811,14 @@ export default function CheckListingPage() {
               value={analysis.scores.investment_score}
               tone="healthy"
               locale={locale}
-              reasons={analysis.scores.reasons.slice(0, 3)}
+              reasons={scoreExplanationReasons(analysis.scores, "investment", locale)}
             />
             <ScoreExplainer
               label={copy.metrics.riskScore}
               value={analysis.scores.risk_score}
               tone="warning"
               locale={locale}
-              reasons={analysis.scores.warnings.slice(0, 3)}
+              reasons={scoreExplanationReasons(analysis.scores, "risk", locale)}
             />
             <ScoreExplainer
               label={copy.metrics.fairPriceRange}
@@ -837,6 +839,10 @@ export default function CheckListingPage() {
                 `${analysis.comparables.length} ${product.observations.toLocaleLowerCase(locale)}`,
                 result?.comparables_basis ?? "",
               ].filter(Boolean)}
+            />
+            <ScoreDataGap
+              locale={locale}
+              missingDataCodes={analysis.scores.explainability?.missing_data_codes ?? []}
             />
           </div>
         </section>
@@ -1276,6 +1282,7 @@ export default function CheckListingPage() {
         <section className="panel" style={{ marginTop: 16 }}>
           <div className="panel-body">
             <ComparableEvidencePanel analysis={analysis} locale={locale} />
+            <RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />
             <p className="muted">{result?.retention_note}</p>
           </div>
         </section>

@@ -1004,7 +1004,15 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
         == "fabryczna-estate-partners"
     )
     assert payload["analysis"]["analysis"]["risk_profile"]["factors"]
-    assert payload["analysis"]["analysis"]["rental_estimate"]["cashflow_scenarios"]
+    rental_estimate = payload["analysis"]["analysis"]["rental_estimate"]
+    if rental_estimate["status"] == "insufficient_data":
+        assert rental_estimate["monthly_rent_mid_pln"] is None
+        assert payload["analysis"]["analysis"]["scores"]["rental_potential_score"] is None
+    else:
+        assert rental_estimate["source"] == "independent_rental_observations"
+        assert rental_estimate["sample_size"] >= 3
+    assert payload["analysis"]["analysis"]["listing"]["nearest_stop_m"] is None
+    assert payload["analysis"]["analysis"]["listing"]["distance_to_center_km"] is None
     assert payload["analysis"]["analysis"]["growth_analysis"]["factors"]
     assert payload["report"]["template_code"] == "buyer_object_report_v1"
     assert payload["report"]["listing_id"].startswith("user-submitted-")
@@ -1037,7 +1045,11 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
     assert "Future impact score:" in fit_items
     assert "Ближайшие planned investments:" in fit_items
     assert "Growth analysis:" in fit_items
-    assert "Rental estimate:" in fit_items
+    if rental_estimate["status"] == "estimated":
+        assert "Rental estimate:" in fit_items
+    else:
+        assert "Оценка доходности недоступна" in fit_items
+    assert "None/100" not in fit_items
     developer_section = next(
         section
         for section in payload["report"]["sections"]

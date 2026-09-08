@@ -85,14 +85,14 @@ export type Listing = {
   relisted: boolean;
   lat: number;
   lon: number;
-  distance_to_center_km: number;
-  nearest_stop_m: number;
-  nearest_school_m: number;
-  nearest_major_road_m: number;
-  nearest_industrial_zone_m: number;
-  parks_within_1km: number;
-  schools_within_1km: number;
-  planned_investments_within_2km: number;
+  distance_to_center_km: number | null;
+  nearest_stop_m: number | null;
+  nearest_school_m: number | null;
+  nearest_major_road_m: number | null;
+  nearest_industrial_zone_m: number | null;
+  parks_within_1km: number | null;
+  schools_within_1km: number | null;
+  planned_investments_within_2km: number | null;
   data_quality_score: number;
 };
 
@@ -118,6 +118,29 @@ export type ComparableEvidence = {
   similarity_factors: string[];
   price_delta_to_subject_pct: number;
   price_per_m2_delta_to_subject_pct: number;
+};
+
+export type ComparableExclusionSummary = {
+  code: string;
+  count: number;
+};
+
+export type FairPriceConfidenceFactor = {
+  code: string;
+  score: number;
+  weight: number;
+  status: "supporting" | "neutral" | "limiting";
+};
+
+export type FairPriceConfidence = {
+  level: "high" | "medium" | "low";
+  score: number;
+  comparable_count: number;
+  transaction_observation_count: number;
+  median_similarity_score: number | null;
+  price_dispersion_pct: number | null;
+  factors: FairPriceConfidenceFactor[];
+  limitation_codes: string[];
 };
 
 export type AreaStatistics = {
@@ -551,6 +574,7 @@ export type GrowthFactorCode =
 export type GrowthFactorPosture = "strong" | "moderate" | "weak" | "missing";
 
 export type GrowthAnalysisLabel =
+  | "insufficient_data"
   | "strong_growth"
   | "moderate_growth"
   | "mixed_growth"
@@ -559,7 +583,7 @@ export type GrowthAnalysisLabel =
 export type ListingGrowthFactor = {
   code: GrowthFactorCode;
   label: string;
-  score: number;
+  score: number | null;
   weight: number;
   posture: GrowthFactorPosture;
   evidence: string[];
@@ -569,7 +593,7 @@ export type ListingGrowthFactor = {
 
 export type ListingGrowthAnalysis = {
   listing_id: string;
-  growth_score: number;
+  growth_score: number | null;
   growth_label: GrowthAnalysisLabel;
   factors: ListingGrowthFactor[];
   positive_signals: string[];
@@ -583,7 +607,7 @@ export type ListingRiskFactor = {
   code: string;
   category: string;
   severity: string;
-  score: number;
+  score: number | null;
   summary: string;
   evidence: string[];
   recommended_checks: string[];
@@ -618,20 +642,59 @@ export type ListingRentalEstimate = {
   listing_id: string;
   status: "estimated" | "insufficient_data";
   source: string;
+  source_names: string[];
   method: string;
-  period: string;
-  monthly_rent_low_pln: number;
-  monthly_rent_mid_pln: number;
-  monthly_rent_high_pln: number;
-  rent_per_m2_mid_pln: number;
-  gross_yield_pct: number;
-  net_yield_on_cash_pct: number;
+  period: string | null;
+  observed_from: string | null;
+  observed_to: string | null;
+  geographic_scope: string;
+  sample_size: number;
+  target_sample_size: number;
+  selection_level: number;
+  freshness_days: number;
+  monthly_rent_low_pln: number | null;
+  monthly_rent_mid_pln: number | null;
+  monthly_rent_high_pln: number | null;
+  rent_per_m2_mid_pln: number | null;
+  gross_yield_pct: number | null;
+  net_yield_pct: number | null;
+  net_yield_on_cash_pct: number | null;
   vacancy_rate_pct: number;
-  operating_costs_monthly_pln: number;
-  net_operating_income_monthly_pln: number;
+  operating_costs_monthly_pln: number | null;
+  net_operating_income_monthly_pln: number | null;
   confidence_score: number;
+  confidence: {
+    level: "high" | "medium" | "low";
+    score: number;
+    factors: Array<{
+      code: string;
+      score: number;
+      weight: number;
+      status: "supporting" | "neutral" | "limiting";
+    }>;
+    limitation_codes: string[];
+  };
+  comparables: Array<{
+    observation_id: string;
+    source_name: string;
+    source_type: string;
+    observed_at: string;
+    district: string | null;
+    monthly_rent_pln: number;
+    rent_per_m2_pln: number;
+    area_m2: number;
+    rooms: number | null;
+    similarity_score: number;
+  }>;
   cashflow_scenarios: RentalCashflowScenario[];
-  assumptions: string[];
+  assumptions: Array<{
+    code: string;
+    label: string;
+    value: number;
+    unit: "percent" | "pln_per_m2_month" | "pln_month";
+    source: "scenario_default" | "user_input" | "observed";
+    editable: boolean;
+  }>;
   risk_notes: string[];
   methodology_note: string;
 };
@@ -1116,6 +1179,23 @@ export type ListingEvent = {
   payload: Record<string, unknown>;
 };
 
+export type ScoreCode = "investment" | "risk" | "negotiation" | "liquidity" | "rental";
+
+export type ScoreDriver = {
+  code: string;
+  direction: "positive" | "negative" | "unknown";
+};
+
+export type ScoreDimensionExplainability = {
+  score_code: ScoreCode;
+  status: "available" | "partial" | "insufficient_data";
+  calculation_version: string;
+  coverage_score: number;
+  confidence_level: "high" | "medium" | "low";
+  drivers: ScoreDriver[];
+  missing_data_codes: string[];
+};
+
 export type PropertyScores = {
   formula_version: string;
   weights_profile: string;
@@ -1133,28 +1213,27 @@ export type PropertyScores = {
     | "some_negotiation"
     | "negotiable"
     | "strong_negotiation";
-  liquidity_label: "weak" | "moderate" | "good" | "strong";
-  rental_potential_label: "weak" | "moderate" | "good" | "strong";
+  liquidity_label: "unknown" | "weak" | "moderate" | "good" | "strong";
+  rental_potential_label: "unknown" | "weak" | "moderate" | "good" | "strong";
   investment_score: number;
   risk_score: number;
   negotiation_score: number;
-  liquidity_score: number;
-  rental_potential_score: number;
+  liquidity_score: number | null;
+  rental_potential_score: number | null;
   fair_price_low: number;
   fair_price_mid: number;
   fair_price_high: number;
   fair_price_confidence_score: number;
+  fair_price_confidence: FairPriceConfidence | null;
   price_delta_to_fair_mid_pct: number;
   reasons: string[];
   warnings: string[];
   explainability: {
     version: string;
     coverage_score: number;
-    drivers: Array<{
-      code: string;
-      direction: "positive" | "negative" | "unknown";
-    }>;
+    drivers: ScoreDriver[];
     missing_data_codes: string[];
+    score_details: ScoreDimensionExplainability[];
   };
 };
 
@@ -1283,7 +1362,7 @@ export type TotalAcquisitionCost = {
 
 export type BuyerIntentFit = {
   intent: PurchaseIntent;
-  score: number;
+  score: number | null;
   label: string;
   reasons: string[];
   tradeoffs: string[];
@@ -1363,6 +1442,13 @@ export type ListingAnalysis = {
   comparables_selection_level: number;
   comparables_freshness_days: number;
   comparables_excluded_reasons: string[];
+  comparables_status: "strong" | "limited" | "insufficient";
+  comparables_target_sample_size: number;
+  comparables_stage_counts: Record<string, number>;
+  comparables_exclusions: ComparableExclusionSummary[];
+  comparables_observed_from: string | null;
+  comparables_observed_to: string | null;
+  comparables_source_names: string[];
   disclaimer: string;
 };
 
@@ -1966,8 +2052,8 @@ export type CrmShortlistItem = {
   investment_score: number;
   risk_score: number;
   negotiation_score: number;
-  liquidity_score: number;
-  rental_potential_score: number;
+  liquidity_score: number | null;
+  rental_potential_score: number | null;
   fair_price_mid_pln: number;
   price_delta_to_fair_mid_pct: number;
   recommendation: string;
@@ -2379,8 +2465,8 @@ export type CompareItemMetrics = {
   investment_score: number;
   risk_score: number;
   negotiation_score: number;
-  liquidity_score: number;
-  rental_potential_score: number;
+  liquidity_score: number | null;
+  rental_potential_score: number | null;
   price_per_m2_pln: number;
   fair_price_mid_pln: number;
   price_delta_to_fair_mid_pct: number;
@@ -2399,8 +2485,8 @@ export type CompareItemMetrics = {
   post_renovation_value_gap_pln: number | null;
   max_reasonable_offer_pln: number;
   opening_offer_pln: number;
-  estimated_gross_rental_yield_pct: number;
-  estimated_monthly_rent_pln: number;
+  estimated_gross_rental_yield_pct: number | null;
+  estimated_monthly_rent_pln: number | null;
   recommendation: string;
   reasons: string[];
   warnings: string[];
@@ -2411,14 +2497,14 @@ export type CompareSummary = {
   best_value_listing_id: string;
   best_total_cost_listing_id: string;
   lowest_monthly_payment_listing_id: string;
-  strongest_liquidity_listing_id: string;
-  strongest_rental_listing_id: string;
+  strongest_liquidity_listing_id: string | null;
+  strongest_rental_listing_id: string | null;
   riskiest_listing_id: string;
   average_price_per_m2: number;
   average_estimated_monthly_payment_pln: number;
   average_total_move_in_cost_pln: number;
-  average_liquidity_score: number;
-  average_rental_potential_score: number;
+  average_liquidity_score: number | null;
+  average_rental_potential_score: number | null;
   notes: string[];
 };
 
@@ -2446,8 +2532,8 @@ export type RealtorClientShortlistItem = {
   price_delta_to_fair_mid_pct: number;
   estimated_monthly_payment_pln: number;
   upfront_cash_needed_pln: number;
-  estimated_monthly_rent_pln: number;
-  estimated_gross_rental_yield_pct: number;
+  estimated_monthly_rent_pln: number | null;
+  estimated_gross_rental_yield_pct: number | null;
   recommendation: string;
   client_pitch: string;
   talking_points: string[];
@@ -3025,8 +3111,8 @@ export type RealtorSavedSearchDigestItem = {
   price_delta_to_fair_mid_pct: number;
   decision_label: PropertyScores["decision_label"];
   negotiation_score: number;
-  liquidity_score: number;
-  rental_potential_score: number;
+  liquidity_score: number | null;
+  rental_potential_score: number | null;
   client_pitch: string;
   talking_points: string[];
   cautions: string[];

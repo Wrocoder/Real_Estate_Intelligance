@@ -277,6 +277,49 @@ class ListingSnapshot(Base):
     property_source: Mapped[PropertySource] = relationship()
 
 
+class RentalObservation(Base):
+    """Versioned asking-rent observation kept separate from sale listings."""
+
+    __tablename__ = "rental_observations"
+    __table_args__ = (
+        UniqueConstraint("source_id", "source_observation_id", "content_hash"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source_id: Mapped[int] = mapped_column(ForeignKey("listing_sources.id"), index=True)
+    ingestion_job_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ingestion_jobs.id"), index=True
+    )
+    source_observation_id: Mapped[str] = mapped_column(String(180), index=True)
+    content_hash: Mapped[str] = mapped_column(String(128))
+    source_url: Mapped[str | None] = mapped_column(String(500))
+    observed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    last_confirmed_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    active_status: Mapped[str] = mapped_column(String(40), default="active", index=True)
+    city: Mapped[str] = mapped_column(String(80), index=True)
+    district: Mapped[str | None] = mapped_column(String(80), index=True)
+    area_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    address: Mapped[str | None] = mapped_column(String(255))
+    property_type: Mapped[str] = mapped_column(String(80), default="apartment", index=True)
+    building_type: Mapped[str | None] = mapped_column(String(80), index=True)
+    monthly_rent_pln: Mapped[int] = mapped_column(Integer)
+    admin_fee_monthly_pln: Mapped[int | None] = mapped_column(Integer)
+    currency: Mapped[str] = mapped_column(String(8), default="PLN")
+    area_m2: Mapped[Decimal] = mapped_column(Numeric(8, 2))
+    rent_per_m2_pln: Mapped[Decimal] = mapped_column(Numeric(10, 2), index=True)
+    rooms: Mapped[int | None] = mapped_column(Integer, index=True)
+    floor: Mapped[int | None] = mapped_column(Integer)
+    building_year: Mapped[int | None] = mapped_column(Integer)
+    furnished: Mapped[bool | None] = mapped_column(Boolean)
+    lat: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    lon: Mapped[Decimal | None] = mapped_column(Numeric(9, 6))
+    data_quality_score: Mapped[int] = mapped_column(Integer, default=50)
+    normalized_payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    source: Mapped[ListingSource] = relationship()
+
+
 class TransactionObservation(Base):
     """Immutable, normalized observation from a transaction register."""
 
@@ -482,8 +525,8 @@ class PropertyScore(Base):
     investment_score: Mapped[int] = mapped_column(Integer)
     risk_score: Mapped[int] = mapped_column(Integer)
     negotiation_score: Mapped[int] = mapped_column(Integer)
-    liquidity_score: Mapped[int] = mapped_column(Integer)
-    rental_potential_score: Mapped[int] = mapped_column(Integer)
+    liquidity_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    rental_potential_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     fair_price_low: Mapped[int | None] = mapped_column(Integer)
     fair_price_mid: Mapped[int | None] = mapped_column(Integer)
     fair_price_high: Mapped[int | None] = mapped_column(Integer)

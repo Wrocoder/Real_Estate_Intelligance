@@ -260,7 +260,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | --- | --- | --- | --- |
 | T3-01 | Introduce one provenance presentation contract for source, freshness, scope, sample, and calculation type | DONE | T2-02 |
 | T3-02 | Make comparable evidence inspectable through `Dlaczego taka cena?` without overclaiming | DONE | T3-01 |
-| T3-03 | Formalize HIGH/MEDIUM/LOW confidence explanations and unknowns across all decision surfaces | PARTIAL | T3-01 |
+| T3-03 | Formalize HIGH/MEDIUM/LOW confidence explanations and unknowns across all decision surfaces | DONE | T3-01 |
 | T3-04 | Complete future-infrastructure impact narrative with positive catalyst versus supply/disruption separation | PARTIAL | T3-01 |
 | T3-05 | Verify analytics boundaries for fair price, risk, rental, liquidity, negotiation, and investment outputs | PARTIAL | T3-01 |
 
@@ -706,8 +706,229 @@ Partial and follow-up requirements:
 - RCN coverage depends on the official register's published geographic and
   temporal scope and is not a census of every Polish transaction, so the UI
   keeps source class, sample size and limitations visible;
-- T3-03 is next: formalize HIGH/MEDIUM/LOW confidence explanations and
-  unknowns across all decision surfaces.
+- T3-03 was completed by P0-04 through structured HIGH/MEDIUM/LOW fair-price
+  confidence factors and explicit unknown/insufficient-evidence states.
+
+### P0-03: Unknown Data Integrity — DONE (2026-09-07)
+
+Implemented and verified:
+
+- removed partner-ingestion and manual-analysis location/infrastructure
+  defaults; missing values remain `null`, while an explicitly supplied zero is
+  preserved;
+- made context-dependent score components nullable and reweighted score
+  aggregation over available evidence instead of inserting neutral values;
+- propagated unknown liquidity, rental, growth, risk and buyer-fit states
+  through the database, migration `0037`, API schemas, comparison, CRM,
+  alerts, reports and frontend contracts;
+- prevented RCN-only area statistics from generating listing supply,
+  exposure or liquidity claims;
+- reduced confidence and coverage when analytical inputs are missing and
+  exposed localized missing-data guidance on `/check` and listing results;
+- made an existing demo area with no price history return an empty observation
+  set instead of a false 404, without manufacturing history points;
+- added regression coverage for partial/manual listings, absent parsed fields,
+  explicit zero, empty growth evidence and nullable report output.
+
+Release evidence:
+
+- full backend suite: `403 passed, 1 skipped`;
+- Ruff, frontend ESLint, TypeScript, `525` frontend smoke assertions, npm audit
+  (`0` vulnerabilities), Alembic single-head check, PyCharm build and
+  production Next.js build: passed;
+- standalone Playwright: PL/EN/RU/UK at desktop, tablet and mobile, partial-data
+  guidance in the critical `/check` flow, save/compare, provenance, unsupported
+  source, loading, failure and retry states: passed with no console/network
+  errors or horizontal overflow;
+- the embedded browser remains blocked by the environment `sandboxPolicy`
+  error; the repository Playwright release-gate fallback was used.
+
+Follow-up requirements:
+
+- P1-03 still owns an independent rental evidence source and explicit gross/net
+  yield, vacancy and expense semantics;
+- migration downgrade removes rows containing new nullable derived scores
+  before restoring legacy non-null constraints; production rollback planning
+  must account for that intentional integrity-preserving behavior.
+
+### P0-04: Comparable Selection and Fair-Price Confidence — DONE (2026-09-07)
+
+Changed:
+
+- replaced first-match comparable selection with four visible widening stages
+  and a minimum useful listing sample of three;
+- kept every stage inside the subject's city and primary/secondary market, and
+  made ranking independent of the subject asking price;
+- exposed selection status, stage counts, target sample, observed period,
+  source names and structured exclusion counts through ListingAnalysis;
+- added a structured fair-price confidence contract with sample, relevance,
+  freshness, geography, price consistency, source quality and property
+  completeness factors;
+- made fewer than three listing comparables non-influential on the point
+  estimate, while retaining the rolling 365-day RCN area baseline;
+- rounded fair-price results to 5,000 PLN and calibrated the range from 6% to
+  20% based on confidence and comparable price dispersion;
+- capped contradictory or unsupported estimates at LOW confidence and required
+  VERIFY FIRST before a BUY/NEGOTIATE conclusion when confidence is below 50;
+- added localized evidence-quality explanations to /check and listing detail,
+  preserved the range in comparison summaries and replaced exact fair-price
+  midpoint presentation in generated reports with the range.
+
+Verified:
+
+- Ruff passed for the complete repository;
+- backend suite: 410 passed, 1 skipped;
+- focused report suite: 44 passed;
+- frontend ESLint, TypeScript and 530 smoke assertions passed;
+- npm audit reported 0 vulnerabilities and the production Next.js build
+  completed;
+- production-mode repository Playwright passed Polish, English, Russian and
+  Ukrainian at 1440px, 768px and 390px, plus the manual Check Apartment flow,
+  failure state and provenance/confidence surfaces with no console errors,
+  failed requests or horizontal overflow;
+- screenshots of the listing evidence section were inspected at 1440x900 and
+  390x844; the low-confidence sample renders as a wide range and a single-column
+  mobile factor list.
+
+Limitations and follow-up:
+
+- the embedded browser remained unavailable because its environment omitted
+  sandboxPolicy; the repository Playwright fallback performed actual browser
+  verification;
+- RCN remains an area-level transaction baseline in this flow rather than
+  individually exposed transaction comparables;
+- P1-03 owns independent rental evidence and P1-05 owns complete structured
+  explanations for non-price scores.
+
+### P1-03: Rental Evidence and Yield Integrity — DONE (2026-09-08)
+
+Changed:
+
+- removed the circular asking-price-derived monthly rent heuristic; monthly
+  rent now comes only from independent long-term rental observations, while
+  asking price is used only as the gross/net yield denominator;
+- added migration `0038_rental_observations` and an immutable version history
+  keyed by source, stable observation ID and content hash;
+- added legal-gated CSV ingestion that requires an active, non-demo, approved
+  source with explicit `rental_analytics` permission and distinguishes new,
+  changed and reconfirmed observations;
+- made PostgreSQL analytics select only the latest version of each source
+  observation and ignore a latest removed/expired version;
+- added staged rental comparable selection with a 120-day freshness limit,
+  minimum sample of three, property relevance ordering and no cross-city
+  fallback;
+- exposed rent range, gross yield, net yield before tax and financing,
+  vacancy and operating-reserve assumptions, evidence sample, period, scope,
+  sources and structured confidence;
+- capped confidence below HIGH for samples smaller than five and capped
+  contradictory rent observations at LOW;
+- changed absent rental evidence to `insufficient_data` with nullable rent,
+  yield and Rental Score fields; unknown values no longer behave as zero in
+  search, hidden-gem, alert, risk, comparison or report consumers;
+- added a localized rental evidence panel to `/check` and listing detail for
+  Polish, English, Russian and Ukrainian.
+
+Verified:
+
+- full backend suite: `419 passed, 1 skipped`;
+- Ruff, Alembic single-head check and complete PostgreSQL offline upgrade SQL:
+  passed;
+- frontend ESLint, TypeScript, `542` smoke assertions, npm audit with zero
+  vulnerabilities and production Next.js build: passed;
+- repository Playwright passed all four locales at 1440px, 768px and 390px,
+  the critical manual-check flow, failure and provenance states, and both
+  estimated and insufficient rental states without console errors, failed
+  requests or horizontal overflow;
+- desktop estimated and mobile insufficient rental panels were inspected from
+  rendered screenshots; a medium-confidence numerical inconsistency found in
+  that review was corrected and reverified at `74/100`.
+
+Operational limitation:
+
+- the repository provides a production-safe ingestion and calculation path,
+  but it does not grant rights to any external rental dataset. Production
+  remains honestly at `insufficient_data` until an operator registers and
+  imports a genuinely approved independent rental feed. Demo rental records
+  remain isolated to explicit demo mode and are not production evidence;
+- the embedded browser integration is unavailable in this environment, so the
+  project Playwright release-gate fallback performed actual browser QA.
+
+### P1-04: Decision-First Listing Result — DONE (2026-09-08)
+
+Changed:
+
+- reordered `/listings/:id` around the buyer decision: verdict and price
+  relationship first, concise reasons and risks second, inspectable market
+  evidence third, contextual actions fourth;
+- removed the duplicate flat metric grid that repeated verdict, asking price,
+  fair-price range and confidence with equal visual weight;
+- split comparable/rental evidence and secondary apartment analytics into
+  separate accessible disclosure sections;
+- kept save, compare, negotiation, tracking, mortgage and report actions in
+  the property context; negotiation now opens and scrolls to its supporting
+  evidence rather than targeting content hidden in a closed disclosure;
+- added a denser mobile decision composition and removed secondary total-cost
+  and personalization tiles from that compact first summary. Those values
+  remain available in the expanded decision details.
+
+Verified:
+
+- ESLint, TypeScript, 554 frontend smoke assertions, production Next.js build
+  and `git diff --check` passed;
+- repository Playwright verified PL/EN/RU/UK at desktop, tablet and mobile,
+  plus initial and expanded listing-result states at 1440x900 and 390x844;
+- loading/error/partial-data regression flow, evidence disclosure, contextual
+  actions, negotiation reveal, console errors, network failures, hydration and
+  horizontal overflow were checked;
+- rendered desktop and mobile screenshots were inspected. The embedded
+  browser integration was unavailable, so the project Playwright fallback was
+  used for actual browser QA.
+
+Follow-up:
+
+- P1-05 completed the conversion of score explanations into structured,
+  localized drivers. P1-04 itself does not reinterpret analytical facts in the
+  browser.
+
+### P1-05: Explainable Property Scores - DONE (2026-09-08)
+
+Changed:
+
+- added an independent explainability contract for Investment, Risk,
+  Negotiation, Liquidity and Rental scores;
+- each score now exposes stable reason codes, positive/negative/unknown
+  direction, data status, weighted coverage, confidence, missing-data codes
+  and the scoring formula version;
+- kept the score formulas and numeric outputs unchanged while separating their
+  evidence instead of reusing one generic explanation for every score;
+- localized score meanings and driver labels in Polish, English, Russian and
+  Ukrainian on `/check` and listing detail;
+- added progressive disclosure for the strongest positive, negative and
+  unknown factors, including explicit insufficient-data states;
+- stopped `/check` from rendering backend-generated score reason prose. Legacy
+  explainability remains accepted as an API fallback for older stored payloads.
+
+Verified:
+
+- full backend suite: `420 passed, 1 skipped`; Ruff passed;
+- Alembic has one head (`0038_rental_observations`) and the complete PostgreSQL
+  offline upgrade SQL passed with UTF-8 output enabled;
+- frontend ESLint, TypeScript, `567` smoke assertions, npm audit with zero
+  vulnerabilities and production Next.js build passed;
+- repository Playwright verified score explainability in PL/EN/RU/UK on mobile
+  and in Polish on desktop, alongside the complete locale/viewport, error,
+  critical-flow, provenance and rental-state suite without console, network,
+  hydration or horizontal-overflow failures;
+- rendered desktop and mobile score explanations were visually inspected. The
+  embedded browser integration remained unavailable because sandboxPolicy was
+  not provided, so the repository Playwright fallback performed actual browser
+  QA.
+
+Follow-up:
+
+- P1-06 still owns remaining consumer copy localization, the stable API error
+  envelope and consistent mutation rollback/retry feedback outside the score
+  explanation surfaces.
 
 ## Remaining External Limitations
 

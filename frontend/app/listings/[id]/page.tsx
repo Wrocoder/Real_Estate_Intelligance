@@ -24,6 +24,7 @@ import { ListingProvenance } from "@/components/ListingProvenance";
 import { LineChart } from "@/components/Charts";
 import { FutureImpactNarrativePanel } from "@/components/FutureImpactNarrativePanel";
 import { PostViewingVerdictRecalculator } from "@/components/PostViewingVerdictRecalculator";
+import { RentalEvidencePanel } from "@/components/RentalEvidencePanel";
 import { ScoreBars } from "@/components/ScoreBars";
 import { ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { localizedError } from "@/lib/errorMessages";
@@ -34,7 +35,6 @@ import {
   type AIQuestionCode,
   type AIQuestionDescriptor,
   type DeveloperReputation,
-  type Listing,
   type ListingAnalysis,
   type NewsArticleListItem,
   type PostViewingChecklistAnswers,
@@ -42,7 +42,7 @@ import {
   type ReportAudience,
 } from "@/lib/api";
 import { dateValue, money, percent } from "@/lib/format";
-import { LISTING_CARD_COPY, LISTING_DETAIL_COPY, type ListingDetailCopy } from "@/lib/i18n";
+import { LISTING_DETAIL_COPY, type ListingDetailCopy } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 import { SEO_GUIDES } from "@/lib/seoGuides";
 import { useLocalePreference } from "@/lib/useLocalePreference";
@@ -59,7 +59,6 @@ export default function ListingDetailPage() {
   const listingId = params.id;
   const { locale } = useLocalePreference();
   const copy = LISTING_DETAIL_COPY[locale];
-  const attributeLabels = LISTING_CARD_COPY[locale].attributes;
   const [analysis, setAnalysis] = useState<ListingAnalysis | null>(null);
   const [areaNews, setAreaNews] = useState<NewsArticleListItem[]>([]);
   const [postViewingResult, setPostViewingResult] =
@@ -223,34 +222,8 @@ export default function ListingDetailPage() {
           <button className="button" type="button" onClick={() => void load()}>
             <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
-          <button className="button" type="button" onClick={() => void addFavorite()}>
-            <Heart size={16} /> {copy.actions.favorite}
-          </button>
-          <button className="button primary" type="button" onClick={() => void generateReport()}>
-            <FileText size={16} /> {copy.actions.saveReport}
-          </button>
         </div>
       </header>
-
-      {displayedDecision ? (
-        <nav className="listing-decision-actions" aria-label={copy.sections.decisionDetails}>
-          <button className="button" type="button" onClick={() => void addFavorite()}>
-            <Heart size={16} /> {copy.actions.favorite}
-          </button>
-          <Link className="button" href={compareHref}>
-            <Columns2 size={16} /> {copy.actions.compare}
-          </Link>
-          <a className="button" href="#buyer-negotiation">
-            <FileText size={16} /> {copy.actions.negotiate}
-          </a>
-          <Link className="button" href={mortgageHref}>
-            <WalletCards size={16} /> {copy.actions.mortgage}
-          </Link>
-          <button className="button" type="button" onClick={() => void trackListing()}>
-            <Bell size={16} /> {copy.actions.track}
-          </button>
-        </nav>
-      ) : null}
 
       {displayedDecision ? (
         <BuyerDecisionPanel
@@ -260,85 +233,56 @@ export default function ListingDetailPage() {
         />
       ) : null}
 
-      {analysis.buyer_decision ? (
-        <div style={{ marginTop: 16 }}>
-          <PostViewingVerdictRecalculator
-            locale={locale}
-            onRecalculate={recalculatePostViewing}
-            result={postViewingResult}
-          />
+      <details className="listing-section-disclosure listing-evidence-disclosure">
+        <summary>{copy.sections.marketEvidence}</summary>
+        <div className="listing-section-disclosure-body">
+          <ComparableEvidencePanel analysis={analysis} locale={locale} />
+          <RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />
         </div>
+      </details>
+
+      {displayedDecision ? (
+        <nav className="listing-decision-actions" aria-label={copy.sections.nextActions}>
+          <button className="button primary" type="button" onClick={() => void addFavorite()}>
+            <Heart size={16} /> {copy.actions.favorite}
+          </button>
+          <Link className="button" href={compareHref}>
+            <Columns2 size={16} /> {copy.actions.compare}
+          </Link>
+          <button className="button" type="button" onClick={revealNegotiation}>
+            <FileText size={16} /> {copy.actions.negotiate}
+          </button>
+          <button className="button" type="button" onClick={() => void trackListing()}>
+            <Bell size={16} /> {copy.actions.track}
+          </button>
+          <Link className="button" href={mortgageHref}>
+            <WalletCards size={16} /> {copy.actions.mortgage}
+          </Link>
+          <button className="button" type="button" onClick={() => void generateReport()}>
+            <FileText size={16} /> {copy.actions.saveReport}
+          </button>
+        </nav>
       ) : null}
 
-      <section className="metric-grid">
-        <div className="metric">
-          <span>{copy.metrics.verdict}</span>
-          <strong>{scoreLabel(scores.decision_label, locale)}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.price}</span>
-          <strong>{money(listing.price, locale)}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.pricePerM2}</span>
-          <strong>
-            {money(listing.price_per_m2, locale)}/{copy.values.m2}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.fairPriceMid}</span>
-          <strong>
-            {money(scores.fair_price_low, locale)} - {money(scores.fair_price_high, locale)}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.fairPriceConfidence}</span>
-          <strong>{scores.fair_price_confidence_score}/100</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.fairDeviation}</span>
-          <strong>{percent(scores.price_delta_to_fair_mid_pct, locale)}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.priceLabel}</span>
-          <strong>{scoreLabel(scores.price_label, locale)}</strong>
-        </div>
-        {listing.building_type ? (
-          <div className="metric">
-            <span>{copy.metrics.buildingType}</span>
-            <strong>{formatAttribute(listing.building_type, attributeLabels)}</strong>
-          </div>
-        ) : null}
-        {listing.renovation_state ? (
-          <div className="metric">
-            <span>{copy.metrics.renovationState}</span>
-            <strong>{formatAttribute(listing.renovation_state, attributeLabels)}</strong>
-          </div>
-        ) : null}
-        <div className="metric">
-          <span>{copy.metrics.amenities}</span>
-          <strong>{lifestyleSummary(listing, copy)}</strong>
-        </div>
-        {listing.parking_type ? (
-          <div className="metric">
-            <span>{copy.metrics.parking}</span>
-            <strong>{formatAttribute(listing.parking_type, attributeLabels)}</strong>
-          </div>
-        ) : null}
-        {listing.heating_type ? (
-          <div className="metric">
-            <span>{copy.metrics.heating}</span>
-            <strong>{formatAttribute(listing.heating_type, attributeLabels)}</strong>
-          </div>
-        ) : null}
-      </section>
+      <p className="status-line listing-action-status" aria-live="polite">{status}</p>
 
-      <p className="muted" style={{ marginTop: 12 }}>
+      <p className="muted listing-analysis-disclaimer">
         {analysis.disclaimer}
       </p>
 
+      <details className="listing-section-disclosure listing-secondary-disclosure">
+        <summary>{copy.sections.additionalAnalysis}</summary>
+        <div className="listing-section-disclosure-body">
+      {analysis.buyer_decision ? (
+        <PostViewingVerdictRecalculator
+          locale={locale}
+          onRecalculate={recalculatePostViewing}
+          result={postViewingResult}
+        />
+      ) : null}
+
       {analysis.future_area_impact ? (
-        <div style={{ marginTop: 16 }}>
+        <div>
           <FutureImpactNarrativePanel
             copy={copy.futureImpact}
             impact={analysis.future_area_impact}
@@ -494,7 +438,6 @@ export default function ListingDetailPage() {
               </table>
             </div>
 
-            <ComparableEvidencePanel analysis={analysis} locale={locale} />
           </div>
         </section>
 
@@ -563,8 +506,19 @@ export default function ListingDetailPage() {
           </div>
         </aside>
       </div>
+        </div>
+      </details>
     </>
   );
+}
+
+function revealNegotiation() {
+  const details = document.getElementById("buyer-decision-details") as HTMLDetailsElement | null;
+  if (!details) return;
+  details.open = true;
+  window.requestAnimationFrame(() => {
+    document.getElementById("buyer-negotiation")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
 }
 
 function AssistantColumn({
@@ -611,20 +565,6 @@ function questionsForAudience(
     question.supported_audiences.includes(audience),
   );
   return supported.length > 0 ? supported : questions;
-}
-
-function formatAttribute(value: string, labels: Record<string, string>) {
-  return labels[value] ?? value.replaceAll("_", " ");
-}
-
-function lifestyleSummary(listing: Listing, copy: ListingDetailCopy) {
-  const items = [
-    listing.has_balcony ? copy.lifestyle.balcony : "",
-    listing.has_terrace ? copy.lifestyle.terrace : "",
-    listing.has_garden ? copy.lifestyle.garden : "",
-    listing.has_elevator ? copy.lifestyle.elevator : "",
-  ].filter(Boolean);
-  return items.length ? items.join(", ") : copy.empty.noConfirmedAmenities;
 }
 
 function DeveloperReputationBlock({

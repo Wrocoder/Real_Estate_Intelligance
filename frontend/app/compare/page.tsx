@@ -56,6 +56,7 @@ const COMPARE_PRODUCT_COPY = {
     fairPrice: "fair price",
     lowerRisk: "lower risk",
     liquidity: "strong liquidity",
+    unavailable: "unavailable",
     smaller: "smaller apartment",
     farther: "farther from the city center",
     loadingSteps: ["Loading selected apartments", "Calculating total purchase costs", "Preparing recommendation"],
@@ -68,6 +69,7 @@ const COMPARE_PRODUCT_COPY = {
     fairPrice: "względem ceny rynkowej",
     lowerRisk: "niższe ryzyko",
     liquidity: "dobra płynność",
+    unavailable: "brak danych",
     smaller: "mniejsze mieszkanie",
     farther: "dalej od centrum",
     loadingSteps: ["Ładujemy wybrane mieszkania", "Liczymy całkowity koszt zakupu", "Przygotowujemy rekomendację"],
@@ -80,6 +82,7 @@ const COMPARE_PRODUCT_COPY = {
     fairPrice: "относительно рыночной цены",
     lowerRisk: "ниже риск",
     liquidity: "хорошая ликвидность",
+    unavailable: "нет данных",
     smaller: "меньшая площадь",
     farther: "дальше от центра",
     loadingSteps: ["Загружаем выбранные квартиры", "Считаем полную стоимость покупки", "Готовим рекомендацию"],
@@ -92,6 +95,7 @@ const COMPARE_PRODUCT_COPY = {
     fairPrice: "відносно ринкової ціни",
     lowerRisk: "нижчий ризик",
     liquidity: "добра ліквідність",
+    unavailable: "немає даних",
     smaller: "менша площа",
     farther: "далі від центру",
     loadingSteps: ["Завантажуємо вибрані квартири", "Рахуємо повну вартість купівлі", "Готуємо рекомендацію"],
@@ -387,7 +391,11 @@ export default function ComparePage() {
             <Metric
               label={copy.metrics.rentalSignal}
               value={listingShort(items, comparison.summary.strongest_rental_listing_id, copy)}
-              detail={rentDetail(metricById.get(comparison.summary.strongest_rental_listing_id), copy, locale)}
+              detail={rentDetail(
+                metricById.get(comparison.summary.strongest_rental_listing_id ?? ""),
+                copy,
+                locale,
+              )}
             />
           </section>
 
@@ -573,8 +581,9 @@ export default function ComparePage() {
                             {copy.values.monthly}
                           </span>
                           <span>
-                            {numberValue(item.estimated_gross_rental_yield_pct, locale)}%{" "}
-                            {copy.values.rent}
+                            {item.estimated_gross_rental_yield_pct === null
+                              ? copy.empty.noData
+                              : `${numberValue(item.estimated_gross_rental_yield_pct, locale)}% ${copy.values.rent}`}
                           </span>
                         </div>
                       </article>
@@ -615,10 +624,14 @@ export default function ComparePage() {
                       {money(metric.estimated_monthly_payment_pln, locale)}/{copy.values.monthly}
                     </span>
                     <span>
-                      {metric.liquidity_score}/100 {copy.values.liquidity}
+                      {metric.liquidity_score === null
+                        ? copy.empty.noData
+                        : `${metric.liquidity_score}/100 ${copy.values.liquidity}`}
                     </span>
                     <span>
-                      {metric.rental_potential_score}/100 {copy.values.rent}
+                      {metric.rental_potential_score === null
+                        ? copy.empty.noData
+                        : `${metric.rental_potential_score}/100 ${copy.values.rent}`}
                     </span>
                   </div>
                   {item?.developer_reputation ? (
@@ -761,7 +774,10 @@ function RecommendationSummary({
               {copy.fairPrice}
             </li>
             <li>{metric.risk_score}/100 · {copy.lowerRisk}</li>
-            <li>{metric.liquidity_score}/100 · {copy.liquidity}</li>
+            <li>
+              {metric.liquidity_score === null ? copy.unavailable : `${metric.liquidity_score}/100`} ·{" "}
+              {copy.liquidity}
+            </li>
             {metric.reasons.slice(0, 2).map((reason) => (
               <li key={reason}>{reason}</li>
             ))}
@@ -778,7 +794,10 @@ function RecommendationSummary({
                   {numberValue(item.listing.area_m2, locale)} m2 · {copy.smaller}
                 </li>
                 <li>
-                  {numberValue(item.listing.distance_to_center_km, locale)} km · {copy.farther}
+                  {item.listing.distance_to_center_km === null
+                    ? copy.unavailable
+                    : `${numberValue(item.listing.distance_to_center_km, locale)} km`} ·{" "}
+                  {copy.farther}
                 </li>
               </>
             )}
@@ -950,11 +969,16 @@ function comparisonRows(
       label: copy.table.rentalEstimate,
       values: items.map((item) => {
         const metric = metricById.get(item.listing.id);
-        return metric
-          ? `${numberValue(metric.estimated_gross_rental_yield_pct, locale)}% ${
-              copy.values.gross
-            } · ${money(metric.estimated_monthly_rent_pln, locale)}/${copy.values.monthly}`
-          : "-";
+        if (
+          !metric ||
+          metric.estimated_gross_rental_yield_pct === null ||
+          metric.estimated_monthly_rent_pln === null
+        ) {
+          return copy.empty.noData;
+        }
+        return `${numberValue(metric.estimated_gross_rental_yield_pct, locale)}% ${
+          copy.values.gross
+        } · ${money(metric.estimated_monthly_rent_pln, locale)}/${copy.values.monthly}`;
       }),
     },
     {
@@ -989,23 +1013,25 @@ function comparisonRows(
     {
       id: "liquidity-score",
       label: copy.table.liquidity,
-      values: items.map(
-        (item) =>
-          `${item.scores.liquidity_score}/100 · ${scoreLabel(
-            item.scores.liquidity_label,
-            locale,
-          )}`,
+      values: items.map((item) =>
+        item.scores.liquidity_score === null
+          ? copy.empty.noData
+          : `${item.scores.liquidity_score}/100 · ${scoreLabel(
+              item.scores.liquidity_label,
+              locale,
+            )}`,
       ),
     },
     {
       id: "rental-potential-score",
       label: copy.table.rentalPotential,
-      values: items.map(
-        (item) =>
-          `${item.scores.rental_potential_score}/100 · ${scoreLabel(
-            item.scores.rental_potential_label,
-            locale,
-          )}`,
+      values: items.map((item) =>
+        item.scores.rental_potential_score === null
+          ? copy.empty.noData
+          : `${item.scores.rental_potential_score}/100 · ${scoreLabel(
+              item.scores.rental_potential_label,
+              locale,
+            )}`,
       ),
     },
     {
@@ -1067,20 +1093,31 @@ function comparisonRows(
     {
       id: "transport",
       label: copy.table.transport,
-      values: items.map((item) => copy.values.metersToStop(item.listing.nearest_stop_m)),
+      values: items.map((item) =>
+        item.listing.nearest_stop_m === null
+          ? copy.empty.noData
+          : copy.values.metersToStop(item.listing.nearest_stop_m),
+      ),
     },
     {
       id: "infrastructure",
       label: copy.table.infrastructure,
       values: items.map((item) =>
-        copy.values.schoolsParks(item.listing.schools_within_1km, item.listing.parks_within_1km),
+        item.listing.schools_within_1km === null || item.listing.parks_within_1km === null
+          ? copy.empty.noData
+          : copy.values.schoolsParks(
+              item.listing.schools_within_1km,
+              item.listing.parks_within_1km,
+            ),
       ),
     },
     {
       id: "planned-investments",
       label: copy.table.plannedInvestments,
       values: items.map((item) =>
-        copy.values.plannedInvestments(item.listing.planned_investments_within_2km),
+        item.listing.planned_investments_within_2km === null
+          ? copy.empty.noData
+          : copy.values.plannedInvestments(item.listing.planned_investments_within_2km),
       ),
     },
     {
@@ -1171,7 +1208,8 @@ function developerTone(reputation: DeveloperReputation) {
   return "error";
 }
 
-function listingShort(items: ListingAnalysis[], listingId: string, copy: ComparePageCopy) {
+function listingShort(items: ListingAnalysis[], listingId: string | null, copy: ComparePageCopy) {
+  if (listingId === null) return copy.empty.noData;
   const item = items.find((analysis) => analysis.listing.id === listingId);
   if (!item) return listingId;
   return `${item.listing.district}, ${copy.values.roomsShort(item.listing.rooms)}`;
@@ -1220,12 +1258,17 @@ function rentDetail(
   copy: ComparePageCopy,
   locale: Parameters<typeof money>[1],
 ) {
-  return metric
-    ? `${numberValue(metric.estimated_gross_rental_yield_pct, locale)}% · ${money(
-        metric.estimated_monthly_rent_pln,
-        locale,
-      )}/${copy.values.monthly}`
-    : "";
+  if (
+    !metric ||
+    metric.estimated_gross_rental_yield_pct === null ||
+    metric.estimated_monthly_rent_pln === null
+  ) {
+    return copy.empty.noData;
+  }
+  return `${numberValue(metric.estimated_gross_rental_yield_pct, locale)}% · ${money(
+    metric.estimated_monthly_rent_pln,
+    locale,
+  )}/${copy.values.monthly}`;
 }
 
 function syncCompareUrl(ids: string[], intent: PurchaseIntent) {

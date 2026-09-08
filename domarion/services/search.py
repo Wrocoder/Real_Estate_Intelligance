@@ -295,21 +295,34 @@ def _matches_listing_filters(
         return False
     if (
         max_distance_to_center_km is not None
-        and listing.distance_to_center_km > max_distance_to_center_km
+        and (
+            listing.distance_to_center_km is None
+            or listing.distance_to_center_km > max_distance_to_center_km
+        )
     ):
         return False
-    if max_nearest_stop_m is not None and listing.nearest_stop_m > max_nearest_stop_m:
+    if max_nearest_stop_m is not None and (
+        listing.nearest_stop_m is None or listing.nearest_stop_m > max_nearest_stop_m
+    ):
         return False
-    if max_nearest_school_m is not None and listing.nearest_school_m > max_nearest_school_m:
+    if max_nearest_school_m is not None and (
+        listing.nearest_school_m is None or listing.nearest_school_m > max_nearest_school_m
+    ):
         return False
     if (
         min_nearest_major_road_m is not None
-        and listing.nearest_major_road_m < min_nearest_major_road_m
+        and (
+            listing.nearest_major_road_m is None
+            or listing.nearest_major_road_m < min_nearest_major_road_m
+        )
     ):
         return False
     if (
         min_nearest_industrial_zone_m is not None
-        and listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+        and (
+            listing.nearest_industrial_zone_m is None
+            or listing.nearest_industrial_zone_m < min_nearest_industrial_zone_m
+        )
     ):
         return False
     if min_data_quality_score is not None and listing.data_quality_score < min_data_quality_score:
@@ -338,11 +351,16 @@ def _matches_score_filters(
         return False
     if min_negotiation_score is not None and scores.negotiation_score < min_negotiation_score:
         return False
-    if min_liquidity_score is not None and scores.liquidity_score < min_liquidity_score:
+    if min_liquidity_score is not None and (
+        scores.liquidity_score is None or scores.liquidity_score < min_liquidity_score
+    ):
         return False
     if (
         min_rental_potential_score is not None
-        and scores.rental_potential_score < min_rental_potential_score
+        and (
+            scores.rental_potential_score is None
+            or scores.rental_potential_score < min_rental_potential_score
+        )
     ):
         return False
     return True
@@ -365,9 +383,9 @@ def _sort_key(analysis: ListingAnalysis, sort: ListingSort) -> tuple[Any, str]:
         case "negotiation_score_asc" | "negotiation_score_desc":
             value = scores.negotiation_score
         case "liquidity_score_asc" | "liquidity_score_desc":
-            value = scores.liquidity_score
+            value = _optional_score_sort_value(scores.liquidity_score, sort)
         case "rental_potential_score_asc" | "rental_potential_score_desc":
-            value = scores.rental_potential_score
+            value = _optional_score_sort_value(scores.rental_potential_score, sort)
         case "developer_reputation_score_desc":
             value = (
                 developer_reputation.reputation_score if developer_reputation is not None else -1
@@ -389,6 +407,12 @@ def _sort_key(analysis: ListingAnalysis, sort: ListingSort) -> tuple[Any, str]:
         case "newest" | "oldest":
             value = listing.first_seen_at
     return value, listing.id
+
+
+def _optional_score_sort_value(score: int | None, sort: ListingSort) -> int:
+    if score is not None:
+        return score
+    return -1 if _sort_descending(sort) else 101
 
 
 def _sort_descending(sort: ListingSort) -> bool:

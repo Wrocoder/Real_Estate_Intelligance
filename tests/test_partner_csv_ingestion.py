@@ -80,6 +80,41 @@ def test_read_partner_csv_normalizes_listing(tmp_path) -> None:
     assert records[0].listing.data_quality_score < 95
 
 
+def test_partner_csv_preserves_missing_context_and_explicit_zero(tmp_path) -> None:
+    path = tmp_path / "partner-partial.csv"
+    _write_csv(
+        path,
+        [
+            {
+                "source_listing_id": "p-partial",
+                "title": "Partial listing",
+                "source_url": "https://agency.test/p-partial",
+                "city": "Wrocław",
+                "district": "Fabryczna",
+                "address": "Nowy Dwór",
+                "market_type": "secondary",
+                "price": "690000",
+                "area_m2": "59.2",
+                "rooms": "3",
+                "lat": "51.1117",
+                "lon": "16.9653",
+                "nearest_stop_m": "0",
+            }
+        ],
+    )
+
+    listing = read_partner_csv(path, default_source_name="Test Agency")[0].listing
+
+    assert listing.nearest_stop_m == 0
+    assert listing.distance_to_center_km is None
+    assert listing.nearest_school_m is None
+    assert listing.nearest_major_road_m is None
+    assert listing.nearest_industrial_zone_m is None
+    assert listing.parks_within_1km is None
+    assert listing.schools_within_1km is None
+    assert listing.planned_investments_within_2km is None
+
+
 def test_partner_listing_snapshot_payload_keeps_status_and_description_hash(tmp_path) -> None:
     path = tmp_path / "partner.csv"
     _write_csv(

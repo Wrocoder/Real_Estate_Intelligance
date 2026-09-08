@@ -133,7 +133,7 @@ def _summary(
         f"{len(items)} client-ready listings selected from {total_matches} matches. "
         f"Top option: {best.title} at {_money(best.price, best.currency)} with "
         f"negotiation/liquidity/rental scores {best.negotiation_score}/"
-        f"{best.liquidity_score}/{best.rental_potential_score}."
+        f"{_score_text(best.liquidity_score)}/{_score_text(best.rental_potential_score)}."
     )
 
 
@@ -200,8 +200,8 @@ def _client_item_lines(index: int, item: RealtorSavedSearchDigestItem) -> list[s
         (
             "   Scores: "
             f"negotiation {item.negotiation_score}, "
-            f"liquidity {item.liquidity_score}, "
-            f"rental {item.rental_potential_score}"
+            f"liquidity {_score_text(item.liquidity_score)}, "
+            f"rental {_score_text(item.rental_potential_score)}"
         ),
     ]
     if item.talking_points:
@@ -224,6 +224,10 @@ def _price_signal(price_delta_to_fair_mid_pct: float) -> str:
 
 def _floor_label(floor: int | None) -> str:
     return str(floor) if floor is not None else "n/a"
+
+
+def _score_text(score: int | None) -> str:
+    return "unavailable" if score is None else str(score)
 
 
 def _money(value: int | float, currency: str) -> str:
