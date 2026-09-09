@@ -25,6 +25,12 @@ const SORT_OPTIONS = [
   "price_asc",
   "price_desc",
 ] as const;
+const AREA_PROFILE_COPY: Record<Locale, { applied: string; edit: string }> = {
+  en: { applied: "Area ranking starts with a metric from your buyer profile", edit: "Edit profile" },
+  pl: { applied: "Ranking dzielnic zaczyna się od wskaźnika z Twojego profilu kupującego", edit: "Edytuj profil" },
+  ru: { applied: "Районы сначала ранжируются по показателю из вашего профиля покупателя", edit: "Изменить профиль" },
+  uk: { applied: "Райони спочатку ранжуються за показником із вашого профілю покупця", edit: "Змінити профіль" },
+};
 
 export default function AreaComparisonPage() {
   const { locale } = useLocalePreference();
@@ -39,14 +45,15 @@ export default function AreaComparisonPage() {
   const [error, setError] = useState("");
   const [aiError, setAiError] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [profileSortApplied, setProfileSortApplied] = useState(false);
 
-  async function load() {
+  async function load(nextSort = sort) {
     setError("");
     setStatus(copy.statuses.loadingComparison);
     try {
       const payload = await api.compareAreas({
         city: city || undefined,
-        sort,
+        sort: nextSort,
         limit: 50,
       });
       setComparison(payload);
@@ -67,7 +74,21 @@ export default function AreaComparisonPage() {
   }
 
   useEffect(() => {
-    void load();
+    async function loadInitial() {
+      const account = await api.getMe().catch(() => null);
+      const priorities = account?.buyer_profile?.priorities ?? [];
+      const profileSort = priorities.includes("liquidity")
+        ? "liquidity"
+        : priorities.includes("price_value")
+          ? "value"
+          : null;
+      if (profileSort) {
+        setSort(profileSort);
+        setProfileSortApplied(true);
+      }
+      await load(profileSort ?? sort);
+    }
+    void loadInitial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -129,6 +150,12 @@ export default function AreaComparisonPage() {
           <span className="status-line">{status}</span>
         </div>
         <div className="panel-body">
+          {profileSortApplied ? (
+            <p className="profile-context-note">
+              <strong>{AREA_PROFILE_COPY[locale].applied}.</strong>{" "}
+              <Link href="/account">{AREA_PROFILE_COPY[locale].edit}</Link>
+            </p>
+          ) : null}
           <div className="form-grid compact">
             <label className="field">
               <span>{copy.fields.city}</span>

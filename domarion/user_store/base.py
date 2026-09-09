@@ -7,6 +7,8 @@ from domarion.schemas import (
     AlertDeliveryJob,
     AlertFrequency,
     AlertUpdate,
+    BuyerProfile,
+    BuyerProfileUpdate,
     Favorite,
     FavoriteCreate,
     FavoriteUpdate,
@@ -14,6 +16,17 @@ from domarion.schemas import (
 
 
 class UserStore(Protocol):
+    def get_buyer_profile(self, owner_id: str) -> BuyerProfile | None:
+        raise NotImplementedError
+
+    def save_buyer_profile(
+        self, owner_id: str, payload: BuyerProfileUpdate
+    ) -> BuyerProfile:
+        raise NotImplementedError
+
+    def delete_buyer_profile(self, owner_id: str) -> bool:
+        raise NotImplementedError
+
     def add_favorite(self, owner_id: str, payload: FavoriteCreate) -> Favorite:
         raise NotImplementedError
 

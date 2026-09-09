@@ -40,7 +40,9 @@ import {
   type CrmNoteVisibility,
   type CrmSharePreview,
   type CrmShortlist,
+  type BuyerPriority,
   type PlanLimits,
+  type PurchaseIntent,
   type ReportOrder,
   type SubscriptionPlan,
 } from "@/lib/api";
@@ -66,6 +68,109 @@ const ACCOUNT_INTL_LOCALES: Record<Locale, string> = {
   pl: "pl-PL",
   ru: "ru-RU",
   uk: "uk-UA",
+};
+const BUYER_PROFILE_PRIORITIES: BuyerPriority[] = [
+  "price_value",
+  "low_risk",
+  "daily_living",
+  "family_fit",
+  "liquidity",
+  "rental_income",
+];
+
+const BUYER_PROFILE_COPY: Record<
+  Locale,
+  {
+    title: string;
+    description: string;
+    intent: string;
+    budget: string;
+    budgetPlaceholder: string;
+    priorities: string;
+    priorityLimit: string;
+    saved: string;
+    saving: string;
+    deleted: string;
+    save: string;
+    remove: string;
+    error: string;
+    trust: string;
+    intents: Record<PurchaseIntent, string>;
+    priorityLabels: Record<BuyerPriority, string>;
+  }
+> = {
+  en: {
+    title: "Buyer profile",
+    description: "Set only the preferences that change apartment fit and comparison guidance.",
+    intent: "Buying purpose",
+    budget: "Maximum apartment price",
+    budgetPlaceholder: "e.g. 850000",
+    priorities: "What matters most",
+    priorityLimit: "Choose up to 3",
+    saved: "Buyer profile saved.",
+    saving: "Saving profile...",
+    deleted: "Buyer profile removed.",
+    save: "Save profile",
+    remove: "Remove profile",
+    error: "Could not update the buyer profile.",
+    trust: "Personalization changes fit and recommendations. It never changes market facts.",
+    intents: { self: "For living", family: "For a family", rental: "For rental", investment: "For investment", unsure: "Not decided yet" },
+    priorityLabels: { price_value: "Price and value", low_risk: "Lower risk", daily_living: "Daily convenience", family_fit: "Family fit", liquidity: "Easy resale", rental_income: "Rental income" },
+  },
+  pl: {
+    title: "Profil kupującego",
+    description: "Ustaw tylko preferencje, które zmieniają dopasowanie i rekomendację porównania.",
+    intent: "Cel zakupu",
+    budget: "Maksymalna cena mieszkania",
+    budgetPlaceholder: "np. 850000",
+    priorities: "Co jest najważniejsze",
+    priorityLimit: "Wybierz maksymalnie 3",
+    saved: "Profil kupującego zapisany.",
+    saving: "Zapisujemy profil...",
+    deleted: "Profil kupującego usunięty.",
+    save: "Zapisz profil",
+    remove: "Usuń profil",
+    error: "Nie udało się zaktualizować profilu kupującego.",
+    trust: "Personalizacja zmienia dopasowanie i rekomendacje. Nie zmienia danych rynkowych.",
+    intents: { self: "Do zamieszkania", family: "Dla rodziny", rental: "Na wynajem", investment: "Inwestycyjnie", unsure: "Jeszcze nie wiem" },
+    priorityLabels: { price_value: "Cena i wartość", low_risk: "Niższe ryzyko", daily_living: "Codzienna wygoda", family_fit: "Dopasowanie dla rodziny", liquidity: "Łatwa odsprzedaż", rental_income: "Dochód z najmu" },
+  },
+  ru: {
+    title: "Профиль покупателя",
+    description: "Укажите только предпочтения, которые меняют оценку соответствия и рекомендацию сравнения.",
+    intent: "Цель покупки",
+    budget: "Максимальная цена квартиры",
+    budgetPlaceholder: "например, 850000",
+    priorities: "Что важнее всего",
+    priorityLimit: "Выберите не более 3",
+    saved: "Профиль покупателя сохранен.",
+    saving: "Сохраняем профиль...",
+    deleted: "Профиль покупателя удален.",
+    save: "Сохранить профиль",
+    remove: "Удалить профиль",
+    error: "Не удалось обновить профиль покупателя.",
+    trust: "Персонализация меняет соответствие и рекомендации, но не рыночные факты.",
+    intents: { self: "Для жизни", family: "Для семьи", rental: "Для аренды", investment: "Для инвестиции", unsure: "Пока не решил" },
+    priorityLabels: { price_value: "Цена и ценность", low_risk: "Меньше риска", daily_living: "Повседневное удобство", family_fit: "Для семьи", liquidity: "Легкая перепродажа", rental_income: "Доход от аренды" },
+  },
+  uk: {
+    title: "Профіль покупця",
+    description: "Вкажіть лише вподобання, які змінюють оцінку відповідності та рекомендацію порівняння.",
+    intent: "Мета купівлі",
+    budget: "Максимальна ціна квартири",
+    budgetPlaceholder: "наприклад, 850000",
+    priorities: "Що найважливіше",
+    priorityLimit: "Оберіть не більше 3",
+    saved: "Профіль покупця збережено.",
+    saving: "Зберігаємо профіль...",
+    deleted: "Профіль покупця видалено.",
+    save: "Зберегти профіль",
+    remove: "Видалити профіль",
+    error: "Не вдалося оновити профіль покупця.",
+    trust: "Персоналізація змінює відповідність і рекомендації, але не ринкові факти.",
+    intents: { self: "Для життя", family: "Для сім'ї", rental: "Для оренди", investment: "Для інвестиції", unsure: "Ще не вирішив" },
+    priorityLabels: { price_value: "Ціна і цінність", low_risk: "Менше ризику", daily_living: "Щоденна зручність", family_fit: "Для сім'ї", liquidity: "Легкий перепродаж", rental_income: "Дохід від оренди" },
+  },
 };
 
 const BUYER_ACCOUNT_COPY: Record<
@@ -331,6 +436,13 @@ export default function AccountPage() {
   const [status, setStatus] = useState(copy.statuses.loadingAccount);
   const [error, setError] = useState("");
   const [authRequired, setAuthRequired] = useState(false);
+  const [profileForm, setProfileForm] = useState<{
+    intent: PurchaseIntent;
+    budget: string;
+    priorities: BuyerPriority[];
+  }>({ intent: "unsure", budget: "", priorities: [] });
+  const [profileStatus, setProfileStatus] = useState("");
+  const [profileBusy, setProfileBusy] = useState(false);
 
   const loadCrmForAgency = useCallback(
     async (agencyId: string, preferredClientId?: string | null) => {
@@ -370,6 +482,11 @@ export default function AccountPage() {
         api.listReportOrders(),
       ]);
       setAccount(accountData);
+      setProfileForm({
+        intent: accountData.buyer_profile?.intent ?? "unsure",
+        budget: accountData.buyer_profile?.budget_pln?.toString() ?? "",
+        priorities: accountData.buyer_profile?.priorities ?? [],
+      });
       setPlans(planData);
       setOrders(orderData);
       setStatus(copy.statuses.accountUpdated);
@@ -432,6 +549,50 @@ export default function AccountPage() {
     const updated = await api.updateSubscription(plan);
     setAccount(updated);
     setStatus(copy.statuses.planChanged(copy.labels.plan[updated.subscription.plan] ?? updated.subscription.plan));
+  }
+
+  function toggleBuyerPriority(priority: BuyerPriority) {
+    setProfileForm((current) => {
+      if (current.priorities.includes(priority)) {
+        return { ...current, priorities: current.priorities.filter((item) => item !== priority) };
+      }
+      if (current.priorities.length >= 3) return current;
+      return { ...current, priorities: [...current.priorities, priority] };
+    });
+  }
+
+  async function saveBuyerProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setProfileBusy(true);
+    setProfileStatus(BUYER_PROFILE_COPY[locale].saving);
+    try {
+      const profile = await api.saveBuyerProfile({
+        intent: profileForm.intent,
+        budget_pln: profileForm.budget ? Number(profileForm.budget) : null,
+        priorities: profileForm.priorities,
+      });
+      setAccount((current) => (current ? { ...current, buyer_profile: profile } : current));
+      setProfileStatus(BUYER_PROFILE_COPY[locale].saved);
+    } catch (caught) {
+      setProfileStatus(localizedError(caught, locale, BUYER_PROFILE_COPY[locale].error));
+    } finally {
+      setProfileBusy(false);
+    }
+  }
+
+  async function deleteBuyerProfile() {
+    setProfileBusy(true);
+    setProfileStatus(BUYER_PROFILE_COPY[locale].saving);
+    try {
+      await api.deleteBuyerProfile();
+      setProfileForm({ intent: "unsure", budget: "", priorities: [] });
+      setAccount((current) => (current ? { ...current, buyer_profile: null } : current));
+      setProfileStatus(BUYER_PROFILE_COPY[locale].deleted);
+    } catch (caught) {
+      setProfileStatus(localizedError(caught, locale, BUYER_PROFILE_COPY[locale].error));
+    } finally {
+      setProfileBusy(false);
+    }
   }
 
   async function refreshAgency(agencyId = selectedAgency?.id) {
@@ -757,6 +918,7 @@ export default function AccountPage() {
 
   const currentPlan = account?.subscription.plan ?? "free";
   const buyerCopy = BUYER_ACCOUNT_COPY[locale];
+  const profileCopy = BUYER_PROFILE_COPY[locale];
   const isProfessionalAccount =
     account !== null &&
     (PROFESSIONAL_PLANS.includes(currentPlan) ||
@@ -867,6 +1029,83 @@ export default function AccountPage() {
             <small>{buyerCopy.descriptions.findApartments}</small>
           </span>
         </Link>
+      </section>
+
+      <section className="panel buyer-profile-panel">
+        <div className="panel-header">
+          <div>
+            <h2>{profileCopy.title}</h2>
+            <p>{profileCopy.description}</p>
+          </div>
+          <span className="status-line" aria-live="polite">{profileStatus}</span>
+        </div>
+        <form className="panel-body" onSubmit={saveBuyerProfile}>
+          <div className="form-grid compact">
+            <label className="field">
+              <span>{profileCopy.intent}</span>
+              <select
+                className="select"
+                value={profileForm.intent}
+                onChange={(event) => setProfileForm((current) => ({
+                  ...current,
+                  intent: event.target.value as PurchaseIntent,
+                }))}
+              >
+                {(Object.keys(profileCopy.intents) as PurchaseIntent[]).map((intent) => (
+                  <option key={intent} value={intent}>{profileCopy.intents[intent]}</option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>{profileCopy.budget}</span>
+              <input
+                className="input"
+                inputMode="numeric"
+                min={100000}
+                max={100000000}
+                name="buyer-budget"
+                placeholder={profileCopy.budgetPlaceholder}
+                type="number"
+                value={profileForm.budget}
+                onChange={(event) => setProfileForm((current) => ({
+                  ...current,
+                  budget: event.target.value,
+                }))}
+              />
+            </label>
+          </div>
+          <fieldset className="buyer-priority-fieldset">
+            <legend>{profileCopy.priorities}</legend>
+            <div className="buyer-priority-grid">
+              {BUYER_PROFILE_PRIORITIES.map((priority) => {
+                const checked = profileForm.priorities.includes(priority);
+                return (
+                  <label key={priority} className={checked ? "buyer-priority selected" : "buyer-priority"}>
+                    <input
+                      checked={checked}
+                      disabled={!checked && profileForm.priorities.length >= 3}
+                      onChange={() => toggleBuyerPriority(priority)}
+                      type="checkbox"
+                    />
+                    <span>{profileCopy.priorityLabels[priority]}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <small>{profileCopy.priorityLimit}</small>
+          </fieldset>
+          <p className="muted buyer-profile-trust">{profileCopy.trust}</p>
+          <div className="button-row">
+            <button className="button primary" disabled={profileBusy} type="submit">
+              <UserCircle size={16} /> {profileCopy.save}
+            </button>
+            {account.buyer_profile ? (
+              <button className="button danger" disabled={profileBusy} onClick={() => void deleteBuyerProfile()} type="button">
+                <Trash2 size={16} /> {profileCopy.remove}
+              </button>
+            ) : null}
+          </div>
+        </form>
       </section>
 
       <div className="detail-grid" style={{ marginTop: 16 }}>

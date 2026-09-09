@@ -213,6 +213,14 @@ ScoreNegotiationLabel = Literal[
 ScorePotentialLabel = Literal["unknown", "weak", "moderate", "good", "strong"]
 BuyerVerdictStatus = Literal["buy", "negotiate", "avoid", "verify_first"]
 PurchaseIntent = Literal["self", "family", "rental", "investment", "unsure"]
+BuyerPriority = Literal[
+    "price_value",
+    "low_risk",
+    "daily_living",
+    "family_fit",
+    "liquidity",
+    "rental_income",
+]
 DueDiligencePriority = Literal["critical", "high", "medium", "low"]
 DueDiligenceCheckStatus = Literal[
     "known",
@@ -4084,11 +4092,30 @@ class AccountUsage(BaseModel):
     report_credits_available: int = 0
 
 
+class BuyerProfileUpdate(BaseModel):
+    intent: PurchaseIntent
+    budget_pln: int | None = Field(default=None, ge=100_000, le=100_000_000)
+    priorities: list[BuyerPriority] = Field(default_factory=list, max_length=3)
+
+    @model_validator(mode="after")
+    def validate_unique_priorities(self) -> "BuyerProfileUpdate":
+        if len(set(self.priorities)) != len(self.priorities):
+            raise ValueError("Buyer priorities must be unique")
+        return self
+
+
+class BuyerProfile(BuyerProfileUpdate):
+    owner_id: str
+    created_at: datetime
+    updated_at: datetime
+
+
 class AccountSummary(BaseModel):
     user: UserAccount
     subscription: Subscription
     limits: PlanLimits
     usage: AccountUsage
+    buyer_profile: BuyerProfile | None = None
 
 
 class FavoriteCreate(BaseModel):

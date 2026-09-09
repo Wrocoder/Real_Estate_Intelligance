@@ -118,6 +118,8 @@ from domarion.schemas import (
     AreaPriceHistory,
     AreaStatistics,
     AuthIdentity,
+    BuyerProfile,
+    BuyerProfileUpdate,
     CheckoutSession,
     CompareRequest,
     CompareResponse,
@@ -3276,6 +3278,24 @@ def get_me(
     return _build_account_summary(account, user_store, report_store, order_store)
 
 
+@router.put("/me/buyer-profile", response_model=BuyerProfile)
+def save_my_buyer_profile(
+    payload: BuyerProfileUpdate,
+    account: CurrentAccountDep,
+    user_store: UserStoreDep,
+) -> BuyerProfile:
+    return user_store.save_buyer_profile(account.user.id, payload)
+
+
+@router.delete("/me/buyer-profile", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_buyer_profile(
+    account: CurrentAccountDep,
+    user_store: UserStoreDep,
+) -> Response:
+    user_store.delete_buyer_profile(account.user.id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.patch("/me/subscription", response_model=AccountSummary)
 def update_my_subscription(
     payload: SubscriptionUpdate,
@@ -5516,6 +5536,7 @@ def _build_account_summary(
         subscription=account.subscription,
         limits=account.limits,
         usage=usage,
+        buyer_profile=user_store.get_buyer_profile(account.user.id),
     )
 
 

@@ -34,6 +34,7 @@ import {
   type AIListingAnswer,
   type AIQuestionCode,
   type AIQuestionDescriptor,
+  type BuyerProfile,
   type DeveloperReputation,
   type GeneratedReport,
   type PostViewingChecklistAnswers,
@@ -286,6 +287,12 @@ const PRODUCT_COPY = {
 
 type ProductCopy = (typeof PRODUCT_COPY)[Locale];
 type CoreOperation = "draft" | "import" | "check" | "report" | "save" | "track";
+const PROFILE_NOTICE_COPY: Record<Locale, { applied: string; budget: string; edit: string }> = {
+  en: { applied: "Using your saved buying purpose", budget: "Saved maximum price", edit: "Edit profile" },
+  pl: { applied: "Używamy zapisanego celu zakupu", budget: "Zapisana maksymalna cena", edit: "Edytuj profil" },
+  ru: { applied: "Используем сохраненную цель покупки", budget: "Сохраненная максимальная цена", edit: "Изменить профиль" },
+  uk: { applied: "Використовуємо збережену мету купівлі", budget: "Збережена максимальна ціна", edit: "Змінити профіль" },
+};
 
 export default function CheckListingPage() {
   const { locale } = useLocalePreference();
@@ -316,6 +323,7 @@ export default function CheckListingPage() {
   const [lastReportForm, setLastReportForm] = useState<CheckFormState | null>(null);
   const [draftRetryToken, setDraftRetryToken] = useState(0);
   const [manualEntryRequested, setManualEntryRequested] = useState(false);
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(null);
 
   const resetAIAnswer = useCallback(
     (nextStatus = copy.statuses.aiReadyAfterCheck) => {
@@ -325,6 +333,21 @@ export default function CheckListingPage() {
     },
     [copy.statuses.aiReadyAfterCheck],
   );
+
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).has("draft")) return;
+    let cancelled = false;
+    api.getMe().then((account) => {
+      if (cancelled || !account.buyer_profile) return;
+      setBuyerProfile(account.buyer_profile);
+      setForm((current) => current.purchase_intent === "unsure"
+        ? { ...current, purchase_intent: account.buyer_profile?.intent ?? "unsure" }
+        : current);
+    }).catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     async function loadAIQuestions() {
@@ -701,6 +724,15 @@ export default function CheckListingPage() {
               {product.investment}
             </button>
           </div>
+          {buyerProfile ? (
+            <p className="profile-context-note">
+              <strong>{PROFILE_NOTICE_COPY[locale].applied}.</strong>{" "}
+              {buyerProfile.budget_pln
+                ? `${PROFILE_NOTICE_COPY[locale].budget}: ${money(buyerProfile.budget_pln, locale)}. `
+                : null}
+              <Link href="/account">{PROFILE_NOTICE_COPY[locale].edit}</Link>
+            </p>
+          ) : null}
           <button
             className="button primary check-submit"
             disabled={activeOperation !== null || !form.source_url.trim() || !form.confirm_private_analysis}

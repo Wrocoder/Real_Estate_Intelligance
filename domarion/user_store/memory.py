@@ -8,6 +8,8 @@ from domarion.schemas import (
     AlertDeliveryJob,
     AlertFrequency,
     AlertUpdate,
+    BuyerProfile,
+    BuyerProfileUpdate,
     Favorite,
     FavoriteCreate,
     FavoriteUpdate,
@@ -19,6 +21,29 @@ class InMemoryUserStore:
         self._favorites: dict[str, Favorite] = {}
         self._alerts: dict[str, Alert] = {}
         self._delivery_jobs: dict[str, AlertDeliveryJob] = {}
+        self._buyer_profiles: dict[str, BuyerProfile] = {}
+
+    def get_buyer_profile(self, owner_id: str) -> BuyerProfile | None:
+        return self._buyer_profiles.get(owner_id)
+
+    def save_buyer_profile(
+        self, owner_id: str, payload: BuyerProfileUpdate
+    ) -> BuyerProfile:
+        current = self._buyer_profiles.get(owner_id)
+        now = datetime.now(UTC)
+        profile = BuyerProfile(
+            owner_id=owner_id,
+            intent=payload.intent,
+            budget_pln=payload.budget_pln,
+            priorities=payload.priorities,
+            created_at=current.created_at if current is not None else now,
+            updated_at=now,
+        )
+        self._buyer_profiles[owner_id] = profile
+        return profile
+
+    def delete_buyer_profile(self, owner_id: str) -> bool:
+        return self._buyer_profiles.pop(owner_id, None) is not None
 
     def add_favorite(self, owner_id: str, payload: FavoriteCreate) -> Favorite:
         existing = self._find_favorite_by_listing(owner_id, payload.listing_id)
@@ -167,6 +192,7 @@ class InMemoryUserStore:
         self._favorites.clear()
         self._alerts.clear()
         self._delivery_jobs.clear()
+        self._buyer_profiles.clear()
 
     def _find_favorite_by_listing(self, owner_id: str, listing_id: str) -> Favorite | None:
         for favorite in self._favorites.values():

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from domarion.db.models import AlertDeliveryJob as AlertDeliveryJobModel
+from domarion.db.models import BuyerProfile as BuyerProfileModel
 from domarion.db.models import UserAlert as UserAlertModel
 from domarion.db.models import UserFavorite as UserFavoriteModel
 from domarion.schemas import (
@@ -15,6 +16,8 @@ from domarion.schemas import (
     AlertFilters,
     AlertFrequency,
     AlertUpdate,
+    BuyerProfile,
+    BuyerProfileUpdate,
     Favorite,
     FavoriteCreate,
     FavoriteUpdate,
@@ -24,6 +27,42 @@ from domarion.schemas import (
 class PostgresUserStore:
     def __init__(self, session: Session) -> None:
         self.session = session
+
+    def get_buyer_profile(self, owner_id: str) -> BuyerProfile | None:
+        row = self.session.get(BuyerProfileModel, owner_id)
+        return self._buyer_profile_from_row(row) if row is not None else None
+
+    def save_buyer_profile(
+        self, owner_id: str, payload: BuyerProfileUpdate
+    ) -> BuyerProfile:
+        row = self.session.get(BuyerProfileModel, owner_id)
+        now = datetime.utcnow()
+        if row is None:
+            row = BuyerProfileModel(
+                owner_id=owner_id,
+                intent=payload.intent,
+                budget_pln=payload.budget_pln,
+                priorities=payload.priorities,
+                created_at=now,
+                updated_at=now,
+            )
+            self.session.add(row)
+        else:
+            row.intent = payload.intent
+            row.budget_pln = payload.budget_pln
+            row.priorities = payload.priorities
+            row.updated_at = now
+        self.session.commit()
+        self.session.refresh(row)
+        return self._buyer_profile_from_row(row)
+
+    def delete_buyer_profile(self, owner_id: str) -> bool:
+        row = self.session.get(BuyerProfileModel, owner_id)
+        if row is None:
+            return False
+        self.session.delete(row)
+        self.session.commit()
+        return True
 
     def add_favorite(self, owner_id: str, payload: FavoriteCreate) -> Favorite:
         row = self.session.scalar(
@@ -221,6 +260,17 @@ class PostgresUserStore:
         if row is None:
             return None
         return self._delivery_job_from_row(row)
+
+    @staticmethod
+    def _buyer_profile_from_row(row: BuyerProfileModel) -> BuyerProfile:
+        return BuyerProfile(
+            owner_id=row.owner_id,
+            intent=row.intent,
+            budget_pln=row.budget_pln,
+            priorities=row.priorities,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+        )
 
     @staticmethod
     def _favorite_from_row(row: UserFavoriteModel) -> Favorite:

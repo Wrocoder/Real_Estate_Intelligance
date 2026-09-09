@@ -369,7 +369,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** P0-03, P1-05, P1-06, P1-11.
 
-### [ ] P1-16. Добавить компактный профиль покупателя
+### [x] P1-16. Добавить компактный профиль покупателя
 
 **Область:** account/preferences; `/check`; listing fit; compare; areas.
 
@@ -377,7 +377,7 @@ repository Playwright fallback.
 
 **Критерии приемки:** сохраняются intent, budget и ограниченный набор lifestyle/investment priorities; onboarding не превращается в длинную анкету; персонализированные выводы обозначены; исходные market facts не меняются; пользователь может изменить или удалить профиль.
 
-**Текущий статус (2026-09-07): NOT STARTED.** Сейчас intent существует локально в отдельных flows, но durable cross-route buyer profile отсутствует.
+**Текущий статус (2026-09-09): DONE.** Добавлен tenant-scoped durable `BuyerProfile` с intent, nullable budget и максимум тремя валидируемыми lifestyle/investment priorities, memory/Postgres stores, миграцией `0039_buyer_profiles`, CRUD `/me/buyer-profile` и включением профиля в `/me`. Компактная PL/EN/RU/UK форма в account позволяет сохранить, изменить и удалить профиль и прямо объясняет, что персонализация не меняет market facts. `/check` применяет сохраненный intent, `/compare` строит явно обозначенную персональную рекомендацию по активному intent, budget и только доступным score/fit signals, а areas используют профильный default sort только для напрямую поддержанных `value`/`liquidity` метрик. Release gate: полный backend suite `436 passed, 1 skipped`; Ruff; ESLint; TypeScript; `667` smoke assertions; npm audit без уязвимостей; production build; OpenAPI regeneration; repository Playwright на 1440px/390px с PL/EN/RU/UK rendering, save/reload, cross-route application, console/network/overflow checks. Встроенный browser недоступен из-за отсутствующего `sandboxPolicy`, поэтому rendered QA выполнен repository Playwright fallback. Миграционная цепочка проверена как single head `0039_buyer_profiles`; реальный PostgreSQL upgrade не выполнялся.
 
 **Сложность:** L. **Зависимости:** P0-02, P1-02, P1-06.
 

@@ -10,6 +10,7 @@ import { ListingProvenance } from "@/components/ListingProvenance";
 import {
   api,
   type AICompareAnswer,
+  type BuyerProfile,
   type CompareItemMetrics,
   type CompareResponse,
   type DeveloperReputation,
@@ -61,6 +62,9 @@ const COMPARE_PRODUCT_COPY = {
     farther: "farther from the city center",
     loadingSteps: ["Loading selected apartments", "Calculating total purchase costs", "Preparing recommendation"],
     intentLabel: "Compare for",
+    personalized: "Personalized recommendation from your buyer profile",
+    noBudgetFit: "None of the selected apartments fits your saved maximum price; the general recommendation is shown.",
+    editProfile: "Edit buyer profile",
   },
   pl: {
     bestOverall: "Najlepsza opcja ogólnie",
@@ -74,6 +78,9 @@ const COMPARE_PRODUCT_COPY = {
     farther: "dalej od centrum",
     loadingSteps: ["Ładujemy wybrane mieszkania", "Liczymy całkowity koszt zakupu", "Przygotowujemy rekomendację"],
     intentLabel: "Porównaj dla",
+    personalized: "Rekomendacja dopasowana do Twojego profilu kupującego",
+    noBudgetFit: "Żadne z wybranych mieszkań nie mieści się w zapisanej cenie maksymalnej; pokazujemy rekomendację ogólną.",
+    editProfile: "Edytuj profil kupującego",
   },
   ru: {
     bestOverall: "Лучший вариант в целом",
@@ -87,6 +94,9 @@ const COMPARE_PRODUCT_COPY = {
     farther: "дальше от центра",
     loadingSteps: ["Загружаем выбранные квартиры", "Считаем полную стоимость покупки", "Готовим рекомендацию"],
     intentLabel: "Сравнить для",
+    personalized: "Персональная рекомендация по вашему профилю покупателя",
+    noBudgetFit: "Ни одна выбранная квартира не укладывается в сохраненную максимальную цену; показана общая рекомендация.",
+    editProfile: "Изменить профиль покупателя",
   },
   uk: {
     bestOverall: "Найкращий варіант загалом",
@@ -100,6 +110,9 @@ const COMPARE_PRODUCT_COPY = {
     farther: "далі від центру",
     loadingSteps: ["Завантажуємо вибрані квартири", "Рахуємо повну вартість купівлі", "Готуємо рекомендацію"],
     intentLabel: "Порівняти для",
+    personalized: "Персональна рекомендація за вашим профілем покупця",
+    noBudgetFit: "Жодна вибрана квартира не вкладається у збережену максимальну ціну; показано загальну рекомендацію.",
+    editProfile: "Змінити профіль покупця",
   },
 } as const;
 
@@ -129,6 +142,7 @@ export default function ComparePage() {
   });
   const [status, setStatus] = useState<CompareStatusState>({ key: "loadingListings" });
   const [error, setError] = useState("");
+  const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(null);
   const items = comparison?.items ?? [];
 
   useEffect(() => {
@@ -139,20 +153,26 @@ export default function ComparePage() {
       .filter(Boolean)
       .slice(0, 5);
     const initialIntent = params.get("intent") as PurchaseIntent | null;
-    if (["self", "family", "rental", "investment"].includes(initialIntent ?? "")) {
-      setIntent(initialIntent as PurchaseIntent);
-    }
+    const hasInitialIntent = ["self", "family", "rental", "investment"].includes(initialIntent ?? "");
+    if (hasInitialIntent) setIntent(initialIntent as PurchaseIntent);
 
     async function loadInitial() {
       setError("");
       setStatus({ key: "loadingListings" });
       try {
-        const search = await api.listListings({
-          city: "Wrocław",
-          page_size: 100,
-          sort: "investment_score_desc",
-        });
+        const [search, account] = await Promise.all([
+          api.listListings({
+            city: "Wrocław",
+            page_size: 100,
+            sort: "investment_score_desc",
+          }),
+          api.getMe().catch(() => null),
+        ]);
         setAvailable(search.items);
+        setBuyerProfile(account?.buyer_profile ?? null);
+        if (!hasInitialIntent && account?.buyer_profile?.intent !== "unsure") {
+          setIntent(account?.buyer_profile?.intent ?? "self");
+        }
         setSelectedIds(initialIds);
         setStatus({ key: "listingsLoaded" });
       } catch (caught) {
@@ -208,6 +228,11 @@ export default function ComparePage() {
     () => new Map((comparison?.metrics ?? []).map((metric) => [metric.listing_id, metric])),
     [comparison],
   );
+  const personalizedBest = useMemo(
+    () => personalizedBestListing(comparison, buyerProfile, intent),
+    [buyerProfile, comparison, intent],
+  );
+  const recommendedListingId = personalizedBest.listingId ?? comparison?.summary.best_listing_id ?? "";
 
   function toggleListing(listingId: string) {
     setSelectedIds((current) => {
@@ -314,6 +339,13 @@ export default function ComparePage() {
               <option value="investment">{locale === "pl" ? "Inwestycyjnie" : locale === "ru" ? "Для инвестиции" : locale === "uk" ? "Для інвестиції" : "For investment"}</option>
             </select>
           </label>
+          {buyerProfile ? (
+            <p className="profile-context-note compare-profile-note">
+              <strong>{COMPARE_PRODUCT_COPY[locale].personalized}.</strong>{" "}
+              {personalizedBest.overBudget ? COMPARE_PRODUCT_COPY[locale].noBudgetFit : null}{" "}
+              <Link href="/account">{COMPARE_PRODUCT_COPY[locale].editProfile}</Link>
+            </p>
+          ) : null}
           {available.length === 0 && !error ? (
             <LoadingBlock label={compareStatusText(copy, status)} steps={COMPARE_PRODUCT_COPY[locale].loadingSteps} />
           ) : (
@@ -363,7 +395,8 @@ export default function ComparePage() {
               copy={COMPARE_PRODUCT_COPY[locale]}
               items={items}
               metrics={comparison.metrics}
-              bestListingId={comparison.summary.best_listing_id}
+              bestListingId={recommendedListingId}
+              badgeLabel={buyerProfile ? COMPARE_PRODUCT_COPY[locale].personalized : undefined}
               locale={locale}
             />
           </section>
@@ -371,8 +404,8 @@ export default function ComparePage() {
           <section className="metric-grid" style={{ marginBottom: 16 }}>
             <Metric
               label={copy.metrics.bestChoice}
-              value={listingShort(items, comparison.summary.best_listing_id, copy)}
-              detail={metricDetail(metricById.get(comparison.summary.best_listing_id), copy, locale)}
+              value={listingShort(items, recommendedListingId, copy)}
+              detail={metricDetail(metricById.get(recommendedListingId), copy, locale)}
             />
             <Metric
               label={copy.metrics.belowFairPrice}
@@ -736,12 +769,14 @@ function RecommendationSummary({
   items,
   metrics,
   bestListingId,
+  badgeLabel,
   locale,
 }: {
   copy: (typeof COMPARE_PRODUCT_COPY)[keyof typeof COMPARE_PRODUCT_COPY];
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
   bestListingId: string;
+  badgeLabel?: string;
   locale: Locale;
 }) {
   const item = items.find((analysis) => analysis.listing.id === bestListingId) ?? items[0];
@@ -751,7 +786,7 @@ function RecommendationSummary({
   return (
     <article className="compare-recommendation">
       <div>
-        <span className="status-pill healthy">{copy.bestOverall}</span>
+        <span className="status-pill healthy">{badgeLabel ?? copy.bestOverall}</span>
         <h2>{item.listing.title}</h2>
         <p>{item.listing.district}</p>
         <ListingProvenance listing={item.listing} locale={locale} />
@@ -1269,6 +1304,63 @@ function rentDetail(
     metric.estimated_monthly_rent_pln,
     locale,
   )}/${copy.values.monthly}`;
+}
+
+function personalizedBestListing(
+  comparison: CompareResponse | null,
+  profile: BuyerProfile | null,
+  activeIntent: PurchaseIntent,
+): { listingId: string | null; overBudget: boolean } {
+  if (!comparison || !profile) return { listingId: null, overBudget: false };
+
+  const listingsById = new Map(comparison.items.map((item) => [item.listing.id, item]));
+  const candidates = comparison.metrics.filter((metric) => {
+    const listing = listingsById.get(metric.listing_id)?.listing;
+    return listing && (profile.budget_pln === null || listing.price <= profile.budget_pln);
+  });
+  if (candidates.length === 0) {
+    return { listingId: null, overBudget: profile.budget_pln !== null };
+  }
+
+  const scored = candidates.map((metric) => {
+    const analysis = listingsById.get(metric.listing_id);
+    const intentFit = analysis?.buyer_decision?.intent_fit.find(
+      (fit) => fit.intent === activeIntent,
+    )?.score;
+    const values = [intentFit ?? metric.decision_score];
+    for (const priority of profile.priorities) {
+      const priorityValue = personalizedPriorityValue(priority, metric, analysis ?? null);
+      if (priorityValue !== null) values.push(priorityValue);
+    }
+    return {
+      listingId: metric.listing_id,
+      rank: metric.rank,
+      score: values.reduce((sum, value) => sum + value, 0) / values.length,
+    };
+  });
+  scored.sort((left, right) => right.score - left.score || left.rank - right.rank);
+  return { listingId: scored[0]?.listingId ?? null, overBudget: false };
+}
+
+function personalizedPriorityValue(
+  priority: BuyerProfile["priorities"][number],
+  metric: CompareItemMetrics,
+  analysis: ListingAnalysis | null,
+): number | null {
+  switch (priority) {
+    case "price_value":
+      return Math.max(0, Math.min(100, 100 - Math.max(metric.price_delta_to_fair_mid_pct, 0) * 3));
+    case "low_risk":
+      return 100 - metric.risk_score;
+    case "daily_living":
+      return analysis?.buyer_decision?.intent_fit.find((fit) => fit.intent === "self")?.score ?? null;
+    case "family_fit":
+      return analysis?.buyer_decision?.intent_fit.find((fit) => fit.intent === "family")?.score ?? null;
+    case "liquidity":
+      return metric.liquidity_score;
+    case "rental_income":
+      return metric.rental_potential_score;
+  }
 }
 
 function syncCompareUrl(ids: string[], intent: PurchaseIntent) {

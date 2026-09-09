@@ -1671,6 +1671,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/buyer-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save My Buyer Profile */
+        put: operations["save_my_buyer_profile_api_v1_me_buyer_profile_put"];
+        post?: never;
+        /** Delete My Buyer Profile */
+        delete: operations["delete_my_buyer_profile_api_v1_me_buyer_profile_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/subscription": {
         parameters: {
             query?: never;
@@ -3036,6 +3054,7 @@ export interface components {
             subscription: components["schemas"]["Subscription"];
             limits: components["schemas"]["PlanLimits"];
             usage: components["schemas"]["AccountUsage"];
+            buyer_profile?: components["schemas"]["BuyerProfile"] | null;
         };
         /** AccountUsage */
         AccountUsage: {
@@ -4706,6 +4725,42 @@ export interface components {
             confidence_score: number;
             /** Note */
             note?: string | null;
+        };
+        /** BuyerProfile */
+        BuyerProfile: {
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "self" | "family" | "rental" | "investment" | "unsure";
+            /** Budget Pln */
+            budget_pln?: number | null;
+            /** Priorities */
+            priorities?: ("price_value" | "low_risk" | "daily_living" | "family_fit" | "liquidity" | "rental_income")[];
+            /** Owner Id */
+            owner_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** BuyerProfileUpdate */
+        BuyerProfileUpdate: {
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "self" | "family" | "rental" | "investment" | "unsure";
+            /** Budget Pln */
+            budget_pln?: number | null;
+            /** Priorities */
+            priorities?: ("price_value" | "low_risk" | "daily_living" | "family_fit" | "liquidity" | "rental_income")[];
         };
         /** BuyerSourceEvidence */
         BuyerSourceEvidence: {
@@ -14586,6 +14641,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["AccountSummary"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_my_buyer_profile_api_v1_me_buyer_profile_put: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BuyerProfileUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BuyerProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_my_buyer_profile_api_v1_me_buyer_profile_delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

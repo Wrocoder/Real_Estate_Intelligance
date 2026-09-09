@@ -919,6 +919,19 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class BuyerProfile(Base):
+    __tablename__ = "buyer_profiles"
+
+    owner_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    intent: Mapped[str] = mapped_column(String(40))
+    budget_pln: Mapped[int | None] = mapped_column(Integer)
+    priorities: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
 class Subscription(Base):
     __tablename__ = "subscriptions"
     __table_args__ = (UniqueConstraint("user_id"),)

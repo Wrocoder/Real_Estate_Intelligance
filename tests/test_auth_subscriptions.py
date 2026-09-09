@@ -31,6 +31,78 @@ def test_default_demo_account_summary() -> None:
         "reports_this_month": 0,
         "report_credits_available": 0,
     }
+    assert payload["buyer_profile"] is None
+
+
+def test_buyer_profile_can_be_saved_updated_and_deleted() -> None:
+    headers = {"X-Domarion-User-Id": "profile-owner"}
+
+    created = client.put(
+        "/api/v1/me/buyer-profile",
+        headers=headers,
+        json={
+            "intent": "family",
+            "budget_pln": 850_000,
+            "priorities": ["family_fit", "low_risk", "price_value"],
+        },
+    )
+
+    assert created.status_code == 200
+    profile = created.json()
+    assert profile["owner_id"] == "profile-owner"
+    assert profile["intent"] == "family"
+    assert profile["budget_pln"] == 850_000
+    assert profile["priorities"] == ["family_fit", "low_risk", "price_value"]
+    assert client.get("/api/v1/me", headers=headers).json()["buyer_profile"] == profile
+
+    updated = client.put(
+        "/api/v1/me/buyer-profile",
+        headers=headers,
+        json={
+            "intent": "investment",
+            "budget_pln": None,
+            "priorities": ["liquidity", "rental_income"],
+        },
+    )
+    assert updated.status_code == 200
+    assert updated.json()["created_at"] == profile["created_at"]
+    assert updated.json()["intent"] == "investment"
+    assert updated.json()["budget_pln"] is None
+
+    deleted = client.delete("/api/v1/me/buyer-profile", headers=headers)
+    assert deleted.status_code == 204
+    assert client.get("/api/v1/me", headers=headers).json()["buyer_profile"] is None
+
+
+def test_buyer_profile_is_scoped_and_validates_priorities() -> None:
+    owner_headers = {"X-Domarion-User-Id": "profile-owner-a"}
+    other_headers = {"X-Domarion-User-Id": "profile-owner-b"}
+    payload = {
+        "intent": "self",
+        "budget_pln": 700_000,
+        "priorities": ["daily_living", "low_risk"],
+    }
+
+    saved = client.put("/api/v1/me/buyer-profile", headers=owner_headers, json=payload)
+    assert saved.status_code == 200
+    assert client.get("/api/v1/me", headers=other_headers).json()["buyer_profile"] is None
+
+    too_many = client.put(
+        "/api/v1/me/buyer-profile",
+        headers=owner_headers,
+        json={
+            "intent": "self",
+            "priorities": ["price_value", "low_risk", "daily_living", "liquidity"],
+        },
+    )
+    duplicate = client.put(
+        "/api/v1/me/buyer-profile",
+        headers=owner_headers,
+        json={"intent": "self", "priorities": ["low_risk", "low_risk"]},
+    )
+
+    assert too_many.status_code == 422
+    assert duplicate.status_code == 422
 
 
 def test_header_identity_creates_realtor_account() -> None:

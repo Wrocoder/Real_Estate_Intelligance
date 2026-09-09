@@ -249,6 +249,14 @@ expectIncludes("account CRM workspace", accountPage, [
   "previewAgencyCrmShortlistShare",
   "CrmSharePreviewBlock",
 ]);
+expectIncludes("durable buyer profile", accountPage + apiClient + generatedApi, [
+  "BUYER_PROFILE_COPY",
+  "api.saveBuyerProfile",
+  "api.deleteBuyerProfile",
+  "buyer_profile",
+  '"/api/v1/me/buyer-profile"',
+  "BuyerProfileUpdate",
+]);
 expectIncludes("alerts delivery history", alertsPage, [
   "api.listAlertDeliveryJobs()",
   "Promise.allSettled",
@@ -341,6 +349,11 @@ expectIncludes("check decision summary", checkPage, [
   "reportResult.report.buyer_decision",
   "decisionSummaryFromScores(",
 ]);
+expectIncludes("check buyer profile", checkPage, [
+  "api.getMe()",
+  "account.buyer_profile",
+  "PROFILE_NOTICE_COPY",
+]);
 expectIncludes("provenance contract", provenanceDetails + apiClient + generatedApi, [
   "ProvenanceRecord",
   "sampleSize",
@@ -410,6 +423,13 @@ expectIncludes("compare decision summary", comparePage, [
   "<DecisionSummary",
   "decisionSummaryFromScores",
   "fallbackSummary={metric.recommendation}",
+]);
+expectIncludes("personalized comparison", comparePage, [
+  "personalizedBestListing",
+  "personalizedPriorityValue",
+  "profile.budget_pln",
+  "profile.priorities",
+  "badgeLabel",
 ]);
 
 expectIncludes("map component", mapComponent, [
@@ -581,6 +601,8 @@ expectIncludes("area compare localization", areaComparePage, [
   "formatNullablePercent(area.price_per_m2_vs_city_pct, locale, copy)",
   "area-compare-mobile-cards",
   "area-compare-table-desktop",
+  "profileSortApplied",
+  'priorities.includes("liquidity")',
 ]);
 
 expectIncludes("live area detail", areaDetailPage + areaDetailContent, [

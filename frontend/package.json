@@ -12,6 +12,7 @@
     "generate:openapi": "node scripts/generate-openapi.mjs",
     "browser:quality": "node scripts/browser-quality.mjs",
     "browser:account": "node scripts/browser-account.mjs",
+    "browser:buyer-profile": "node scripts/browser-buyer-profile.mjs",
     "browser:area-history": "node scripts/browser-area-history.mjs",
     "browser:check-recovery": "node scripts/check-recovery.mjs"
   },

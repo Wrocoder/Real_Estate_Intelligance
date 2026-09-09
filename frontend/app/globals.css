@@ -1260,6 +1260,99 @@ summary:focus-visible {
   background: #fbfcfd;
 }
 
+.buyer-profile-panel {
+  margin-top: 16px;
+}
+
+.buyer-profile-panel .panel-header > div {
+  min-width: 0;
+}
+
+.buyer-profile-panel .panel-header p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.buyer-priority-fieldset {
+  min-width: 0;
+  margin: 16px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.buyer-priority-fieldset legend {
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.buyer-priority-fieldset > small {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+}
+
+.buyer-priority-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.buyer-priority {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.buyer-priority.selected {
+  border-color: rgba(15, 118, 110, 0.5);
+  background: #f0f8f5;
+}
+
+.buyer-priority:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.buyer-priority:has(input:disabled) {
+  cursor: not-allowed;
+  opacity: 0.56;
+}
+
+.buyer-profile-trust {
+  margin: 14px 0 0;
+}
+
+.profile-context-note {
+  margin: 0;
+  padding: 9px 10px;
+  border-left: 3px solid var(--accent);
+  background: #f0f8f5;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.profile-context-note a {
+  font-weight: 700;
+}
+
+.compare-profile-note {
+  grid-column: 1 / -1;
+}
+
+.panel-body > .profile-context-note + .form-grid {
+  margin-top: 12px;
+}
+
 .alert-intent-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3854,6 +3947,10 @@ summary:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .buyer-priority-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .form-grid.wide {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4076,6 +4173,10 @@ summary:focus-visible {
   .alert-preferences,
   .form-grid,
   .crm-subgrid {
+    grid-template-columns: 1fr;
+  }
+
+  .buyer-priority-grid {
     grid-template-columns: 1fr;
   }
 

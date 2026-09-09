@@ -1917,6 +1917,25 @@ export type UserAccount = {
   updated_at: string;
 };
 
+export type BuyerPriority =
+  | "price_value"
+  | "low_risk"
+  | "daily_living"
+  | "family_fit"
+  | "liquidity"
+  | "rental_income";
+
+export type BuyerProfile = {
+  owner_id: string;
+  intent: PurchaseIntent;
+  budget_pln: number | null;
+  priorities: BuyerPriority[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type BuyerProfilePayload = Pick<BuyerProfile, "intent" | "budget_pln" | "priorities">;
+
 export type Subscription = {
   id: string;
   user_id: string;
@@ -2367,6 +2386,7 @@ export type AccountSummary = {
   subscription: Subscription;
   limits: PlanLimits;
   usage: AccountUsage;
+  buyer_profile: BuyerProfile | null;
 };
 
 export type AuthSession = {
@@ -3622,6 +3642,21 @@ export const api = {
       { method: "POST" },
     ),
   getMe: () => request<AccountSummary>("/api/v1/me"),
+  saveBuyerProfile: (payload: BuyerProfilePayload) =>
+    request<BuyerProfile>("/api/v1/me/buyer-profile", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    }),
+  deleteBuyerProfile: async () => {
+    const response = await authenticatedFetch("/api/v1/me/buyer-profile", {
+      method: "DELETE",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`API ${response.status}: ${body}`);
+    }
+  },
   listPlans: () => request<PlanLimits[]>("/api/v1/plans"),
   listAgencies: (params: { limit?: number } = {}) =>
     request<AgencyWorkspaceSummary[]>(`/api/v1/agencies${toQueryString(params)}`),

@@ -1055,10 +1055,50 @@ Verified:
 
 Follow-up:
 
-- P1-16 still owns the durable buyer profile that should personalize more of
-  the action plan and comparison flow;
+- P1-16 now provides the durable buyer profile used by check, comparison and
+  supported area-ranking signals;
 - generated report language/version and paid entitlement remain in P1-12;
 - production legal review remains part of the externally blocked P0-05 gate.
+
+### P1-16: Compact Buyer Profile - DONE (2026-09-09)
+
+Changed:
+
+- introduced a tenant-scoped `BuyerProfile` with purchase intent, an optional
+  maximum apartment price and no more than three validated priorities;
+- added memory and PostgreSQL persistence, migration `0039_buyer_profiles`,
+  CRUD `/me/buyer-profile` endpoints and profile inclusion in `/me`;
+- added a compact localized account form that supports save, edit and delete
+  without turning onboarding into a questionnaire;
+- applied saved intent to `/check`, and built a visibly labeled personalized
+  comparison recommendation from the active intent, budget and only available
+  fit/score evidence;
+- applied area profile defaults only when a direct `value` or `liquidity`
+  ranking exists; unsupported lifestyle preferences do not produce inferred
+  area claims;
+- kept asking prices, fair value, risks and all other market facts unchanged.
+
+Verified:
+
+- full backend suite: `436 passed, 1 skipped`; targeted profile suite:
+  `9 passed`; Ruff and `git diff --check` passed;
+- frontend ESLint, TypeScript, `667` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- generated OpenAPI TypeScript was refreshed from the running API;
+- repository Playwright passed PL/EN/RU/UK rendering, save/reload and
+  cross-route behavior on desktop and mobile, including console, network and
+  horizontal-overflow checks;
+- Alembic reports the single head `0039_buyer_profiles`; a real PostgreSQL
+  upgrade was not run in this workspace;
+- the embedded browser remained unavailable because the environment did not
+  provide `sandboxPolicy`; repository Playwright provided the rendered QA.
+
+Follow-up:
+
+- P1-08 can now simplify the remaining detailed comparison matrix around this
+  profile-backed recommendation;
+- P1-09 can use the same profile for monitoring relevance without changing
+  alert facts or delivery semantics.
 
 ## Remaining External Limitations
 
