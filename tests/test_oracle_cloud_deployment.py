@@ -115,6 +115,20 @@ def test_oracle_proxy_and_postgis_artifacts_are_arm_ready() -> None:
     assert "compose.oracle.yaml up -d --remove-orphans" in systemd_unit
 
 
+def test_frontend_lockfile_keeps_arm_optional_dependencies() -> None:
+    lockfile = json.loads(
+        (ROOT / "frontend" / "package-lock.json").read_text(encoding="utf-8")
+    )
+    packages = lockfile["packages"]
+    optional_dependencies = packages[""]["optionalDependencies"]
+
+    for dependency in ("@emnapi/core", "@emnapi/runtime"):
+        version = optional_dependencies[dependency]
+        locked_dependency = packages[f"node_modules/{dependency}"]
+        assert locked_dependency["version"] == version
+        assert locked_dependency["optional"] is True
+
+
 def test_oracle_backup_systemd_timer_runs_containerized_backup() -> None:
     backup_service = (
         ROOT / "deploy" / "oracle" / "domarion-postgres-backup.service"
