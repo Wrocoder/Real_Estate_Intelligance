@@ -956,12 +956,12 @@ function comparisonRows(
       label: copy.table.offerStrategy,
       values: items.map((item) => {
         const metric = metricById.get(item.listing.id);
-        return metric
+        return metric && metric.opening_offer_pln !== null && metric.max_reasonable_offer_pln !== null
           ? `${money(metric.opening_offer_pln, locale)} -> ${money(
               metric.max_reasonable_offer_pln,
               locale,
             )}`
-          : "-";
+          : copy.empty.noData;
       }),
     },
     {

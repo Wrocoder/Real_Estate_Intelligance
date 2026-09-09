@@ -16,12 +16,17 @@ from domarion.schemas import (
     AIListingAnswer,
     AIListingAnswerRequest,
     AIQuestionDescriptor,
+    BuyerActionEvidence,
+    BuyerActionItem,
+    BuyerNegotiationArgument,
+    BuyerNegotiationEvidence,
     CompareItemMetrics,
     CompareResponse,
     ListingAnalysis,
     MortgageCalculationRequest,
 )
 from domarion.services.mortgage import calculate_mortgage
+from domarion.services.report_templates import ACTION_REPORT_LABELS
 
 LISTING_ASSISTANT_PROMPT_VERSION = "listing-assistant-grounded-v1"
 LISTING_ASSISTANT_PROVIDER = "domarion_rule_based"
@@ -492,28 +497,102 @@ def _price_answer(analysis: ListingAnalysis) -> tuple[str, list[str], list[AIAns
 def _negotiation_answer(
     analysis: ListingAnalysis,
 ) -> tuple[str, list[str], list[AIAnswerCitation]]:
-    scores = analysis.scores
-    listing = analysis.listing
+    decision = analysis.buyer_decision
+    if decision is None or decision.negotiation.scenario_status != "available":
+        limitations = (
+            decision.negotiation.limitation_codes
+            if decision is not None
+            else ["structured_analysis_missing"]
+        )
+        return (
+            "Market evidence is insufficient for a responsible negotiation price "
+            "scenario. Collect evidence before naming an offer.",
+            [_negotiation_limitation_point(code) for code in limitations],
+            [_listing_citation(analysis), _score_citation(analysis)],
+        )
+
+    negotiation = decision.negotiation
     answer = (
-        f"Negotiation Score is {scores.negotiation_score}/100 "
-        f"({scores.negotiation_label}). Use this as leverage sizing, not as a guaranteed "
-        "discount."
+        f"Evidence supports a scenario opening at {_money(negotiation.opening_offer_pln)}, "
+        f"a realistic range of {_money(negotiation.realistic_deal_low_pln)}-"
+        f"{_money(negotiation.realistic_deal_high_pln)}, and a ceiling of "
+        f"{_money(negotiation.max_reasonable_offer_pln)} before new evidence. "
+        "These are negotiation scenarios, not guaranteed market prices."
     )
     key_points = [
-        f"Object has been on market {listing.days_on_market} days.",
-        f"Price reductions recorded: {listing.price_reductions}.",
-        *analysis.negotiation_arguments[:4],
+        _negotiation_argument_point(argument)
+        for argument in negotiation.arguments[:4]
     ]
-    return answer, _dedupe(key_points), [
-        _listing_citation(analysis),
-        _score_citation(analysis),
-        AIAnswerCitation(
-            source_id="analysis:negotiation_arguments",
-            source_type="listing_analysis",
-            title="Negotiation arguments",
-            excerpt="; ".join(analysis.negotiation_arguments[:3]),
+    used_evidence = {
+        reference
+        for argument in negotiation.arguments[:4]
+        for reference in argument.evidence_refs
+    }
+    citations = [
+        _negotiation_evidence_citation(evidence)
+        for evidence in negotiation.argument_evidence
+        if evidence.id in used_evidence
+    ]
+    return answer, _dedupe(key_points), citations
+
+
+def _negotiation_argument_point(argument: BuyerNegotiationArgument) -> str:
+    params = argument.params
+    if argument.code == "fair_value_range":
+        return (
+            f"Estimated fair-value range: {_money(params['low_pln'])}-"
+            f"{_money(params['high_pln'])}; confidence {params['confidence_score']}/100."
+        )
+    if argument.code == "asking_above_fair_mid":
+        return (
+            f"Asking price is {float(params['delta_pct']):.1f}% "
+            f"({_money(params['delta_pln'])}) above the estimated midpoint."
+        )
+    if argument.code == "comparable_sample":
+        return f"The estimate uses {params['sample_size']} comparable listings."
+    if argument.code == "long_market_exposure":
+        return (
+            f"The listing has been active for {params['days_on_market']} days versus "
+            f"an area average of {params['area_average_days']}."
+        )
+    if argument.code == "price_reductions":
+        return f"Recorded asking-price reductions: {params['count']}."
+    if argument.code == "relisted":
+        return "The listing was relisted; verify its previous price and exposure."
+    if argument.code == "area_supply_growth":
+        return f"Local supply increased {float(params['change_pct']):.1f}% over 90 days."
+    return "Use only the evidence linked to this negotiation scenario."
+
+
+def _negotiation_limitation_point(code: str) -> str:
+    return {
+        "fair_price_confidence_low": "Fair-price confidence is below the minimum threshold.",
+        "subject_data_quality_low": "The apartment input data is incomplete.",
+        "comparable_sample_below_minimum": "Fewer than three comparable listings are available.",
+        "transaction_sample_below_minimum": (
+            "Fewer than ten transaction observations are available."
         ),
-    ]
+        "market_evidence_insufficient": "No market sample reaches the minimum threshold.",
+        "structured_analysis_missing": "The structured negotiation analysis is unavailable.",
+    }.get(code, "Additional market evidence is required.")
+
+
+def _negotiation_evidence_citation(
+    evidence: BuyerNegotiationEvidence,
+) -> AIAnswerCitation:
+    details = [f"Confidence {evidence.confidence_score}/100"]
+    if evidence.sample_size is not None:
+        details.append(f"sample {evidence.sample_size}")
+    if evidence.geographic_scope:
+        details.append(evidence.geographic_scope)
+    if evidence.time_range:
+        details.append(evidence.time_range)
+    return AIAnswerCitation(
+        source_id=f"negotiation:{evidence.id}",
+        source_type=evidence.source_type,
+        title=evidence.source_name,
+        excerpt="; ".join(details) + ".",
+    )
 
 
 def _risks_answer(analysis: ListingAnalysis) -> tuple[str, list[str], list[AIAnswerCitation]]:
@@ -628,45 +707,80 @@ def _rental_fit_answer(
 def _seller_questions_answer(
     analysis: ListingAnalysis,
 ) -> tuple[str, list[str], list[AIAnswerCitation]]:
-    listing = analysis.listing
+    decision = analysis.buyer_decision
+    if decision is None or decision.action_plan is None:
+        return (
+            "The structured buyer action plan is unavailable.",
+            ["Build the buyer decision before generating seller questions."],
+            [_listing_citation(analysis)],
+        )
     questions = [
-        "Why is the object being sold and what transaction timing does the seller expect?",
-        "Are all owners ready to sign, and are there mortgage or title restrictions?",
-        "What monthly fees apply: czynsz, renovation fund, media and heating?",
-        "What is included in the price: furniture, appliances, parking or storage?",
+        item
+        for item in decision.action_plan.items
+        if item.category == "seller_question"
     ]
-    if listing.days_on_market >= analysis.area_statistics.average_days_on_market:
-        questions.append("Why has the object stayed on market longer than the area average?")
-    if listing.price_reductions:
-        questions.append("What caused the previous price reduction and what price is negotiable?")
-    if analysis.risk_profile is not None:
-        questions.extend(analysis.risk_profile.priority_checks[:3])
     return (
         "Ask seller/agent questions that verify title, costs, condition and negotiation room.",
-        _dedupe(questions),
-        [_listing_citation(analysis), _risk_citation(analysis)],
+        [_buyer_action_text(item) for item in questions],
+        _buyer_action_citations(decision.action_plan.evidence, questions),
     )
 
 
 def _documents_answer(
     analysis: ListingAnalysis,
 ) -> tuple[str, list[str], list[AIAnswerCitation]]:
-    listing = analysis.listing
+    decision = analysis.buyer_decision
+    if decision is None or decision.action_plan is None:
+        return (
+            "The structured buyer action plan is unavailable.",
+            ["Build the buyer decision before generating the document checklist."],
+            [_listing_citation(analysis)],
+        )
     checks = [
-        "Księga wieczysta: owner, mortgage, claims, easements and restrictions.",
-        "Administrative documents confirming area, floor, address and room layout.",
-        "Certificate of no arrears for czynsz/media and community/cooperative fees.",
-        "Community/cooperative minutes, renovation fund and planned building repairs.",
-        "Technical checks: electricity, plumbing, heating, ventilation, windows and moisture.",
+        item
+        for item in decision.action_plan.items
+        if item.phase == "before_offer"
+        and item.category in {"legal", "documents", "financial", "building"}
     ]
-    if listing.market_type == "primary":
-        checks.append("Primary market: prospekt informacyjny, escrow account and handover dates.")
-    else:
-        checks.append("Secondary market: budget PCC 2%, notary and land-register costs.")
     return (
         "Document checks should confirm ownership, costs, technical state and transaction risk.",
-        checks,
-        [_listing_citation(analysis), _risk_citation(analysis)],
+        [_buyer_action_text(item) for item in checks],
+        _buyer_action_citations(decision.action_plan.evidence, checks),
+    )
+
+
+def _buyer_action_text(item: BuyerActionItem) -> str:
+    return ACTION_REPORT_LABELS.get(item.code, "Complete the structured verification step.")
+
+
+def _buyer_action_citations(
+    evidence: list[BuyerActionEvidence],
+    actions: list[BuyerActionItem],
+) -> list[AIAnswerCitation]:
+    evidence_by_id = {item.id: item for item in evidence}
+    referenced_ids = _dedupe(
+        [reference for action in actions for reference in action.evidence_refs]
+    )
+    return [
+        _buyer_action_evidence_citation(evidence_by_id[reference])
+        for reference in referenced_ids
+        if reference in evidence_by_id
+    ]
+
+
+def _buyer_action_evidence_citation(
+    evidence: BuyerActionEvidence,
+) -> AIAnswerCitation:
+    details = [f"Status {evidence.status}", f"confidence {evidence.confidence_score}/100"]
+    if evidence.sample_size is not None:
+        details.append(f"sample {evidence.sample_size}")
+    if evidence.geographic_scope:
+        details.append(evidence.geographic_scope)
+    return AIAnswerCitation(
+        source_id=f"buyer-action:{evidence.id}",
+        source_type=evidence.source_type,
+        title=evidence.source_name,
+        excerpt="; ".join(details) + ".",
     )
 
 

@@ -26,7 +26,12 @@ def test_readiness_endpoint_reports_local_ready() -> None:
 
 def test_production_readiness_blocks_unsafe_defaults() -> None:
     report = build_production_readiness_report(
-        Settings(environment="production", demo_mode_enabled=False), env={}
+        Settings(
+            environment="production",
+            demo_mode_enabled=False,
+            auth_session_secret="local-development-only-change-me",
+        ),
+        env={},
     )
 
     failed_checks = {check.name for check in report.checks if check.status == "fail"}
@@ -47,12 +52,24 @@ def test_production_readiness_blocks_unsafe_defaults() -> None:
 
 def test_production_startup_rejects_default_session_secret() -> None:
     with pytest.raises(RuntimeError, match="session secret"):
-        create_app(Settings(environment="production", demo_mode_enabled=False))
+        create_app(
+            Settings(
+                environment="production",
+                demo_mode_enabled=False,
+                auth_session_secret="local-development-only-change-me",
+            )
+        )
 
 
 def test_staging_startup_rejects_default_session_secret() -> None:
     with pytest.raises(RuntimeError, match="session secret"):
-        create_app(Settings(environment="staging", demo_mode_enabled=False))
+        create_app(
+            Settings(
+                environment="staging",
+                demo_mode_enabled=False,
+                auth_session_secret="local-development-only-change-me",
+            )
+        )
 
 
 def test_production_readiness_accepts_full_production_shape(tmp_path: Path) -> None:

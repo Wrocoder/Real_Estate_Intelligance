@@ -11,7 +11,11 @@ function assert(condition, message) {
 async function register(context) {
   const email = `check-recovery-${Date.now()}@domarion.local`;
   const response = await context.request.post(`${apiBaseUrl}/api/v1/auth/register`, {
-    data: { email, password: "CheckRecovery-123!", display_name: "Check recovery fixture" },
+    data: {
+      email,
+      password: "CheckRecovery-123!",
+      display_name: "Check recovery fixture",
+    },
   });
   assert(response.status() === 201, `test authentication failed: ${response.status()}`);
 }
@@ -43,7 +47,10 @@ async function fillManualForm(page) {
 }
 
 async function runCoreRecovery(browser) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pl-PL" });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "pl-PL",
+  });
   await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
   await register(context);
   const page = await context.newPage();
@@ -86,6 +93,10 @@ async function runCoreRecovery(browser) {
 
     await page.getByRole("button", { name: "Pełny raport mieszkania" }).click();
     await page.getByRole("alert").filter({ hasText: "Błąd" }).waitFor({ state: "visible", timeout: 5000 });
+    assert(
+      (await page.getByRole("heading", { name: "Raport kupującego" }).count()) === 0,
+      "failed report mutation exposed a success state",
+    );
     const retry = page.getByRole("button", { name: "Spróbuj ponownie" });
     await retry.waitFor({ state: "visible" });
     await retry.click();
@@ -93,8 +104,18 @@ async function runCoreRecovery(browser) {
 
     await page.getByRole("button", { name: "Zapisz mieszkanie" }).click();
     await page.getByRole("alert").filter({ hasText: "Błąd" }).waitFor({ state: "visible", timeout: 5000 });
+    assert(
+      (await page.getByText("Zapisano", { exact: true }).count()) === 0,
+      "failed save mutation was not rolled back",
+    );
     await page.getByRole("button", { name: "Spróbuj ponownie" }).click();
-    await page.getByText("Zapisano", { exact: true }).waitFor({ state: "visible", timeout: 15000 });
+    await page
+      .locator(".status-line")
+      .filter({ hasText: /^Zapisano$/ })
+      .waitFor({
+        state: "visible",
+        timeout: 15000,
+      });
 
     assert(analyzeRequestCount === 1, `expected one analysis request, got ${analyzeRequestCount}`);
     assert(reportRequestCount === 2, `expected one failed and one retried report request, got ${reportRequestCount}`);
@@ -214,8 +235,14 @@ async function runImportOutcomes(browser) {
       await page.locator(".import-outcome-notice.error").waitFor({ state: "visible", timeout: 5000 });
       await page.getByText(testCase.unsupportedTitle, { exact: true }).waitFor({ state: "visible" });
       assert(importRequestCount === 2, `${testCase.locale}: expected two import requests, got ${importRequestCount}`);
-      assert(observation.consoleErrors.length === 0, `${testCase.locale}: console errors: ${observation.consoleErrors.join(" | ")}`);
-      assert(observation.pageErrors.length === 0, `${testCase.locale}: page errors: ${observation.pageErrors.join(" | ")}`);
+      assert(
+        observation.consoleErrors.length === 0,
+        `${testCase.locale}: console errors: ${observation.consoleErrors.join(" | ")}`,
+      );
+      assert(
+        observation.pageErrors.length === 0,
+        `${testCase.locale}: page errors: ${observation.pageErrors.join(" | ")}`,
+      );
     } finally {
       await context.close();
     }
@@ -223,7 +250,10 @@ async function runImportOutcomes(browser) {
 }
 
 async function runActionableReportError(browser) {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "pl-PL" });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "pl-PL",
+  });
   await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
   await register(context);
   const page = await context.newPage();
@@ -278,8 +308,16 @@ async function runActionableReportError(browser) {
       status: 400,
       contentType: "application/json",
       body: JSON.stringify({
-        detail: "Area statistics are not available for this city/district in the current MVP data",
-        error: { code: "bad_request", params: {}, correlation_id: "recovery-test" },
+        detail: {
+          code: "unsupported_area",
+          params: {},
+          correlation_id: "recovery-test",
+        },
+        error: {
+          code: "unsupported_area",
+          params: {},
+          correlation_id: "recovery-test",
+        },
       }),
     });
   });
@@ -289,11 +327,16 @@ async function runActionableReportError(browser) {
     await page.getByLabel("Link Otodom lub OLX").fill("https://www.otodom.pl/pl/oferta/demo-IDunsupported-area");
     await page.getByRole("checkbox").check();
     await page.getByRole("button", { name: "Sprawdź mieszkanie" }).click();
-    await page.getByText("Nie mamy jeszcze wystarczających danych dla tego miasta lub dzielnicy.", { exact: false }).waitFor({
-      state: "visible",
-      timeout: 10000,
-    });
-    assert(await page.locator("details.manual-entry-panel").getAttribute("open") !== null, "manual entry did not open after report 400");
+    await page
+      .getByText("Nie mamy jeszcze wystarczających danych dla tego miasta lub dzielnicy.", { exact: false })
+      .waitFor({
+        state: "visible",
+        timeout: 10000,
+      });
+    assert(
+      (await page.locator("details.manual-entry-panel").getAttribute("open")) !== null,
+      "manual entry did not open after report 400",
+    );
     assert(observation.consoleErrors.length === 0, `console errors: ${observation.consoleErrors.join(" | ")}`);
     assert(observation.pageErrors.length === 0, `page errors: ${observation.pageErrors.join(" | ")}`);
   } finally {

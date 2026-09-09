@@ -94,4 +94,9 @@ def test_scoring_service_api_validates_coordinate_pair() -> None:
     )
 
     assert response.status_code == 422
-    assert "lat and lon must be provided together" in response.text
+    payload = response.json()
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["params"]["fields"] == [
+        {"field": "body", "type": "value_error"}
+    ]
+    assert "lat and lon must be provided together" not in response.text

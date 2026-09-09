@@ -120,7 +120,8 @@ function shouldOpenManualEntry(caught: unknown) {
 const PRODUCT_COPY = {
   en: {
     heroTitle: "Check an apartment before buying",
-    heroText: "Paste an Otodom or OLX link. WartoMetr estimates a fair price, risks, total purchase cost and negotiation range.",
+    heroText:
+      "Paste an Otodom or OLX link. WartoMetr estimates a fair price, risks, total purchase cost and negotiation range.",
     urlLabel: "Otodom or OLX link",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Check apartment",
@@ -145,19 +146,23 @@ const PRODUCT_COPY = {
     details: "Apartment details",
     report: "Full property report",
     assistant: "Ask about this apartment",
-    consent: "I understand that WartoMetr will fetch this public listing, keep a private reference for the analysis, and let me delete the draft.",
+    consent:
+      "I understand that WartoMetr will fetch this public listing, keep a private reference for the analysis, and let me delete the draft.",
     privacy: "Privacy details",
     consentRequired: "Confirm the data-use notice before importing the link.",
     importPartialTitle: "Some listing details were found",
-    importPartialText: "We do not fill in unknown values. Check the imported fields and complete anything missing before creating the report.",
+    importPartialText:
+      "We do not fill in unknown values. Check the imported fields and complete anything missing before creating the report.",
     importFailedTitle: "The listing could not be read",
-    importFailedText: "No reliable listing details were extracted. Try again or enter the address, price, size and rooms manually.",
+    importFailedText:
+      "No reliable listing details were extracted. Try again or enter the address, price, size and rooms manually.",
     importUnsupportedTitle: "This listing source is not supported",
     importUnsupportedText: "We can import Otodom and OLX listings. You can still enter the apartment details manually.",
   },
   pl: {
     heroTitle: "Sprawdź mieszkanie przed zakupem",
-    heroText: "Wklej link z Otodom lub OLX. WartoMetr oszacuje cenę rynkową, ryzyka, całkowity koszt zakupu i zakres negocjacji.",
+    heroText:
+      "Wklej link z Otodom lub OLX. WartoMetr oszacuje cenę rynkową, ryzyka, całkowity koszt zakupu i zakres negocjacji.",
     urlLabel: "Link Otodom lub OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Sprawdź mieszkanie",
@@ -182,19 +187,23 @@ const PRODUCT_COPY = {
     details: "Dane mieszkania",
     report: "Pełny raport mieszkania",
     assistant: "Zapytaj o to mieszkanie",
-    consent: "Rozumiem, że WartoMetr pobierze to publiczne ogłoszenie, zachowa prywatne odniesienie do analizy i umożliwi usunięcie szkicu.",
+    consent:
+      "Rozumiem, że WartoMetr pobierze to publiczne ogłoszenie, zachowa prywatne odniesienie do analizy i umożliwi usunięcie szkicu.",
     privacy: "Szczegóły prywatności",
     consentRequired: "Potwierdź zasady wykorzystania danych przed importem linku.",
     importPartialTitle: "Znaleźliśmy część danych ogłoszenia",
-    importPartialText: "Nie uzupełniamy nieznanych wartości. Sprawdź zaimportowane pola i wpisz brakujące dane przed utworzeniem raportu.",
+    importPartialText:
+      "Nie uzupełniamy nieznanych wartości. Sprawdź zaimportowane pola i wpisz brakujące dane przed utworzeniem raportu.",
     importFailedTitle: "Nie udało się odczytać ogłoszenia",
-    importFailedText: "Nie udało się pobrać wiarygodnych danych ogłoszenia. Spróbuj ponownie albo wpisz ręcznie adres, cenę, metraż i liczbę pokoi.",
+    importFailedText:
+      "Nie udało się pobrać wiarygodnych danych ogłoszenia. Spróbuj ponownie albo wpisz ręcznie adres, cenę, metraż i liczbę pokoi.",
     importUnsupportedTitle: "To źródło ogłoszenia nie jest obsługiwane",
     importUnsupportedText: "Importujemy ogłoszenia z Otodom i OLX. Dane mieszkania możesz nadal wpisać ręcznie.",
   },
   ru: {
     heroTitle: "Проверьте квартиру перед покупкой",
-    heroText: "Вставьте ссылку Otodom или OLX. WartoMetr оценит рыночный диапазон, риски, полную стоимость покупки и диапазон торга.",
+    heroText:
+      "Вставьте ссылку Otodom или OLX. WartoMetr оценит рыночный диапазон, риски, полную стоимость покупки и диапазон торга.",
     urlLabel: "Ссылка Otodom или OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Проверить квартиру",
@@ -219,19 +228,23 @@ const PRODUCT_COPY = {
     details: "Параметры квартиры",
     report: "Полный отчет по квартире",
     assistant: "Задать вопрос по квартире",
-    consent: "Я понимаю, что WartoMetr получит это публичное объявление, сохранит приватную ссылку для анализа и позволит удалить черновик.",
+    consent:
+      "Я понимаю, что WartoMetr получит это публичное объявление, сохранит приватную ссылку для анализа и позволит удалить черновик.",
     privacy: "Подробнее о приватности",
     consentRequired: "Подтвердите правила использования данных перед импортом ссылки.",
     importPartialTitle: "Найдена только часть данных объявления",
-    importPartialText: "Мы не подставляем неизвестные значения. Проверьте импортированные поля и заполните недостающие данные перед созданием отчета.",
+    importPartialText:
+      "Мы не подставляем неизвестные значения. Проверьте импортированные поля и заполните недостающие данные перед созданием отчета.",
     importFailedTitle: "Не удалось прочитать объявление",
-    importFailedText: "Надежные данные объявления не извлечены. Повторите попытку или введите вручную адрес, цену, площадь и число комнат.",
+    importFailedText:
+      "Надежные данные объявления не извлечены. Повторите попытку или введите вручную адрес, цену, площадь и число комнат.",
     importUnsupportedTitle: "Источник объявления не поддерживается",
     importUnsupportedText: "Мы импортируем объявления с Otodom и OLX. Параметры квартиры можно ввести вручную.",
   },
   uk: {
     heroTitle: "Перевірте квартиру перед купівлею",
-    heroText: "Вставте посилання Otodom або OLX. WartoMetr оцінить ринковий діапазон, ризики, повну вартість купівлі та діапазон торгу.",
+    heroText:
+      "Вставте посилання Otodom або OLX. WartoMetr оцінить ринковий діапазон, ризики, повну вартість купівлі та діапазон торгу.",
     urlLabel: "Посилання Otodom або OLX",
     urlPlaceholder: "https://www.otodom.pl/...",
     check: "Перевірити квартиру",
@@ -256,13 +269,16 @@ const PRODUCT_COPY = {
     details: "Параметри квартири",
     report: "Повний звіт по квартирі",
     assistant: "Поставити питання по квартирі",
-    consent: "Я розумію, що WartoMetr отримає це публічне оголошення, збереже приватне посилання для аналізу та дозволить видалити чернетку.",
+    consent:
+      "Я розумію, що WartoMetr отримає це публічне оголошення, збереже приватне посилання для аналізу та дозволить видалити чернетку.",
     privacy: "Деталі приватності",
     consentRequired: "Підтвердьте правила використання даних перед імпортом посилання.",
     importPartialTitle: "Знайдено лише частину даних оголошення",
-    importPartialText: "Ми не підставляємо невідомі значення. Перевірте імпортовані поля та заповніть відсутні дані перед створенням звіту.",
+    importPartialText:
+      "Ми не підставляємо невідомі значення. Перевірте імпортовані поля та заповніть відсутні дані перед створенням звіту.",
     importFailedTitle: "Не вдалося прочитати оголошення",
-    importFailedText: "Надійні дані оголошення не вилучено. Спробуйте ще раз або введіть вручну адресу, ціну, площу та кількість кімнат.",
+    importFailedText:
+      "Надійні дані оголошення не вилучено. Спробуйте ще раз або введіть вручну адресу, ціну, площу та кількість кімнат.",
     importUnsupportedTitle: "Джерело оголошення не підтримується",
     importUnsupportedText: "Ми імпортуємо оголошення з Otodom і OLX. Параметри квартири можна ввести вручну.",
   },
@@ -277,14 +293,11 @@ export default function CheckListingPage() {
   const product = PRODUCT_COPY[locale];
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
-  const [referencePreview, setReferencePreview] =
-    useState<SourceReferencePreview | null>(null);
-  const [urlImportResult, setUrlImportResult] =
-    useState<SourceUrlImportResult | null>(null);
+  const [referencePreview, setReferencePreview] = useState<SourceReferencePreview | null>(null);
+  const [urlImportResult, setUrlImportResult] = useState<SourceUrlImportResult | null>(null);
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
-  const [postViewingResult, setPostViewingResult] =
-    useState<PostViewingVerdictRecalculation | null>(null);
+  const [postViewingResult, setPostViewingResult] = useState<PostViewingVerdictRecalculation | null>(null);
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
   const [aiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
@@ -304,11 +317,14 @@ export default function CheckListingPage() {
   const [draftRetryToken, setDraftRetryToken] = useState(0);
   const [manualEntryRequested, setManualEntryRequested] = useState(false);
 
-  const resetAIAnswer = useCallback((nextStatus = copy.statuses.aiReadyAfterCheck) => {
-    setAiAnswer(null);
-    setAiError("");
-    setAiStatus(nextStatus);
-  }, [copy.statuses.aiReadyAfterCheck]);
+  const resetAIAnswer = useCallback(
+    (nextStatus = copy.statuses.aiReadyAfterCheck) => {
+      setAiAnswer(null);
+      setAiError("");
+      setAiStatus(nextStatus);
+    },
+    [copy.statuses.aiReadyAfterCheck],
+  );
 
   useEffect(() => {
     async function loadAIQuestions() {
@@ -330,6 +346,7 @@ export default function CheckListingPage() {
     const stableDraftId = draftId;
 
     let cancelled = false;
+
     async function loadDraft() {
       setError("");
       setRetryAction(null);
@@ -373,8 +390,7 @@ export default function CheckListingPage() {
     [aiQuestions, aiAudience, copy],
   );
   const selectedAIQuestionLabel =
-    availableAIQuestions.find((question) => question.code === selectedAIQuestion)?.label ??
-    copy.fallbackQuestion.label;
+    availableAIQuestions.find((question) => question.code === selectedAIQuestion)?.label ?? copy.fallbackQuestion.label;
 
   useEffect(() => {
     if (
@@ -572,9 +588,7 @@ export default function CheckListingPage() {
       });
       setAiAnswer(answer);
       setAiStatus(
-        answer.refused
-          ? copy.statuses.aiRefused
-          : copy.statuses.aiSaved(answer.usage_log_id ?? answer.subject_id),
+        answer.refused ? copy.statuses.aiRefused : copy.statuses.aiSaved(answer.usage_log_id ?? answer.subject_id),
       );
     } catch (caught) {
       setAiAnswer(null);
@@ -589,10 +603,7 @@ export default function CheckListingPage() {
     if (!result?.draft_id) {
       throw new Error(copy.statuses.aiNeedsDraft);
     }
-    const payload = await api.recalculateUserSubmittedDraftPostViewingVerdict(
-      result.draft_id,
-      answers,
-    );
+    const payload = await api.recalculateUserSubmittedDraftPostViewingVerdict(result.draft_id, answers);
     setPostViewingResult(payload);
     return payload;
   }
@@ -638,10 +649,7 @@ export default function CheckListingPage() {
 
   return (
     <>
-      <section
-        aria-busy={activeOperation !== null}
-        className={analysis ? "check-hero compact" : "check-hero"}
-      >
+      <section aria-busy={activeOperation !== null} className={analysis ? "check-hero compact" : "check-hero"}>
         <div className="check-hero-copy">
           <span className="landing-eyebrow">WartoMetr</span>
           <h1>{product.heroTitle}</h1>
@@ -695,9 +703,7 @@ export default function CheckListingPage() {
           </div>
           <button
             className="button primary check-submit"
-            disabled={
-              activeOperation !== null || !form.source_url.trim() || !form.confirm_private_analysis
-            }
+            disabled={activeOperation !== null || !form.source_url.trim() || !form.confirm_private_analysis}
             type="button"
             onClick={() => void previewReference()}
           >
@@ -710,7 +716,9 @@ export default function CheckListingPage() {
               disabled={activeOperation !== null}
               onChange={(event) => updateField("confirm_private_analysis", event.target.checked)}
             />
-            <span>{product.consent} <Link href="/privacy">{product.privacy}</Link></span>
+            <span>
+              {product.consent} <Link href="/privacy">{product.privacy}</Link>
+            </span>
           </label>
           <Link className="check-secondary-link" href="/">
             <Search size={16} /> {product.search}
@@ -721,9 +729,7 @@ export default function CheckListingPage() {
 
       <CoverageNotice />
 
-      {activeOperation ? (
-        <LoadingBlock label={operationLabel(activeOperation, copy)} />
-      ) : null}
+      {activeOperation ? <LoadingBlock label={operationLabel(activeOperation, copy)} /> : null}
 
       {error ? (
         <ErrorBlock
@@ -762,12 +768,14 @@ export default function CheckListingPage() {
                 <a href={safeHttpsUrl(form.source_url) ?? undefined} target="_blank" rel="noreferrer">
                   {referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual}
                 </a>
-              ) : referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual}
+              ) : (
+                (referencePreview?.provider_label ?? result?.source_domain ?? copy.values.manual)
+              )}
             </strong>
           </div>
           <div>
             <span>{product.observations}</span>
-            <strong>{analysis ? analysis.comparables.length : urlImportResult?.fields_extracted.length ?? 0}</strong>
+            <strong>{analysis ? analysis.comparables.length : (urlImportResult?.fields_extracted.length ?? 0)}</strong>
           </div>
           <div>
             <span>{product.updated}</span>
@@ -779,11 +787,51 @@ export default function CheckListingPage() {
           </div>
           <div>
             <span>{locale === "pl" ? "Zdjęcia" : locale === "ru" ? "Фото" : locale === "uk" ? "Фото" : "Photos"}</span>
-            <strong>{locale === "pl" ? "Brak danych ze źródła" : locale === "ru" ? "Источник не сообщил статус" : locale === "uk" ? "Джерело не повідомило статус" : "Source status not supplied"}</strong>
+            <strong>
+              {locale === "pl"
+                ? "Brak danych ze źródła"
+                : locale === "ru"
+                  ? "Источник не сообщил статус"
+                  : locale === "uk"
+                    ? "Джерело не повідомило статус"
+                    : "Source status not supplied"}
+            </strong>
           </div>
           <div>
-            <span>{locale === "pl" ? "Ograniczenia" : locale === "ru" ? "Ограничения" : locale === "uk" ? "Обмеження" : "Limitations"}</span>
-            <strong>{urlImportResult?.status === "partial" ? (locale === "pl" ? "Część pól wymaga potwierdzenia" : locale === "ru" ? "Часть полей требует проверки" : locale === "uk" ? "Частина полів потребує перевірки" : "Some fields need confirmation") : urlImportResult?.status === "unsupported" ? (locale === "pl" ? "Źródło nieobsługiwane" : locale === "ru" ? "Источник не поддерживается" : locale === "uk" ? "Джерело не підтримується" : "Source not supported") : (locale === "pl" ? "Status zdjęć nieznany" : locale === "ru" ? "Статус фото неизвестен" : locale === "uk" ? "Статус фото невідомий" : "Photo status is unknown")}</strong>
+            <span>
+              {locale === "pl"
+                ? "Ograniczenia"
+                : locale === "ru"
+                  ? "Ограничения"
+                  : locale === "uk"
+                    ? "Обмеження"
+                    : "Limitations"}
+            </span>
+            <strong>
+              {urlImportResult?.status === "partial"
+                ? locale === "pl"
+                  ? "Część pól wymaga potwierdzenia"
+                  : locale === "ru"
+                    ? "Часть полей требует проверки"
+                    : locale === "uk"
+                      ? "Частина полів потребує перевірки"
+                      : "Some fields need confirmation"
+                : urlImportResult?.status === "unsupported"
+                  ? locale === "pl"
+                    ? "Źródło nieobsługiwane"
+                    : locale === "ru"
+                      ? "Источник не поддерживается"
+                      : locale === "uk"
+                        ? "Джерело не підтримується"
+                        : "Source not supported"
+                  : locale === "pl"
+                    ? "Status zdjęć nieznany"
+                    : locale === "ru"
+                      ? "Статус фото неизвестен"
+                      : locale === "uk"
+                        ? "Статус фото невідомий"
+                        : "Photo status is unknown"}
+            </strong>
           </div>
         </section>
       ) : null}
@@ -801,9 +849,7 @@ export default function CheckListingPage() {
         <section className="panel decision-support-panel">
           <div className="panel-header">
             <h2>{product.supporting}</h2>
-            <span className={`status-pill ${verdictTone}`}>
-              {scoreLabel(analysis.scores.decision_label, locale)}
-            </span>
+            <span className={`status-pill ${verdictTone}`}>{scoreLabel(analysis.scores.decision_label, locale)}</span>
           </div>
           <div className="panel-body score-explainer-grid">
             <ScoreExplainer
@@ -832,7 +878,10 @@ export default function CheckListingPage() {
             />
             <ScoreExplainer
               label={copy.metrics.confidence}
-              valueText={confidenceLabel(result?.confidence_score ?? analysis.scores.fair_price_confidence_score, locale)}
+              valueText={confidenceLabel(
+                result?.confidence_score ?? analysis.scores.fair_price_confidence_score,
+                locale,
+              )}
               tone="info"
               locale={locale}
               reasons={[
@@ -840,21 +889,14 @@ export default function CheckListingPage() {
                 result?.comparables_basis ?? "",
               ].filter(Boolean)}
             />
-            <ScoreDataGap
-              locale={locale}
-              missingDataCodes={analysis.scores.explainability?.missing_data_codes ?? []}
-            />
+            <ScoreDataGap locale={locale} missingDataCodes={analysis.scores.explainability?.missing_data_codes ?? []} />
           </div>
         </section>
       ) : null}
 
       {analysis?.future_area_impact ? (
         <div style={{ marginTop: 16 }}>
-          <FutureImpactNarrativePanel
-            copy={copy.futureImpact}
-            impact={analysis.future_area_impact}
-            locale={locale}
-          />
+          <FutureImpactNarrativePanel copy={copy.futureImpact} impact={analysis.future_area_impact} locale={locale} />
         </div>
       ) : null}
 
@@ -872,163 +914,160 @@ export default function CheckListingPage() {
           >
             <fieldset className="check-form-fields" disabled={activeOperation !== null}>
               <div className="form-grid essential-fields">
-              <label className="field">
-                <span>{copy.fields.address}</span>
-                <input
-                  className="input"
+                <label className="field">
+                  <span>{copy.fields.address}</span>
+                  <input
+                    className="input"
+                    required
+                    value={form.address}
+                    onChange={(event) => updateField("address", event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{copy.fields.city}</span>
+                  <input
+                    className="input"
+                    required
+                    value={form.city}
+                    onChange={(event) => updateField("city", event.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  <span>{copy.fields.district}</span>
+                  <input
+                    className="input"
+                    required
+                    list="district-options"
+                    value={form.district}
+                    onChange={(event) => updateField("district", event.target.value)}
+                  />
+                  <datalist id="district-options">
+                    {DISTRICTS.map((district) => (
+                      <option key={district} value={district} />
+                    ))}
+                  </datalist>
+                </label>
+                <NumberField
+                  label={copy.fields.price}
                   required
-                  value={form.address}
-                  onChange={(event) => updateField("address", event.target.value)}
+                  value={form.price}
+                  onChange={(value) => updateField("price", value)}
                 />
-              </label>
-              <label className="field">
-                <span>{copy.fields.city}</span>
-                <input
-                  className="input"
+                <NumberField
+                  label={copy.fields.area}
                   required
-                  value={form.city}
-                  onChange={(event) => updateField("city", event.target.value)}
+                  step="0.1"
+                  value={form.area_m2}
+                  onChange={(value) => updateField("area_m2", value)}
                 />
-              </label>
-              <label className="field">
-                <span>{copy.fields.district}</span>
-                <input
-                  className="input"
+                <NumberField
+                  label={copy.fields.rooms}
                   required
-                  list="district-options"
-                  value={form.district}
-                  onChange={(event) => updateField("district", event.target.value)}
+                  value={form.rooms}
+                  onChange={(value) => updateField("rooms", value)}
                 />
-                <datalist id="district-options">
-                  {DISTRICTS.map((district) => (
-                    <option key={district} value={district} />
-                  ))}
-                </datalist>
-              </label>
-              <NumberField
-                label={copy.fields.price}
-                required
-                value={form.price}
-                onChange={(value) => updateField("price", value)}
-              />
-              <NumberField
-                label={copy.fields.area}
-                required
-                step="0.1"
-                value={form.area_m2}
-                onChange={(value) => updateField("area_m2", value)}
-              />
-              <NumberField
-                label={copy.fields.rooms}
-                required
-                value={form.rooms}
-                onChange={(value) => updateField("rooms", value)}
-              />
               </div>
 
               <details className="advanced-fields">
-              <summary>{product.advancedSummary}</summary>
-              <div className="form-grid">
-                <label className="field">
-                  <span>{copy.fields.title}</span>
-                  <input
-                    className="input"
-                    placeholder={copy.placeholders.optional}
-                    value={form.title}
-                    onChange={(event) => updateField("title", event.target.value)}
+                <summary>{product.advancedSummary}</summary>
+                <div className="form-grid">
+                  <label className="field">
+                    <span>{copy.fields.title}</span>
+                    <input
+                      className="input"
+                      placeholder={copy.placeholders.optional}
+                      value={form.title}
+                      onChange={(event) => updateField("title", event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>{copy.fields.developer}</span>
+                    <input
+                      className="input"
+                      placeholder={copy.placeholders.optional}
+                      value={form.developer_name}
+                      onChange={(event) => updateField("developer_name", event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>{copy.fields.investment}</span>
+                    <input
+                      className="input"
+                      placeholder={copy.placeholders.optional}
+                      value={form.investment_name}
+                      onChange={(event) => updateField("investment_name", event.target.value)}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>{copy.fields.market}</span>
+                    <select
+                      className="select"
+                      value={form.market_type}
+                      onChange={(event) =>
+                        updateField("market_type", event.target.value as CheckFormState["market_type"])
+                      }
+                    >
+                      <option value="secondary">{copy.values.secondary}</option>
+                      <option value="primary">{copy.values.primary}</option>
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{copy.fields.purchaseIntent}</span>
+                    <select
+                      className="select"
+                      value={form.purchase_intent}
+                      onChange={(event) =>
+                        updateField("purchase_intent", event.target.value as CheckFormState["purchase_intent"])
+                      }
+                    >
+                      {PURCHASE_INTENTS.map((intent) => (
+                        <option key={intent} value={intent}>
+                          {copy.values.purchaseIntents[intent] ?? intent}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span>{copy.fields.renovationCondition}</span>
+                    <select
+                      className="select"
+                      value={form.renovation_condition}
+                      onChange={(event) =>
+                        updateField(
+                          "renovation_condition",
+                          event.target.value as CheckFormState["renovation_condition"],
+                        )
+                      }
+                    >
+                      <option value="">{copy.values.renovationConditionUnknown}</option>
+                      {RENOVATION_CONDITIONS.map((condition) => (
+                        <option key={condition} value={condition}>
+                          {copy.values.renovationConditions[condition] ?? condition}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <NumberField
+                    label={copy.fields.renovationBudget}
+                    value={form.custom_renovation_budget_pln}
+                    onChange={(value) => updateField("custom_renovation_budget_pln", value)}
                   />
-                </label>
-                <label className="field">
-                  <span>{copy.fields.developer}</span>
-                  <input
-                    className="input"
-                    placeholder={copy.placeholders.optional}
-                    value={form.developer_name}
-                    onChange={(event) => updateField("developer_name", event.target.value)}
+                  <NumberField
+                    label={copy.fields.floor}
+                    value={form.floor}
+                    onChange={(value) => updateField("floor", value)}
                   />
-                </label>
-                <label className="field">
-                  <span>{copy.fields.investment}</span>
-                  <input
-                    className="input"
-                    placeholder={copy.placeholders.optional}
-                    value={form.investment_name}
-                    onChange={(event) => updateField("investment_name", event.target.value)}
+                  <NumberField
+                    label={copy.fields.buildingFloors}
+                    value={form.building_floors}
+                    onChange={(value) => updateField("building_floors", value)}
                   />
-                </label>
-                <label className="field">
-                  <span>{copy.fields.market}</span>
-                  <select
-                    className="select"
-                    value={form.market_type}
-                    onChange={(event) =>
-                      updateField("market_type", event.target.value as CheckFormState["market_type"])
-                    }
-                  >
-                    <option value="secondary">{copy.values.secondary}</option>
-                    <option value="primary">{copy.values.primary}</option>
-                  </select>
-                </label>
-                <label className="field">
-                  <span>{copy.fields.purchaseIntent}</span>
-                  <select
-                    className="select"
-                    value={form.purchase_intent}
-                    onChange={(event) =>
-                      updateField(
-                        "purchase_intent",
-                        event.target.value as CheckFormState["purchase_intent"],
-                      )
-                    }
-                  >
-                    {PURCHASE_INTENTS.map((intent) => (
-                      <option key={intent} value={intent}>
-                        {copy.values.purchaseIntents[intent] ?? intent}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="field">
-                  <span>{copy.fields.renovationCondition}</span>
-                  <select
-                    className="select"
-                    value={form.renovation_condition}
-                    onChange={(event) =>
-                      updateField(
-                        "renovation_condition",
-                        event.target.value as CheckFormState["renovation_condition"],
-                      )
-                    }
-                  >
-                    <option value="">{copy.values.renovationConditionUnknown}</option>
-                    {RENOVATION_CONDITIONS.map((condition) => (
-                      <option key={condition} value={condition}>
-                        {copy.values.renovationConditions[condition] ?? condition}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <NumberField
-                  label={copy.fields.renovationBudget}
-                  value={form.custom_renovation_budget_pln}
-                  onChange={(value) => updateField("custom_renovation_budget_pln", value)}
-                />
-                <NumberField
-                  label={copy.fields.floor}
-                  value={form.floor}
-                  onChange={(value) => updateField("floor", value)}
-                />
-                <NumberField
-                  label={copy.fields.buildingFloors}
-                  value={form.building_floors}
-                  onChange={(value) => updateField("building_floors", value)}
-                />
-                <NumberField
-                  label={copy.fields.buildingYear}
-                  value={form.building_year}
-                  onChange={(value) => updateField("building_year", value)}
-                />
-              </div>
+                  <NumberField
+                    label={copy.fields.buildingYear}
+                    value={form.building_year}
+                    onChange={(value) => updateField("building_year", value)}
+                  />
+                </div>
               </details>
 
               <p className="status-line">{status}</p>
@@ -1048,105 +1087,95 @@ export default function CheckListingPage() {
         </details>
 
         {analysis && result ? (
-        <aside className="panel">
-          <div className="panel-header">
-            <h2>{copy.sections.result}</h2>
-            {analysis ? (
-              <span className={`status-pill ${verdictTone}`}>
-                {scoreLabel(analysis.scores.decision_label, locale)}
-              </span>
-            ) : null}
-          </div>
-          <div className="panel-body">
-            {analysis && result ? (
-              <>
-                <ul className="section-list compact">
-                  <li>
-                    <span>{copy.metrics.objectPrice}</span>
-                    <strong>{money(analysis.listing.price, locale)}</strong>
-                  </li>
-                  <li>
-                    <span>{copy.metrics.pricePerM2}</span>
-                    <strong>{money(analysis.listing.price_per_m2, locale)}</strong>
-                  </li>
-                  <li>
-                    <span>{copy.metrics.fairPriceRange}</span>
-                    <strong>
-                      {money(analysis.scores.fair_price_low, locale)} -{" "}
-                      {money(analysis.scores.fair_price_high, locale)}
-                    </strong>
-                  </li>
-                  <li>
-                    <span>{copy.metrics.comparableListings}</span>
-                    <strong>{analysis.comparables.length}</strong>
-                  </li>
-                  <li>
-                    <span>{copy.metrics.sourceDomain}</span>
-                    <strong>{result.source_domain ?? copy.values.manualInput}</strong>
-                  </li>
-                  <li>
-                    <span>{product.save}</span>
-                    <strong>
-                      {result.draft_id ? copy.statuses.saved : copy.values.notSaved}
-                    </strong>
-                  </li>
-                  <li>
-                    <span>{product.updated}</span>
-                    <strong>
-                      {dateValue(new Date(), locale)}
-                    </strong>
-                  </li>
-                </ul>
-                {analysis.developer_reputation ? (
-                  <DeveloperReputationBlock
-                    copy={copy.developer}
-                    reputation={analysis.developer_reputation}
-                  />
-                ) : null}
-                <div className="button-row" style={{ marginTop: 12 }}>
-                  <button
-                    className="button primary"
-                    disabled={activeOperation !== null || !form.confirm_private_analysis}
-                    type="button"
-                    onClick={() => void createReport()}
-                  >
-                    <FileText size={16} /> {product.report}
-                  </button>
-                  <button
-                    className="button"
-                    disabled={activeOperation !== null || !result.draft_id}
-                    type="button"
-                    onClick={() => void saveReportToHistory()}
-                  >
-                    <Save size={16} /> {product.save}
-                  </button>
-                  <Link
-                    className="button"
-                    href={`/compare?ids=${encodeURIComponent(analysis.listing.id)}`}
-                  >
-                    <BarChart3 size={16} /> {product.compare}
-                  </Link>
-                  <button
-                    className="button"
-                    disabled={activeOperation !== null || !result.draft_id}
-                    type="button"
-                    onClick={() => void trackApartment()}
-                  >
-                    <Bell size={16} /> {product.track}
-                  </button>
-                </div>
-                <ul className="section-list" style={{ marginTop: 12 }}>
-                  {result.warnings.map((warning) => (
-                    <li key={warning}>{warning}</li>
-                  ))}
-                </ul>
-                <p className="muted" style={{ marginTop: 12 }}>
-                  {analysis.disclaimer}
-                </p>
-              </>
-            ) : null}
-          </div>
-        </aside>
+          <aside className="panel">
+            <div className="panel-header">
+              <h2>{copy.sections.result}</h2>
+              {analysis ? (
+                <span className={`status-pill ${verdictTone}`}>
+                  {scoreLabel(analysis.scores.decision_label, locale)}
+                </span>
+              ) : null}
+            </div>
+            <div className="panel-body">
+              {analysis && result ? (
+                <>
+                  <ul className="section-list compact">
+                    <li>
+                      <span>{copy.metrics.objectPrice}</span>
+                      <strong>{money(analysis.listing.price, locale)}</strong>
+                    </li>
+                    <li>
+                      <span>{copy.metrics.pricePerM2}</span>
+                      <strong>{money(analysis.listing.price_per_m2, locale)}</strong>
+                    </li>
+                    <li>
+                      <span>{copy.metrics.fairPriceRange}</span>
+                      <strong>
+                        {money(analysis.scores.fair_price_low, locale)} -{" "}
+                        {money(analysis.scores.fair_price_high, locale)}
+                      </strong>
+                    </li>
+                    <li>
+                      <span>{copy.metrics.comparableListings}</span>
+                      <strong>{analysis.comparables.length}</strong>
+                    </li>
+                    <li>
+                      <span>{copy.metrics.sourceDomain}</span>
+                      <strong>{result.source_domain ?? copy.values.manualInput}</strong>
+                    </li>
+                    <li>
+                      <span>{product.save}</span>
+                      <strong>{savedReport ? copy.statuses.saved : copy.values.notSaved}</strong>
+                    </li>
+                    <li>
+                      <span>{product.updated}</span>
+                      <strong>{dateValue(new Date(), locale)}</strong>
+                    </li>
+                  </ul>
+                  {analysis.developer_reputation ? (
+                    <DeveloperReputationBlock copy={copy.developer} reputation={analysis.developer_reputation} />
+                  ) : null}
+                  <div className="button-row" style={{ marginTop: 12 }}>
+                    <button
+                      className="button primary"
+                      disabled={activeOperation !== null || !form.confirm_private_analysis}
+                      type="button"
+                      onClick={() => void createReport()}
+                    >
+                      <FileText size={16} /> {product.report}
+                    </button>
+                    <button
+                      className="button"
+                      disabled={activeOperation !== null || !result.draft_id}
+                      type="button"
+                      onClick={() => void saveReportToHistory()}
+                    >
+                      <Save size={16} /> {product.save}
+                    </button>
+                    <Link className="button" href={`/compare?ids=${encodeURIComponent(analysis.listing.id)}`}>
+                      <BarChart3 size={16} /> {product.compare}
+                    </Link>
+                    <button
+                      className="button"
+                      disabled={activeOperation !== null || !result.draft_id}
+                      type="button"
+                      onClick={() => void trackApartment()}
+                    >
+                      <Bell size={16} /> {product.track}
+                    </button>
+                  </div>
+                  <ul className="section-list" style={{ marginTop: 12 }}>
+                    {result.warnings.map((warning) => (
+                      <li key={warning}>{warning}</li>
+                    ))}
+                  </ul>
+                  <p className="muted" style={{ marginTop: 12 }}>
+                    {analysis.disclaimer}
+                  </p>
+                </>
+              ) : null}
+            </div>
+          </aside>
         ) : null}
       </section>
 
@@ -1240,9 +1269,7 @@ export default function CheckListingPage() {
                 </div>
               </div>
             ) : (
-              <p className="empty-state">
-                {result?.draft_id ? copy.empty.aiReady : copy.empty.aiNeedsSavedDraft}
-              </p>
+              <p className="empty-state">{result?.draft_id ? copy.empty.aiReady : copy.empty.aiNeedsSavedDraft}</p>
             )}
           </div>
         </section>
@@ -1263,18 +1290,6 @@ export default function CheckListingPage() {
             </div>
           </div>
 
-          <aside className="panel">
-            <div className="panel-header">
-              <h2>{copy.sections.negotiation}</h2>
-            </div>
-            <div className="panel-body">
-              <ul className="section-list">
-                {analysis.negotiation_arguments.map((argument) => (
-                  <li key={argument}>{argument}</li>
-                ))}
-              </ul>
-            </div>
-          </aside>
         </section>
       ) : null}
 
@@ -1294,12 +1309,7 @@ export default function CheckListingPage() {
             <h2>{copy.sections.buyerReport}</h2>
             <div className="button-row">
               {savedReport ? (
-                <a
-                  className="button"
-                  href={reportContentUrl(savedReport.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                >
+                <a className="button" href={reportContentUrl(savedReport.id)} target="_blank" rel="noreferrer">
                   <ExternalLink size={16} /> {copy.values.html}
                 </a>
               ) : null}
@@ -1324,22 +1334,7 @@ export default function CheckListingPage() {
               )}
               locale={locale}
             />
-            <p className="empty-state">{reportResult.report.summary}</p>
-            <div className="grid-2" style={{ marginTop: 12 }}>
-              {reportResult.report.sections.map((section) => (
-                <section key={section.title}>
-                  <div className="panel-header inline">
-                    <h3>{section.title}</h3>
-                  </div>
-                  <ul className="section-list">
-                    {section.items.map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
-            <p className="muted">{reportResult.report.disclaimer}</p>
+            <p className="empty-state">{copy.statuses.reportReady}</p>
           </div>
         </section>
       ) : null}
@@ -1380,7 +1375,10 @@ function ImportOutcomeNotice({
     ? { title: product.importPartialTitle, text: product.importPartialText }
     : result.status === "failed"
       ? { title: product.importFailedTitle, text: product.importFailedText }
-      : { title: product.importUnsupportedTitle, text: product.importUnsupportedText };
+      : {
+          title: product.importUnsupportedTitle,
+          text: product.importUnsupportedText,
+        };
 
   return (
     <section
@@ -1401,15 +1399,7 @@ function ImportOutcomeNotice({
   );
 }
 
-function AssistantColumn({
-  emptyLabel,
-  title,
-  items,
-}: {
-  emptyLabel: string;
-  title: string;
-  items: string[];
-}) {
+function AssistantColumn({ emptyLabel, title, items }: { emptyLabel: string; title: string; items: string[] }) {
   return (
     <div>
       <h3 className="ai-verdict-heading">{title}</h3>
@@ -1444,14 +1434,16 @@ function ScoreExplainer({
   return (
     <article className="score-explainer">
       <div>
-        {value !== undefined ? (
-          <span className={`status-pill ${tone}`}>{scoreLevel(value, locale)}</span>
-        ) : null}
+        {value !== undefined ? <span className={`status-pill ${tone}`}>{scoreLevel(value, locale)}</span> : null}
         <h3>{label}</h3>
         <strong>{valueText ?? `${value ?? 0}/100`}</strong>
       </div>
       <div className="score-explainer-bar" aria-hidden="true">
-        <span style={{ width: `${Math.max(0, Math.min(100, value ?? 70))}%` }} />
+        <span
+          style={{
+            width: `${Math.max(0, Math.min(100, value ?? 70))}%`,
+          }}
+        />
       </div>
       <ul className="section-list compact">
         {reasons.length > 0 ? reasons.map((reason) => <li key={reason}>{reason}</li>) : <li>-</li>}
@@ -1508,9 +1500,7 @@ function questionsForAudience(
       },
     ];
   }
-  const supported = questions.filter((question) =>
-    question.supported_audiences.includes(audience),
-  );
+  const supported = questions.filter((question) => question.supported_audiences.includes(audience));
   return supported.length > 0 ? supported : questions;
 }
 
@@ -1613,13 +1603,9 @@ function formFromDraft(draft: UserSubmittedListingDraft): CheckFormState {
     rooms: String(draft.rooms),
     floor: payload.floor === null || payload.floor === undefined ? "" : String(payload.floor),
     building_floors:
-      payload.building_floors === null || payload.building_floors === undefined
-        ? ""
-        : String(payload.building_floors),
+      payload.building_floors === null || payload.building_floors === undefined ? "" : String(payload.building_floors),
     building_year:
-      payload.building_year === null || payload.building_year === undefined
-        ? ""
-        : String(payload.building_year),
+      payload.building_year === null || payload.building_year === undefined ? "" : String(payload.building_year),
     lat: payload.lat === null || payload.lat === undefined ? "" : String(payload.lat),
     lon: payload.lon === null || payload.lon === undefined ? "" : String(payload.lon),
   };
@@ -1725,10 +1711,7 @@ function normalizeDistrict(value: string | null) {
   if (!value) return null;
   const cleaned = value.trim();
   const normalized = value.toLocaleLowerCase("pl-PL");
-  return (
-    DISTRICTS.find((district) => normalized.includes(district.toLocaleLowerCase("pl-PL"))) ??
-    cleaned
-  );
+  return DISTRICTS.find((district) => normalized.includes(district.toLocaleLowerCase("pl-PL"))) ?? cleaned;
 }
 
 function normalizeCity(value: string | null, district: string | null, currentCity: string) {

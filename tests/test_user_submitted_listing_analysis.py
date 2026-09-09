@@ -286,7 +286,12 @@ def test_user_submitted_listing_custom_condition_requires_budget() -> None:
     )
 
     assert response.status_code == 422
-    assert "custom_renovation_budget_pln is required" in response.text
+    payload = response.json()
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["params"]["fields"] == [
+        {"field": "body", "type": "value_error"}
+    ]
+    assert "custom_renovation_budget_pln is required" not in response.text
 
 
 def test_user_submitted_listing_reference_preview_for_otodom_url() -> None:
@@ -804,7 +809,10 @@ def test_user_submitted_listing_analysis_requires_private_confirmation() -> None
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Private analysis confirmation is required"
+    payload = response.json()
+    assert payload["error"]["code"] == "confirmation_required"
+    assert payload["detail"] == {"code": "confirmation_required"}
+    assert "Private analysis confirmation is required" not in response.text
 
 
 def test_user_submitted_listing_analysis_uses_medlow_market_coverage() -> None:
@@ -842,65 +850,65 @@ def test_user_submitted_listing_analysis_uses_medlow_market_coverage() -> None:
 
 @pytest.mark.parametrize(
     (
-        "address",
-        "city",
-        "district",
-        "price",
-        "area_m2",
-        "rooms",
-        "expected_area_id",
-        "expected_city",
+            "address",
+            "city",
+            "district",
+            "price",
+            "area_m2",
+            "rooms",
+            "expected_area_id",
+            "expected_city",
     ),
     [
         (
-            "Wrocławska, Kobierzyce",
-            "Kobierzyce",
-            "dolnośląskie",
-            540000,
-            54.8,
-            3,
-            "kobierzyce-kobierzyce",
-            "Kobierzyce",
+                "Wrocławska, Kobierzyce",
+                "Kobierzyce",
+                "dolnośląskie",
+                540000,
+                54.8,
+                3,
+                "kobierzyce-kobierzyce",
+                "Kobierzyce",
         ),
         (
-            "Radosna, Wysoka",
-            "Wysoka",
-            "dolnośląskie",
-            735000,
-            58.0,
-            3,
-            "wysoka-wysoka",
-            "Wysoka",
+                "Radosna, Wysoka",
+                "Wysoka",
+                "dolnośląskie",
+                735000,
+                58.0,
+                3,
+                "wysoka-wysoka",
+                "Wysoka",
         ),
         (
-            "Czekoladowa, Bielany Wrocławskie",
-            "Bielany Wrocławskie",
-            "dolnośląskie",
-            665000,
-            58.9,
-            3,
-            "bielany-wroclawskie-bielany-wroclawskie",
-            "Bielany Wrocławskie",
+                "Czekoladowa, Bielany Wrocławskie",
+                "Bielany Wrocławskie",
+                "dolnośląskie",
+                665000,
+                58.9,
+                3,
+                "bielany-wroclawskie-bielany-wroclawskie",
+                "Bielany Wrocławskie",
         ),
         (
-            "Rynek, Oława",
-            "Oława",
-            "dolnośląskie",
-            448000,
-            47.4,
-            2,
-            "olawa-olawa",
-            "Oława",
+                "Rynek, Oława",
+                "Oława",
+                "dolnośląskie",
+                448000,
+                47.4,
+                2,
+                "olawa-olawa",
+                "Oława",
         ),
         (
-            "Radosna, Wysoka",
-            "Kobierzyce",
-            "Wysoka",
-            735000,
-            58.0,
-            3,
-            "wysoka-wysoka",
-            "Wysoka",
+                "Radosna, Wysoka",
+                "Kobierzyce",
+                "Wysoka",
+                735000,
+                58.0,
+                3,
+                "wysoka-wysoka",
+                "Wysoka",
         ),
     ],
 )
@@ -1032,7 +1040,7 @@ def test_user_submitted_listing_report_uses_buyer_template_without_source_url_le
         if section["title"] == "Краткое решение"
     )
     decision_items = "\n".join(decision_section["items"])
-    assert "Верхняя цена" in decision_items
+    assert "Ценовой сценарий переговоров недоступен" in decision_items
     assert "Перед zadatek/umowa rezerwacyjna" in decision_items
     fit_section = next(
         section
@@ -1357,7 +1365,7 @@ def test_user_submitted_listing_draft_report_generation_is_owner_scoped() -> Non
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "User-submitted listing draft not found"
+    assert response.json()["error"]["code"] == "not_found"
 
 
 def test_user_submitted_listing_analysis_rejects_unknown_area() -> None:
@@ -1376,4 +1384,5 @@ def test_user_submitted_listing_analysis_rejects_unknown_area() -> None:
     )
 
     assert response.status_code == 400
-    assert "Area statistics are not available" in response.json()["detail"]
+    assert response.json()["error"]["code"] == "unsupported_area"
+    assert "Area statistics are not available" not in response.text

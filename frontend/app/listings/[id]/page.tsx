@@ -402,13 +402,6 @@ export default function ListingDetailPage() {
               ))}
             </ul>
 
-            <h2>{copy.sections.negotiation}</h2>
-            <ul className="section-list">
-              {analysis.negotiation_arguments.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-
             <h2>{copy.sections.priceHistory}</h2>
             <LineChart
               ariaLabel={copy.chart.priceHistoryAria(listing.title)}

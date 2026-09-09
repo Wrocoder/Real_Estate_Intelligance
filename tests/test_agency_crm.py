@@ -169,7 +169,10 @@ def test_agency_crm_shortlist_rejects_missing_listings() -> None:
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == {"missing_listing_ids": ["missing-listing"]}
+    assert response.json()["detail"] == {
+        "code": "listing_not_found",
+        "missing_listing_ids": ["missing-listing"],
+    }
 
 
 def _create_agency() -> dict:

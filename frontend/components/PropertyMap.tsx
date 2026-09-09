@@ -8,6 +8,8 @@ import type {
 } from "maplibre-gl";
 
 import type { MapFeature, MapFeatureCollection, MapFeatureType } from "@/lib/api";
+import { PROPERTY_MAP_COPY, type PropertyMapCopy } from "@/lib/propertyMapMessages";
+import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type MaplibreModule = typeof import("maplibre-gl");
 type GeoJsonData = {
@@ -159,13 +161,10 @@ const ADMINISTRATIVE_LAYER_IDS = [
   "administrative-boundary-label",
 ];
 
-const ADMINISTRATIVE_LAYER_CONTROLS: Array<{
-  key: AdministrativeLayerControlKey;
-  label: string;
-}> = [
-  { key: "districts", label: "Районы" },
-  { key: "municipalities", label: "Гмины" },
-  { key: "voivodeshipBoundary", label: "Воеводство" },
+const ADMINISTRATIVE_LAYER_CONTROLS: AdministrativeLayerControlKey[] = [
+  "districts",
+  "municipalities",
+  "voivodeshipBoundary",
 ];
 
 const PLANNING_LAYER_IDS = [
@@ -174,26 +173,17 @@ const PLANNING_LAYER_IDS = [
   "planning-zone-label",
 ];
 
-const PLANNING_LAYER_CONTROLS: Array<{
-  key: PlanningLayerControlKey;
-  label: string;
-}> = [
-  { key: "mpzpZones", label: "MPZP" },
-  { key: "studiumZones", label: "Studium" },
-];
+const PLANNING_LAYER_CONTROLS: PlanningLayerControlKey[] = ["mpzpZones", "studiumZones"];
 
 const FUTURE_TRANSPORT_LAYER_IDS = [
   "future-transport-line",
   "future-transport-label",
 ];
 
-const FUTURE_TRANSPORT_LAYER_CONTROLS: Array<{
-  key: FutureTransportLayerControlKey;
-  label: string;
-}> = [
-  { key: "futureTramLines", label: "Будущие трамваи" },
-  { key: "futureBusRoutes", label: "Будущие автобусы" },
-  { key: "futureRoadCorridors", label: "Будущие дороги" },
+const FUTURE_TRANSPORT_LAYER_CONTROLS: FutureTransportLayerControlKey[] = [
+  "futureTramLines",
+  "futureBusRoutes",
+  "futureRoadCorridors",
 ];
 
 const RISK_LAYER_IDS = [
@@ -202,32 +192,28 @@ const RISK_LAYER_IDS = [
   "risk-zone-label",
 ];
 
-const RISK_LAYER_CONTROLS: Array<{
-  key: RiskLayerControlKey;
-  label: string;
-}> = [
-  { key: "majorRoadNoise", label: "Дороги/шум" },
-  { key: "industrialRisk", label: "Промбуферы" },
-  { key: "railAirportRisk", label: "Rail/airport" },
-  { key: "floodPollutionRisk", label: "Flood/pollution" },
+const RISK_LAYER_CONTROLS: RiskLayerControlKey[] = [
+  "majorRoadNoise",
+  "industrialRisk",
+  "railAirportRisk",
+  "floodPollutionRisk",
 ];
 
 const INFRASTRUCTURE_LAYER_CONTROLS: Array<{
   key: InfrastructureLayerControlKey;
-  label: string;
   parentKey?: InfrastructureLayerControlKey;
 }> = [
-  { key: "transportRoutes", label: "Маршруты" },
-  { key: "transportStops", label: "Остановки" },
-  { key: "schools", label: "Школы" },
-  { key: "kindergartens", label: "Сады" },
-  { key: "amenities", label: "Сервисы" },
-  { key: "amenityParks", label: "Парки", parentKey: "amenities" },
-  { key: "amenityHealthcare", label: "Медицина", parentKey: "amenities" },
-  { key: "amenityRetail", label: "Торговля", parentKey: "amenities" },
-  { key: "amenityJobsEducation", label: "Работа/вузы", parentKey: "amenities" },
-  { key: "amenityPublicServices", label: "Госуслуги", parentKey: "amenities" },
-  { key: "industrialZones", label: "Промзоны" },
+  { key: "transportRoutes" },
+  { key: "transportStops" },
+  { key: "schools" },
+  { key: "kindergartens" },
+  { key: "amenities" },
+  { key: "amenityParks", parentKey: "amenities" },
+  { key: "amenityHealthcare", parentKey: "amenities" },
+  { key: "amenityRetail", parentKey: "amenities" },
+  { key: "amenityJobsEducation", parentKey: "amenities" },
+  { key: "amenityPublicServices", parentKey: "amenities" },
+  { key: "industrialZones" },
 ];
 
 const OSM_RASTER_STYLE: StyleSpecification = {
@@ -259,11 +245,14 @@ function normalizeVisibleLayers(
 }
 
 export function PropertyMap({ collection, isLoading = false, error = "" }: Props) {
+  const { locale } = useLocalePreference();
+  const copy = PROPERTY_MAP_COPY[locale];
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MaplibreMap | null>(null);
   const maplibreRef = useRef<MaplibreModule | null>(null);
   const markersRef = useRef<MaplibreMarker[]>([]);
   const collectionRef = useRef<MapFeatureCollection | null>(collection);
+  const copyRef = useRef<PropertyMapCopy>(copy);
   const visibleLayersRef = useRef<VisibleMapLayers>(DEFAULT_VISIBLE_LAYERS);
   const [visibleLayersState, setVisibleLayersState] = useState<VisibleMapLayers>(
     DEFAULT_VISIBLE_LAYERS,
@@ -280,9 +269,24 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         markersRef.current,
         collection,
         visibleLayersRef.current,
+        copyRef.current,
       );
     }
   }, [collection]);
+
+  useEffect(() => {
+    copyRef.current = copy;
+    if (mapRef.current && maplibreRef.current) {
+      syncMapData(
+        mapRef.current,
+        maplibreRef.current,
+        markersRef.current,
+        collectionRef.current,
+        visibleLayersRef.current,
+        copy,
+      );
+    }
+  }, [copy]);
 
   useEffect(() => {
     const nextVisibleLayers = normalizeVisibleLayers(visibleLayersState);
@@ -294,6 +298,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
         markersRef.current,
         collectionRef.current,
         nextVisibleLayers,
+        copyRef.current,
       );
     }
   }, [visibleLayersState]);
@@ -329,6 +334,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           markersRef.current,
           collectionRef.current,
           visibleLayersRef.current,
+          copyRef.current,
         );
         setRadiusCenter(getMapCenter(map));
       });
@@ -339,6 +345,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
           markersRef.current,
           collectionRef.current,
           visibleLayersRef.current,
+          copyRef.current,
         );
       });
       map.on("moveend", () => {
@@ -374,43 +381,43 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
 
   return (
     <div className="map-shell">
-      <div ref={containerRef} className="maplibre-container" aria-label="Карта объектов" />
+      <div ref={containerRef} className="maplibre-container" aria-label={copy.mapLabel} />
       <div className="map-summary">
-        <span>{listingCount} объектов</span>
-        <span>{plannedCount} planned investments</span>
-        <span>{administrativeCount} адм. зон</span>
-        <span>{planningCount} planning</span>
-        <span>{futureTransportCount} future routes</span>
-        <span>{riskLayerCount} risk zones</span>
-        <span>{infrastructureCount} infrastructure</span>
+        <span>{copy.summary.listings(listingCount)}</span>
+        <span>{copy.summary.planned(plannedCount)}</span>
+        <span>{copy.summary.administrative(administrativeCount)}</span>
+        <span>{copy.summary.planning(planningCount)}</span>
+        <span>{copy.summary.futureTransport(futureTransportCount)}</span>
+        <span>{copy.summary.risks(riskLayerCount)}</span>
+        <span>{copy.summary.infrastructure(infrastructureCount)}</span>
       </div>
-      <div className="map-radius-panel" aria-label="Анализ радиуса от центра карты">
-        <strong>Радиус от центра карты</strong>
+      <div className="map-radius-panel" aria-label={copy.radiusLabel}>
+        <strong>{copy.radiusLabel}</strong>
         {radiusBuckets.map((bucket) => (
           <div className="map-radius-row" key={bucket.radiusKm}>
             <span>{bucket.label}</span>
             <span>
-              {bucket.listingCount} об. · {bucket.plannedCount} пл. ·{" "}
-              {bucket.infrastructureCount} инф.
+              {bucket.listingCount} {copy.radius.listings} · {bucket.plannedCount} {copy.radius.planned} ·{" "}
+              {bucket.infrastructureCount} {copy.radius.infrastructure}
             </span>
             <small>
               {bucket.medianPricePerM2
                 ? `${INTEGER_FORMATTER.format(bucket.medianPricePerM2)} PLN/m2`
-                : "цена n/a"}{" "}
-              · I {formatScore(bucket.averageInvestmentScore)} / R{" "}
+                : copy.priceUnavailable}{" "}
+              · {copy.radius.investment} {formatScore(bucket.averageInvestmentScore)} / {copy.radius.risk}{" "}
               {formatScore(bucket.averageRiskScore)}
             </small>
           </div>
         ))}
       </div>
-      <div className="map-layer-controls" aria-label="Слои карты">
+      <div className="map-layer-controls" aria-label={copy.layersLabel}>
         <label>
           <input
             type="checkbox"
             checked={visibleLayers.listings}
             onChange={(event) => updateVisibleLayer("listings", event.target.checked)}
           />
-          <span>Объекты</span>
+          <span>{copy.layers.listings}</span>
         </label>
         <label>
           <input
@@ -418,7 +425,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.priceHeatmap}
             onChange={(event) => updateVisibleLayer("priceHeatmap", event.target.checked)}
           />
-          <span>Цена/m2</span>
+          <span>{copy.layers.priceHeatmap}</span>
         </label>
         <label>
           <input
@@ -426,7 +433,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.planned}
             onChange={(event) => updateVisibleLayer("planned", event.target.checked)}
           />
-          <span>Планы</span>
+          <span>{copy.layers.planned}</span>
         </label>
         <label>
           <input
@@ -434,17 +441,17 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.administrative}
             onChange={(event) => updateVisibleLayer("administrative", event.target.checked)}
           />
-          <span>Адм. слои</span>
+          <span>{copy.layers.administrative}</span>
         </label>
         {ADMINISTRATIVE_LAYER_CONTROLS.map((control) => (
-          <label className="map-layer-subtoggle" key={control.key}>
+          <label className="map-layer-subtoggle" key={control}>
             <input
               type="checkbox"
-              checked={visibleLayers[control.key]}
+              checked={visibleLayers[control]}
               disabled={!visibleLayers.administrative}
-              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+              onChange={(event) => updateVisibleLayer(control, event.target.checked)}
             />
-            <span>{control.label}</span>
+            <span>{copy.layers[control]}</span>
           </label>
         ))}
         <label>
@@ -453,17 +460,17 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.futureTransport}
             onChange={(event) => updateVisibleLayer("futureTransport", event.target.checked)}
           />
-          <span>Будущие маршруты</span>
+          <span>{copy.layers.futureTransport}</span>
         </label>
         {FUTURE_TRANSPORT_LAYER_CONTROLS.map((control) => (
-          <label className="map-layer-subtoggle" key={control.key}>
+          <label className="map-layer-subtoggle" key={control}>
             <input
               type="checkbox"
-              checked={visibleLayers[control.key]}
+              checked={visibleLayers[control]}
               disabled={!visibleLayers.futureTransport}
-              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+              onChange={(event) => updateVisibleLayer(control, event.target.checked)}
             />
-            <span>{control.label}</span>
+            <span>{copy.layers[control]}</span>
           </label>
         ))}
         <label>
@@ -472,17 +479,17 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.planning}
             onChange={(event) => updateVisibleLayer("planning", event.target.checked)}
           />
-          <span>MPZP/Studium</span>
+          <span>{copy.layers.planning}</span>
         </label>
         {PLANNING_LAYER_CONTROLS.map((control) => (
-          <label className="map-layer-subtoggle" key={control.key}>
+          <label className="map-layer-subtoggle" key={control}>
             <input
               type="checkbox"
-              checked={visibleLayers[control.key]}
+              checked={visibleLayers[control]}
               disabled={!visibleLayers.planning}
-              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+              onChange={(event) => updateVisibleLayer(control, event.target.checked)}
             />
-            <span>{control.label}</span>
+            <span>{copy.layers[control]}</span>
           </label>
         ))}
         <label>
@@ -491,17 +498,17 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.riskLayers}
             onChange={(event) => updateVisibleLayer("riskLayers", event.target.checked)}
           />
-          <span>Риски</span>
+          <span>{copy.layers.riskLayers}</span>
         </label>
         {RISK_LAYER_CONTROLS.map((control) => (
-          <label className="map-layer-subtoggle" key={control.key}>
+          <label className="map-layer-subtoggle" key={control}>
             <input
               type="checkbox"
-              checked={visibleLayers[control.key]}
+              checked={visibleLayers[control]}
               disabled={!visibleLayers.riskLayers}
-              onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
+              onChange={(event) => updateVisibleLayer(control, event.target.checked)}
             />
-            <span>{control.label}</span>
+            <span>{copy.layers[control]}</span>
           </label>
         ))}
         <label>
@@ -510,7 +517,7 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
             checked={visibleLayers.infrastructure}
             onChange={(event) => updateVisibleLayer("infrastructure", event.target.checked)}
           />
-          <span>Инфраструктура</span>
+          <span>{copy.layers.infrastructure}</span>
         </label>
         {INFRASTRUCTURE_LAYER_CONTROLS.map((control) => {
           const parentEnabled = control.parentKey ? visibleLayers[control.parentKey] : true;
@@ -527,46 +534,46 @@ export function PropertyMap({ collection, isLoading = false, error = "" }: Props
                 disabled={!visibleLayers.infrastructure || !parentEnabled}
                 onChange={(event) => updateVisibleLayer(control.key, event.target.checked)}
               />
-              <span>{control.label}</span>
+              <span>{copy.layers[control.key]}</span>
             </label>
           );
         })}
       </div>
-      <div className="map-legend" aria-label="Легенда карты">
+      <div className="map-legend" aria-label={copy.legendLabel}>
         <span>
-          <i className="legend-dot growth" /> growth
+          <i className="legend-dot growth" /> {copy.legend.growth}
         </span>
         <span>
-          <i className="legend-dot risk" /> risk
+          <i className="legend-dot risk" /> {copy.legend.risk}
         </span>
         <span>
-          <i className="legend-dot investment" /> план
+          <i className="legend-dot investment" /> {copy.legend.planned}
         </span>
         <span>
-          <i className="legend-dot boundary" /> границы
+          <i className="legend-dot boundary" /> {copy.legend.boundaries}
         </span>
         <span>
-          <i className="legend-dot planning" /> MPZP
+          <i className="legend-dot planning" /> {copy.legend.planning}
         </span>
         <span>
-          <i className="legend-dot future-route" /> future routes
+          <i className="legend-dot future-route" /> {copy.legend.futureTransport}
         </span>
         <span>
-          <i className="legend-dot risk-zone" /> risk zones
+          <i className="legend-dot risk-zone" /> {copy.legend.riskZones}
         </span>
         <span>
-          <i className="legend-dot infrastructure" /> инфраструктура
+          <i className="legend-dot infrastructure" /> {copy.legend.infrastructure}
         </span>
         <span>
-          <i className="legend-dot cluster" /> cluster
+          <i className="legend-dot cluster" /> {copy.legend.cluster}
         </span>
         <span>
-          <i className="legend-dot heatmap" /> цена/m2
+          <i className="legend-dot heatmap" /> {copy.legend.price}
         </span>
       </div>
       {(isLoading || error) && (
         <div className={error ? "map-state error" : "map-state"}>
-          {error || "Загрузка GIS-слоев..."}
+          {error || copy.loading}
         </div>
       )}
     </div>
@@ -1214,6 +1221,7 @@ function syncMapData(
   markers: MaplibreMarker[],
   collection: MapFeatureCollection | null,
   visibleLayers: VisibleMapLayers,
+  copy: PropertyMapCopy,
 ) {
   if (!map.isStyleLoaded()) return;
 
@@ -1283,7 +1291,7 @@ function syncMapData(
     "transport-route-label",
     visibleLayers.infrastructure && visibleLayers.transportRoutes,
   );
-  syncMarkers(map, maplibre, markers, markerCollection);
+  syncMarkers(map, maplibre, markers, markerCollection, copy);
   fitToCollection(map, maplibre, boundsCollection);
 }
 
@@ -1293,8 +1301,9 @@ function syncVisibleMarkers(
   markers: MaplibreMarker[],
   collection: MapFeatureCollection | null,
   visibleLayers: VisibleMapLayers,
+  copy: PropertyMapCopy,
 ) {
-  syncMarkers(map, maplibre, markers, markerMapCollection(collection, visibleLayers));
+  syncMarkers(map, maplibre, markers, markerMapCollection(collection, visibleLayers), copy);
 }
 
 function getMapCenter(map: MaplibreMap): [number, number] {
@@ -1645,6 +1654,7 @@ function syncMarkers(
   maplibre: MaplibreModule,
   markers: MaplibreMarker[],
   collection: MapFeatureCollection | null,
+  copy: PropertyMapCopy,
 ) {
   clearMarkers(markers);
   if (!collection) return;
@@ -1656,7 +1666,7 @@ function syncMarkers(
 
     const point = featurePoint(feature);
     if (!point) return;
-    const element = markerElement(feature, map, maplibre);
+    const element = markerElement(feature, map, maplibre, copy);
 
     const marker = new maplibre.Marker({
       element,
@@ -1668,16 +1678,16 @@ function syncMarkers(
   });
 }
 
-function createListingMarker(feature: MapFeature) {
+function createListingMarker(feature: MapFeature, copy: PropertyMapCopy) {
   const element = document.createElement("button");
   const riskClass = feature.properties.risk_class === "high_risk" ? " high-risk" : "";
   const growthClass = feature.properties.growth_class === "high_growth" ? " high-growth" : "";
   element.className = `map-price-marker${riskClass}${growthClass}`;
   element.type = "button";
   element.textContent = String(feature.properties.price_label ?? "");
-  element.title = `${feature.properties.title ?? "Listing"} · Investment ${
+  element.title = `${feature.properties.title ?? copy.popup.listing} · ${copy.popup.investment} ${
     feature.properties.investment_score ?? "-"
-  } / Risk ${feature.properties.risk_score ?? "-"}`;
+  } / ${copy.popup.risk} ${feature.properties.risk_score ?? "-"}`;
   element.addEventListener("click", () => {
     window.location.assign(`/listings/${feature.properties.listing_id}`);
   });
@@ -1688,28 +1698,30 @@ function markerElement(
   feature: MapFeature,
   map: MaplibreMap,
   maplibre: MaplibreModule,
+  copy: PropertyMapCopy,
 ) {
   if (feature.properties.feature_type === "listing") {
-    return createListingMarker(feature);
+    return createListingMarker(feature, copy);
   }
   if (feature.properties.feature_type === "planned_investment") {
-    return createInvestmentMarker(feature, map, maplibre);
+    return createInvestmentMarker(feature, map, maplibre, copy);
   }
-  return createInfrastructureMarker(feature, map, maplibre);
+  return createInfrastructureMarker(feature, map, maplibre, copy);
 }
 
 function createInvestmentMarker(
   feature: MapFeature,
   map: MaplibreMap,
   maplibre: MaplibreModule,
+  copy: PropertyMapCopy,
 ) {
   const element = document.createElement("button");
   element.className = "map-investment-marker";
   element.type = "button";
   element.textContent = investmentInitial(feature);
-  element.title = String(feature.properties.name ?? "Planned investment");
+  element.title = String(feature.properties.name ?? copy.popup.plannedInvestment);
   element.addEventListener("click", () => {
-    const popupContent = buildInvestmentPopup(feature);
+    const popupContent = buildInvestmentPopup(feature, copy);
     new maplibre.Popup({ offset: 18 })
       .setLngLat(featurePoint(feature) ?? WROCLAW_CENTER)
       .setDOMContent(popupContent)
@@ -1722,15 +1734,16 @@ function createInfrastructureMarker(
   feature: MapFeature,
   map: MaplibreMap,
   maplibre: MaplibreModule,
+  copy: PropertyMapCopy,
 ) {
   const element = document.createElement("button");
   const featureClass = String(feature.properties.feature_type).replaceAll("_", "-");
   element.className = `map-infrastructure-marker ${featureClass}`;
   element.type = "button";
   element.textContent = infrastructureInitial(feature);
-  element.title = infrastructureTitle(feature);
+  element.title = infrastructureTitle(feature, copy);
   element.addEventListener("click", () => {
-    const popupContent = buildInfrastructurePopup(feature);
+    const popupContent = buildInfrastructurePopup(feature, copy);
     new maplibre.Popup({ offset: 16 })
       .setLngLat(featurePoint(feature) ?? WROCLAW_CENTER)
       .setDOMContent(popupContent)
@@ -1739,12 +1752,12 @@ function createInfrastructureMarker(
   return element;
 }
 
-function buildInvestmentPopup(feature: MapFeature) {
+function buildInvestmentPopup(feature: MapFeature, copy: PropertyMapCopy) {
   const container = document.createElement("div");
   container.className = "map-feature-popup";
 
   const title = document.createElement("strong");
-  title.textContent = String(feature.properties.name ?? "Planned investment");
+  title.textContent = String(feature.properties.name ?? copy.popup.plannedInvestment);
   container.appendChild(title);
 
   const meta = document.createElement("span");
@@ -1758,26 +1771,26 @@ function buildInvestmentPopup(feature: MapFeature) {
   container.appendChild(meta);
 
   const note = document.createElement("p");
-  note.textContent = String(feature.properties.notes ?? "Layer inwestycji planowanych.");
+  note.textContent = String(feature.properties.notes ?? copy.popup.plannedLayer);
   container.appendChild(note);
 
   return container;
 }
 
-function buildInfrastructurePopup(feature: MapFeature) {
+function buildInfrastructurePopup(feature: MapFeature, copy: PropertyMapCopy) {
   const container = document.createElement("div");
   container.className = "map-feature-popup";
 
   const title = document.createElement("strong");
-  title.textContent = String(feature.properties.name ?? infrastructureTitle(feature));
+  title.textContent = String(feature.properties.name ?? infrastructureTitle(feature, copy));
   container.appendChild(title);
 
   const meta = document.createElement("span");
-  meta.textContent = infrastructureMeta(feature);
+  meta.textContent = infrastructureMeta(feature, copy);
   container.appendChild(meta);
 
   const detail = document.createElement("p");
-  detail.textContent = infrastructureDetail(feature);
+  detail.textContent = infrastructureDetail(feature, copy);
   container.appendChild(detail);
 
   return container;
@@ -1818,14 +1831,14 @@ function amenityInitial(feature: MapFeature) {
   return "A";
 }
 
-function infrastructureTitle(feature: MapFeature) {
-  const name = String(feature.properties.name ?? "Infrastructure");
-  return `${infrastructureLabel(feature)} · ${name}`;
+function infrastructureTitle(feature: MapFeature, copy: PropertyMapCopy) {
+  const name = String(feature.properties.name ?? copy.popup.infrastructure);
+  return `${infrastructureLabel(feature, copy)} · ${name}`;
 }
 
-function infrastructureMeta(feature: MapFeature) {
+function infrastructureMeta(feature: MapFeature, copy: PropertyMapCopy) {
   return [
-    infrastructureLabel(feature),
+    infrastructureLabel(feature, copy),
     feature.properties.district,
     feature.properties.municipality,
   ]
@@ -1833,11 +1846,11 @@ function infrastructureMeta(feature: MapFeature) {
     .join(" · ");
 }
 
-function infrastructureDetail(feature: MapFeature) {
+function infrastructureDetail(feature: MapFeature, copy: PropertyMapCopy) {
   if (feature.properties.feature_type === "transport_stop") {
     return [
       feature.properties.stop_type,
-      feature.properties.lines_label ? `lines: ${feature.properties.lines_label}` : null,
+      feature.properties.lines_label ? `${copy.popup.lines}: ${feature.properties.lines_label}` : null,
     ]
       .filter(Boolean)
       .join(" · ");
@@ -1855,31 +1868,31 @@ function infrastructureDetail(feature: MapFeature) {
   if (feature.properties.feature_type === "industrial_zone") {
     return [
       feature.properties.zone_type,
-      `risk: ${feature.properties.risk_level ?? "unknown"}`,
+      `${copy.popup.risk}: ${feature.properties.risk_level ?? copy.popup.unknown}`,
       feature.properties.impact_radius_m
-        ? `impact radius: ${feature.properties.impact_radius_m} m`
+        ? `${copy.popup.impactRadius}: ${feature.properties.impact_radius_m} m`
         : null,
     ]
       .filter(Boolean)
       .join(" · ");
   }
-  return String(feature.properties.amenity_type ?? "amenity");
+  return String(feature.properties.amenity_type ?? copy.popup.amenity);
 }
 
-function infrastructureLabel(feature: MapFeature) {
+function infrastructureLabel(feature: MapFeature, copy: PropertyMapCopy) {
   switch (feature.properties.feature_type) {
     case "transport_stop":
-      return "Transport";
+      return copy.popup.transport;
     case "school":
-      return "School";
+      return copy.popup.school;
     case "kindergarten":
-      return "Kindergarten";
+      return copy.popup.kindergarten;
     case "amenity":
-      return "Amenity";
+      return copy.popup.amenity;
     case "industrial_zone":
-      return "Industrial zone";
+      return copy.popup.industrialZone;
     default:
-      return "Infrastructure";
+      return copy.popup.infrastructure;
   }
 }
 

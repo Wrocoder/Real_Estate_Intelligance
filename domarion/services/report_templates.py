@@ -2,6 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from domarion.schemas import (
+    BuyerDecisionPackage,
     ListingAnalysis,
     MortgageCalculationRequest,
     ReportAudience,
@@ -12,6 +13,44 @@ from domarion.services.mortgage import calculate_mortgage
 from domarion.services.provenance import provenance_evidence_details
 
 SectionBuilder = Callable[[ListingAnalysis | None], ReportSection]
+
+ACTION_REPORT_LABELS = {
+    "verify_kw_owner": "Verify the owner and seller authority in the land register",
+    "verify_kw_encumbrances": "Check mortgages, claims, easements and restrictions",
+    "request_debt_certificate": "Request confirmation of no community/cooperative debt",
+    "review_monthly_costs": "Verify service charges, utilities and renovation fund",
+    "review_planned_repairs": "Review planned building repairs and resolutions",
+    "verify_area_documents": "Match apartment area and layout to documents",
+    "inspect_installations": "Inspect electrical, plumbing, heating and ventilation",
+    "verify_developer_identity": "Verify developer, project company and land title",
+    "review_escrow_schedule": "Verify escrow account and payment schedule",
+    "verify_permits_and_title": "Check building permit, land title and project status",
+    "review_prospekt_and_contract": "Review prospectus, annexes and draft contract",
+    "review_delay_rights": "Check handover timing, delay penalties and withdrawal rights",
+    "inspect_finish_standard": "Compare finish standard with contract and paid extras",
+    "ask_sale_context": "Ask why the property is being sold and expected timing",
+    "ask_included_items": "Confirm furnishings, parking and storage included in price",
+    "ask_monthly_costs": "Ask for actual monthly costs and recent settlements",
+    "ask_known_defects": "Ask about leaks, moisture, noise, failures and disputes",
+    "ask_long_exposure": "Ask why the listing has remained active for a long time",
+    "ask_price_history": "Ask about prior prices and reasons for reductions",
+    "inspect_apartment_condition": "Inspect condition, windows, ventilation and moisture",
+    "photograph_defects": "Photograph defects and items requiring repair estimates",
+    "inspect_common_areas": "Inspect common areas, lift, facade, basement or garage",
+    "record_viewing_findings": "Record findings and recalculate before offer or deposit",
+    "compare_price_evidence": "Compare price with fair range and closest comparables",
+    "compare_market_supply": "Check competing listings and similar-property exposure",
+    "test_transport_route": "Walk the route to transport and check service frequency",
+    "inspect_noise": "Check noise with windows open and closed during busy hours",
+    "inspect_industrial_context": "Check traffic, smell, noise and local land-use plan",
+    "inspect_building_systems": "Check systems, roof, facade and renovation fund",
+    "verify_rental_case": "Verify rent, vacancy, furnishing, tax and fee assumptions",
+    "confirm_listing_parameters": "Confirm price, area, floor, year, address and freshness",
+    "verify_developer_record": "Check delivery history, delays, disputes and contracting entity",
+    "verify_planning_projects": (
+        "Verify source, geometry, timing and disruption of planned projects"
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -52,19 +91,11 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
     decision = analysis.buyer_decision
     if decision is not None:
         verdict = decision.verdict
-        max_offer = verdict.max_reasonable_offer_pln
-        opening_offer = verdict.opening_offer_pln
         decision_text = f"{verdict.score:.1f}/10 - {verdict.headline}"
     else:
-        max_offer = _buyer_max_offer(analysis)
-        opening_offer = _buyer_opening_offer(analysis, max_offer)
         decision_text = _buyer_recommendation(analysis)
     items = [
         f"Decision: {decision_text}",
-        (
-            f"Верхняя цена до дополнительных проверок: {_money(max_offer)}; "
-            f"стартовый offer anchor: {_money(opening_offer)}."
-        ),
         (
             f"Цена продавца: {_money(listing.price)}; fair range "
             f"{_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}; "
@@ -76,6 +107,20 @@ def _buyer_decision_summary_section(analysis: ListingAnalysis | None) -> ReportS
             f"Data quality {listing.data_quality_score}/100."
         ),
     ]
+    if decision is not None and decision.negotiation.scenario_status == "available":
+        items.insert(
+            1,
+            (
+                f"Сценарный потолок до дополнительных проверок: "
+                f"{_money(decision.negotiation.max_reasonable_offer_pln)}; "
+                f"стартовый сценарий: {_money(decision.negotiation.opening_offer_pln)}."
+            ),
+        )
+    else:
+        items.insert(
+            1,
+            "Ценовой сценарий переговоров недоступен до получения достаточных рыночных данных.",
+        )
     risks = _buyer_top_risks(analysis)
     if risks:
         items.append(f"Главные риски: {'; '.join(risks)}.")
@@ -110,27 +155,37 @@ def _domarion_verdict_section(analysis: ListingAnalysis | None) -> ReportSection
 
     verdict = decision.verdict
     total = decision.total_acquisition
-    return ReportSection(
-        title="WartoMetr Verdict",
-        items=[
-            f"{verdict.score:.1f}/10 - {verdict.headline}.",
-            verdict.summary,
-            (
-                f"Цена продавца: {_money(verdict.seller_price_pln)}; fair range "
-                f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}."
-            ),
-            (
-                f"Рекомендуемый offer: {_money(verdict.recommended_offer_pln)}; "
-                f"стартовый offer: {_money(verdict.opening_offer_pln)}; "
-                f"не превышать без новых данных: {_money(verdict.max_reasonable_offer_pln)}."
-            ),
+    items = [
+        f"{verdict.score:.1f}/10 - {verdict.headline}.",
+        verdict.summary,
+        (
+            f"Цена продавца: {_money(verdict.seller_price_pln)}; fair range "
+            f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}."
+        ),
+    ]
+    if decision.negotiation.scenario_status == "available":
+        items.append(
+            f"Сценарная цена: target {_money(verdict.recommended_offer_pln)}; "
+            f"старт {_money(verdict.opening_offer_pln)}; "
+            f"не превышать без новых данных {_money(verdict.max_reasonable_offer_pln)}."
+        )
+    else:
+        items.append(
+            "Ценовой сценарий не сформирован: имеющихся рыночных наблюдений недостаточно."
+        )
+    items.extend(
+        [
             (
                 f"Реальная стоимость въезда: {_money(total.total_move_in_cost_pln)} "
                 f"(ремонт {_money(total.renovation_estimate_pln)}, "
                 f"мебель/оборудование {_money(total.furniture_estimate_pln)})."
             ),
             f"Полнота проверки: {decision.knowledge.check_completeness_score}/100.",
-        ],
+        ]
+    )
+    return ReportSection(
+        title="WartoMetr Verdict",
+        items=items,
     )
 
 
@@ -139,9 +194,30 @@ def _negotiation_assistant_section(analysis: ListingAnalysis | None) -> ReportSe
         return ReportSection(title="Negotiation Assistant", items=[])
     decision = analysis.buyer_decision
     if decision is None:
-        return _negotiation_section(analysis).model_copy(update={"title": "Negotiation Assistant"})
+        return ReportSection(
+            title="Negotiation Assistant",
+            items=[
+                "Price scenario unavailable: rebuild the analysis with structured market evidence."
+            ],
+        )
 
     negotiation = decision.negotiation
+    if negotiation.scenario_status != "available":
+        return ReportSection(
+            title="Negotiation Assistant",
+            items=[
+                "Price scenario unavailable: market evidence is insufficient.",
+                *[
+                    f"Limitation: {_negotiation_limitation_report_text(code)}."
+                    for code in negotiation.limitation_codes
+                ],
+                *[
+                    f"Next action: {_negotiation_action_report_text(item.code, item.params)}."
+                    for item in negotiation.next_actions
+                ],
+            ],
+        )
+    evidence_by_id = {item.id: item for item in negotiation.argument_evidence}
     return ReportSection(
         title="Negotiation Assistant",
         items=_deduplicate(
@@ -155,13 +231,24 @@ def _negotiation_assistant_section(analysis: ListingAnalysis | None) -> ReportSe
                 f"Posture: {negotiation.posture}; score {negotiation.negotiation_score}/100.",
                 "Scenario: figures are indicative negotiation scenarios, not a guaranteed "
                 "market truth.",
-                *[f"Аргумент: {item}" for item in negotiation.arguments[:6]],
                 *[
-                    f"Evidence for argument: {item.source_name} ({item.confidence_score}/100)."
-                    for item in negotiation.argument_evidence[:6]
+                    (
+                        f"Аргумент: {_negotiation_argument_report_text(item.code, item.params)}; "
+                        "evidence: "
+                        f"{', '.join(
+                            evidence_by_id[ref].source_name for ref in item.evidence_refs
+                        )}."
+                    )
+                    for item in negotiation.arguments[:6]
                 ],
-                *[f"Сценарий: {item}" for item in negotiation.seller_script[:5]],
-                *[f"Guardrail: {item}" for item in negotiation.guardrails],
+                *[
+                    f"Next action: {_negotiation_action_report_text(item.code, item.params)}."
+                    for item in negotiation.next_actions
+                ],
+                *[
+                    f"Guardrail: {_negotiation_guardrail_report_text(code)}."
+                    for code in negotiation.guardrail_codes
+                ],
             ]
         ),
     )
@@ -177,19 +264,16 @@ def _property_due_diligence_section(analysis: ListingAnalysis | None) -> ReportS
         )
 
     diligence = decision.due_diligence
-    checklist = [
-        (f"{item.priority}/{item.category}: {item.label} ({item.status}) - {item.rationale}")
-        for item in diligence.checklist[:10]
-    ]
     return ReportSection(
         title="Property Due Diligence",
         items=_deduplicate(
             [
                 f"Due-diligence score: {diligence.score}/100 ({diligence.label}).",
-                *[f"Red flag/check: {item}" for item in diligence.red_flags[:6]],
-                *[f"Unknown: {item}" for item in diligence.unknowns[:8]],
-                *[f"Document: {item}" for item in diligence.documents_to_request[:8]],
-                *checklist,
+                *_action_plan_report_items(
+                    decision,
+                    phases={"before_offer"},
+                    limit=18,
+                ),
                 (
                     "Human-review handoff: if critical unknowns remain before zadatek, "
                     "route KW, building, debt and contract checks to a legal/expert reviewer."
@@ -289,12 +373,12 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
     max_offer = (
         decision.verdict.max_reasonable_offer_pln
         if decision is not None
-        else _buyer_max_offer(analysis)
+        else None
     )
     alternatives = sorted(
         analysis.comparables,
         key=lambda item: (
-            item.price > max_offer,
+            item.price > max_offer if max_offer is not None else False,
             item.price_per_m2,
             item.nearest_stop_m is None,
             item.nearest_stop_m or 0,
@@ -304,7 +388,7 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
     items = []
     for comparable in alternatives:
         reasons = []
-        if comparable.price <= max_offer:
+        if max_offer is not None and comparable.price <= max_offer:
             reasons.append("цена не выше разумного потолка по текущему объекту")
         if comparable.price_per_m2 < listing.price_per_m2:
             reasons.append("ниже цена за m2")
@@ -317,7 +401,7 @@ def _buyer_better_alternatives_section(analysis: ListingAnalysis | None) -> Repo
         if comparable.days_on_market < listing.days_on_market:
             reasons.append("меньше экспозиция на рынке")
         if not reasons:
-            reasons.append("использовать как price anchor в торге")
+            reasons.append("проверить как альтернативу до определения цены оффера")
         items.append(
             f"{comparable.title}: {_money(comparable.price)}, "
             f"{_money(comparable.price_per_m2)}/m2, {comparable.district}; "
@@ -333,23 +417,12 @@ def _pre_viewing_section(analysis: ListingAnalysis | None) -> ReportSection:
     if decision is None:
         return _next_action_like_section(analysis)
 
-    viewing = decision.pre_viewing
     return ReportSection(
         title="До просмотра",
-        items=_deduplicate(
-            [
-                f"Рекомендация: {viewing.recommendation}.",
-                *[f"Плюс: {item}" for item in viewing.positives[:5]],
-                *[f"Риск: {item}" for item in viewing.risks[:5]],
-                *[f"Вопрос продавцу: {item}" for item in viewing.seller_questions[:10]],
-                *[f"Сфотографировать: {item}" for item in viewing.photos_to_take[:5]],
-                *[f"Проверить дом: {item}" for item in viewing.building_checks[:5]],
-                *[f"Проверить вокруг: {item}" for item in viewing.surroundings_checks[:5]],
-                *[
-                    f"После просмотра отметить: {item}"
-                    for item in decision.post_viewing_checklist[:8]
-                ],
-            ]
+        items=_action_plan_report_items(
+            decision,
+            phases={"on_viewing", "after_viewing"},
+            limit=18,
         ),
     )
 
@@ -607,9 +680,8 @@ def _insights_section(analysis: ListingAnalysis | None) -> ReportSection:
 
 
 def _negotiation_section(analysis: ListingAnalysis | None) -> ReportSection:
-    return ReportSection(
-        title="Аргументы для торга",
-        items=[] if analysis is None else analysis.negotiation_arguments,
+    return _negotiation_assistant_section(analysis).model_copy(
+        update={"title": "Аргументы для торга"}
     )
 
 
@@ -617,29 +689,32 @@ def _seller_questions_section(analysis: ListingAnalysis | None) -> ReportSection
     if analysis is None:
         return ReportSection(title="Вопросы продавцу", items=[])
 
-    listing = analysis.listing
-    questions = [
-        "Почему объект продается и какой ожидаемый срок сделки?",
-        "Кто является собственником и есть ли согласие всех владельцев на продажу?",
-        "Есть ли ипотека, судебные ограничения, сервитуты или другие обременения?",
-        "Какие ежемесячные платежи: czynsz, fundusz remontowy, media, ogrzewanie?",
-        "Какие ремонты уже сделаны и какие крупные расходы ожидаются в ближайшие 2-3 года?",
-        "Что входит в цену: мебель, техника, parking, komórka lokatorska?",
-    ]
-    if listing.days_on_market >= 90:
-        questions.append(
-            "Объект давно на рынке: какие были причины отказов предыдущих покупателей?"
-        )
-    if listing.price_reductions > 0:
-        questions.append("Цена уже снижалась: какой минимальный уровень продавец готов обсуждать?")
-    if listing.relisted:
-        questions.append("Объект публиковался повторно: менялись ли условия, цена или состояние?")
-    return ReportSection(title="Вопросы продавцу", items=questions)
+    decision = analysis.buyer_decision
+    if decision is None:
+        return ReportSection(title="Вопросы продавцу", items=[])
+    return ReportSection(
+        title="Вопросы продавцу",
+        items=_action_plan_report_items(
+            decision,
+            categories={"seller_question"},
+            limit=10,
+        ),
+    )
 
 
 def _purchase_checklist_section(analysis: ListingAnalysis | None) -> ReportSection:
     if analysis is None:
         return ReportSection(title="Чеклист проверки перед оффером", items=[])
+
+    if analysis.buyer_decision is not None:
+        return ReportSection(
+            title="Чеклист проверки перед оффером",
+            items=_action_plan_report_items(
+                analysis.buyer_decision,
+                phases={"before_offer"},
+                limit=18,
+            ),
+        )
 
     listing = analysis.listing
     items = [
@@ -1193,6 +1268,116 @@ def _location_risk_flags(analysis: ListingAnalysis) -> list[str]:
     ):
         risks.append("рост предложения может снижать переговорную позицию продавцов")
     return risks[:4]
+
+
+def _negotiation_argument_report_text(code: str, params: dict) -> str:
+    if code == "fair_value_range":
+        return (
+            f"fair-value range {_money(params['low_pln'])}-{_money(params['high_pln'])} "
+            f"at confidence {params['confidence_score']}/100"
+        )
+    if code == "asking_above_fair_mid":
+        return (
+            f"asking price is {params['delta_pct']}% ({_money(params['delta_pln'])}) "
+            "above the estimated midpoint"
+        )
+    if code == "comparable_sample":
+        return f"the calculation uses {params['sample_size']} comparable listings"
+    if code == "long_market_exposure":
+        return (
+            f"listing exposure is {params['days_on_market']} days versus "
+            f"{params['area_average_days']} days in the area"
+        )
+    if code == "price_reductions":
+        return f"the listing price was reduced {params['count']} time(s)"
+    if code == "relisted":
+        return "the listing was relisted; verify previous price and exposure"
+    if code == "area_supply_growth":
+        return f"area supply changed by {params['change_pct']}% over 90 days"
+    return "structured negotiation evidence"
+
+
+def _negotiation_action_report_text(code: str, params: dict) -> str:
+    if code == "collect_market_evidence":
+        return "collect recent comparable or transaction evidence before discussing a price"
+    if code == "verify_listing_history":
+        return "ask for the original publication date and previous asking prices"
+    if code == "compare_alternatives":
+        return "compare at least two current alternatives before making an offer"
+    if code == "verify_documents_before_offer":
+        return "verify ownership, encumbrances and building documents before an offer"
+    if code == "confirm_condition_and_costs":
+        return "confirm technical condition and renovation costs during viewing"
+    if code == "submit_conditional_offer":
+        return f"submit a conditional opening scenario of {_money(params['opening_offer_pln'])}"
+    if code == "compare_before_raising_ceiling":
+        return (
+            f"compare alternatives before raising the scenario ceiling above "
+            f"{_money(params['max_offer_pln'])}"
+        )
+    return "complete the evidence checks before changing the offer"
+
+
+def _negotiation_limitation_report_text(code: str) -> str:
+    return {
+        "fair_price_confidence_low": "fair-price confidence is below 50/100",
+        "subject_data_quality_low": "the apartment input is incomplete",
+        "comparable_sample_below_minimum": "fewer than three comparable listings are available",
+        "transaction_sample_below_minimum": "fewer than ten transaction observations are available",
+        "market_evidence_insufficient": "neither market sample reaches the minimum threshold",
+    }.get(code, "additional market evidence is required")
+
+
+def _negotiation_guardrail_report_text(code: str) -> str:
+    return {
+        "scenario_not_valuation": "the scenario is not a certified valuation or accepted price",
+        "verify_before_deposit": "complete document and technical checks before a deposit",
+        "do_not_exceed_without_new_evidence": (
+            "raise the ceiling only when new evidence supports it"
+        ),
+        "no_price_advice_insufficient_data": "do not infer an offer from incomplete data",
+        "collect_evidence_before_offer": "collect market evidence before naming a price",
+    }.get(code, "treat the output as decision support, not a guarantee")
+
+
+def _action_plan_report_items(
+    decision: BuyerDecisionPackage,
+    *,
+    phases: set[str] | None = None,
+    categories: set[str] | None = None,
+    limit: int,
+) -> list[str]:
+    if decision.action_plan is None:
+        return ["Structured action plan unavailable; refresh the apartment analysis."]
+    evidence_by_id = {item.id: item for item in decision.action_plan.evidence}
+    rows: list[str] = []
+    for item in decision.action_plan.items:
+        if phases is not None and item.phase not in phases:
+            continue
+        if categories is not None and item.category not in categories:
+            continue
+        sources = _deduplicate(
+            [
+                evidence_by_id[reference].source_name
+                for reference in item.evidence_refs
+                if reference in evidence_by_id
+            ]
+        )
+        evidence_statuses = _deduplicate(
+            [
+                evidence_by_id[reference].status
+                for reference in item.evidence_refs
+                if reference in evidence_by_id
+            ]
+        )
+        evidence_note = ", ".join(sources) or "source unavailable"
+        if "unknown" in evidence_statuses:
+            evidence_note = f"verification gap; source context: {evidence_note}"
+        rows.append(
+            f"[{item.priority}] {ACTION_REPORT_LABELS.get(item.code, item.code)}. "
+            f"Evidence: {evidence_note}."
+        )
+    return rows[:limit]
 
 
 def _deduplicate(items: list[str]) -> list[str]:

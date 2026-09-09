@@ -21,11 +21,7 @@ type RequestOptions = {
   suppressAuthRequired?: boolean;
 };
 
-export async function request<T>(
-  path: string,
-  init?: RequestInit,
-  options: RequestOptions = {},
-): Promise<T> {
+export async function request<T>(path: string, init?: RequestInit, options: RequestOptions = {}): Promise<T> {
   const apiBaseUrl = currentApiBaseUrl();
   let response: Response;
   try {
@@ -44,31 +40,30 @@ export async function request<T>(
 
   if (!response.ok) {
     const body = await response.text();
-    let detail = body;
-    let errorCode = "request_failed";
+    let errorCode = errorCodeForStatus(response.status);
     let errorParams: Record<string, unknown> = {};
-    let correlationId: string | null = null;
+    let correlationId: string | null = response.headers.get("X-Request-ID");
     try {
       const parsed = JSON.parse(body) as {
-        detail?: string | object;
-        error?: { code?: string; params?: Record<string, unknown>; correlation_id?: string };
+        detail?: {
+          code?: string;
+          params?: Record<string, unknown>;
+          correlation_id?: string;
+        };
+        error?: {
+          code?: string;
+          params?: Record<string, unknown>;
+          correlation_id?: string;
+        };
       };
-      detail = typeof parsed.detail === "string" ? parsed.detail : JSON.stringify(parsed.detail);
-      if (parsed.error) {
-        const error = parsed.error;
+      const error = parsed.error ?? parsed.detail;
+      if (error) {
         errorCode = error.code ?? "request_failed";
         errorParams = error.params ?? {};
-        correlationId = error.correlation_id ?? null;
+        correlationId = error.correlation_id ?? correlationId;
       }
     } catch {
-      // Keep the plain response body when it is not JSON.
-    }
-    if (response.status === 400 && typeof detail === "string") {
-      if (/area statistics are not available|unsupported.*(?:area|district|city)/i.test(detail)) {
-        errorCode = "unsupported_area";
-      } else if (/geocod(?:e|ing)|location/i.test(detail)) {
-        errorCode = "location_unavailable";
-      }
+      // Non-JSON upstream responses are intentionally not exposed to consumer UI.
     }
     const isCredentialAttempt = path === "/api/v1/auth/login";
     if (
@@ -77,19 +72,35 @@ export async function request<T>(
       !options.suppressAuthRequired &&
       (response.status === 401 || response.status === 403)
     ) {
-      const reason =
-        response.status === 401 && detail === "Sign in is required" ? "required" : "expired";
+      const reason = response.status === 403 ? "forbidden" : errorCode === "auth_required" ? "required" : "expired";
       window.dispatchEvent(
         new CustomEvent("domarion:auth-required", {
           detail: { status: response.status, reason },
         }),
       );
     }
-    throw new ApiError(response.status, detail || response.statusText, errorCode, errorParams, correlationId);
+    throw new ApiError(response.status, errorCode, errorCode, errorParams, correlationId);
   }
 
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
+}
+
+function errorCodeForStatus(status: number): string {
+  return (
+    {
+      400: "bad_request",
+      401: "auth_required",
+      403: "forbidden",
+      404: "not_found",
+      409: "conflict",
+      413: "payload_too_large",
+      422: "validation_error",
+      429: "rate_limited",
+      500: "internal_error",
+      503: "service_unavailable",
+    }[status] ?? "request_failed"
+  );
 }
 
 export async function authenticatedFetch(path: string, init?: RequestInit): Promise<Response> {

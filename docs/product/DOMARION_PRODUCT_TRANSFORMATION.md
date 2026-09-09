@@ -1,6 +1,7 @@
 # Domarion Product Transformation Audit
 
 Audit date: 2026-09-05
+Last verification refresh: 2026-09-09
 Baseline commit: 230af7d (`Fix Alpine npm lockfile dependencies`)
 Product: Domarion / WartoMetr
 
@@ -269,7 +270,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | ID | Task | Status | Dependency |
 | --- | --- | --- | --- |
 | T4-01 | Validate object-watch lifecycle, trigger baselines, event history, and delivery semantics | PARTIAL | T2-02, T1-03 |
-| T4-02 | Generate adaptive viewing, document, seller-question, and negotiation actions from known risks | PARTIAL | T3-03 |
+| T4-02 | Generate adaptive viewing, document, seller-question, and negotiation actions from known risks | DONE | T3-03 |
 | T4-03 | Add a small durable buyer preference profile and use it transparently in fit and compare | NOT STARTED | T2-02, T1-01 |
 | T4-04 | Turn compare into recommendation plus explicit trade-offs while preserving detail access | PARTIAL | T2-02, T4-03 |
 
@@ -926,9 +927,138 @@ Verified:
 
 Follow-up:
 
-- P1-06 still owns remaining consumer copy localization, the stable API error
-  envelope and consistent mutation rollback/retry feedback outside the score
-  explanation surfaces.
+- P1-06 completed the remaining consumer copy localization, stable API error
+  envelope and mutation rollback/retry feedback described below.
+
+### P1-06: Consumer Localization and Safe Errors - DONE (2026-09-09)
+
+Changed:
+
+- added a typed PL/EN/RU/UK decision-message catalog derived from existing
+  structured prices, confidence, risk, evidence, negotiation and due-diligence
+  values; no market fact or analytical formula changed;
+- stopped `/check`, listing decision panels and `/reports` from rendering raw
+  backend decision, AI insight or inline report prose;
+- fully localized `/market` and removed the Polish-only default error prefix
+  from shared state blocks;
+- standardized API failures on `error.code`, safe `params` and
+  `correlation_id`; validation and unhandled errors no longer expose submitted
+  input, exception text or backend diagnostics;
+- changed the frontend transport to map structured codes to localized copy and
+  never treat a raw response body as a user-facing error;
+- corrected report-save feedback so a draft identifier is not presented as a
+  successfully saved report and failed mutations roll back visibly;
+- fixed a production-only temporal-dead-zone initialization error discovered
+  while rendering the optimized `/check` build;
+- upgraded MapLibre GL from the vulnerable 5.x line to patched 6.8.0 after the
+  release audit reported the critical sanitizer-bypass advisory; the existing
+  dynamic ESM import remained compatible;
+- localized map controls and evidence labels in PL/EN/RU/UK and fixed the CSS
+  precedence issue that left the MapLibre canvas at zero height in production;
+- updated the existing `sharp` and `js-yaml` security overrides after the final
+  dependency audit reported newly disclosed advisories.
+
+Verified:
+
+- full backend suite: `422 passed, 1 skipped`; targeted Ruff and
+  `git diff --check` passed;
+- frontend ESLint, TypeScript, `615` static smoke assertions, npm audit with
+  zero vulnerabilities and production Next.js build passed;
+- repository Playwright passed PL/EN/RU/UK on desktop, tablet and mobile,
+  including buyer-decision and map localization, non-zero MapLibre canvas,
+  console/network/hydration and horizontal-overflow checks;
+- the dedicated recovery gate passed loading, partial import, unsupported
+  source, actionable error/retry, failed report generation, failed save
+  rollback and successful retries;
+- local production frontend and API returned healthy responses at
+  `http://127.0.0.1:3000` and `http://127.0.0.1:8010`.
+
+Scope note:
+
+- immutable/standalone generated HTML and PDF files retain their versioned
+  report-language contract and are tracked with report generation, freshness
+  and entitlement work in P1-12. Raw artifact prose is not rendered inline on
+  `/check` or `/reports` and was not relabeled as localized content.
+
+### P1-11: Evidence-backed Negotiation Scenarios - DONE (2026-09-09)
+
+Changed:
+
+- introduced a versioned negotiation scenario contract with explicit
+  `available` and `insufficient_data` states, confidence, nullable scenario
+  prices, structured arguments/actions, limitation codes and guardrails;
+- gated all opening, target, reasonable-range and maximum-offer advice on fair
+  value confidence, listing data quality and a minimum comparable or
+  transaction sample; missing evidence now produces no price advice;
+- linked every negotiation argument and applicable action to stable evidence
+  records carrying source, source type, freshness, sample, geographic scope,
+  time range, calculation type and confidence;
+- made verdict and negotiation scenario prices one validated contract and
+  removed duplicate price calculations from report generation;
+- changed consumer, report and AI negotiation output to consume the structured
+  scenario instead of legacy backend prose;
+- added PL/EN/RU/UK presentation for scenario states, arguments, limitations,
+  actions and guardrails, plus a copyable evidence-backed negotiation brief;
+- removed duplicate legacy negotiation prose from `/check` and listing detail.
+
+Verified:
+
+- full backend suite: `427 passed, 1 skipped`; Ruff and `git diff --check`
+  passed;
+- frontend ESLint, TypeScript, `631` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- repository Playwright passed PL/EN/RU/UK on desktop, tablet and mobile,
+  available and insufficient negotiation states, copied brief content,
+  provenance, critical check/save/compare flow, error/retry behavior and
+  console/network/hydration/overflow checks;
+- local production frontend and current API are running at
+  `http://127.0.0.1:3000` and `http://127.0.0.1:8010`.
+
+Follow-up:
+
+- P1-15 should extend the same code/evidence pattern to the complete adaptive
+  viewing, seller-question and legal/document checklist;
+- immutable report artifact language/version and paid entitlement remain in
+  P1-12 and the externally blocked P0-05 release work;
+- fair-price methodology was not changed by this task; only availability and
+  presentation of negotiation advice were tightened.
+
+### P1-15: Evidence-backed Buyer Action Plan - DONE (2026-09-09)
+
+Changed:
+
+- introduced a versioned `BuyerActionPlan` contract with stable action codes,
+  before-offer/viewing/after-viewing phases, priorities and mandatory evidence
+  references validated by the API schema;
+- generated deterministic secondary- versus primary-market document checks,
+  seller questions, viewing steps and intent-aware risk-specific actions from
+  the existing listing, risk, score and area inputs;
+- kept missing facts explicit: unknown evidence carries no invented value,
+  sample or calculated classification and has zero confidence until verified;
+- added a PL/EN/RU/UK checklist to the buyer decision UI with persistent local
+  completion state, provenance disclosure and a copyable action brief;
+- changed report and buyer AI action output to consume the structured plan and
+  its evidence instead of maintaining a separate free-text checklist.
+
+Verified:
+
+- targeted buyer/API/import/report suite: `129 passed`; full backend suite:
+  `434 passed, 1 skipped`; Ruff and `git diff --check` passed;
+- frontend ESLint, TypeScript, `651` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- generated OpenAPI TypeScript was refreshed from the running FastAPI contract;
+- repository Playwright passed PL/EN/RU/UK on desktop, tablet and mobile,
+  including the action plan at 1440px and 390px, negotiation, localization,
+  console/network/hydration/overflow checks and core recovery/retry states;
+- the embedded browser remained unavailable because the environment did not
+  provide `sandboxPolicy`; repository Playwright provided the rendered QA.
+
+Follow-up:
+
+- P1-16 still owns the durable buyer profile that should personalize more of
+  the action plan and comparison flow;
+- generated report language/version and paid entitlement remain in P1-12;
+- production legal review remains part of the externally blocked P0-05 gate.
 
 ## Remaining External Limitations
 

@@ -234,7 +234,6 @@ def analyze_user_submitted_listing(
         area_statistics=analysis.area_statistics,
         scores=analysis.scores,
         comparables=analysis.comparables,
-        negotiation_arguments=analysis.negotiation_arguments,
         data_quality_notes=data_quality_notes,
         developer_reputation=developer_reputation,
         future_area_impact=analysis.future_area_impact,

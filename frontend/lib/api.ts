@@ -1259,11 +1259,11 @@ export type BuyerDecisionVerdict = {
   fair_price_low_pln: number;
   fair_price_mid_pln: number;
   fair_price_high_pln: number;
-  opening_offer_pln: number;
-  recommended_offer_pln: number;
-  realistic_deal_low_pln: number;
-  realistic_deal_high_pln: number;
-  max_reasonable_offer_pln: number;
+  opening_offer_pln: number | null;
+  recommended_offer_pln: number | null;
+  realistic_deal_low_pln: number | null;
+  realistic_deal_high_pln: number | null;
+  max_reasonable_offer_pln: number | null;
   price_delta_to_fair_mid_pct: number;
   overpricing_pln: number;
   cta_label: string;
@@ -1273,16 +1273,25 @@ export type BuyerDecisionVerdict = {
 };
 
 export type BuyerNegotiationAssistant = {
+  scenario_status: "available" | "insufficient_data";
+  scenario_version: string;
+  scenario_confidence_score: number;
   asking_price_pln: number;
-  opening_offer_pln: number;
-  realistic_deal_low_pln: number;
-  realistic_deal_high_pln: number;
-  max_reasonable_offer_pln: number;
+  opening_offer_pln: number | null;
+  realistic_deal_low_pln: number | null;
+  realistic_deal_high_pln: number | null;
+  max_reasonable_offer_pln: number | null;
   negotiation_score: number;
   posture: string;
-  arguments: string[];
+  limitation_codes: string[];
+  arguments: Array<{
+    code: string;
+    params: Record<string, string | number>;
+    strength: "primary" | "supporting" | "context";
+    evidence_refs: string[];
+  }>;
   argument_evidence: Array<{
-    argument: string;
+    id: string;
     topic: string;
     source_name: string;
     source_type: string;
@@ -1294,8 +1303,12 @@ export type BuyerNegotiationAssistant = {
     confidence_score: number;
     note: string | null;
   }>;
-  seller_script: string[];
-  guardrails: string[];
+  next_actions: Array<{
+    code: string;
+    params: Record<string, string | number>;
+    evidence_refs: string[];
+  }>;
+  guardrail_codes: string[];
 };
 
 export type DueDiligenceChecklistItem = {
@@ -1379,9 +1392,49 @@ export type ViewingAssistant = {
   surroundings_checks: string[];
 };
 
+export type BuyerActionEvidence = {
+  id: string;
+  code: string;
+  status: "observed" | "calculated" | "model_estimate" | "unknown";
+  params: Record<string, string | number>;
+  source_name: string;
+  source_type: string;
+  updated_at: string | null;
+  sample_size: number | null;
+  geographic_scope: string | null;
+  time_range: string | null;
+  calculation_type: ProvenanceCalculationType;
+  confidence_score: number;
+};
+
+export type BuyerActionItem = {
+  code: string;
+  phase: "before_offer" | "on_viewing" | "after_viewing";
+  category:
+    | "legal"
+    | "documents"
+    | "financial"
+    | "seller_question"
+    | "market"
+    | "apartment"
+    | "building"
+    | "surroundings";
+  priority: DueDiligencePriority;
+  params: Record<string, string | number>;
+  evidence_refs: string[];
+};
+
+export type BuyerActionPlan = {
+  subject_id: string;
+  version: string;
+  items: BuyerActionItem[];
+  evidence: BuyerActionEvidence[];
+};
+
 export type BuyerDecisionPackage = {
   verdict: BuyerDecisionVerdict;
   negotiation: BuyerNegotiationAssistant;
+  action_plan: BuyerActionPlan | null;
   due_diligence: PropertyDueDiligence;
   knowledge: BuyerKnowledgeMatrix;
   total_acquisition: TotalAcquisitionCost;
@@ -2483,8 +2536,8 @@ export type CompareItemMetrics = {
   total_move_in_cost_pln: number;
   ready_to_move_alternative_price_pln: number | null;
   post_renovation_value_gap_pln: number | null;
-  max_reasonable_offer_pln: number;
-  opening_offer_pln: number;
+  max_reasonable_offer_pln: number | null;
+  opening_offer_pln: number | null;
   estimated_gross_rental_yield_pct: number | null;
   estimated_monthly_rent_pln: number | null;
   recommendation: string;

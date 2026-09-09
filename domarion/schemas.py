@@ -1665,11 +1665,11 @@ class BuyerDecisionVerdict(BaseModel):
     fair_price_low_pln: int
     fair_price_mid_pln: int
     fair_price_high_pln: int
-    opening_offer_pln: int
-    recommended_offer_pln: int
-    realistic_deal_low_pln: int
-    realistic_deal_high_pln: int
-    max_reasonable_offer_pln: int
+    opening_offer_pln: int | None = Field(ge=0)
+    recommended_offer_pln: int | None = Field(ge=0)
+    realistic_deal_low_pln: int | None = Field(ge=0)
+    realistic_deal_high_pln: int | None = Field(ge=0)
+    max_reasonable_offer_pln: int | None = Field(ge=0)
     price_delta_to_fair_mid_pct: float
     overpricing_pln: int
     cta_label: str = "Prepare for viewing and negotiation"
@@ -1679,21 +1679,70 @@ class BuyerDecisionVerdict(BaseModel):
 
 
 class BuyerNegotiationAssistant(BaseModel):
+    scenario_status: Literal["available", "insufficient_data"]
+    scenario_version: str
+    scenario_confidence_score: int = Field(ge=0, le=100)
     asking_price_pln: int
-    opening_offer_pln: int
-    realistic_deal_low_pln: int
-    realistic_deal_high_pln: int
-    max_reasonable_offer_pln: int
+    opening_offer_pln: int | None = Field(ge=0)
+    realistic_deal_low_pln: int | None = Field(ge=0)
+    realistic_deal_high_pln: int | None = Field(ge=0)
+    max_reasonable_offer_pln: int | None = Field(ge=0)
     negotiation_score: int = Field(ge=0, le=100)
     posture: str
-    arguments: list[str] = Field(default_factory=list)
+    limitation_codes: list[str] = Field(default_factory=list)
+    arguments: list["BuyerNegotiationArgument"] = Field(default_factory=list)
     argument_evidence: list["BuyerNegotiationEvidence"] = Field(default_factory=list)
-    seller_script: list[str] = Field(default_factory=list)
-    guardrails: list[str] = Field(default_factory=list)
+    next_actions: list["BuyerNegotiationAction"] = Field(default_factory=list)
+    guardrail_codes: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_scenario_contract(self) -> "BuyerNegotiationAssistant":
+        price_fields = (
+            self.opening_offer_pln,
+            self.realistic_deal_low_pln,
+            self.realistic_deal_high_pln,
+            self.max_reasonable_offer_pln,
+        )
+        if self.scenario_status == "available" and any(
+            value is None for value in price_fields
+        ):
+            raise ValueError("available negotiation scenario requires all price fields")
+        if self.scenario_status == "insufficient_data":
+            if any(value is not None for value in price_fields):
+                raise ValueError("insufficient negotiation scenario cannot include prices")
+            if self.arguments:
+                raise ValueError("insufficient negotiation scenario cannot include arguments")
+
+        evidence_ids = [item.id for item in self.argument_evidence]
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("negotiation evidence ids must be unique")
+        known_evidence_ids = set(evidence_ids)
+        for argument in self.arguments:
+            unknown_refs = set(argument.evidence_refs) - known_evidence_ids
+            if unknown_refs:
+                raise ValueError("negotiation argument references unknown evidence")
+        for action in self.next_actions:
+            unknown_refs = set(action.evidence_refs) - known_evidence_ids
+            if unknown_refs:
+                raise ValueError("negotiation action references unknown evidence")
+        return self
+
+
+class BuyerNegotiationArgument(BaseModel):
+    code: str
+    params: dict[str, str | int | float] = Field(default_factory=dict)
+    strength: Literal["primary", "supporting", "context"]
+    evidence_refs: list[str] = Field(min_length=1)
+
+
+class BuyerNegotiationAction(BaseModel):
+    code: str
+    params: dict[str, str | int | float] = Field(default_factory=dict)
+    evidence_refs: list[str] = Field(default_factory=list)
 
 
 class BuyerNegotiationEvidence(BaseModel):
-    argument: str
+    id: str
     topic: str
     source_name: str
     source_type: str
@@ -1787,9 +1836,64 @@ class ViewingAssistant(BaseModel):
     surroundings_checks: list[str] = Field(default_factory=list)
 
 
+class BuyerActionEvidence(BaseModel):
+    id: str
+    code: str
+    status: Literal["observed", "calculated", "model_estimate", "unknown"]
+    params: dict[str, str | int | float] = Field(default_factory=dict)
+    source_name: str
+    source_type: str
+    updated_at: date | None = None
+    sample_size: int | None = Field(default=None, ge=0)
+    geographic_scope: str | None = None
+    time_range: str | None = None
+    calculation_type: ProvenanceCalculationType = "unknown"
+    confidence_score: int = Field(ge=0, le=100)
+
+
+class BuyerActionItem(BaseModel):
+    code: str
+    phase: Literal["before_offer", "on_viewing", "after_viewing"]
+    category: Literal[
+        "legal",
+        "documents",
+        "financial",
+        "seller_question",
+        "market",
+        "apartment",
+        "building",
+        "surroundings",
+    ]
+    priority: DueDiligencePriority
+    params: dict[str, str | int | float] = Field(default_factory=dict)
+    evidence_refs: list[str] = Field(min_length=1)
+
+
+class BuyerActionPlan(BaseModel):
+    subject_id: str
+    version: str
+    items: list[BuyerActionItem] = Field(default_factory=list)
+    evidence: list[BuyerActionEvidence] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_action_contract(self) -> "BuyerActionPlan":
+        action_codes = [item.code for item in self.items]
+        if len(action_codes) != len(set(action_codes)):
+            raise ValueError("buyer action codes must be unique")
+        evidence_ids = [item.id for item in self.evidence]
+        if len(evidence_ids) != len(set(evidence_ids)):
+            raise ValueError("buyer action evidence ids must be unique")
+        known_evidence_ids = set(evidence_ids)
+        for item in self.items:
+            if set(item.evidence_refs) - known_evidence_ids:
+                raise ValueError("buyer action references unknown evidence")
+        return self
+
+
 class BuyerDecisionPackage(BaseModel):
     verdict: BuyerDecisionVerdict
     negotiation: BuyerNegotiationAssistant
+    action_plan: BuyerActionPlan | None = None
     due_diligence: PropertyDueDiligence
     knowledge: BuyerKnowledgeMatrix
     total_acquisition: TotalAcquisitionCost
@@ -1801,6 +1905,24 @@ class BuyerDecisionPackage(BaseModel):
     post_viewing_checklist: list[str] = Field(default_factory=list)
     watch_triggers: list[str] = Field(default_factory=list)
     disclaimer: str
+
+    @model_validator(mode="after")
+    def validate_negotiation_prices_match_verdict(self) -> "BuyerDecisionPackage":
+        negotiation_prices = (
+            self.negotiation.opening_offer_pln,
+            self.negotiation.realistic_deal_low_pln,
+            self.negotiation.realistic_deal_high_pln,
+            self.negotiation.max_reasonable_offer_pln,
+        )
+        verdict_prices = (
+            self.verdict.opening_offer_pln,
+            self.verdict.realistic_deal_low_pln,
+            self.verdict.realistic_deal_high_pln,
+            self.verdict.max_reasonable_offer_pln,
+        )
+        if negotiation_prices != verdict_prices:
+            raise ValueError("negotiation scenario must match verdict price fields")
+        return self
 
 
 class PostViewingChecklistAnswers(BaseModel):
@@ -2440,8 +2562,8 @@ class CompareItemMetrics(BaseModel):
     total_move_in_cost_pln: int = Field(ge=0)
     ready_to_move_alternative_price_pln: int | None = Field(default=None, ge=0)
     post_renovation_value_gap_pln: int | None = None
-    max_reasonable_offer_pln: int = Field(ge=0)
-    opening_offer_pln: int = Field(ge=0)
+    max_reasonable_offer_pln: int | None = Field(ge=0)
+    opening_offer_pln: int | None = Field(ge=0)
     estimated_gross_rental_yield_pct: float | None = Field(default=None, ge=0)
     estimated_monthly_rent_pln: int | None = Field(default=None, ge=0)
     recommendation: str

@@ -46,11 +46,11 @@ const REPORTS_BUYER_COPY: Record<
       buyReport: string;
       empty: string;
     };
-      values: {
-        noInsight: string;
-        created: (date: string) => string;
-        version: (value: string) => string;
-        dataAsOf: (date: string) => string;
+    values: {
+      noInsight: string;
+      created: (date: string) => string;
+      version: (value: string) => string;
+      dataAsOf: (date: string) => string;
     };
   }
 > = {
@@ -253,9 +253,7 @@ export default function ReportsPage() {
         <div className="metric">
           <span>{buyerCopy.metrics.reportsThisMonth}</span>
           <strong>
-            {account
-              ? `${account.usage.reports_this_month}/${account.limits.monthly_reports}`
-              : copy.values.noInsight}
+            {account ? `${account.usage.reports_this_month}/${account.limits.monthly_reports}` : copy.values.noInsight}
           </strong>
         </div>
         <div className="metric">
@@ -305,7 +303,7 @@ export default function ReportsPage() {
                   <article className="report-library-card" key={report.id}>
                     <div className="panel-header inline">
                       <div>
-                        <h3>{report.title}</h3>
+                        <h3>{reportSubject(report.listing_id, locale)}</h3>
                         <p className="muted">{reportSubject(report.listing_id, locale)}</p>
                       </div>
                       <span className="status-pill info">
@@ -315,37 +313,28 @@ export default function ReportsPage() {
 
                     <DecisionSummary
                       compact
-                      fallbackSummary={report.summary}
+                      fallbackSummary={buyerCopy.values.noInsight}
                       locale={locale}
                       snapshot={report.decision_summary}
                     />
 
                     <div className="report-insight">
                       <strong>{insight ? insightLabel(insight, copy) : buyerCopy.values.noInsight}</strong>
-                      {insight ? <p>{insight.summary}</p> : null}
                     </div>
 
                     <div className="meta-row">
                       <span>{buyerCopy.values.created(dateValue(report.created_at, locale))}</span>
                       {report.report_version ? <span>{buyerCopy.values.version(report.report_version)}</span> : null}
-                      {report.data_as_of ? <span>{buyerCopy.values.dataAsOf(dateValue(report.data_as_of, locale))}</span> : null}
+                      {report.data_as_of ? (
+                        <span>{buyerCopy.values.dataAsOf(dateValue(report.data_as_of, locale))}</span>
+                      ) : null}
                     </div>
 
                     <div className="button-row">
-                      <a
-                        className="button primary"
-                        href={reportContentUrl(report.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <a className="button primary" href={reportContentUrl(report.id)} target="_blank" rel="noreferrer">
                         <ExternalLink size={16} /> {buyerCopy.actions.openHtml}
                       </a>
-                      <a
-                        className="button"
-                        href={reportPdfUrl(report.id)}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
+                      <a className="button" href={reportPdfUrl(report.id)} target="_blank" rel="noreferrer">
                         <Download size={16} /> {buyerCopy.actions.openPdf}
                       </a>
                     </div>
@@ -363,8 +352,7 @@ export default function ReportsPage() {
 function insightForReport(insights: AIInsightListItem[], reportId: string) {
   return (
     insights.find(
-      (insight) =>
-        insight.source_report_id === reportId && insight.insight_type === "object_explanation",
+      (insight) => insight.source_report_id === reportId && insight.insight_type === "object_explanation",
     ) ?? insights.find((insight) => insight.source_report_id === reportId)
   );
 }

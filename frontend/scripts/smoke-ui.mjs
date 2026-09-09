@@ -69,6 +69,12 @@ const apiClient = read("lib/api.ts");
 const apiTransport = read("lib/apiClient.ts");
 const generatedApi = read("lib/generated-api.ts");
 const decisionSummary = read("components/DecisionSummary.tsx");
+const buyerDecisionPanel = read("components/BuyerDecisionPanel.tsx");
+const buyerDecisionMessages = read("lib/buyerDecisionMessages.ts");
+const buyerActionPlanPanel = read("components/BuyerActionPlanPanel.tsx");
+const buyerActionMessages = read("lib/buyerActionMessages.ts");
+const propertyMap = read("components/PropertyMap.tsx");
+const propertyMapMessages = read("lib/propertyMapMessages.ts");
 const provenanceDetails = read("components/ProvenanceDetails.tsx");
 const comparableEvidence = read("components/ComparableEvidencePanel.tsx");
 const rentalEvidence = read("components/RentalEvidencePanel.tsx");
@@ -121,7 +127,7 @@ const sitemap = read("app/sitemap.ts");
 
 const consumerSource = fs
   .readdirSync(path.join(root, "app"), { recursive: true })
-  .filter((file) => typeof file === "string" && file.endsWith((".tsx")))
+  .filter((file) => typeof file === "string" && file.endsWith(".tsx"))
   .filter((file) => !file.startsWith("admin"))
   .map((file) => read(path.join("app", file)))
   .join("\n");
@@ -131,12 +137,7 @@ const consumerComponentSource = fs
   .map((file) => read(path.join("components", file)))
   .join("\n");
 
-expectIncludes("package scripts", JSON.stringify(packageJson.scripts), [
-  "\"build\"",
-  "\"lint\"",
-  "\"smoke\"",
-  "\"typecheck\"",
-]);
+expectIncludes("package scripts", JSON.stringify(packageJson.scripts), ['"build"', '"lint"', '"smoke"', '"typecheck"']);
 
 expectIncludes("responsive guardrails", globalStyles, [
   "overflow-x: hidden;",
@@ -223,8 +224,8 @@ expectIncludes("anonymous session handling", apiTransport, [
   'credentials: "include"',
   'path === "/api/v1/auth/login"',
   "!options.suppressAuthRequired",
-  'detail === "Sign in is required"',
-  "detail: { status: response.status, reason }",
+  'errorCode === "auth_required"',
+  'new CustomEvent("domarion:auth-required"',
 ]);
 expectIncludes("passive session check", apiClient, [
   'request<AuthSession>("/api/v1/auth/session", undefined, { suppressAuthRequired: true })',
@@ -286,14 +287,14 @@ expectIncludes("listing card i18n", listingCard, [
   "money(listing.price, locale)",
   "copy.compareTitle",
   "copy.reportTitle",
-  "listing.data_provenance.mode === \"demo\"",
+  'listing.data_provenance.mode === "demo"',
   "copy.demoData",
 ]);
 
 expectIncludes("demo mode banner", demoModeBanner, [
-  "data-testid=\"demo-mode-banner\"",
+  'data-testid="demo-mode-banner"',
   "api.getRuntimeContext({ signal: controller.signal })",
-  "context.data_mode === \"demo\"",
+  'context.data_mode === "demo"',
   "Tryb demonstracyjny",
   "Демонстрационный режим",
   "Демонстраційний режим",
@@ -349,12 +350,13 @@ expectIncludes("provenance contract", provenanceDetails + apiClient + generatedA
   "geographic_scope",
   "calculation_type",
 ]);
-expectIncludes("provenance decision surfaces", read("components/BuyerDecisionPanel.tsx") + read("components/ListingProvenance.tsx") + read("components/AreaDynamicEvidence.tsx"), [
-  "ProvenanceDetails",
-  "sourceType:",
-  "sampleSize:",
-  "calculationType:",
-]);
+expectIncludes(
+  "provenance decision surfaces",
+  read("components/BuyerDecisionPanel.tsx") +
+    read("components/ListingProvenance.tsx") +
+    read("components/AreaDynamicEvidence.tsx"),
+  ["ProvenanceDetails", "sourceType:", "sampleSize:", "calculationType:"],
+);
 
 expectIncludes("saved apartments page", savedApartmentsPage, [
   "CHECK_DRAFTS_COPY[locale]",
@@ -362,16 +364,14 @@ expectIncludes("saved apartments page", savedApartmentsPage, [
   "api.listUserSubmittedListingDrafts",
   "createListingObjectWatch",
   "createUserSubmittedDraftObjectWatch",
-  "filter === \"all\"",
+  'filter === "all"',
   "No saved apartments yet",
   "Nie ma jeszcze zapisanych mieszkań",
   "Пока нет сохраненных квартир",
   "Поки немає збережених квартир",
 ]);
 expectIncludes("saved apartments route", savedPage, ["SavedApartmentsPage"]);
-expectIncludes("legacy saved route migration", legacySavedPage, [
-  "redirect(\"/saved\")",
-]);
+expectIncludes("legacy saved route migration", legacySavedPage, ['redirect("/saved")']);
 expectIncludes("saved apartments page i18n", savedApartmentsPage, [
   "CHECK_DRAFTS_COPY[locale]",
   "useLocalePreference()",
@@ -448,10 +448,7 @@ expectIncludes("reports page", reportsPage, [
   "reportPdfUrl(report.id)",
   "REPORTS_LOADING_STEPS[locale]",
 ]);
-expectIncludes("reports decision summary", reportsPage, [
-  "<DecisionSummary",
-  "report.decision_summary",
-]);
+expectIncludes("reports decision summary", reportsPage, ["<DecisionSummary", "report.decision_summary"]);
 expectRegex("reports card library", reportsPage, /report-library-grid[\s\S]*buyerReports\.map/);
 
 expectIncludes("admin page", adminPage, [
@@ -501,10 +498,10 @@ expectNotIncludes("payments page hides mock payment controls", pricingPage, [
 
 expectIncludes("buyer beta landing", buyerBetaPage + buyerBetaContent, [
   "BuyerBetaContent",
-  "href=\"/check?source=buyer-beta\"",
-  "href=\"/pricing?source=buyer-beta\"",
+  'href="/check?source=buyer-beta"',
+  'href="/pricing?source=buyer-beta"',
   "BetaLeadForm",
-  "segment=\"buyer_beta\"",
+  'segment="buyer_beta"',
   "LandingMapScene",
   "LANDING_COPY",
   "useLocalePreference",
@@ -512,24 +509,19 @@ expectIncludes("buyer beta landing", buyerBetaPage + buyerBetaContent, [
 
 expectIncludes("realtor beta landing", realtorsPage + realtorsContent, [
   "RealtorsContent",
-  "href=\"/pricing?source=realtor-beta\"",
-  "href=\"/reports?source=realtor-beta\"",
+  'href="/pricing?source=realtor-beta"',
+  'href="/reports?source=realtor-beta"',
   "BetaLeadForm",
-  "segment=\"realtor_beta\"",
+  'segment="realtor_beta"',
   "LandingMapScene",
   "REALTOR_COPY",
   "useLocalePreference",
 ]);
 
-expectIncludes("landing map scene", landingScene, [
-  "buyerBadges",
-  "realtorBadges",
-  "landing-map-scene",
-  "scene-badge",
-]);
+expectIncludes("landing map scene", landingScene, ["buyerBadges", "realtorBadges", "landing-map-scene", "scene-badge"]);
 
 expectIncludes("beta lead form", betaLeadForm, [
-  "\"use client\"",
+  '"use client"',
   "api.createPartnerReferral",
   "buyer_beta",
   "realtor_beta",
@@ -556,8 +548,8 @@ expectMinSize("seo guides content", seoGuides, 20_000);
 
 expectIncludes("seo guides index", guidesPage, [
   "SEO_GUIDES.map",
-  "href=\"/areas\"",
-  "href=\"/check\"",
+  'href="/areas"',
+  'href="/check"',
   "href={`/guides/${guide.slug}`}",
 ]);
 
@@ -568,12 +560,12 @@ expectIncludes("seo guide detail", guideDetailPage, [
   "guide.internalLinks.map",
   "relatedAreas.map",
   "Pełny raport",
-  "href=\"/check\"",
+  'href="/check"',
 ]);
 
 expectIncludes("live area directory", areasPage + areasDirectory, [
   "api.listAreas()",
-  "area.area_id !== \"wroclaw-city\"",
+  'area.area_id !== "wroclaw-city"',
   "area.transaction_observation_count",
   "area.transaction_yearly_history.map",
   "Mediana - ostatnie 12 miesięcy",
@@ -648,7 +640,7 @@ expectIncludes("listing detail guide internal links", listingDetailPage, [
   "SEO_GUIDES.slice(0, 3)",
   "href={`/guides/${guide.slug}`}",
   "<BookOpen",
-  "listing.data_provenance.mode === \"demo\"",
+  'listing.data_provenance.mode === "demo"',
 ]);
 expectIncludes("comparable evidence component", comparableEvidence, [
   "Why this price?",
@@ -664,8 +656,9 @@ expectIncludes("comparable evidence component", comparableEvidence, [
   "No sufficiently similar properties found",
 ]);
 expectIncludes("check comparable evidence", checkPage, [
-  "<ComparableEvidencePanel analysis={analysis} locale={locale} />",
-  "<RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />",
+  "<ComparableEvidencePanel",
+  "<RentalEvidencePanel",
+  "estimate={analysis.rental_estimate}",
 ]);
 expectIncludes("rental evidence component", rentalEvidence, [
   "Not enough rental data",
@@ -726,12 +719,22 @@ expectIncludes("localized score drivers", scoreLabels, [
   "цінова премія посилює переговорну позицію",
 ]);
 expectIncludes("check uses structured score reasons", checkPage, [
-  "scoreExplanationReasons(analysis.scores, \"investment\", locale)",
-  "scoreExplanationReasons(analysis.scores, \"risk\", locale)",
+  'scoreExplanationReasons(analysis.scores, "investment", locale)',
+  'scoreExplanationReasons(analysis.scores, "risk", locale)',
 ]);
 expectNotIncludes("check excludes backend score prose", checkPage, [
   "analysis.scores.reasons",
   "analysis.scores.warnings",
+]);
+expectNotIncludes("check excludes backend report prose", checkPage, [
+  "reportResult.report.summary",
+  "reportResult.report.sections",
+  "reportResult.report.disclaimer",
+]);
+expectNotIncludes("report library excludes backend prose", reportsPage, [
+  "fallbackSummary={report.summary}",
+  "<h3>{report.title}</h3>",
+  "<p>{insight.summary}</p>",
 ]);
 expectIncludes("safe localized API errors", read("lib/errorMessages.ts"), [
   "network_error",
@@ -746,27 +749,125 @@ expectIncludes("safe localized API errors", read("lib/errorMessages.ts"), [
   "ru:",
   "uk:",
 ]);
+expectIncludes("typed localized buyer decision catalog", buyerDecisionMessages, [
+  "Record<Locale, MessageCatalog>",
+  "localizeBuyerDecision",
+  "localizedSourceEvidence",
+  "checklistPl()",
+  "checklistEn()",
+  "checklistRu()",
+  "checklistUk()",
+]);
+expectIncludes("typed localized property map catalog", propertyMap + propertyMapMessages, [
+  "Record<Locale, PropertyMapCopy>",
+  "PROPERTY_MAP_COPY[locale]",
+  "copy.layers[control]",
+  "copy.popup.impactRadius",
+  "pl:",
+  "en:",
+  "ru:",
+  "uk:",
+]);
+expectNotIncludes("property map does not hardcode mixed-language UI", propertyMap, [
+  'aria-label="Карта объектов"',
+  "planned investments</span>",
+  "<span>Риски</span>",
+  "Загрузка GIS-слоев",
+]);
+expectIncludes("buyer decision uses structured localized content", buyerDecisionPanel, [
+  "localizeBuyerDecision(decision, locale, confidenceScore)",
+  "localized.reasons",
+  "localized.risks",
+  "localized.negotiationArguments",
+  "localizedSourceEvidence(source, locale)",
+]);
+expectIncludes("evidence-backed negotiation scenario contract", apiClient + generatedApi, [
+  'scenario_status: "available" | "insufficient_data"',
+  "scenario_confidence_score",
+  "limitation_codes",
+  "evidence_refs",
+  "guardrail_codes",
+]);
+expectIncludes("negotiation scenario handles evidence and unavailable data", buyerDecisionPanel, [
+  "localized.negotiationAvailable",
+  "negotiation.opening_offer_pln !== null",
+  "localized.negotiationLimitations",
+  "item.evidence.map",
+  "copyToClipboard(localized.negotiationBrief)",
+  'aria-live="polite"',
+]);
+expectIncludes("localized negotiation brief is structured", buyerDecisionMessages, [
+  "negotiationArgument(c, item, locale)",
+  "evidenceById.get(reference)",
+  "negotiationBrief",
+  "exportStatusUnavailable",
+]);
+expectIncludes("buyer action plan contract is structured", apiClient + generatedApi, [
+  "action_plan",
+  "BuyerActionEvidence",
+  "BuyerActionItem",
+  'phase: "before_offer" | "on_viewing" | "after_viewing"',
+  "evidence_refs",
+]);
+expectIncludes("buyer action plan is interactive and persistent", buyerActionPlanPanel, [
+  "plan.items.filter",
+  'type="checkbox"',
+  "window.localStorage.setItem",
+  "actionEvidenceLabel",
+  "ProvenanceDetails",
+  "actionPlanBrief",
+]);
+expectIncludes("buyer action plan is localized and exportable", buyerActionMessages, [
+  "Przed złożeniem oferty",
+  "Before making an offer",
+  "До предложения",
+  "До пропозиції",
+  "verify_kw_owner",
+  "risk_major_road_noise",
+  "exportTitle",
+]);
+expectIncludes("buyer decision uses one structured action plan", buyerDecisionPanel, [
+  "<BuyerActionPlanPanel",
+  "plan={decision.action_plan}",
+]);
+expectNotIncludes("buyer decision excludes backend prose", buyerDecisionPanel, [
+  "decision.verdict.top_reasons",
+  "decision.verdict.top_risks",
+  "decision.verdict.critical_unknowns",
+  "negotiation.posture",
+  "negotiation.arguments",
+  "negotiation.seller_script",
+  "dueDiligence.label",
+  "dueDiligence.documents_to_request",
+  "dueDiligence.questions_for_seller",
+  "total.notes",
+  "knowledge.known",
+  "knowledge.estimated",
+  "knowledge.could_not_verify",
+  "decision.disclaimer",
+]);
+expectNotIncludes("consumer analysis excludes legacy negotiation prose", checkPage + listingDetailPage, [
+  "analysis.negotiation_arguments.map",
+]);
+expectNotIncludes("API transport does not inspect raw backend prose", apiTransport, [
+  "area statistics are not available",
+  "Sign in is required",
+  "Keep the plain response body",
+]);
 expectNotIncludes("consumer errors do not expose raw exception messages", consumerSource, [
   "caught instanceof Error ? caught.message",
 ]);
 expectNotIncludes("consumer components do not expose raw exception messages", consumerComponentSource, [
   "caught instanceof Error ? caught.message",
 ]);
-expectIncludes("API error metadata", apiTransport, [
-  "errorCode",
-  "correlationId",
-  "public readonly code",
-]);
+expectIncludes("API error metadata", apiTransport, ["errorCode", "correlationId", "public readonly code"]);
 expectIncludes("actionable check error recovery", read("app/check/page.tsx"), [
   "shouldOpenManualEntry",
   "manualEntryRequested",
   "open={manualEntryOpen}",
 ]);
 expectIncludes("analytics request contract", apiClient, ["purchase_intent: purchaseIntent"]);
-expectIncludes("typed API boundary", apiClient, [
-  "import {",
-  'from "./apiClient"',
-]);
+expectIncludes("typed API boundary", apiClient, ["import {", 'from "./apiClient"']);
 expectIncludes("API request transport", apiTransport, ['credentials: "include"']);
 expectIncludes("API transport boundary", apiTransport, [
   "export async function request<T>",
@@ -779,19 +880,19 @@ expectIncludes("generated OpenAPI contract", generatedApi, [
   '"/api/v1/compare"',
   '"/api/v1/mortgage/calculate"',
 ]);
-expectNotIncludes("stable collection keys", [
-  read("components/FutureImpactNarrativePanel.tsx"),
-  read("components/Charts.tsx"),
-  read("app/compare/page.tsx"),
-  read("app/check/page.tsx"),
-  read("app/listings/[id]/page.tsx"),
-  read("app/news/page.tsx"),
-  read("app/areas/compare/page.tsx"),
-].join("\n"), [
-  "key={`${index}-",
-  "key={`${citation.source_id}-${index}`}",
-  "key={`${guardrail.code}-${index}`}"
-]);
+expectNotIncludes(
+  "stable collection keys",
+  [
+    read("components/FutureImpactNarrativePanel.tsx"),
+    read("components/Charts.tsx"),
+    read("app/compare/page.tsx"),
+    read("app/check/page.tsx"),
+    read("app/listings/[id]/page.tsx"),
+    read("app/news/page.tsx"),
+    read("app/areas/compare/page.tsx"),
+  ].join("\n"),
+  ["key={`${index}-", "key={`${citation.source_id}-${index}`}", "key={`${guardrail.code}-${index}`}"],
+);
 
 expectIncludes("primary navigation", layout, [
   "LOCALE_COOKIE_NAME",
@@ -812,16 +913,14 @@ expectIncludes("mortgage financial hierarchy", mortgagePage, [
   "mortgage-cash-grid",
   "financial-metric total",
 ]);
-expectIncludes("financial values use tabular numerals", globalStyles, [
-  "font-variant-numeric: tabular-nums",
-]);
+expectIncludes("financial values use tabular numerals", globalStyles, ["font-variant-numeric: tabular-nums"]);
 expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}</h2>"]);
 expectNotIncludes("homepage does not duplicate h1", explorerPage, ["<h1>{onboarding.title}</h1>"]);
 expectIncludes("localized navigation", localizedNavigation, [
-  "href: \"/check\"",
-  "href: \"/\"",
-  "href: \"/saved\"",
-  "href: \"/areas\"",
+  'href: "/check"',
+  'href: "/"',
+  'href: "/saved"',
+  'href: "/areas"',
   'href="/account?mode=login"',
   'href="/account?mode=register"',
   'className="nav-create-account"',
@@ -837,10 +936,10 @@ expectIncludes("language switcher", languageSwitcher, [
 ]);
 expectIncludes("i18n dictionaries", i18n, [
   "SUPPORTED_LOCALES",
-  "\"en\"",
-  "\"pl\"",
-  "\"ru\"",
-  "\"uk\"",
+  '"en"',
+  '"pl"',
+  '"ru"',
+  '"uk"',
   "NAVIGATION_LABELS",
   "LANGUAGE_SWITCHER_LABELS",
   "EXPLORER_COPY",
@@ -871,23 +970,23 @@ expectIncludes("locale preference persistence", useLocalePreference, [
   "document.cookie",
 ]);
 expectIncludes("public sitemap", sitemap, [
-  "\"/check\"",
-  "\"/guides\"",
-  "\"/areas\"",
+  '"/check"',
+  '"/guides"',
+  '"/areas"',
   "api.listAreas()",
-  "area.area_id !== \"wroclaw-city\"",
+  'area.area_id !== "wroclaw-city"',
   "SEO_GUIDES.map",
 ]);
 expectNotIncludes("public sitemap excludes contextual and pro routes", sitemap, [
-  "\"/beta\"",
-  "\"/realtors\"",
-  "\"/compare\"",
-  "\"/developers\"",
-  "\"/market\"",
-  "\"/mortgage\"",
-  "\"/pricing\"",
-  "\"/reports\"",
-  "\"/alerts\"",
+  '"/beta"',
+  '"/realtors"',
+  '"/compare"',
+  '"/developers"',
+  '"/market"',
+  '"/mortgage"',
+  '"/pricing"',
+  '"/reports"',
+  '"/alerts"',
 ]);
 
 if (failures.length > 0) {

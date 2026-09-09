@@ -285,6 +285,7 @@ export function DecisionSummary({
 
 export function decisionSummaryFromDecision(decision: BuyerDecisionPackage): DecisionSummaryData {
   const verdict = decision.verdict;
+  const negotiationAvailable = decision.negotiation.scenario_status === "available";
   return {
     status: verdict.status,
     score: verdict.score,
@@ -296,8 +297,8 @@ export function decisionSummaryFromDecision(decision: BuyerDecisionPackage): Dec
     fair_price_high_pln: verdict.fair_price_high_pln,
     price_delta_to_fair_mid_pct: verdict.price_delta_to_fair_mid_pct,
     confidence_score: null,
-    recommended_offer_pln: verdict.recommended_offer_pln,
-    max_reasonable_offer_pln: verdict.max_reasonable_offer_pln,
+    recommended_offer_pln: negotiationAvailable ? verdict.recommended_offer_pln : null,
+    max_reasonable_offer_pln: negotiationAvailable ? verdict.max_reasonable_offer_pln : null,
     total_move_in_cost_pln: decision.total_acquisition.total_move_in_cost_pln,
     selected_intent: decision.selected_intent,
     selected_intent_score: decision.selected_intent_fit?.score ?? null,

@@ -279,7 +279,6 @@ def _buyer_decision(analysis: ListingAnalysis) -> BuyerDecisionPackage:
         area_statistics=analysis.area_statistics,
         scores=analysis.scores,
         comparables=analysis.comparables,
-        negotiation_arguments=analysis.negotiation_arguments,
         data_quality_notes=analysis.data_quality_notes,
         developer_reputation=analysis.developer_reputation,
         future_area_impact=analysis.future_area_impact,

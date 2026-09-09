@@ -842,6 +842,7 @@ async def import_admin_developer_feed(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
+                    "code": "developer_feed_import_requires_postgres",
                     "message": "Developer feed import requires Postgres data repository",
                     "job_id": failed_job.id if failed_job else job.id,
                 },
@@ -1726,7 +1727,7 @@ def preview_user_submitted_listing_reference(
     try:
         return build_source_reference_preview(payload)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=_consumer_error_detail(exc)) from exc
 
 
 @router.post(
@@ -1741,7 +1742,7 @@ def import_user_submitted_listing_from_url(
     try:
         result = import_listing_from_source_url(payload)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=_consumer_error_detail(exc)) from exc
     _record_user_submitted_reference_import(admin_store, account, result)
     return result
 
@@ -1764,7 +1765,7 @@ def analyze_user_submitted_listing_endpoint(
             payload=payload,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=_consumer_error_detail(exc)) from exc
 
 
 @router.post(
@@ -1786,7 +1787,7 @@ def create_user_submitted_listing_report(
             payload=payload,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise HTTPException(status_code=400, detail=_consumer_error_detail(exc)) from exc
 
     report = build_user_submitted_object_report(
         analysis,
@@ -2920,6 +2921,7 @@ async def import_admin_partner_csv(
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail={
+                    "code": "partner_csv_import_requires_postgres",
                     "message": "Partner CSV import requires Postgres ingestion admin store",
                     "job_id": failed_job.id if failed_job else job.id,
                 },
@@ -5194,13 +5196,29 @@ def _build_compare_analyses(
         )
 
     if missing_ids:
-        raise HTTPException(status_code=404, detail={"missing_listing_ids": missing_ids})
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "listing_not_found", "missing_listing_ids": missing_ids},
+        )
     return analyses
 
 
 def _ensure_admin(account: CurrentAccount) -> None:
     if account.user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin role required")
+
+
+def _consumer_error_detail(exc: ValueError) -> dict[str, str]:
+    message = str(exc).casefold()
+    if "area statistics are not available" in message:
+        return {"code": "unsupported_area"}
+    if "geocod" in message or "location" in message:
+        return {"code": "location_unavailable"}
+    if "source" in message or "url" in message:
+        return {"code": "unsupported_listing_source"}
+    if "confirmation is required" in message:
+        return {"code": "confirmation_required"}
+    return {"code": "bad_request"}
 
 
 def _ensure_payload_id_matches_path(payload_id: str, path_id: str, resource_label: str) -> None:
@@ -5331,7 +5349,10 @@ def _ensure_crm_listings_exist(
 ) -> None:
     missing = missing_listing_ids(listing_ids, repository)
     if missing:
-        raise HTTPException(status_code=404, detail={"missing_listing_ids": missing})
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "listing_not_found", "missing_listing_ids": missing},
+        )
 
 
 def _agency_member_or_404(
@@ -5375,15 +5396,15 @@ def _normalize_partner_referral_payload(
 ) -> PartnerReferralCreate:
     data = payload.model_dump()
     for key in (
-        "source_context",
-        "listing_id",
-        "report_id",
-        "city",
-        "district",
-        "contact_name",
-        "contact_email",
-        "contact_phone",
-        "message",
+            "source_context",
+            "listing_id",
+            "report_id",
+            "city",
+            "district",
+            "contact_name",
+            "contact_email",
+            "contact_phone",
+            "message",
     ):
         data[key] = _blank_to_none(data.get(key))
 
@@ -5665,7 +5686,6 @@ LISTING_DATASET_EXPORT_POLICY = (
     "raw HTML and private user-submitted references are not exported."
 )
 
-
 LISTING_DATASET_EXPORT_COLUMNS = [
     "listing_id",
     "title",
@@ -5743,7 +5763,6 @@ LISTING_DATASET_EXPORT_COLUMNS = [
     "data_quality_notes",
     "data_policy",
 ]
-
 
 REPORT_EXPORT_COLUMNS = [
     "id",

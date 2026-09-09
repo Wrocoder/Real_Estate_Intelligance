@@ -355,6 +355,7 @@ def test_listing_object_watch_creates_alert_and_preview_events() -> None:
     assert alert["filters"]["target_listing_id"] == "wr-003"
     assert alert["filters"]["baseline_price"] == 799000
     assert alert["filters"]["baseline_days_on_market"] == 139
+    assert alert["filters"]["baseline_max_reasonable_offer"] is None
     assert alert["frequency"] == "instant"
 
     preview = client.get(f"/api/v1/alerts/{alert['id']}/preview?owner_id=object-watch-owner").json()
@@ -364,7 +365,7 @@ def test_listing_object_watch_creates_alert_and_preview_events() -> None:
     assert preview["total_matches"] == len(preview["watch_events"])
     assert "cheaper_comparable" in trigger_types
     assert "days_on_market_threshold" in trigger_types
-    assert "negotiation_opportunity" in trigger_types
+    assert "negotiation_opportunity" not in trigger_types
     assert {"wr-001", "wr-003"} <= listing_ids
     assert any(
         event["related_listing_id"] == "wr-001"

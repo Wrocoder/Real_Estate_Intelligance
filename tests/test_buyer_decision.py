@@ -1,11 +1,20 @@
 import pytest
+from pydantic import ValidationError
 
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
-from domarion.schemas import PostViewingChecklistAnswers, PurchaseIntent
+from domarion.schemas import (
+    AIListingAnswerRequest,
+    BuyerActionPlan,
+    BuyerNegotiationAssistant,
+    PostViewingChecklistAnswers,
+    PurchaseIntent,
+)
 from domarion.services.buyer_decision import (
     build_buyer_decision,
     recalculate_post_viewing_verdict,
 )
+from domarion.services.listing_ai_assistant import build_listing_ai_answer
+from domarion.services.risk_profile import build_listing_risk_profile
 from domarion.services.scoring import build_listing_analysis, calculate_scores
 
 
@@ -33,11 +42,21 @@ def test_buyer_decision_returns_actionable_verdicts(
     assert decision.verdict.status == expected_status
     assert 0 <= decision.verdict.score <= 10
     assert decision.verdict.seller_price_pln > 0
+    assert decision.negotiation.scenario_status == "available"
+    assert decision.verdict.recommended_offer_pln is not None
+    assert decision.verdict.max_reasonable_offer_pln is not None
     assert decision.verdict.recommended_offer_pln <= decision.verdict.max_reasonable_offer_pln
+    assert decision.negotiation.opening_offer_pln is not None
+    assert decision.negotiation.max_reasonable_offer_pln is not None
     assert decision.negotiation.opening_offer_pln <= decision.negotiation.max_reasonable_offer_pln
-    assert decision.negotiation.seller_script
-    assert len(decision.negotiation.argument_evidence) == len(decision.negotiation.arguments)
-    assert all(item.source_name for item in decision.negotiation.argument_evidence)
+    evidence_ids = {item.id for item in decision.negotiation.argument_evidence}
+    assert decision.negotiation.next_actions
+    assert decision.negotiation.arguments
+    assert all(argument.evidence_refs for argument in decision.negotiation.arguments)
+    assert all(
+        set(argument.evidence_refs) <= evidence_ids
+        for argument in decision.negotiation.arguments
+    )
     assert decision.verdict.critical_unknowns
 
 
@@ -50,6 +69,125 @@ def test_low_fair_price_confidence_requires_verification_before_buying() -> None
     )
 
     assert decision.verdict.status == "verify_first"
+    assert decision.negotiation.scenario_status == "insufficient_data"
+    assert decision.negotiation.opening_offer_pln is None
+    assert decision.negotiation.realistic_deal_low_pln is None
+    assert decision.negotiation.realistic_deal_high_pln is None
+    assert decision.negotiation.max_reasonable_offer_pln is None
+    assert decision.negotiation.arguments == []
+    assert decision.negotiation.argument_evidence == []
+    assert "fair_price_confidence_low" in decision.negotiation.limitation_codes
+    assert {item.code for item in decision.negotiation.next_actions} >= {
+        "collect_market_evidence",
+        "compare_alternatives",
+    }
+
+
+def test_negotiation_omits_price_advice_when_market_sample_is_insufficient() -> None:
+    decision = _build_decision(
+        price_delta_pct=9,
+        risk_score=20,
+        negotiation_score=75,
+        market_evidence=False,
+    )
+
+    assert decision.verdict.status == "verify_first"
+    assert decision.negotiation.scenario_status == "insufficient_data"
+    assert decision.verdict.opening_offer_pln is None
+    assert decision.verdict.recommended_offer_pln is None
+    assert decision.verdict.max_reasonable_offer_pln is None
+    assert "market_evidence_insufficient" in decision.negotiation.limitation_codes
+    assert decision.negotiation.posture == "unavailable"
+
+
+def test_negotiation_contract_rejects_prices_without_sufficient_evidence() -> None:
+    negotiation = _build_decision(
+        price_delta_pct=8,
+        risk_score=20,
+        negotiation_score=70,
+    ).negotiation
+    payload = negotiation.model_dump()
+    payload.update(
+        {
+            "scenario_status": "insufficient_data",
+            "arguments": [],
+            "argument_evidence": [],
+            "next_actions": [],
+        }
+    )
+
+    with pytest.raises(ValidationError, match="cannot include prices"):
+        BuyerNegotiationAssistant.model_validate(payload)
+
+
+def test_negotiation_contract_rejects_unknown_evidence_reference() -> None:
+    negotiation = _build_decision(
+        price_delta_pct=8,
+        risk_score=20,
+        negotiation_score=70,
+    ).negotiation
+    payload = negotiation.model_dump()
+    payload["arguments"][0]["evidence_refs"] = ["missing-evidence"]
+
+    with pytest.raises(ValidationError, match="references unknown evidence"):
+        BuyerNegotiationAssistant.model_validate(payload)
+
+
+def test_negotiation_ai_answer_uses_structured_scenario_evidence() -> None:
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
+    listing = repository.get_listing("wr-001")
+    assert listing is not None
+    analysis = build_listing_analysis(repository, listing)
+    area = analysis.area_statistics.model_copy(update={"transaction_observation_count": 20})
+    scores = analysis.scores.model_copy(update={"fair_price_confidence_score": 80})
+    decision = build_buyer_decision(
+        listing=analysis.listing,
+        area_statistics=area,
+        scores=scores,
+        comparables=analysis.comparables,
+        data_quality_notes=analysis.data_quality_notes,
+        developer_reputation=analysis.developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+        risk_profile=analysis.risk_profile,
+        rental_estimate=analysis.rental_estimate,
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
+    )
+    analysis = analysis.model_copy(
+        update={"area_statistics": area, "scores": scores, "buyer_decision": decision}
+    )
+
+    answer = build_listing_ai_answer(
+        analysis,
+        AIListingAnswerRequest(question_code="negotiation", audience="buyer"),
+    )
+
+    assert "scenario opening" in answer.answer
+    assert answer.key_points
+    assert answer.citations
+    assert all(citation.source_id.startswith("negotiation:") for citation in answer.citations)
+
+
+@pytest.mark.parametrize("question_code", ["seller_questions", "documents"])
+def test_buyer_action_ai_answers_use_structured_plan_evidence(
+    question_code: str,
+) -> None:
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
+    listing = repository.get_listing("wr-001")
+    assert listing is not None
+    analysis = build_listing_analysis(repository, listing)
+
+    answer = build_listing_ai_answer(
+        analysis,
+        AIListingAnswerRequest(question_code=question_code, audience="buyer"),
+    )
+
+    assert answer.key_points
+    assert answer.citations
+    assert all(
+        citation.source_id.startswith("buyer-action:")
+        for citation in answer.citations
+    )
 
 
 def test_buyer_decision_exposes_due_diligence_total_cost_and_source_confidence() -> None:
@@ -83,6 +221,118 @@ def test_buyer_decision_exposes_due_diligence_total_cost_and_source_confidence()
     assert source_by_topic["fair price"].sample_size is not None
     assert source_by_topic["fair price"].geographic_scope
     assert source_by_topic["market context"].time_range == "90 days"
+
+
+def test_buyer_action_plan_has_stable_actions_and_valid_evidence_references() -> None:
+    decision = _build_decision(
+        price_delta_pct=8.0,
+        risk_score=20,
+        negotiation_score=70,
+    )
+
+    assert decision.action_plan.version == "buyer-action-plan-v1-evidence"
+    assert decision.action_plan.subject_id == "wr-001"
+    assert {item.code for item in decision.action_plan.items} >= {
+        "verify_kw_owner",
+        "verify_kw_encumbrances",
+        "request_debt_certificate",
+        "ask_sale_context",
+        "inspect_apartment_condition",
+        "record_viewing_findings",
+    }
+    evidence_ids = {item.id for item in decision.action_plan.evidence}
+    assert evidence_ids
+    assert all(
+        item.evidence_refs and set(item.evidence_refs) <= evidence_ids
+        for item in decision.action_plan.items
+    )
+
+
+def test_primary_market_action_plan_uses_developer_purchase_checks() -> None:
+    decision = _build_decision(
+        market_type="primary",
+        price_delta_pct=1.0,
+        risk_score=25,
+        negotiation_score=45,
+    )
+    action_codes = {item.code for item in decision.action_plan.items}
+
+    assert {
+        "verify_developer_identity",
+        "review_escrow_schedule",
+        "verify_permits_and_title",
+        "review_prospekt_and_contract",
+    } <= action_codes
+    assert "verify_kw_owner" not in action_codes
+
+
+def test_unknown_risk_input_creates_verification_action_without_fake_value() -> None:
+    repository = InMemoryRealEstateRepository(include_demo_data=True)
+    base_listing = repository.get_listing("wr-001")
+    assert base_listing is not None
+    listing = base_listing.model_copy(update={"nearest_stop_m": None})
+    area = repository.get_area_statistics(listing.area_id)
+    assert area is not None
+    area = area.model_copy(update={"transaction_observation_count": 20})
+    comparables = repository.find_comparables(listing)
+    scores = calculate_scores(listing, area, comparables).model_copy(
+        update={"fair_price_confidence_score": 80}
+    )
+    risk_profile = build_listing_risk_profile(
+        listing=listing,
+        area_statistics=area,
+        scores=scores,
+    )
+    decision = build_buyer_decision(
+        listing=listing,
+        area_statistics=area,
+        scores=scores,
+        comparables=comparables,
+        data_quality_notes=[],
+        risk_profile=risk_profile,
+    )
+
+    action = next(
+        item for item in decision.action_plan.items if item.code == "test_transport_route"
+    )
+    assert action.evidence_refs == ["risk:weak_transport"]
+    evidence = next(
+        item
+        for item in decision.action_plan.evidence
+        if item.id == "risk:weak_transport"
+    )
+    assert evidence.status == "unknown"
+    assert evidence.calculation_type == "unknown"
+    assert evidence.confidence_score == 0
+    assert evidence.sample_size is None
+    assert "distance_m" not in evidence.params
+
+
+def test_buyer_action_plan_rejects_unknown_evidence_reference() -> None:
+    action_plan = _build_decision(
+        price_delta_pct=8.0,
+        risk_score=20,
+        negotiation_score=70,
+    ).action_plan
+    payload = action_plan.model_dump()
+    payload["items"][0]["evidence_refs"] = ["missing-evidence"]
+
+    with pytest.raises(ValidationError, match="references unknown evidence"):
+        BuyerActionPlan.model_validate(payload)
+
+
+def test_legacy_buyer_decision_without_action_plan_remains_readable() -> None:
+    decision = _build_decision(
+        price_delta_pct=8.0,
+        risk_score=20,
+        negotiation_score=70,
+    )
+    payload = decision.model_dump()
+    payload.pop("action_plan")
+
+    restored = type(decision).model_validate(payload)
+
+    assert restored.action_plan is None
 
 
 def test_buyer_decision_source_evidence_carries_comparable_window() -> None:
@@ -165,7 +415,7 @@ def test_pre_viewing_and_watch_outputs_support_buyer_workflow() -> None:
     assert decision.pre_viewing.documents_to_request
     assert decision.post_viewing_checklist
     assert any("price drops" in trigger for trigger in decision.watch_triggers)
-    assert any("relisted" in argument for argument in decision.negotiation.arguments)
+    assert any(argument.code == "relisted" for argument in decision.negotiation.arguments)
 
 
 def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
@@ -173,6 +423,24 @@ def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
     listing = repository.get_listing("wr-001")
     assert listing is not None
     analysis = build_listing_analysis(repository, listing)
+    area = analysis.area_statistics.model_copy(update={"transaction_observation_count": 20})
+    scores = analysis.scores.model_copy(update={"fair_price_confidence_score": 80})
+    decision = build_buyer_decision(
+        listing=analysis.listing,
+        area_statistics=area,
+        scores=scores,
+        comparables=analysis.comparables,
+        data_quality_notes=analysis.data_quality_notes,
+        developer_reputation=analysis.developer_reputation,
+        future_area_impact=analysis.future_area_impact,
+        risk_profile=analysis.risk_profile,
+        rental_estimate=analysis.rental_estimate,
+        comparables_scope=analysis.comparables_scope,
+        comparables_freshness_days=analysis.comparables_freshness_days,
+    )
+    analysis = analysis.model_copy(
+        update={"area_statistics": area, "scores": scores, "buyer_decision": decision}
+    )
     original_decision = analysis.buyer_decision
     assert original_decision is not None
 
@@ -211,12 +479,16 @@ def _build_decision(
     relisted: bool = False,
     purchase_intent: PurchaseIntent = "unsure",
     fair_price_confidence_score: int = 82,
+    market_evidence: bool = True,
 ):
     repository = InMemoryRealEstateRepository(include_demo_data=True)
     base_listing = repository.get_listing("wr-001")
     assert base_listing is not None
-    area = repository.get_area_statistics(base_listing.area_id)
-    assert area is not None
+    base_area = repository.get_area_statistics(base_listing.area_id)
+    assert base_area is not None
+    area = base_area.model_copy(
+        update={"transaction_observation_count": 20 if market_evidence else 0}
+    )
 
     listing = base_listing.model_copy(
         update={
@@ -256,7 +528,6 @@ def _build_decision(
         area_statistics=area,
         scores=scores,
         comparables=repository.find_comparables(listing),
-        negotiation_arguments=["Object has visible price negotiation room."],
         data_quality_notes=["Data Quality Score: 95/100."],
         purchase_intent=purchase_intent,
     )

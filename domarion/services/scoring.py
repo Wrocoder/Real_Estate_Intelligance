@@ -1013,7 +1013,6 @@ def build_listing_analysis(
         area_statistics=area_statistics,
         scores=scores,
         comparables=comparables,
-        negotiation_arguments=negotiation_arguments,
         data_quality_notes=data_quality_notes,
         developer_reputation=developer_reputation,
         future_area_impact=future_area_impact,

@@ -1,18 +1,11 @@
-import {
-  Bell,
-  CheckCircle2,
-  ClipboardCheck,
-  Eye,
-  HelpCircle,
-  ShieldAlert,
-  Target,
-  WalletCards,
-} from "lucide-react";
-import { useRef, type ReactNode } from "react";
+import { Bell, Check, CheckCircle2, ClipboardCheck, Copy, HelpCircle, ShieldAlert, Target, WalletCards } from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
 
+import { BuyerActionPlanPanel, BuyerActionPlanUnavailable } from "@/components/BuyerActionPlanPanel";
 import { DecisionSummary } from "@/components/DecisionSummary";
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
 import type { BuyerDecisionPackage, BuyerSourceEvidence, BuyerVerdictStatus } from "@/lib/api";
+import { localizeBuyerDecision, localizedSourceEvidence } from "@/lib/buyerDecisionMessages";
 import { money } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
@@ -88,6 +81,11 @@ type BuyerDecisionCopy = {
     scenarioOnly: string;
     evidence: string;
     nextStep: string;
+    limitations: string;
+    guardrails: string;
+    copyBrief: string;
+    copied: string;
+    copyFailed: string;
   };
   statuses: Record<BuyerVerdictStatus, string>;
   intents: Record<string, string>;
@@ -160,6 +158,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       scenarioOnly: "Scenario only",
       evidence: "Evidence",
       nextStep: "Next step",
+      limitations: "Why no price scenario",
+      guardrails: "Boundaries",
+      copyBrief: "Copy negotiation brief",
+      copied: "Brief copied",
+      copyFailed: "Could not copy the brief",
     },
     statuses: {
       buy: "WORTH CONSIDERING",
@@ -241,6 +244,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       scenarioOnly: "Tylko scenariusz",
       evidence: "Dowód",
       nextStep: "Kolejny krok",
+      limitations: "Dlaczego nie ma scenariusza ceny",
+      guardrails: "Granice scenariusza",
+      copyBrief: "Kopiuj krótkie uzasadnienie",
+      copied: "Uzasadnienie skopiowane",
+      copyFailed: "Nie udało się skopiować uzasadnienia",
     },
     statuses: {
       buy: "WARTO ROZWAŻYĆ",
@@ -322,6 +330,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       scenarioOnly: "Только сценарий",
       evidence: "Основание",
       nextStep: "Следующий шаг",
+      limitations: "Почему нет ценового сценария",
+      guardrails: "Ограничения сценария",
+      copyBrief: "Скопировать обоснование торга",
+      copied: "Обоснование скопировано",
+      copyFailed: "Не удалось скопировать обоснование",
     },
     statuses: {
       buy: "ПОКУПАТЬ",
@@ -403,6 +416,11 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       scenarioOnly: "Лише сценарій",
       evidence: "Підстава",
       nextStep: "Наступний крок",
+      limitations: "Чому немає цінового сценарію",
+      guardrails: "Межі сценарію",
+      copyBrief: "Скопіювати обґрунтування торгу",
+      copied: "Обґрунтування скопійовано",
+      copyFailed: "Не вдалося скопіювати обґрунтування",
     },
     statuses: {
       buy: "КУПУВАТИ",
@@ -422,6 +440,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
 
 export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   if (!decision) return null;
 
   const copy = COPY[locale];
@@ -429,25 +448,22 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props)
   const dueDiligence = decision.due_diligence;
   const knowledge = decision.knowledge;
   const total = decision.total_acquisition;
+  const localized = localizeBuyerDecision(decision, locale, confidenceScore);
   return (
     <section className={`buyer-decision buyer-decision-${decision.verdict.status}`}>
-      <DecisionSummary
-        confidenceScore={confidenceScore}
-        decision={decision}
-        locale={locale}
-      />
+      <DecisionSummary confidenceScore={confidenceScore} decision={decision} locale={locale} />
 
       <div className="buyer-decision-key-factors">
         <DecisionList
           icon={<CheckCircle2 size={16} />}
           title={copy.sections.reasons}
-          items={decision.verdict.top_reasons.slice(0, 3)}
+          items={localized.reasons}
           emptyLabel={copy.labels.empty}
         />
         <DecisionList
           icon={<ShieldAlert size={16} />}
           title={copy.sections.risks}
-          items={decision.verdict.top_risks.slice(0, 3)}
+          items={localized.risks}
           emptyLabel={copy.labels.empty}
         />
       </div>
@@ -466,197 +482,208 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props)
           <DecisionList
             icon={<HelpCircle size={16} />}
             title={copy.sections.unknowns}
-            items={decision.verdict.critical_unknowns}
+            items={localized.unknowns}
             emptyLabel={copy.labels.empty}
           />
 
-      <div className="buyer-decision-detail-grid">
-        <section id="buyer-negotiation" className="buyer-decision-block">
-          <h3>
-            <Target size={16} /> {copy.sections.negotiation}
-          </h3>
-          <p className="muted">{copy.labels.scenarioOnly}: {copy.labels.evidence}.</p>
-          <dl className="buyer-decision-facts">
-            <Fact label={copy.labels.openingOffer} value={money(negotiation.opening_offer_pln, locale)} />
-            <Fact
-              label={copy.labels.realisticDeal}
-              value={`${money(negotiation.realistic_deal_low_pln, locale)}-${money(
-                negotiation.realistic_deal_high_pln,
-                locale,
-              )}`}
-            />
-            <Fact
-              label={copy.labels.walkAway}
-              value={money(negotiation.max_reasonable_offer_pln, locale)}
-            />
-            <Fact label={copy.labels.posture} value={negotiation.posture} />
-          </dl>
-          <ul className="section-list compact">
-            {negotiation.arguments.slice(0, 4).map((item) => {
-              const evidence = negotiation.argument_evidence.find(
-                (candidate) => candidate.argument === item,
-              );
-              return (
-                <li key={item}>
-                  <strong>{item}</strong>
-                  {evidence ? (
-                    <>
-                      <small className="muted">
-                        {copy.labels.evidence}: {evidence.source_name}
-                      </small>
-                      <ProvenanceDetails
-                        locale={locale}
-                        provenance={{
-                          sourceName: evidence.source_name,
-                          sourceType: evidence.source_type,
-                          updatedAt: evidence.updated_at,
-                          sampleSize: evidence.sample_size,
-                          scope: evidence.geographic_scope,
-                          timeRange: evidence.time_range,
-                          calculationType: evidence.calculation_type ?? "unknown",
-                          confidenceScore: evidence.confidence_score,
-                          note: evidence.note,
-                        }}
-                      />
-                    </>
-                  ) : null}
-                </li>
-              );
-            })}
-            {negotiation.seller_script.slice(0, 3).map((item) => (
-              <li key={item}><strong>{copy.labels.nextStep}:</strong> {item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="buyer-decision-block">
-          <h3>
-            <ShieldAlert size={16} /> {copy.sections.dueDiligence}
-          </h3>
-          <dl className="buyer-decision-facts">
-            <Fact label={copy.labels.score} value={`${dueDiligence.score}/100`} />
-            <Fact label={copy.labels.posture} value={dueDiligence.label} />
-          </dl>
-          <GroupedLists
-            groups={[
-              [copy.labels.documents, dueDiligence.documents_to_request.slice(0, 5)],
-              [copy.labels.sellerQuestions, dueDiligence.questions_for_seller.slice(0, 5)],
-            ]}
-            emptyLabel={copy.labels.empty}
-          />
-        </section>
-
-        <section className="buyer-decision-block">
-          <h3>
-            <WalletCards size={16} /> {copy.sections.totalCost}
-          </h3>
-          <dl className="buyer-decision-facts">
-            {total.renovation_condition ? (
-              <Fact
-                label={copy.labels.renovationCondition}
-                value={humanizeCode(total.renovation_condition)}
-              />
-            ) : null}
-            <Fact
-              label={copy.labels.budgetSource}
-              value={humanizeCode(total.renovation_budget_source)}
-            />
-            <Fact label={copy.labels.purchasePrice} value={money(total.purchase_price_pln, locale)} />
-            <Fact label={copy.labels.pccTax} value={money(total.pcc_tax_pln, locale)} />
-            <Fact label={copy.labels.notary} value={money(total.notary_and_court_pln, locale)} />
-            <Fact label={copy.labels.bankCosts} value={money(total.bank_costs_pln, locale)} />
-            <Fact label={copy.labels.renovation} value={money(total.renovation_estimate_pln, locale)} />
-            <Fact label={copy.labels.furniture} value={money(total.furniture_estimate_pln, locale)} />
-            <Fact label={copy.metrics.moveInCost} value={money(total.total_move_in_cost_pln, locale)} />
-            <Fact label={copy.labels.upfrontCash} value={money(total.upfront_cash_needed_pln, locale)} />
-            <Fact
-              label={copy.labels.monthlyPayment}
-              value={money(total.monthly_payment_baseline_pln, locale)}
-            />
-            {total.ready_to_move_alternative_price_pln ? (
-              <Fact
-                label={copy.labels.readyAlternative}
-                value={money(total.ready_to_move_alternative_price_pln, locale)}
-              />
-            ) : null}
-            {total.post_renovation_value_gap_pln !== null ? (
-              <Fact label={copy.labels.gap} value={money(total.post_renovation_value_gap_pln, locale)} />
-            ) : null}
-          </dl>
-          <ul className="section-list compact">
-            {total.notes.slice(0, 3).map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="buyer-decision-block">
-          <h3>{copy.sections.knowledge}</h3>
-          <GroupedLists
-            groups={[
-              [copy.labels.known, knowledge.known.slice(0, 4)],
-              [copy.labels.estimated, knowledge.estimated.slice(0, 4)],
-              [copy.labels.couldNotVerify, knowledge.could_not_verify.slice(0, 5)],
-            ]}
-            emptyLabel={copy.labels.empty}
-          />
-        </section>
-
-        <section className="buyer-decision-block">
-          <h3>
-            <Eye size={16} /> {copy.sections.preViewing}
-          </h3>
-          <GroupedLists
-            groups={[
-              [copy.labels.sellerQuestions, decision.pre_viewing.seller_questions.slice(0, 5)],
-              [copy.labels.photos, decision.pre_viewing.photos_to_take.slice(0, 4)],
-              [copy.labels.building, decision.pre_viewing.building_checks.slice(0, 4)],
-              [copy.labels.surroundings, decision.pre_viewing.surroundings_checks.slice(0, 4)],
-              [copy.labels.afterViewing, decision.post_viewing_checklist.slice(0, 5)],
-            ]}
-            emptyLabel={copy.labels.empty}
-          />
-        </section>
-
-        <section className="buyer-decision-block">
-          <h3>
-            <Bell size={16} /> {copy.sections.watch}
-          </h3>
-          <ul className="section-list compact">
-            {decision.watch_triggers.slice(0, 6).map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-          <h3>{copy.sections.intent}</h3>
-          <div className="buyer-intent-strip">
-            {decision.intent_fit.map((fit) => (
-              <span
-                className={`score-pill ${fit.intent === decision.selected_intent ? "selected" : ""}`}
-                key={fit.intent}
+          <div className="buyer-decision-detail-grid">
+            <section id="buyer-negotiation" className="buyer-decision-block">
+              <h3>
+                <Target size={16} /> {copy.sections.negotiation}
+              </h3>
+              <p className="muted">
+                {localized.negotiationStatus} {localized.negotiationConfidence}
+              </p>
+              {localized.negotiationAvailable &&
+              negotiation.opening_offer_pln !== null &&
+              negotiation.realistic_deal_low_pln !== null &&
+              negotiation.realistic_deal_high_pln !== null &&
+              negotiation.max_reasonable_offer_pln !== null ? (
+                <dl className="buyer-decision-facts">
+                  <Fact label={copy.labels.openingOffer} value={money(negotiation.opening_offer_pln, locale)} />
+                  <Fact
+                    label={copy.labels.realisticDeal}
+                    value={`${money(negotiation.realistic_deal_low_pln, locale)}-${money(
+                      negotiation.realistic_deal_high_pln,
+                      locale,
+                    )}`}
+                  />
+                  <Fact label={copy.labels.walkAway} value={money(negotiation.max_reasonable_offer_pln, locale)} />
+                  <Fact label={copy.labels.posture} value={localized.negotiationPosture} />
+                </dl>
+              ) : null}
+              {!localized.negotiationAvailable && localized.negotiationLimitations.length > 0 ? (
+                <div>
+                  <strong>{copy.labels.limitations}</strong>
+                  <ul className="section-list compact">
+                    {localized.negotiationLimitations.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <ul className="section-list compact">
+                {localized.negotiationArguments.slice(0, 4).map((item) => {
+                  return (
+                    <li key={item.key}>
+                      <strong>{item.text}</strong>
+                      {item.evidence.map((evidence) => (
+                        <div key={evidence.id}>
+                          <small className="muted">
+                            {copy.labels.evidence}: {evidence.source_name}
+                          </small>
+                          <ProvenanceDetails
+                            locale={locale}
+                            provenance={{
+                              sourceName: evidence.source_name,
+                              sourceType: evidence.source_type,
+                              updatedAt: evidence.updated_at,
+                              sampleSize: evidence.sample_size,
+                              scope: evidence.geographic_scope,
+                              timeRange: evidence.time_range,
+                              calculationType: evidence.calculation_type ?? "unknown",
+                              confidenceScore: evidence.confidence_score,
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </li>
+                  );
+                })}
+                {localized.negotiationActions.map((item) => (
+                  <li key={item}>
+                    <strong>{copy.labels.nextStep}:</strong> {item}
+                  </li>
+                ))}
+              </ul>
+              <div>
+                <strong>{copy.labels.guardrails}</strong>
+                <ul className="section-list compact">
+                  {localized.negotiationGuardrails.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+              <button
+                className="button secondary"
+                type="button"
+                onClick={async () => {
+                  try {
+                    await copyToClipboard(localized.negotiationBrief);
+                    setCopyStatus("copied");
+                  } catch {
+                    setCopyStatus("failed");
+                  }
+                }}
               >
-                {copy.intents[fit.intent] ?? fit.intent}:{" "}
-                {fit.score === null ? copy.labels.empty : `${Math.round(fit.score / 10)}/10`}
+                {copyStatus === "copied" ? <Check size={16} /> : <Copy size={16} />}
+                {copy.labels.copyBrief}
+              </button>
+              <span className="muted" role="status" aria-live="polite">
+                {copyStatus === "copied" ? copy.labels.copied : copyStatus === "failed" ? copy.labels.copyFailed : ""}
               </span>
-            ))}
+            </section>
+
+            {decision.action_plan ? (
+              <BuyerActionPlanPanel
+                dueDiligenceLabel={localized.diligenceLabel}
+                dueDiligenceScore={dueDiligence.score}
+                locale={locale}
+                plan={decision.action_plan}
+              />
+            ) : (
+              <BuyerActionPlanUnavailable locale={locale} />
+            )}
+
+            <section className="buyer-decision-block">
+              <h3>
+                <WalletCards size={16} /> {copy.sections.totalCost}
+              </h3>
+              <dl className="buyer-decision-facts">
+                {total.renovation_condition ? (
+                  <Fact
+                    label={copy.labels.renovationCondition}
+                    value={localized.renovationCondition ?? copy.labels.empty}
+                  />
+                ) : null}
+                <Fact label={copy.labels.budgetSource} value={localized.budgetSource} />
+                <Fact label={copy.labels.purchasePrice} value={money(total.purchase_price_pln, locale)} />
+                <Fact label={copy.labels.pccTax} value={money(total.pcc_tax_pln, locale)} />
+                <Fact label={copy.labels.notary} value={money(total.notary_and_court_pln, locale)} />
+                <Fact label={copy.labels.bankCosts} value={money(total.bank_costs_pln, locale)} />
+                <Fact label={copy.labels.renovation} value={money(total.renovation_estimate_pln, locale)} />
+                <Fact label={copy.labels.furniture} value={money(total.furniture_estimate_pln, locale)} />
+                <Fact label={copy.metrics.moveInCost} value={money(total.total_move_in_cost_pln, locale)} />
+                <Fact label={copy.labels.upfrontCash} value={money(total.upfront_cash_needed_pln, locale)} />
+                <Fact label={copy.labels.monthlyPayment} value={money(total.monthly_payment_baseline_pln, locale)} />
+                {total.ready_to_move_alternative_price_pln ? (
+                  <Fact
+                    label={copy.labels.readyAlternative}
+                    value={money(total.ready_to_move_alternative_price_pln, locale)}
+                  />
+                ) : null}
+                {total.post_renovation_value_gap_pln !== null ? (
+                  <Fact label={copy.labels.gap} value={money(total.post_renovation_value_gap_pln, locale)} />
+                ) : null}
+              </dl>
+              <ul className="section-list compact">
+                {localized.totalNotes.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="buyer-decision-block">
+              <h3>{copy.sections.knowledge}</h3>
+              <GroupedLists
+                groups={[
+                  [copy.labels.known, localized.known],
+                  [copy.labels.estimated, localized.estimated],
+                  [copy.labels.couldNotVerify, localized.couldNotVerify],
+                ]}
+                emptyLabel={copy.labels.empty}
+              />
+            </section>
+
+            <section className="buyer-decision-block">
+              <h3>
+                <Bell size={16} /> {copy.sections.watch}
+              </h3>
+              <ul className="section-list compact">
+                {localized.watchTriggers.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+              <h3>{copy.sections.intent}</h3>
+              <div className="buyer-intent-strip">
+                {decision.intent_fit.map((fit) => (
+                  <span
+                    className={`score-pill ${fit.intent === decision.selected_intent ? "selected" : ""}`}
+                    key={fit.intent}
+                  >
+                    {copy.intents[fit.intent] ?? fit.intent}:{" "}
+                    {fit.score === null ? copy.labels.empty : `${Math.round(fit.score / 10)}/10`}
+                  </span>
+                ))}
+              </div>
+            </section>
           </div>
-        </section>
-      </div>
 
-      <section className="buyer-decision-block buyer-decision-sources">
-        <h3>{copy.sections.sources}</h3>
-        <div className="buyer-source-grid">
-          {knowledge.source_evidence.map((source) => (
-            <SourceEvidenceItem
-              copy={copy}
-              key={`${source.topic}-${source.source_name}`}
-              locale={locale}
-              source={source}
-            />
-          ))}
-        </div>
-      </section>
+          <section className="buyer-decision-block buyer-decision-sources">
+            <h3>{copy.sections.sources}</h3>
+            <div className="buyer-source-grid">
+              {knowledge.source_evidence.map((source) => (
+                <SourceEvidenceItem
+                  copy={copy}
+                  key={`${source.topic}-${source.source_name}`}
+                  locale={locale}
+                  source={source}
+                />
+              ))}
+            </div>
+          </section>
 
-      <p className="muted buyer-decision-disclaimer">{decision.disclaimer}</p>
+          <p className="muted buyer-decision-disclaimer">{localized.disclaimer}</p>
         </div>
       </details>
     </section>
@@ -670,6 +697,25 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dd>{value}</dd>
     </>
   );
+}
+
+async function copyToClipboard(value: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    if (!document.execCommand("copy")) throw new Error("clipboard_copy_failed");
+  } finally {
+    textarea.remove();
+  }
 }
 
 function DecisionList({
@@ -701,13 +747,7 @@ function DecisionList({
   );
 }
 
-function GroupedLists({
-  groups,
-  emptyLabel,
-}: {
-  groups: Array<[string, string[]]>;
-  emptyLabel: string;
-}) {
+function GroupedLists({ groups, emptyLabel }: { groups: Array<[string, string[]]>; emptyLabel: string }) {
   const visibleGroups = groups.filter(([, items]) => items.length > 0);
   if (visibleGroups.length === 0) return <p className="muted">{emptyLabel}</p>;
 
@@ -736,13 +776,13 @@ function SourceEvidenceItem({
   locale: Locale;
   source: BuyerSourceEvidence;
 }) {
+  const localized = localizedSourceEvidence(source, locale);
   return (
     <article className="buyer-source-item">
-      <strong>{source.topic}</strong>
-      <span>{source.basis}</span>
+      <strong>{localized.topic}</strong>
+      <span>{localized.basis}</span>
       <small>
-        {source.source_name} · {copy.labels.confidence}{" "}
-        {confidenceLabel(source.confidence_score, copy)}
+        {source.source_name} · {copy.labels.confidence} {confidenceLabel(source.confidence_score, copy)}
       </small>
       <ProvenanceDetails
         locale={locale}
@@ -755,15 +795,11 @@ function SourceEvidenceItem({
           timeRange: source.time_range,
           calculationType: source.calculation_type ?? "unknown",
           confidenceScore: source.confidence_score,
-          note: source.note,
+          note: localized.note,
         }}
       />
     </article>
   );
-}
-
-function humanizeCode(value: string) {
-  return value.replaceAll("_", " ");
 }
 
 function confidenceLabel(score: number, copy: BuyerDecisionCopy) {

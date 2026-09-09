@@ -25,6 +25,24 @@ from domarion.services.production_readiness import (
 )
 
 
+def _safe_error_params(params: dict[str, object]) -> dict[str, object]:
+    safe: dict[str, object] = {}
+    for key, value in params.items():
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            safe[key] = value
+        elif isinstance(value, list):
+            if all(isinstance(item, (str, int, float, bool)) or item is None for item in value):
+                safe[key] = value
+            elif all(
+                isinstance(item, dict)
+                and set(item).issubset({"field", "type"})
+                and all(isinstance(part, str) for part in item.values())
+                for item in value
+            ):
+                safe[key] = value
+    return safe
+
+
 def create_app(settings_override: Settings | None = None) -> FastAPI:
     settings = settings_override or get_settings()
     validate_startup_data_mode(settings)
@@ -46,7 +64,9 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     def error_payload(request: Request, detail: object, status_code: int) -> dict[str, object]:
         if isinstance(detail, dict) and isinstance(detail.get("code"), str):
             code = detail["code"]
-            params = {key: value for key, value in detail.items() if key != "code"}
+            params = _safe_error_params(
+                {key: value for key, value in detail.items() if key != "code"}
+            )
         else:
             code = {
                 400: "bad_request",
@@ -66,10 +86,20 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         )
         if not correlation_id:
             correlation_id = "unavailable"
-        return {
-            "detail": jsonable_encoder(detail),
-            "error": {"code": code, "params": params, "correlation_id": correlation_id},
+        error = {
+            "code": code,
+            "params": jsonable_encoder(params),
+            "correlation_id": correlation_id,
         }
+        if isinstance(detail, dict) and isinstance(detail.get("code"), str):
+            compatibility_detail: object = {"code": code, **params}
+        elif status_code < 500 and isinstance(detail, str):
+            # Explicit 4xx HTTPException messages remain available to API clients,
+            # while consumer UI uses the stable error envelope below.
+            compatibility_detail = detail
+        else:
+            compatibility_detail = error
+        return {"detail": jsonable_encoder(compatibility_detail), "error": error}
 
     @app.exception_handler(HTTPException)
     async def http_error_handler(request: Request, exc: HTTPException) -> JSONResponse:
@@ -83,16 +113,31 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     async def validation_error_handler(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        fields = []
+        for error in exc.errors():
+            field = ".".join(
+                str(part) for part in error.get("loc", ()) if part != "body"
+            )
+            fields.append(
+                {
+                    "field": field or "body",
+                    "type": str(error.get("type", "invalid")),
+                }
+            )
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            content=error_payload(request, exc.errors(), status.HTTP_422_UNPROCESSABLE_ENTITY),
+            content=error_payload(
+                request,
+                {"code": "validation_error", "fields": fields},
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+            ),
         )
 
     @app.exception_handler(Exception)
     async def unhandled_error_handler(request: Request, _exc: Exception) -> JSONResponse:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content=error_payload(request, "The service could not complete the request", 500),
+            content=error_payload(request, None, 500),
         )
 
     app.add_middleware(

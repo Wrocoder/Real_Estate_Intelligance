@@ -120,11 +120,16 @@ def _label_text(value: str) -> str:
 def _report_summary(title: str, scores, buyer_decision) -> str:
     if buyer_decision is not None:
         verdict = buyer_decision.verdict
+        summary = f"{title}: {verdict.score:.1f}/10 - {verdict.headline}. "
+        if buyer_decision.negotiation.scenario_status == "available":
+            return (
+                f"{summary}Seller price {_money(verdict.seller_price_pln)}, scenario target "
+                f"{_money(verdict.recommended_offer_pln)}, scenario ceiling "
+                f"{_money(verdict.max_reasonable_offer_pln)}."
+            )
         return (
-            f"{title}: {verdict.score:.1f}/10 - {verdict.headline}. "
-            f"Seller price {_money(verdict.seller_price_pln)}, recommended offer "
-            f"{_money(verdict.recommended_offer_pln)}, max reasonable "
-            f"{_money(verdict.max_reasonable_offer_pln)}."
+            f"{summary}Seller price {_money(verdict.seller_price_pln)}; negotiation price "
+            "scenario is unavailable until market evidence improves."
         )
 
     if scores.price_delta_to_fair_mid_pct > 7:
@@ -363,8 +368,13 @@ def _buyer_price_decision_section(analysis: ListingAnalysis) -> ReportSection:
         f"Текущая цена: {_money(listing.price)}; {_money(listing.price_per_m2)}/m2.",
         f"Fair price range: {_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}.",
         f"Позиция цены: {position}.",
-        f"Практический target для оффера: {_money(target_price)}.",
     ]
+    if target_price is not None:
+        items.append(f"Сценарный target для оффера: {_money(target_price)}.")
+    else:
+        items.append(
+            "Ценовой сценарий для оффера недоступен: сначала нужны достаточные рыночные данные."
+        )
     if attribute_text:
         items.insert(2, f"Здание/состояние: {attribute_text}.")
     if scores.price_delta_to_fair_mid_pct > 7:
@@ -402,11 +412,17 @@ def _next_action_section(analysis: ListingAnalysis) -> ReportSection:
             f"major road {_distance_text(listing.nearest_major_road_m)}, industrial zone "
             f"{_distance_text(listing.nearest_industrial_zone_m)}."
         ),
-        (
-            f"Переговоры: Negotiation Score {scores.negotiation_score}/100; "
-            f"основные аргументы: {'; '.join(analysis.negotiation_arguments[:3])}."
-        ),
     ]
+    negotiation = analysis.buyer_decision.negotiation if analysis.buyer_decision else None
+    if negotiation is not None and negotiation.scenario_status == "available":
+        items.append(
+            f"Переговорный сценарий: score {scores.negotiation_score}/100; "
+            f"оснований с evidence: {len(negotiation.arguments)}."
+        )
+    else:
+        items.append(
+            "Переговорный ценовой сценарий не сформирован из-за недостатка рыночных данных."
+        )
     if scores.risk_score >= 60:
         items.append("Risk Score повышен: без дополнительной проверки не вносить задаток.")
     if listing.building_year and listing.building_year < 1990:
@@ -420,14 +436,13 @@ def _distance_text(value: int | None) -> str:
     return "нет данных" if value is None else f"{value} m"
 
 
-def _buyer_target_price(analysis: ListingAnalysis) -> int:
-    listing = analysis.listing
-    scores = analysis.scores
-    if scores.price_delta_to_fair_mid_pct > 7:
-        return min(scores.fair_price_mid, round(listing.price * 0.95))
-    if scores.price_delta_to_fair_mid_pct > 0:
-        return min(scores.fair_price_high, round(listing.price * 0.97))
-    return min(listing.price, scores.fair_price_high)
+def _buyer_target_price(analysis: ListingAnalysis) -> int | None:
+    if analysis.buyer_decision is None:
+        return None
+    negotiation = analysis.buyer_decision.negotiation
+    if negotiation.scenario_status != "available":
+        return None
+    return negotiation.realistic_deal_low_pln
 
 
 def _floor_label(analysis_listing) -> str:

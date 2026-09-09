@@ -1,9 +1,14 @@
 from domarion.schemas import (
     AreaStatistics,
+    BuyerActionEvidence,
+    BuyerActionItem,
+    BuyerActionPlan,
     BuyerDecisionPackage,
     BuyerDecisionVerdict,
     BuyerIntentFit,
     BuyerKnowledgeMatrix,
+    BuyerNegotiationAction,
+    BuyerNegotiationArgument,
     BuyerNegotiationAssistant,
     BuyerNegotiationEvidence,
     BuyerSourceEvidence,
@@ -32,6 +37,8 @@ BUYER_DECISION_DISCLAIMER = (
     "is legally or technically clean."
 )
 BUYER_DECISION_MODEL_VERSION = "buyer-decision-v2-intent"
+NEGOTIATION_SCENARIO_VERSION = "negotiation-v2-evidence-scenarios"
+BUYER_ACTION_PLAN_VERSION = "buyer-action-plan-v1-evidence"
 
 POST_VIEWING_FIELD_LABELS = {
     "condition": "overall condition",
@@ -67,7 +74,6 @@ def build_buyer_decision(
     area_statistics: AreaStatistics,
     scores: PropertyScores,
     comparables: list[Listing],
-    negotiation_arguments: list[str],
     data_quality_notes: list[str],
     developer_reputation: DeveloperReputation | None = None,
     future_area_impact: ListingFutureImpact | None = None,
@@ -108,7 +114,6 @@ def build_buyer_decision(
         verdict=verdict,
         area_statistics=area_statistics,
         comparables=comparables,
-        negotiation_arguments=negotiation_arguments,
         comparables_freshness_days=comparables_freshness_days,
     )
     knowledge = _knowledge_matrix(
@@ -128,9 +133,18 @@ def build_buyer_decision(
         due_diligence=due_diligence,
         listing=listing,
     )
+    action_plan = _buyer_action_plan(
+        listing=listing,
+        area_statistics=area_statistics,
+        scores=scores,
+        due_diligence=due_diligence,
+        risk_profile=risk_profile,
+        purchase_intent=purchase_intent,
+    )
     return BuyerDecisionPackage(
         verdict=verdict,
         negotiation=negotiation,
+        action_plan=action_plan,
         due_diligence=due_diligence,
         knowledge=knowledge,
         total_acquisition=total_acquisition,
@@ -161,7 +175,6 @@ def recalculate_post_viewing_verdict(
         area_statistics=analysis.area_statistics,
         scores=analysis.scores,
         comparables=analysis.comparables,
-        negotiation_arguments=analysis.negotiation_arguments,
         data_quality_notes=analysis.data_quality_notes,
         developer_reputation=analysis.developer_reputation,
         future_area_impact=analysis.future_area_impact,
@@ -219,14 +232,6 @@ def recalculate_post_viewing_verdict(
         verdict=verdict,
         area_statistics=analysis.area_statistics,
         comparables=analysis.comparables,
-        negotiation_arguments=[
-            *analysis.negotiation_arguments,
-            *(
-                [f"Post-viewing discount reserve: {_money(offer_adjustment)}."]
-                if offer_adjustment
-                else []
-            ),
-        ],
         comparables_freshness_days=analysis.comparables_freshness_days,
     )
     knowledge = _knowledge_matrix(
@@ -249,9 +254,18 @@ def recalculate_post_viewing_verdict(
         due_diligence=due_diligence,
         listing=adjusted_listing,
     )
+    action_plan = _buyer_action_plan(
+        listing=adjusted_listing,
+        area_statistics=analysis.area_statistics,
+        scores=adjusted_scores,
+        due_diligence=due_diligence,
+        risk_profile=analysis.risk_profile,
+        purchase_intent=selected_intent,
+    )
     updated_decision = BuyerDecisionPackage(
         verdict=verdict,
         negotiation=negotiation,
+        action_plan=action_plan,
         due_diligence=due_diligence,
         knowledge=knowledge,
         total_acquisition=total_acquisition,
@@ -298,11 +312,32 @@ def _verdict(
     total_acquisition: TotalAcquisitionCost,
     selected_intent_fit: BuyerIntentFit,
 ) -> BuyerDecisionVerdict:
-    max_offer = _max_reasonable_offer(listing, scores)
-    opening_offer = _opening_offer(listing, scores, max_offer)
-    realistic_low = min(max(opening_offer + 5_000, scores.fair_price_low), max_offer)
-    realistic_high = max(realistic_low, max_offer)
-    status = _verdict_status(scores, due_diligence, selected_intent_fit)
+    scenario_available, _ = _negotiation_evidence_status(
+        listing=listing,
+        scores=scores,
+        area_statistics=area_statistics,
+        comparables=comparables,
+    )
+    max_offer = _max_reasonable_offer(listing, scores) if scenario_available else None
+    opening_offer = (
+        _opening_offer(listing, scores, max_offer) if max_offer is not None else None
+    )
+    realistic_low = (
+        min(max(opening_offer + 5_000, scores.fair_price_low), max_offer)
+        if opening_offer is not None and max_offer is not None
+        else None
+    )
+    realistic_high = (
+        max(realistic_low, max_offer)
+        if realistic_low is not None and max_offer is not None
+        else None
+    )
+    status = _verdict_status(
+        scores,
+        due_diligence,
+        selected_intent_fit,
+        market_evidence_sufficient=scenario_available,
+    )
     top_reasons = _top_reasons(
         listing=listing,
         area_statistics=area_statistics,
@@ -347,12 +382,14 @@ def _verdict_status(
     scores: PropertyScores,
     due_diligence: PropertyDueDiligence,
     selected_intent_fit: BuyerIntentFit,
+    *,
+    market_evidence_sufficient: bool,
 ) -> str:
     if scores.risk_score >= 75 or (
         scores.price_delta_to_fair_mid_pct >= 15 and due_diligence.score < 50
     ):
         return "avoid"
-    if scores.fair_price_confidence_score < 50:
+    if not market_evidence_sufficient or scores.fair_price_confidence_score < 50:
         return "verify_first"
     if scores.risk_score >= 62 or due_diligence.score < 55:
         return "verify_first"
@@ -411,7 +448,7 @@ def _summary(
     status: str,
     listing: Listing,
     scores: PropertyScores,
-    max_offer: int,
+    max_offer: int | None,
     due_diligence: PropertyDueDiligence,
 ) -> str:
     if status == "avoid":
@@ -420,6 +457,11 @@ def _summary(
             f"weak for a normal offer. Reconsider only with a large discount and clean evidence."
         )
     if status == "verify_first":
+        if max_offer is None:
+            return (
+                f"Do not pay zadatek yet. Asking price is {_money(listing.price)}; "
+                "market evidence is not strong enough to produce an offer scenario."
+            )
         return (
             f"Do not pay zadatek yet. Asking price is {_money(listing.price)}; first close "
             f"{len(due_diligence.unknowns)} key unknowns and keep the ceiling near "
@@ -467,178 +509,693 @@ def _negotiation_assistant(
     verdict: BuyerDecisionVerdict,
     area_statistics: AreaStatistics,
     comparables: list[Listing],
-    negotiation_arguments: list[str],
     comparables_freshness_days: int | None,
 ) -> BuyerNegotiationAssistant:
-    arguments = list(negotiation_arguments)
-    if comparables:
-        comparable_mid = round(
-            sum(item.price for item in comparables[:5]) / min(len(comparables), 5)
-        )
-        arguments.append(f"Closest comparable sample averages around {_money(comparable_mid)}.")
-    arguments.append(
-        f"Area supply changed {area_statistics.supply_change_90d_pct:+.1f}% over 90 days."
+    scenario_available, limitation_codes = _negotiation_evidence_status(
+        listing=listing,
+        scores=scores,
+        area_statistics=area_statistics,
+        comparables=comparables,
     )
-    if scores.price_delta_to_fair_mid_pct > 0:
-        arguments.append(
-            f"Asking price is {scores.price_delta_to_fair_mid_pct:+.1f}% above fair mid."
-        )
-    if listing.relisted:
-        arguments.append(
-            "Listing was relisted; verify original exposure and earlier price anchors."
-        )
+    evidence, arguments = _negotiation_evidence_and_arguments(
+        listing=listing,
+        scores=scores,
+        verdict=verdict,
+        area_statistics=area_statistics,
+        comparables=comparables,
+        comparables_freshness_days=comparables_freshness_days,
+        scenario_available=scenario_available,
+    )
     return BuyerNegotiationAssistant(
+        scenario_status="available" if scenario_available else "insufficient_data",
+        scenario_version=NEGOTIATION_SCENARIO_VERSION,
+        scenario_confidence_score=min(
+            scores.fair_price_confidence_score,
+            listing.data_quality_score,
+        ),
         asking_price_pln=listing.price,
         opening_offer_pln=verdict.opening_offer_pln,
         realistic_deal_low_pln=verdict.realistic_deal_low_pln,
         realistic_deal_high_pln=verdict.realistic_deal_high_pln,
         max_reasonable_offer_pln=verdict.max_reasonable_offer_pln,
         negotiation_score=scores.negotiation_score,
-        posture=_negotiation_posture(scores),
-        arguments=_deduplicate(arguments)[:8],
-        argument_evidence=[
-            _negotiation_argument_evidence(
-                argument,
-                listing,
-                scores,
-                area_statistics,
-                comparables,
-                comparables_freshness_days,
-            )
-            for argument in _deduplicate(arguments)[:8]
-        ],
-        seller_script=_seller_script(listing, scores, verdict),
-        guardrails=[
-            "Scenario only: do not exceed the ceiling before document and building checks "
-            "are complete.",
-            "Scenario only: use the fair range as negotiation support, not as a guaranteed "
-            "valuation.",
-            "Next step: if the seller rejects the range, compare with alternatives before "
-            "raising the offer.",
-        ],
+        posture=_negotiation_posture(scores) if scenario_available else "unavailable",
+        limitation_codes=limitation_codes,
+        arguments=arguments[:8],
+        argument_evidence=evidence,
+        next_actions=_negotiation_next_actions(verdict, scenario_available),
+        guardrail_codes=(
+            [
+                "scenario_not_valuation",
+                "verify_before_deposit",
+                "do_not_exceed_without_new_evidence",
+            ]
+            if scenario_available
+            else ["no_price_advice_insufficient_data", "collect_evidence_before_offer"]
+        ),
     )
 
 
-def _negotiation_argument_evidence(
-    argument: str,
+def _negotiation_evidence_status(
+    *,
     listing: Listing,
     scores: PropertyScores,
     area_statistics: AreaStatistics,
     comparables: list[Listing],
+) -> tuple[bool, list[str]]:
+    limitations: list[str] = []
+    comparable_sample_sufficient = len(comparables) >= 3
+    transaction_sample_sufficient = area_statistics.transaction_observation_count >= 10
+    if scores.fair_price_confidence_score < 50:
+        limitations.append("fair_price_confidence_low")
+    if listing.data_quality_score < 50:
+        limitations.append("subject_data_quality_low")
+    if not comparable_sample_sufficient:
+        limitations.append("comparable_sample_below_minimum")
+    if not transaction_sample_sufficient:
+        limitations.append("transaction_sample_below_minimum")
+    market_sample_sufficient = comparable_sample_sufficient or transaction_sample_sufficient
+    if not market_sample_sufficient:
+        limitations.append("market_evidence_insufficient")
+    available = (
+        scores.fair_price_confidence_score >= 50
+        and listing.data_quality_score >= 50
+        and market_sample_sufficient
+    )
+    return available, limitations
+
+
+def _negotiation_evidence_and_arguments(
+    *,
+    listing: Listing,
+    scores: PropertyScores,
+    verdict: BuyerDecisionVerdict,
+    area_statistics: AreaStatistics,
+    comparables: list[Listing],
     comparables_freshness_days: int | None,
-) -> BuyerNegotiationEvidence:
-    lowered = argument.lower()
-    if "comparable" in lowered:
-        return BuyerNegotiationEvidence(
-            argument=argument,
-            topic="comparables",
-            source_name=f"Comparable listing sample ({min(len(comparables), 5)} listings)",
-            source_type="derived_comparable_sample",
-            sample_size=min(len(comparables), 5),
-            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
-            time_range=(
-                f"{comparables_freshness_days} days"
-                if comparables_freshness_days is not None
-                else None
-            ),
-            calculation_type="calculated",
-            confidence_score=scores.fair_price_confidence_score,
-            note="Use as a range signal, not as a guaranteed transaction price.",
+    scenario_available: bool,
+) -> tuple[list[BuyerNegotiationEvidence], list[BuyerNegotiationArgument]]:
+    if not scenario_available:
+        return [], []
+
+    evidence: list[BuyerNegotiationEvidence] = []
+    arguments: list[BuyerNegotiationArgument] = []
+    fair_sample_size = (
+        area_statistics.transaction_observation_count
+        if area_statistics.transaction_observation_count >= 10
+        else len(comparables)
+    )
+    fair_time_range = (
+        f"{area_statistics.transaction_window_days} days"
+        if area_statistics.transaction_observation_count >= 10
+        else (
+            f"{comparables_freshness_days} days"
+            if comparables_freshness_days is not None
+            else None
         )
-    if "supply" in lowered:
-        return BuyerNegotiationEvidence(
-            argument=argument,
-            topic="area_supply",
-            source_name="Area market snapshot",
-            source_type="area_market_snapshot",
-            sample_size=area_statistics.active_listings,
-            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
-            time_range="90 days",
-            calculation_type="calculated",
-            confidence_score=70,
-            note="Area-level context; it does not prove this seller will accept a discount.",
-        )
-    if "relisted" in lowered:
-        return BuyerNegotiationEvidence(
-            argument=argument,
-            topic="listing_history",
-            source_name="Listing history",
-            source_type="listing_snapshot",
-            updated_at=listing.last_seen_at,
-            sample_size=1,
-            geographic_scope=f"{listing.city}: {listing.district}",
-            calculation_type="observed",
-            confidence_score=100,
-            note="Verify the original exposure and price anchors before using it.",
-        )
-    if "fair" in lowered:
-        return BuyerNegotiationEvidence(
-            argument=argument,
+    )
+    evidence.append(
+        BuyerNegotiationEvidence(
+            id="fair-price",
             topic="fair_price",
             source_name="WartoMetr fair-price estimate",
-            source_type="derived_estimate",
-            sample_size=len(comparables),
-            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
-            time_range=(
-                f"{comparables_freshness_days} days"
-                if comparables_freshness_days is not None
-                else None
+            source_type=(
+                "transaction_register"
+                if area_statistics.transaction_observation_count >= 10
+                else "derived_comparable_sample"
             ),
+            sample_size=fair_sample_size,
+            geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+            time_range=fair_time_range,
             calculation_type="model_estimate",
             confidence_score=scores.fair_price_confidence_score,
-            note="Model estimate based on available market evidence.",
         )
-    return BuyerNegotiationEvidence(
-        argument=argument,
-        topic="listing_facts",
-        source_name="Listing and scoring record",
-        source_type="listing_snapshot",
-        updated_at=listing.last_seen_at,
-        sample_size=1,
-        geographic_scope=f"{listing.city}: {listing.district}",
-        calculation_type="observed",
-        confidence_score=listing.data_quality_score,
-        note="Confirm the underlying fact during viewing or due diligence.",
     )
+    arguments.append(
+        BuyerNegotiationArgument(
+            code="fair_value_range",
+            params={
+                "low_pln": scores.fair_price_low,
+                "high_pln": scores.fair_price_high,
+                "confidence_score": scores.fair_price_confidence_score,
+            },
+            strength="primary",
+            evidence_refs=["fair-price"],
+        )
+    )
+    if scores.price_delta_to_fair_mid_pct >= 3:
+        arguments.append(
+            BuyerNegotiationArgument(
+                code="asking_above_fair_mid",
+                params={
+                    "delta_pct": round(scores.price_delta_to_fair_mid_pct, 1),
+                    "delta_pln": max(listing.price - scores.fair_price_mid, 0),
+                },
+                strength="primary",
+                evidence_refs=["fair-price"],
+            )
+        )
+    if len(comparables) >= 3:
+        evidence.append(
+            BuyerNegotiationEvidence(
+                id="comparables",
+                topic="comparables",
+                source_name="Comparable listing sample",
+                source_type="listing_observations",
+                updated_at=max(item.last_seen_at for item in comparables),
+                sample_size=len(comparables),
+                geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+                time_range=(
+                    f"{comparables_freshness_days} days"
+                    if comparables_freshness_days is not None
+                    else None
+                ),
+                calculation_type="calculated",
+                confidence_score=scores.fair_price_confidence_score,
+            )
+        )
+        arguments.append(
+            BuyerNegotiationArgument(
+                code="comparable_sample",
+                params={"sample_size": len(comparables)},
+                strength="supporting",
+                evidence_refs=["comparables"],
+            )
+        )
+
+    history_argument_codes: list[BuyerNegotiationArgument] = []
+    if (
+        area_statistics.listing_metrics_available
+        and area_statistics.average_days_on_market > 0
+        and listing.days_on_market > area_statistics.average_days_on_market
+    ):
+        history_argument_codes.append(
+            BuyerNegotiationArgument(
+                code="long_market_exposure",
+                params={
+                    "days_on_market": listing.days_on_market,
+                    "area_average_days": area_statistics.average_days_on_market,
+                },
+                strength="supporting",
+                evidence_refs=["listing-history"],
+            )
+        )
+    if listing.price_reductions > 0:
+        history_argument_codes.append(
+            BuyerNegotiationArgument(
+                code="price_reductions",
+                params={"count": listing.price_reductions},
+                strength="supporting",
+                evidence_refs=["listing-history"],
+            )
+        )
+    if listing.relisted:
+        history_argument_codes.append(
+            BuyerNegotiationArgument(
+                code="relisted",
+                strength="context",
+                evidence_refs=["listing-history"],
+            )
+        )
+    if history_argument_codes:
+        evidence.append(
+            BuyerNegotiationEvidence(
+                id="listing-history",
+                topic="listing_history",
+                source_name=listing.source_name,
+                source_type=listing.data_provenance.source_type,
+                updated_at=listing.last_seen_at,
+                sample_size=1,
+                geographic_scope=f"{listing.city}: {listing.district}",
+                calculation_type="observed",
+                confidence_score=listing.data_quality_score,
+            )
+        )
+        arguments.extend(history_argument_codes)
+
+    if (
+        area_statistics.listing_metrics_available
+        and area_statistics.active_listings > 0
+        and area_statistics.supply_change_90d_pct > 5
+    ):
+        evidence.append(
+            BuyerNegotiationEvidence(
+                id="area-supply",
+                topic="area_supply",
+                source_name=(
+                    area_statistics.data_sources[0]
+                    if area_statistics.data_sources
+                    else area_statistics.data_provenance.source_name or "Area market snapshot"
+                ),
+                source_type=area_statistics.data_provenance.source_type,
+                sample_size=area_statistics.active_listings,
+                geographic_scope=f"{area_statistics.city}: {area_statistics.name}",
+                time_range="90 days",
+                calculation_type="calculated",
+                confidence_score=min(90, 50 + area_statistics.active_listings // 10),
+            )
+        )
+        arguments.append(
+            BuyerNegotiationArgument(
+                code="area_supply_growth",
+                params={"change_pct": round(area_statistics.supply_change_90d_pct, 1)},
+                strength="context",
+                evidence_refs=["area-supply"],
+            )
+        )
+    return evidence, arguments
+
+
+def _negotiation_next_actions(
+    verdict: BuyerDecisionVerdict,
+    scenario_available: bool,
+) -> list[BuyerNegotiationAction]:
+    if not scenario_available:
+        return [
+            BuyerNegotiationAction(code="collect_market_evidence"),
+            BuyerNegotiationAction(code="verify_listing_history"),
+            BuyerNegotiationAction(code="compare_alternatives"),
+        ]
+    if (
+        verdict.opening_offer_pln is None
+        or verdict.realistic_deal_low_pln is None
+        or verdict.realistic_deal_high_pln is None
+        or verdict.max_reasonable_offer_pln is None
+    ):
+        return []
+    return [
+        BuyerNegotiationAction(code="verify_documents_before_offer"),
+        BuyerNegotiationAction(code="confirm_condition_and_costs"),
+        BuyerNegotiationAction(
+            code="submit_conditional_offer",
+            params={"opening_offer_pln": verdict.opening_offer_pln},
+            evidence_refs=["fair-price"],
+        ),
+        BuyerNegotiationAction(
+            code="compare_before_raising_ceiling",
+            params={"max_offer_pln": verdict.max_reasonable_offer_pln},
+            evidence_refs=["fair-price"],
+        ),
+    ]
 
 
 def _negotiation_posture(scores: PropertyScores) -> str:
     if scores.negotiation_score >= 75:
-        return "strong buyer leverage"
+        return "strong"
     if scores.negotiation_score >= 55:
-        return "reasonable room to negotiate"
+        return "moderate"
     if scores.price_delta_to_fair_mid_pct >= 8:
-        return "price-based negotiation despite weaker leverage"
-    return "limited leverage; negotiate mostly through evidence and checks"
+        return "price_only"
+    return "limited"
 
 
-def _seller_script(
+def _buyer_action_plan(
+    *,
     listing: Listing,
+    area_statistics: AreaStatistics,
     scores: PropertyScores,
-    verdict: BuyerDecisionVerdict,
-) -> list[str]:
-    return [
-        (
-            f"Open at {_money(verdict.opening_offer_pln)} and explain that the offer is based "
-            f"on the fair range, days on market and required due diligence."
+    due_diligence: PropertyDueDiligence,
+    risk_profile: ListingRiskProfile | None,
+    purchase_intent: PurchaseIntent,
+) -> BuyerActionPlan:
+    evidence = _buyer_action_evidence(
+        listing=listing,
+        area_statistics=area_statistics,
+        scores=scores,
+        risk_profile=risk_profile,
+    )
+    items = [
+        *_base_document_actions(listing),
+        *_base_seller_question_actions(listing),
+        *_base_viewing_actions(),
+        *_risk_specific_actions(risk_profile, purchase_intent),
+    ]
+    known_evidence = {item.id for item in evidence}
+    items = [
+        item
+        for item in _deduplicate_action_items(items)
+        if set(item.evidence_refs) <= known_evidence
+    ]
+    priority_rank = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+    phase_rank = {"before_offer": 0, "on_viewing": 1, "after_viewing": 2}
+    items.sort(
+        key=lambda item: (
+            phase_rank[item.phase],
+            priority_rank[item.priority],
+            item.code,
+        )
+    )
+    return BuyerActionPlan(
+        subject_id=listing.id,
+        version=BUYER_ACTION_PLAN_VERSION,
+        items=items,
+        evidence=evidence,
+    )
+
+
+def _buyer_action_evidence(
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+    scores: PropertyScores,
+    risk_profile: ListingRiskProfile | None,
+) -> list[BuyerActionEvidence]:
+    listing_params: dict[str, str | int | float] = {
+        "market_type": listing.market_type,
+        "data_quality_score": listing.data_quality_score,
+    }
+    if listing.building_year is not None:
+        listing_params["building_year"] = listing.building_year
+    if listing.floor is not None:
+        listing_params["floor"] = listing.floor
+    evidence = [
+        BuyerActionEvidence(
+            id="listing-context",
+            code="listing_context",
+            status="observed",
+            params=listing_params,
+            source_name=listing.source_name,
+            source_type=listing.data_provenance.source_type,
+            updated_at=listing.last_seen_at,
+            sample_size=1,
+            geographic_scope=f"{listing.city}: {listing.district}",
+            calculation_type="observed",
+            confidence_score=listing.data_quality_score,
         ),
-        (
-            f"Anchor the discussion around {_money(verdict.realistic_deal_low_pln)}-"
-            f"{_money(verdict.realistic_deal_high_pln)}, not around the listing price alone."
+        BuyerActionEvidence(
+            id="document-gap",
+            code="documents_not_verified",
+            status="unknown",
+            params={"market_type": listing.market_type},
+            source_name=listing.source_name,
+            source_type=listing.data_provenance.source_type,
+            updated_at=listing.last_seen_at,
+            sample_size=None,
+            geographic_scope=f"{listing.city}: {listing.district}",
+            calculation_type="unknown",
+            confidence_score=0,
         ),
-        (
-            f"Ask what changed after {listing.days_on_market} days on market and "
-            f"{listing.price_reductions} price reduction(s)."
-        ),
-        (
-            f"Keep {_money(verdict.max_reasonable_offer_pln)} as the walk-away price unless "
-            "new evidence improves the legal, technical or comparable picture."
-        ),
-        (
-            f"Use confidence {scores.fair_price_confidence_score}/100 to keep the tone factual "
-            "and leave room for updated documents."
+        BuyerActionEvidence(
+            id="condition-gap",
+            code="condition_not_verified",
+            status="unknown",
+            params={},
+            source_name=listing.source_name,
+            source_type=listing.data_provenance.source_type,
+            updated_at=listing.last_seen_at,
+            sample_size=None,
+            geographic_scope=f"{listing.city}: {listing.district}",
+            calculation_type="unknown",
+            confidence_score=0,
         ),
     ]
+    if risk_profile is None:
+        return evidence
+    for factor in risk_profile.factors:
+        if factor.severity not in {"high", "medium", "unknown"}:
+            continue
+        params = _risk_action_evidence_params(
+            factor.code,
+            listing=listing,
+            area_statistics=area_statistics,
+            scores=scores,
+        )
+        params["severity"] = factor.severity
+        if factor.score is not None:
+            params["score"] = factor.score
+        source_name, source_type, calculation_type = _risk_action_source(
+            factor.code,
+            listing=listing,
+            area_statistics=area_statistics,
+        )
+        evidence_is_unknown = factor.severity == "unknown"
+        evidence.append(
+            BuyerActionEvidence(
+                id=f"risk:{factor.code}",
+                code=f"risk_{factor.code}",
+                status=("unknown" if evidence_is_unknown else calculation_type),
+                params=params,
+                source_name=source_name,
+                source_type=source_type,
+                updated_at=listing.last_seen_at,
+                sample_size=(
+                    None
+                    if evidence_is_unknown
+                    else _risk_action_sample_size(factor.code, area_statistics)
+                ),
+                geographic_scope=f"{listing.city}: {listing.district}",
+                time_range=(
+                    f"{area_statistics.transaction_window_days} days"
+                    if factor.code == "price_position"
+                    and area_statistics.transaction_observation_count > 0
+                    else None
+                ),
+                calculation_type=("unknown" if evidence_is_unknown else calculation_type),
+                confidence_score=(
+                    0
+                    if evidence_is_unknown
+                    else _risk_action_confidence(factor.code, listing, scores)
+                ),
+            )
+        )
+    return evidence
+
+
+def _risk_action_evidence_params(
+    code: str,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+    scores: PropertyScores,
+) -> dict[str, str | int | float]:
+    params: dict[str, str | int | float] = {}
+    if code == "price_position":
+        params.update(
+            price_delta_pct=round(scores.price_delta_to_fair_mid_pct, 1),
+            fair_price_confidence_score=scores.fair_price_confidence_score,
+        )
+    elif code == "market_liquidity":
+        if area_statistics.listing_metrics_available:
+            params.update(
+                days_on_market=listing.days_on_market,
+                area_average_days_on_market=area_statistics.average_days_on_market,
+                supply_change_90d_pct=round(area_statistics.supply_change_90d_pct, 1),
+            )
+    elif code == "weak_transport" and listing.nearest_stop_m is not None:
+        params["distance_m"] = listing.nearest_stop_m
+    elif code == "major_road_noise" and listing.nearest_major_road_m is not None:
+        params["distance_m"] = listing.nearest_major_road_m
+    elif code == "industrial_zone" and listing.nearest_industrial_zone_m is not None:
+        params["distance_m"] = listing.nearest_industrial_zone_m
+    elif code == "building_age" and listing.building_year is not None:
+        params["building_year"] = listing.building_year
+    elif code == "weak_rental_yield" and scores.rental_potential_score is not None:
+        params["rental_potential_score"] = scores.rental_potential_score
+    elif code == "data_quality":
+        params["data_quality_score"] = listing.data_quality_score
+    return params
+
+
+def _risk_action_source(
+    code: str,
+    *,
+    listing: Listing,
+    area_statistics: AreaStatistics,
+) -> tuple[str, str, str]:
+    if code in {"price_position", "market_liquidity", "weak_rental_yield"}:
+        return (
+            area_statistics.data_sources[0]
+            if area_statistics.data_sources
+            else "WartoMetr market analysis",
+            area_statistics.data_provenance.source_type,
+            "model_estimate",
+        )
+    if code == "developer_reputation":
+        return "WartoMetr developer analysis", "aggregated_sources", "calculated"
+    if code == "future_area_uncertainty":
+        return "WartoMetr planned-investment analysis", "public_sources", "calculated"
+    return listing.source_name, listing.data_provenance.source_type, "calculated"
+
+
+def _risk_action_sample_size(code: str, area_statistics: AreaStatistics) -> int | None:
+    if code == "price_position" and area_statistics.transaction_observation_count > 0:
+        return area_statistics.transaction_observation_count
+    if code == "market_liquidity" and area_statistics.listing_metrics_available:
+        return area_statistics.active_listings
+    return 1
+
+
+def _risk_action_confidence(
+    code: str,
+    listing: Listing,
+    scores: PropertyScores,
+) -> int:
+    if code == "price_position":
+        return scores.fair_price_confidence_score
+    return listing.data_quality_score
+
+
+def _base_document_actions(listing: Listing) -> list[BuyerActionItem]:
+    if listing.market_type == "primary":
+        definitions = [
+            ("verify_developer_identity", "legal", "critical"),
+            ("review_escrow_schedule", "financial", "critical"),
+            ("verify_permits_and_title", "legal", "critical"),
+            ("review_prospekt_and_contract", "documents", "critical"),
+            ("review_delay_rights", "legal", "high"),
+            ("inspect_finish_standard", "apartment", "high"),
+        ]
+    else:
+        definitions = [
+            ("verify_kw_owner", "legal", "critical"),
+            ("verify_kw_encumbrances", "legal", "critical"),
+            ("request_debt_certificate", "financial", "critical"),
+            ("review_monthly_costs", "financial", "high"),
+            ("review_planned_repairs", "building", "high"),
+            ("verify_area_documents", "documents", "high"),
+            ("inspect_installations", "building", "high"),
+        ]
+    return [
+        BuyerActionItem(
+            code=code,
+            phase="before_offer" if code != "inspect_finish_standard" else "on_viewing",
+            category=category,
+            priority=priority,
+            params={"market_type": listing.market_type},
+            evidence_refs=["document-gap"],
+        )
+        for code, category, priority in definitions
+    ]
+
+
+def _base_seller_question_actions(listing: Listing) -> list[BuyerActionItem]:
+    definitions: list[tuple[str, str, dict[str, str | int | float]]] = [
+        ("ask_sale_context", "listing-context", {}),
+        ("ask_included_items", "listing-context", {}),
+        ("ask_monthly_costs", "document-gap", {}),
+        ("ask_known_defects", "condition-gap", {}),
+    ]
+    if listing.days_on_market >= 90:
+        definitions.append(
+            ("ask_long_exposure", "listing-context", {"days": listing.days_on_market})
+        )
+    if listing.price_reductions > 0:
+        definitions.append(
+            (
+                "ask_price_history",
+                "listing-context",
+                {"price_reductions": listing.price_reductions},
+            )
+        )
+    return [
+        BuyerActionItem(
+            code=code,
+            phase="before_offer",
+            category="seller_question",
+            priority="high" if code in {"ask_known_defects", "ask_price_history"} else "medium",
+            params=params,
+            evidence_refs=[evidence_ref],
+        )
+        for code, evidence_ref, params in definitions
+    ]
+
+
+def _base_viewing_actions() -> list[BuyerActionItem]:
+    return [
+        BuyerActionItem(
+            code="inspect_apartment_condition",
+            phase="on_viewing",
+            category="apartment",
+            priority="critical",
+            evidence_refs=["condition-gap"],
+        ),
+        BuyerActionItem(
+            code="photograph_defects",
+            phase="on_viewing",
+            category="apartment",
+            priority="high",
+            evidence_refs=["condition-gap"],
+        ),
+        BuyerActionItem(
+            code="inspect_common_areas",
+            phase="on_viewing",
+            category="building",
+            priority="high",
+            evidence_refs=["condition-gap"],
+        ),
+        BuyerActionItem(
+            code="record_viewing_findings",
+            phase="after_viewing",
+            category="documents",
+            priority="high",
+            evidence_refs=["condition-gap"],
+        ),
+    ]
+
+
+def _risk_specific_actions(
+    risk_profile: ListingRiskProfile | None,
+    purchase_intent: PurchaseIntent,
+) -> list[BuyerActionItem]:
+    if risk_profile is None:
+        return []
+    definitions = {
+        "price_position": ("compare_price_evidence", "before_offer", "market"),
+        "market_liquidity": ("compare_market_supply", "before_offer", "market"),
+        "weak_transport": ("test_transport_route", "on_viewing", "surroundings"),
+        "major_road_noise": ("inspect_noise", "on_viewing", "surroundings"),
+        "industrial_zone": ("inspect_industrial_context", "on_viewing", "surroundings"),
+        "building_age": ("inspect_building_systems", "on_viewing", "building"),
+        "weak_rental_yield": ("verify_rental_case", "before_offer", "financial"),
+        "data_quality": ("confirm_listing_parameters", "before_offer", "documents"),
+        "developer_reputation": ("verify_developer_record", "before_offer", "legal"),
+        "future_area_uncertainty": (
+            "verify_planning_projects",
+            "before_offer",
+            "surroundings",
+        ),
+    }
+    items: list[BuyerActionItem] = []
+    for factor in risk_profile.factors:
+        if factor.severity not in {"high", "medium", "unknown"}:
+            continue
+        if factor.code == "weak_rental_yield" and purchase_intent not in {
+            "rental",
+            "investment",
+        }:
+            continue
+        definition = definitions.get(factor.code)
+        if definition is None:
+            continue
+        action_code, phase, category = definition
+        items.append(
+            BuyerActionItem(
+                code=action_code,
+                phase=phase,
+                category=category,
+                priority=(
+                    "critical"
+                    if factor.severity == "high"
+                    else "high"
+                    if factor.severity == "unknown"
+                    else "medium"
+                ),
+                params={"risk_code": factor.code, "severity": factor.severity},
+                evidence_refs=[f"risk:{factor.code}"],
+            )
+        )
+    return items
+
+
+def _deduplicate_action_items(items: list[BuyerActionItem]) -> list[BuyerActionItem]:
+    result: list[BuyerActionItem] = []
+    seen: set[str] = set()
+    for item in items:
+        if item.code in seen:
+            continue
+        seen.add(item.code)
+        result.append(item)
+    return result
 
 
 def _due_diligence(
@@ -1651,14 +2208,20 @@ def _watch_triggers(
     future_area_impact: ListingFutureImpact | None,
     developer_reputation: DeveloperReputation | None,
 ) -> list[str]:
-    triggers = [
-        f"price drops below max reasonable offer {_money(verdict.max_reasonable_offer_pln)}",
-        "new comparable appears below the recommended deal range",
-        "listing crosses 120/150 days on market",
-    ]
-    cheaper = [item for item in comparables if item.price < verdict.max_reasonable_offer_pln]
-    if cheaper:
-        triggers.append(f"{len(cheaper)} comparable(s) already sit below the ceiling.")
+    triggers = ["listing crosses 120/150 days on market"]
+    if verdict.max_reasonable_offer_pln is not None:
+        triggers.extend(
+            [
+                (
+                    "price drops below max reasonable offer "
+                    f"{_money(verdict.max_reasonable_offer_pln)}"
+                ),
+                "new comparable appears below the recommended deal range",
+            ]
+        )
+        cheaper = [item for item in comparables if item.price < verdict.max_reasonable_offer_pln]
+        if cheaper:
+            triggers.append(f"{len(cheaper)} comparable(s) already sit below the ceiling.")
     if scores.price_delta_to_fair_mid_pct > 5:
         triggers.append("asking price moves into fair range")
     if future_area_impact is not None and future_area_impact.nearest_investments:

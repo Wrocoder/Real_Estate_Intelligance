@@ -10,6 +10,7 @@ from domarion.schemas import (
     PropertyScores,
 )
 from domarion.services.provenance import provenance_evidence_details
+from domarion.services.report_templates import ACTION_REPORT_LABELS
 
 
 def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -> str:
@@ -584,6 +585,55 @@ def _render_buyer_verdict(buyer_decision, scores) -> str:
         "Fair price",
         f"{_money(verdict.fair_price_low_pln)}-{_money(verdict.fair_price_high_pln)}",
     )
+    negotiation = buyer_decision.negotiation
+    if negotiation.scenario_status == "available":
+        primary_negotiation_metrics = "".join(
+            [
+                _metric("Сценарный target", _money(verdict.recommended_offer_pln)),
+                _metric("Сценарный потолок", _money(verdict.max_reasonable_offer_pln)),
+            ]
+        )
+        secondary_negotiation_metric = _metric(
+            "Стартовый сценарий", _money(verdict.opening_offer_pln)
+        )
+        evidence_by_id = {item.id: item for item in negotiation.argument_evidence}
+        negotiation_arguments = "".join(
+            (
+                f"<li>{escape(_negotiation_argument_text(item.code, item.params))}"
+                "<small>Evidence: "
+                f"{escape(', '.join(
+                    evidence_by_id[ref].source_name for ref in item.evidence_refs
+                ))}"
+                "</small>"
+                "</li>"
+            )
+            for item in negotiation.arguments[:4]
+        )
+    else:
+        primary_negotiation_metrics = ""
+        secondary_negotiation_metric = ""
+        negotiation_arguments = (
+            "<li>Price scenario unavailable: market evidence is insufficient. "
+            "Collect comparable or transaction evidence before making an offer.</li>"
+        )
+    if buyer_decision.action_plan is None:
+        action_items = ["Structured action plan unavailable; refresh the analysis."]
+    else:
+        action_evidence = {
+            item.id: item for item in buyer_decision.action_plan.evidence
+        }
+        action_items = [
+            (
+                f"{ACTION_REPORT_LABELS.get(item.code, item.code)}. Evidence: "
+                f"{', '.join(
+                    action_evidence[reference].source_name
+                    for reference in item.evidence_refs
+                    if reference in action_evidence
+                )}."
+            )
+            for item in buyer_decision.action_plan.items
+            if item.phase == "before_offer"
+        ][:6]
     return f"""
     <section class="verdict">
       <h2>WartoMetr VERDICT</h2>
@@ -602,8 +652,7 @@ def _render_buyer_verdict(buyer_decision, scores) -> str:
         {_metric("Цена продавца", _money(verdict.seller_price_pln))}
         {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
         {fair_price_metric}
-        {_metric("Рекомендуемый offer", _money(verdict.recommended_offer_pln))}
-        {_metric("Верхняя граница", _money(verdict.max_reasonable_offer_pln))}
+        {primary_negotiation_metrics}
       </div>
       <div class="report-next-step">
         <h3>Next step</h3>
@@ -611,7 +660,7 @@ def _render_buyer_verdict(buyer_decision, scores) -> str:
       </div>
       <div class="money-grid decision-secondary-grid">
         {for_you_metric}
-        {_metric("Стартовый offer", _money(verdict.opening_offer_pln))}
+        {secondary_negotiation_metric}
         {_metric("Реальная стоимость въезда", _money(total.total_move_in_cost_pln))}
         {_metric("Ремонт", _money(total.renovation_estimate_pln))}
         {_metric("Полнота проверки", f"{knowledge.check_completeness_score}/100")}
@@ -624,16 +673,43 @@ def _render_buyer_verdict(buyer_decision, scores) -> str:
       <div class="split-grid">
         <div>
           <h3>Аргументы продавцу</h3>
-          <ul>{_list_items(buyer_decision.negotiation.arguments[:4])}</ul>
+          <ul>{negotiation_arguments}</ul>
         </div>
         <div>
           <h3>Что запросить</h3>
-          <ul>{_list_items(buyer_decision.due_diligence.documents_to_request[:5])}</ul>
+          <ul>{_list_items(action_items)}</ul>
         </div>
         <div><h3>Почему мы так считаем</h3><ul>{sources}</ul></div>
       </div>
     </section>
     """
+
+
+def _negotiation_argument_text(code: str, params: dict) -> str:
+    if code == "fair_value_range":
+        return (
+            f"Estimated fair range: {_money(params['low_pln'])}-"
+            f"{_money(params['high_pln'])}; confidence {params['confidence_score']}/100."
+        )
+    if code == "asking_above_fair_mid":
+        return (
+            f"Asking price is {params['delta_pct']}% ({_money(params['delta_pln'])}) "
+            "above the estimated midpoint."
+        )
+    if code == "comparable_sample":
+        return f"The estimate uses {params['sample_size']} comparable listings."
+    if code == "long_market_exposure":
+        return (
+            f"Exposure is {params['days_on_market']} days versus "
+            f"{params['area_average_days']} days in the area."
+        )
+    if code == "price_reductions":
+        return f"The asking price was reduced {params['count']} time(s)."
+    if code == "relisted":
+        return "The listing was relisted; verify earlier price and exposure."
+    if code == "area_supply_growth":
+        return f"Area supply changed {params['change_pct']}% over 90 days."
+    return "A structured market signal supports the negotiation scenario."
 
 
 def _buyer_verdict_status_label(status: str) -> str:

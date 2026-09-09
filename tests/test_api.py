@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 
-from domarion.main import app
+from domarion.main import app, create_app
 
 client = TestClient(app)
 
@@ -32,13 +32,59 @@ def test_errors_have_stable_code_params_and_correlation_id() -> None:
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "radius_km requires lat and lon"
-    assert response.json()["error"] == {
+    expected_error = {
         "code": "bad_request",
         "params": {},
         "correlation_id": "ux-error-test",
     }
+    assert response.json()["detail"] == "radius_km requires lat and lon"
+    assert response.json()["error"] == expected_error
     assert response.headers["X-Request-ID"] == "ux-error-test"
+
+
+def test_validation_errors_do_not_expose_input_or_backend_messages() -> None:
+    response = client.get(
+        "/api/v1/listings",
+        params={"page": 0},
+        headers={"X-Request-ID": "validation-error-test"},
+    )
+
+    assert response.status_code == 422
+    payload = response.json()
+    assert payload["detail"] == {
+        "code": "validation_error",
+        "fields": [{"field": "query.page", "type": "greater_than_equal"}],
+    }
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["correlation_id"] == "validation-error-test"
+    assert payload["error"]["params"]["fields"] == [
+        {"field": "query.page", "type": "greater_than_equal"}
+    ]
+    assert "input" not in response.text
+    assert "greater than or equal" not in response.text
+
+
+def test_internal_errors_return_only_safe_code_and_correlation_id() -> None:
+    isolated_app = create_app(app.state.settings)
+
+    @isolated_app.get("/__test/internal-error")
+    def raise_internal_error() -> None:
+        raise RuntimeError("postgresql://user:secret@database/internal_table")
+
+    isolated_client = TestClient(isolated_app, raise_server_exceptions=False)
+    response = isolated_client.get(
+        "/__test/internal-error",
+        headers={"X-Request-ID": "internal-error-test"},
+    )
+
+    expected_error = {
+        "code": "internal_error",
+        "params": {},
+        "correlation_id": "internal-error-test",
+    }
+    assert response.status_code == 500
+    assert response.json() == {"detail": expected_error, "error": expected_error}
+    assert "secret" not in response.text
 
 
 def test_listings() -> None:
@@ -462,7 +508,8 @@ def test_listings_radius_requires_center() -> None:
     response = client.get("/api/v1/listings", params={"radius_km": 5})
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "radius_km requires lat and lon"
+    assert response.json()["error"]["code"] == "bad_request"
+    assert response.json()["error"]["code"] == "bad_request"
 
 
 def test_areas() -> None:
@@ -687,9 +734,11 @@ def test_listing_post_viewing_verdict_recalculation() -> None:
     assert payload["offer_adjustment_pln"] > 0
     assert payload["updated_decision"]["verdict"]["status"] in {"verify_first", "avoid"}
     assert (
-        payload["updated_decision"]["verdict"]["max_reasonable_offer_pln"]
-        < payload["original_decision"]["verdict"]["max_reasonable_offer_pln"]
+        payload["updated_decision"]["verdict"]["fair_price_mid_pln"]
+        < payload["original_decision"]["verdict"]["fair_price_mid_pln"]
     )
+    assert payload["updated_decision"]["negotiation"]["scenario_status"] == "insufficient_data"
+    assert payload["updated_decision"]["verdict"]["max_reasonable_offer_pln"] is None
     assert payload["applied_findings"]
     assert "screening adjustment" in payload["disclaimer"]
 
@@ -709,15 +758,15 @@ def test_listing_growth_analysis_returns_structured_factors() -> None:
     }
     factor_codes = {factor["code"] for factor in payload["factors"]}
     assert {
-        "transport",
-        "education",
-        "parks_greenery",
-        "healthcare",
-        "retail_services",
-        "offices_jobs",
-        "universities",
-        "population_jobs_growth",
-    } == factor_codes
+               "transport",
+               "education",
+               "parks_greenery",
+               "healthcare",
+               "retail_services",
+               "offices_jobs",
+               "universities",
+               "population_jobs_growth",
+           } == factor_codes
     assert payload["positive_signals"]
     assert payload["drag_signals"]
     assert "screening heuristic" in payload["methodology_note"]
@@ -771,14 +820,14 @@ def test_ai_assistant_contract_and_questions_are_public() -> None:
     assert questions_response.status_code == 200
     question_codes = {item["code"] for item in questions_response.json()}
     assert {
-        "price",
-        "negotiation",
-        "risks",
-        "future_plans",
-        "family_fit",
-        "rental_fit",
-        "seller_questions",
-    } <= question_codes
+               "price",
+               "negotiation",
+               "risks",
+               "future_plans",
+               "family_fit",
+               "rental_fit",
+               "seller_questions",
+           } <= question_codes
 
 
 def test_listing_ai_answer_is_source_grounded_and_logged() -> None:
@@ -809,6 +858,28 @@ def test_listing_ai_answer_is_source_grounded_and_logged() -> None:
     assert "Fair" in payload["answer"] or "fair" in payload["answer"]
     assert insights[0]["id"] == payload["usage_log_id"]
     assert insights[0]["insight_type"] == "assistant_answer"
+
+
+def test_listing_ai_negotiation_answer_omits_prices_without_market_evidence() -> None:
+    response = client.post(
+        "/api/v1/ai/listings/wr-001/answer",
+        headers={"X-Domarion-User-Id": "ai-answer-negotiation-owner"},
+        json={
+            "question_code": "negotiation",
+            "question": "What should I offer?",
+            "audience": "buyer",
+        },
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert "insufficient" in payload["answer"].lower()
+    assert "opening" not in payload["answer"].lower()
+    assert "ceiling" not in payload["answer"].lower()
+    assert all(
+        citation["source_id"] != "analysis:negotiation_arguments"
+        for citation in payload["citations"]
+    )
 
 
 def test_listing_ai_answer_refuses_guarantees() -> None:
@@ -887,7 +958,8 @@ def test_compare_requires_existing_ids() -> None:
     response = client.post("/api/v1/compare", json={"listing_ids": ["wr-001", "missing"]})
 
     assert response.status_code == 404
-    assert response.json()["detail"]["missing_listing_ids"] == ["missing"]
+    assert response.json()["error"]["code"] == "listing_not_found"
+    assert response.json()["error"]["params"]["missing_listing_ids"] == ["missing"]
 
 
 def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
@@ -929,7 +1001,11 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
         )
         assert "ready_to_move_alternative_price_pln" in metric
         assert "post_renovation_value_gap_pln" in metric
-        assert metric["opening_offer_pln"] <= metric["max_reasonable_offer_pln"]
+        if metric["opening_offer_pln"] is None:
+            assert metric["max_reasonable_offer_pln"] is None
+        else:
+            assert metric["max_reasonable_offer_pln"] is not None
+            assert metric["opening_offer_pln"] <= metric["max_reasonable_offer_pln"]
         if metric["estimated_gross_rental_yield_pct"] is not None:
             assert metric["estimated_gross_rental_yield_pct"] > 0
         if metric["estimated_monthly_rent_pln"] is not None:
@@ -1003,7 +1079,7 @@ def test_object_report() -> None:
         section for section in payload["sections"] if section["title"] == "Краткое решение"
     )
     decision_items = "\n".join(decision_section["items"])
-    assert "Верхняя цена" in decision_items
+    assert "Ценовой сценарий переговоров недоступен" in decision_items
     assert "Перед zadatek/umowa rezerwacyjna" in decision_items
     assert "Score snapshot" in decision_items
     fit_section = next(

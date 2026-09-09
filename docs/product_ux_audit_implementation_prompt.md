@@ -255,7 +255,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-08): DONE.** Backend теперь отдаёт отдельный structured explainability block для Investment, Risk, Negotiation, Liquidity и Rental scores: стабильные reason codes, направление драйвера, status, coverage, confidence, missing-data codes и версию формулы. `/check` и listing result локализуют эти коды в PL/EN/RU/UK, показывают основные положительные, отрицательные и неизвестные факторы через progressive disclosure и не выводят внутренние коды или backend-generated score prose. Недоступные Liquidity/Rental scores остаются `insufficient_data`, а не превращаются в ноль. Release gate: Ruff, Alembic single head и полный offline SQL upgrade, `420 passed, 1 skipped`, ESLint, TypeScript, `567` smoke assertions, npm audit (`0` vulnerabilities), production Next.js build и repository Playwright для score explainability в PL/EN/RU/UK на mobile и PL desktop; также повторно пройдены desktop/tablet/mobile, error, critical, provenance и rental states без console/network/hydration/overflow ошибок. Встроенный browser tool недоступен из-за отсутствующего sandboxPolicy, поэтому actual browser QA выполнен через project Playwright fallback.
 
-### [ ] P1-06. Завершить локализацию и безопасные ошибки
+### [x] P1-06. Завершить локализацию и безопасные ошибки
 
 **Область:** все consumer routes; API error schema; mutation feedback.
 
@@ -265,7 +265,7 @@ repository Playwright fallback.
 
 **Сложность:** XL. **Зависимости:** error taxonomy, translation ownership, API contracts.
 
-**Текущий статус (2026-09-07): PARTIAL.** Основная оболочка локализована, но reasons, risks, negotiation, due-diligence и report product copy могут смешивать PL/EN/RU. Нужен contract `stable code + params` и browser QA всех локалей и error/retry states.
+**Текущий статус (2026-09-09): DONE.** Consumer routes больше не выводят backend prose для decision reasons, risks, negotiation, due-diligence, knowledge gaps, source evidence и inline report content: эти сообщения строятся из существующих structured facts в типизированном PL/EN/RU/UK catalog. `/market`, карта и общие state blocks локализованы; TypeScript и smoke-проверки обнаруживают пропущенные locale keys и повторное использование raw backend fields. API возвращает `error.code`, безопасные `params` и `correlation_id`; validation и `500` не раскрывают input, exception text или internal details, а frontend не использует raw response body как пользовательское сообщение. Release gate: Ruff; полный backend suite `422 passed, 1 skipped`; ESLint; TypeScript; `615` smoke assertions; npm audit (`0 vulnerabilities`); production Next.js build; repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile, ненулевого MapLibre canvas, console/network/hydration/overflow, loading/partial/error/retry и failed report/save mutation rollback. Во время gate найдены и исправлены production-only TDZ в locale catalog, ложный `saved` status по одному `draft_id`, zero-height MapLibre canvas из-за CSS precedence и security advisories обновлением MapLibre и существующих dependency overrides до исправленных версий. Standalone generated HTML/PDF является versioned report artifact, не consumer route copy; его legacy language contract явно остается в P1-12 и не используется inline `/check` или `/reports` UI.
 
 ### [x] P1-07. Объединить saved apartments в одну ментальную модель
 
@@ -313,7 +313,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-07): PARTIAL.** Основные расчеты реализованы, но legal/product review и freshness налогов/сборов не подтверждены для production release.
 
-### [ ] P1-11. Сделать negotiation output сценарным и доказуемым
+### [x] P1-11. Сделать negotiation output сценарным и доказуемым
 
 **Область:** negotiation section; report; comparable evidence.
 
@@ -323,7 +323,7 @@ repository Playwright fallback.
 
 **Сложность:** M. **Зависимости:** P0-04, P1-05.
 
-**Текущий статус (2026-09-07): PARTIAL.** Сценарные значения и аргументы существуют, но часть аргументов зависит от неполных listing metrics/backend prose; требуется evidence link для каждого аргумента и полное отсутствие совета при unknown inputs.
+**Текущий статус (2026-09-09): DONE.** Negotiation contract теперь явно разделяет `available` и `insufficient_data`, содержит версию сценария, confidence, structured arguments/actions и обязательные evidence references. При слабой fair-price confidence, низком качестве объявления или недостаточной market sample API не возвращает opening/target/range/walk-away prices и переводит решение в verify-first. Consumer UI, reports и AI используют только этот контракт, локализуют его в PL/EN/RU/UK, показывают provenance каждого аргумента и позволяют скопировать краткий evidence-backed brief. Release gate: Ruff; `427 passed, 1 skipped`; ESLint; TypeScript; `631` frontend smoke assertions; npm audit без уязвимостей; production Next.js build; полный repository Playwright на desktop/tablet/mobile для PL/EN/RU/UK, включая available/insufficient negotiation, critical flow, error/retry, console/network/hydration и overflow checks. Fair-price formula не изменялась.
 
 ### [ ] P1-12. Прояснить pricing, reports и entitlement
 
@@ -357,7 +357,7 @@ repository Playwright fallback.
 
 **Сложность:** M. **Зависимости:** importer provenance, media pipeline.
 
-### [ ] P1-15. Сделать action layer адаптивным к фактам и рискам
+### [x] P1-15. Сделать action layer адаптивным к фактам и рискам
 
 **Область:** listing result; report; viewing checklist; seller questions; document/legal checklist; negotiation preparation.
 
@@ -365,7 +365,7 @@ repository Playwright fallback.
 
 **Критерии приемки:** действия имеют structured codes и evidence references; unknown не превращается в факт; risk-specific actions добавляются детерминированно; пользователь может отметить/экспортировать checklist; PL/EN/RU/UK локализуются во frontend.
 
-**Текущий статус (2026-09-07): PARTIAL.** Базовые due-diligence и negotiation actions существуют, но не все связаны с evidence и не все локализуются через structured contract.
+**Текущий статус (2026-09-09): DONE.** Backend формирует versioned `BuyerActionPlan` со stable action codes, фазами до предложения/на просмотре/после просмотра, приоритетами и обязательными evidence references. План детерминированно различает primary/secondary market, добавляет intent-aware risk-specific steps и не превращает unknown в факт, calculated evidence или фиктивную выборку. `/check` и listing result показывают PL/EN/RU/UK checklist, сохраняют отметки локально, раскрывают provenance и копируют evidence-backed brief; reports и buyer AI используют тот же structured plan. Release gate: targeted suite `129 passed`; полный backend suite `434 passed, 1 skipped`; Ruff; ESLint; TypeScript; `651` smoke assertions; npm audit без уязвимостей; production build; OpenAPI regeneration; repository Playwright на desktop/tablet/mobile во всех локалях, включая action plan на 1440px/390px и recovery/error/console/network/hydration/overflow проверки. Встроенный browser недоступен из-за отсутствующего `sandboxPolicy`, поэтому rendered QA выполнен repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** P0-03, P1-05, P1-06, P1-11.
 

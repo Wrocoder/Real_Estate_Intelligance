@@ -4436,10 +4436,84 @@ export interface components {
              */
             dry_run: boolean;
         };
+        /** BuyerActionEvidence */
+        BuyerActionEvidence: {
+            /** Id */
+            id: string;
+            /** Code */
+            code: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "observed" | "calculated" | "model_estimate" | "unknown";
+            /** Params */
+            params?: {
+                [key: string]: string | number;
+            };
+            /** Source Name */
+            source_name: string;
+            /** Source Type */
+            source_type: string;
+            /** Updated At */
+            updated_at?: string | null;
+            /** Sample Size */
+            sample_size?: number | null;
+            /** Geographic Scope */
+            geographic_scope?: string | null;
+            /** Time Range */
+            time_range?: string | null;
+            /**
+             * Calculation Type
+             * @default unknown
+             * @enum {string}
+             */
+            calculation_type: "observed" | "calculated" | "model_estimate" | "unknown";
+            /** Confidence Score */
+            confidence_score: number;
+        };
+        /** BuyerActionItem */
+        BuyerActionItem: {
+            /** Code */
+            code: string;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "before_offer" | "on_viewing" | "after_viewing";
+            /**
+             * Category
+             * @enum {string}
+             */
+            category: "legal" | "documents" | "financial" | "seller_question" | "market" | "apartment" | "building" | "surroundings";
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "critical" | "high" | "medium" | "low";
+            /** Params */
+            params?: {
+                [key: string]: string | number;
+            };
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
+        /** BuyerActionPlan */
+        BuyerActionPlan: {
+            /** Subject Id */
+            subject_id: string;
+            /** Version */
+            version: string;
+            /** Items */
+            items?: components["schemas"]["BuyerActionItem"][];
+            /** Evidence */
+            evidence?: components["schemas"]["BuyerActionEvidence"][];
+        };
         /** BuyerDecisionPackage */
         BuyerDecisionPackage: {
             verdict: components["schemas"]["BuyerDecisionVerdict"];
             negotiation: components["schemas"]["BuyerNegotiationAssistant"];
+            action_plan?: components["schemas"]["BuyerActionPlan"] | null;
             due_diligence: components["schemas"]["PropertyDueDiligence"];
             knowledge: components["schemas"]["BuyerKnowledgeMatrix"];
             total_acquisition: components["schemas"]["TotalAcquisitionCost"];
@@ -4487,15 +4561,15 @@ export interface components {
             /** Fair Price High Pln */
             fair_price_high_pln: number;
             /** Opening Offer Pln */
-            opening_offer_pln: number;
+            opening_offer_pln: number | null;
             /** Recommended Offer Pln */
-            recommended_offer_pln: number;
+            recommended_offer_pln: number | null;
             /** Realistic Deal Low Pln */
-            realistic_deal_low_pln: number;
+            realistic_deal_low_pln: number | null;
             /** Realistic Deal High Pln */
-            realistic_deal_high_pln: number;
+            realistic_deal_high_pln: number | null;
             /** Max Reasonable Offer Pln */
-            max_reasonable_offer_pln: number;
+            max_reasonable_offer_pln: number | null;
             /** Price Delta To Fair Mid Pct */
             price_delta_to_fair_mid_pct: number;
             /** Overpricing Pln */
@@ -4541,35 +4615,73 @@ export interface components {
             /** Source Evidence */
             source_evidence?: components["schemas"]["BuyerSourceEvidence"][];
         };
+        /** BuyerNegotiationAction */
+        BuyerNegotiationAction: {
+            /** Code */
+            code: string;
+            /** Params */
+            params?: {
+                [key: string]: string | number;
+            };
+            /** Evidence Refs */
+            evidence_refs?: string[];
+        };
+        /** BuyerNegotiationArgument */
+        BuyerNegotiationArgument: {
+            /** Code */
+            code: string;
+            /** Params */
+            params?: {
+                [key: string]: string | number;
+            };
+            /**
+             * Strength
+             * @enum {string}
+             */
+            strength: "primary" | "supporting" | "context";
+            /** Evidence Refs */
+            evidence_refs: string[];
+        };
         /** BuyerNegotiationAssistant */
         BuyerNegotiationAssistant: {
+            /**
+             * Scenario Status
+             * @enum {string}
+             */
+            scenario_status: "available" | "insufficient_data";
+            /** Scenario Version */
+            scenario_version: string;
+            /** Scenario Confidence Score */
+            scenario_confidence_score: number;
             /** Asking Price Pln */
             asking_price_pln: number;
             /** Opening Offer Pln */
-            opening_offer_pln: number;
+            opening_offer_pln: number | null;
             /** Realistic Deal Low Pln */
-            realistic_deal_low_pln: number;
+            realistic_deal_low_pln: number | null;
             /** Realistic Deal High Pln */
-            realistic_deal_high_pln: number;
+            realistic_deal_high_pln: number | null;
             /** Max Reasonable Offer Pln */
-            max_reasonable_offer_pln: number;
+            max_reasonable_offer_pln: number | null;
             /** Negotiation Score */
             negotiation_score: number;
             /** Posture */
             posture: string;
+            /** Limitation Codes */
+            limitation_codes?: string[];
             /** Arguments */
-            arguments?: string[];
+            arguments?: components["schemas"]["BuyerNegotiationArgument"][];
             /** Argument Evidence */
             argument_evidence?: components["schemas"]["BuyerNegotiationEvidence"][];
-            /** Seller Script */
-            seller_script?: string[];
-            /** Guardrails */
-            guardrails?: string[];
+            /** Next Actions */
+            next_actions?: components["schemas"]["BuyerNegotiationAction"][];
+            /** Guardrail Codes */
+            guardrail_codes?: string[];
         };
         /** BuyerNegotiationEvidence */
         BuyerNegotiationEvidence: {
-            /** Argument */
-            argument: string;
+            /** Id */
+            id: string;
             /** Topic */
             topic: string;
             /** Source Name */
@@ -4776,9 +4888,9 @@ export interface components {
             /** Post Renovation Value Gap Pln */
             post_renovation_value_gap_pln?: number | null;
             /** Max Reasonable Offer Pln */
-            max_reasonable_offer_pln: number;
+            max_reasonable_offer_pln: number | null;
             /** Opening Offer Pln */
-            opening_offer_pln: number;
+            opening_offer_pln: number | null;
             /** Estimated Gross Rental Yield Pct */
             estimated_gross_rental_yield_pct?: number | null;
             /** Estimated Monthly Rent Pln */

@@ -156,6 +156,13 @@ def test_object_report_uses_audience_templates() -> None:
     assert "Есть ли варианты лучше" in buyer_section_titles
     assert "Negotiation Assistant" in buyer_section_titles
     assert "Property Due Diligence" in buyer_section_titles
+    due_diligence_section = next(
+        section
+        for section in buyer_report.sections
+        if section.title == "Property Due Diligence"
+    )
+    assert any("Evidence:" in item for item in due_diligence_section.items)
+    assert any("Verify the owner" in item for item in due_diligence_section.items)
     assert "Что мы знаем, оцениваем и не знаем" in buyer_section_titles
     knowledge_section = next(
         section

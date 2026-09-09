@@ -135,7 +135,12 @@ def test_report_order_rejects_incomplete_invoice_metadata() -> None:
     )
 
     assert response.status_code == 422
-    assert "Invoice billing details require" in response.text
+    payload = response.json()
+    assert payload["error"]["code"] == "validation_error"
+    assert payload["error"]["params"]["fields"] == [
+        {"field": "billing_details", "type": "value_error"}
+    ]
+    assert "Invoice billing details require" not in response.text
 
 
 def test_stripe_report_order_uses_hosted_checkout_api(monkeypatch) -> None:

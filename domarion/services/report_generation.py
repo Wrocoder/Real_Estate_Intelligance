@@ -570,27 +570,55 @@ def _full_analysis_due_diligence_section(analysis: ListingAnalysis) -> ReportSec
 
 
 def _full_analysis_offer_strategy_section(analysis: ListingAnalysis) -> ReportSection:
-    listing = analysis.listing
-    scores = analysis.scores
-    opening_offer = _opening_offer(listing.price, scores.price_delta_to_fair_mid_pct)
-    walkaway = min(scores.fair_price_high, round(listing.price * 1.01))
-    items = [
-        f"Suggested opening anchor: {_money(opening_offer)}.",
-        f"Walk-away guardrail before extra due diligence: {_money(walkaway)}.",
-        f"Use fair price confidence {scores.fair_price_confidence_score}/100 to size discount.",
-        f"Negotiation Score: {scores.negotiation_score}/100.",
-        *analysis.negotiation_arguments[:4],
-    ]
-    if listing.days_on_market > analysis.area_statistics.average_days_on_market:
-        items.append(
-            "Days on market is above area average; use exposure as a negotiation argument."
+    decision = analysis.buyer_decision
+    if decision is None or decision.negotiation.scenario_status != "available":
+        return ReportSection(
+            title="Offer and negotiation plan",
+            items=[
+                (
+                    "No price scenario is available because the current market evidence "
+                    "is insufficient."
+                ),
+                (
+                    "Collect recent comparable listings or transaction observations before "
+                    "naming an offer."
+                ),
+                "Verify listing history, documents and technical condition in the meantime.",
+            ],
         )
-    if listing.price_reductions:
-        items.append(f"Price was already reduced {listing.price_reductions} time(s).")
+    negotiation = decision.negotiation
+    evidence_by_id = {item.id: item for item in negotiation.argument_evidence}
+    items = [
+        f"Scenario opening anchor: {_money(negotiation.opening_offer_pln)}.",
+        (
+            f"Scenario target range: {_money(negotiation.realistic_deal_low_pln)}-"
+            f"{_money(negotiation.realistic_deal_high_pln)}."
+        ),
+        f"Scenario ceiling before new evidence: {_money(negotiation.max_reasonable_offer_pln)}.",
+        f"Scenario confidence: {negotiation.scenario_confidence_score}/100.",
+        *[
+            (
+                f"Evidence-backed argument: {_negotiation_argument_label(item.code)} "
+                f"({', '.join(evidence_by_id[ref].source_name for ref in item.evidence_refs)})."
+            )
+            for item in negotiation.arguments[:4]
+        ],
+    ]
     return ReportSection(title="Offer and negotiation plan", items=items)
 
 
 def _full_analysis_scenarios_section(analysis: ListingAnalysis) -> ReportSection:
+    decision = analysis.buyer_decision
+    if decision is None or decision.negotiation.scenario_status != "available":
+        return ReportSection(
+            title="Scenario matrix",
+            items=[
+                (
+                    "Price scenarios are unavailable until the fair-price evidence reaches "
+                    "the minimum threshold."
+                )
+            ],
+        )
     listing = analysis.listing
     scores = analysis.scores
     area = analysis.area_statistics
@@ -636,15 +664,21 @@ def _distance_text(value: int | None) -> str:
     return "unavailable" if value is None else f"{value} m"
 
 
-def _opening_offer(price: int, price_delta_pct: float) -> int:
-    if price_delta_pct > 7:
-        return round(price * 0.93)
-    if price_delta_pct > 0:
-        return round(price * 0.96)
-    return round(price * 0.98)
+def _negotiation_argument_label(code: str) -> str:
+    return {
+        "fair_value_range": "the estimated fair-value range",
+        "asking_above_fair_mid": "the premium over the estimated midpoint",
+        "comparable_sample": "the comparable-listing sample",
+        "long_market_exposure": "exposure above the area average",
+        "price_reductions": "recorded asking-price reductions",
+        "relisted": "the recorded relisting",
+        "area_supply_growth": "growth in local supply",
+    }.get(code, "a structured market signal")
 
 
-def _money(value: int) -> str:
+def _money(value: int | None) -> str:
+    if value is None:
+        return "unavailable"
     return f"{_format_int(value)} PLN"
 
 
