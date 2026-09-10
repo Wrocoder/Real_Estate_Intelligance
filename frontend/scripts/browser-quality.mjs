@@ -770,6 +770,116 @@ async function runPartialCompareDecision(browser) {
   }
 }
 
+const editorialGuideSlugs = [
+  "wroclaw-price-per-m2",
+  "best-districts-wroclaw",
+  "where-to-buy-near-wroclaw",
+  "district-comparison-wroclaw",
+  "flats-with-growth-potential",
+  "dolnoslaskie-market-analysis",
+  "mortgage-calculator-poland",
+  "purchase-checklist-poland",
+  "ksiega-wieczysta-checklist",
+  "total-purchase-cost-poland",
+];
+
+const guideBrowserCopy = {
+  pl: { index: "Przewodniki po zakupie mieszkania", author: "Autor", review: "Zakres weryfikacji", sources: "Źródła wykorzystane w materiale", areas: "Aktualne dane powiązanych osiedli", check: "Sprawdź konkretne mieszkanie", source: "Źródło" },
+  en: { index: "Apartment buying guides", author: "Author", review: "Review scope", sources: "Sources used in this article", areas: "Current data for related neighborhoods", check: "Check a specific apartment", source: "Source" },
+  ru: { index: "Гайды по покупке квартиры", author: "Автор", review: "Объём проверки", sources: "Источники материала", areas: "Актуальные данные связанных районов", check: "Проверить конкретную квартиру", source: "Источник" },
+  uk: { index: "Гайди з купівлі квартири", author: "Автор", review: "Обсяг перевірки", sources: "Джерела матеріалу", areas: "Актуальні дані пов'язаних районів", check: "Перевірити конкретну квартиру", source: "Джерело" },
+};
+
+async function runGuidesIndex(browser, locale, viewport) {
+  const context = await browser.newContext({ viewport, locale: locale === "pl" ? "pl-PL" : locale });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `guide-index/${locale}/${viewport.width}`;
+  const observation = await observe(page, label);
+  try {
+    await page.goto(`${baseUrl}/guides`, { waitUntil: "domcontentloaded" });
+    await page.getByRole("heading", { level: 1, name: guideBrowserCopy[locale].index }).waitFor();
+    if ((await page.locator(".seo-guide-card").count()) !== editorialGuideSlugs.length) {
+      throw new Error(`${label}: not all editorial guides are listed`);
+    }
+    if ((await page.locator('.seo-guide-card[lang="pl"]').count()) !== editorialGuideSlugs.length) {
+      throw new Error(`${label}: Polish editorial content language is not explicit`);
+    }
+    const checkHref = await page.locator('a[href="/check?source=guides"]').getAttribute("href");
+    if (!checkHref) throw new Error(`${label}: primary apartment-check action is missing`);
+    if (locale === "pl") {
+      await page.screenshot({
+        path: path.join(artifactDir, `guide-index-pl-${viewport.width}.png`),
+        fullPage: true,
+      });
+    }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
+async function runGuideArticle(browser, locale, viewport, slug, mode = "records") {
+  const context = await browser.newContext({ viewport, locale: locale === "pl" ? "pl-PL" : locale });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `guide-article/${locale}/${viewport.width}/${slug}/${mode}`;
+  const observation = await observe(page, label);
+  if (mode === "unavailable") {
+    await page.route("**/api/v1/areas/*/statistics", async (route) => {
+      await route.fulfill({ status: 204 });
+    });
+  } else if (mode === "partial") {
+    await page.route("**/api/v1/areas/wroclaw-krzyki/statistics", async (route) => {
+      await route.fulfill({ status: 204 });
+    });
+  }
+  try {
+    await page.goto(`${baseUrl}/guides/${slug}`, { waitUntil: "domcontentloaded" });
+    const meta = page.locator(".guide-editorial-meta");
+    await meta.waitFor({ state: "visible", timeout: 15000 });
+    const pageText = await page.locator("main").innerText();
+    for (const expected of Object.values(guideBrowserCopy[locale])) {
+      if (expected === guideBrowserCopy[locale].index || expected === guideBrowserCopy[locale].source) continue;
+      if (!pageText.includes(expected)) throw new Error(`${label}: missing localized text ${expected}`);
+    }
+    if ((await meta.locator('.guide-editorial-sources a[target="_blank"]').count()) < 1) {
+      throw new Error(`${label}: article-specific official sources are missing`);
+    }
+    if ((await page.locator('.guide-content[lang="pl"]').count()) !== 1) {
+      throw new Error(`${label}: editorial content language is not declared`);
+    }
+    const checkHref = await page.locator('.guide-primary-action[href^="/check?source=guide&guide="]').getAttribute("href");
+    if (!checkHref?.includes(encodeURIComponent(slug))) {
+      throw new Error(`${label}: apartment-check action lost guide context`);
+    }
+    if (mode === "unavailable") {
+      await page.locator(".guide-area-state.error").waitFor({ state: "visible" });
+      if ((await page.locator(".guide-area-state.error button").count()) !== 1) {
+        throw new Error(`${label}: unavailable area data has no retry action`);
+      }
+    } else {
+      await page.locator(".guide-related-areas li").first().waitFor({ state: "visible", timeout: 15000 });
+      if (mode === "partial") {
+        await page.locator(".guide-area-state.warning").waitFor({ state: "visible" });
+      }
+      const areaText = await page.locator(".guide-related-areas").innerText();
+      if (!areaText.includes(guideBrowserCopy[locale].source)) {
+        throw new Error(`${label}: current area provenance is missing`);
+      }
+    }
+    if (locale === "pl" && slug === editorialGuideSlugs[0]) {
+      await page.screenshot({
+        path: path.join(artifactDir, `guide-article-pl-${viewport.width}-${mode}.png`),
+        fullPage: true,
+      });
+    }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runAreaDecision(browser, locale, viewport, mode = "records") {
   const context = await browser.newContext({
     viewport,
@@ -989,6 +1099,40 @@ async function runTransparentSearch(browser, viewport) {
 }
 
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "guide-editorial") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runGuidesIndex(browser, "pl", viewport);
+      console.log(`browser quality passed: guide-index/pl/${viewport.width}`);
+    }
+    for (const slug of editorialGuideSlugs) {
+      await runGuideArticle(browser, "pl", { width: 390, height: 844 }, slug);
+      console.log(`browser quality passed: guide-article/pl/390/${slug}`);
+    }
+    for (const locale of locales.filter((item) => item !== "pl")) {
+      await runGuideArticle(browser, locale, { width: 390, height: 844 }, editorialGuideSlugs[0]);
+      console.log(`browser quality passed: guide-article/${locale}/390/localized`);
+    }
+    await runGuideArticle(browser, "pl", { width: 1440, height: 900 }, editorialGuideSlugs[0]);
+    console.log("browser quality passed: guide-article/pl/1440/records");
+    await runGuideArticle(browser, "pl", { width: 390, height: 844 }, editorialGuideSlugs[0], "partial");
+    console.log("browser quality passed: guide-article/pl/390/partial");
+    await runGuideArticle(browser, "pl", { width: 390, height: 844 }, editorialGuideSlugs[0], "unavailable");
+    console.log("browser quality passed: guide-article/pl/390/unavailable");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "area-decision") {
   try {
     for (const viewport of [
@@ -1139,6 +1283,28 @@ try {
     console.log("browser quality passed: area-decision/pl/390/unavailable");
     await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "transaction");
     console.log("browser quality passed: area-decision/pl/390/transaction");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    for (const locale of locales) {
+      await runGuidesIndex(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: guide-index/${locale}/390`);
+    }
+    for (const slug of editorialGuideSlugs) {
+      await runGuideArticle(browser, "pl", { width: 390, height: 844 }, slug);
+      console.log(`browser quality passed: guide-article/pl/390/${slug}`);
+    }
+    for (const locale of locales.filter((item) => item !== "pl")) {
+      await runGuideArticle(browser, locale, { width: 390, height: 844 }, editorialGuideSlugs[0]);
+      console.log(`browser quality passed: guide-article/${locale}/390/localized`);
+    }
+    await runGuideArticle(browser, "pl", { width: 1440, height: 900 }, editorialGuideSlugs[0]);
+    console.log("browser quality passed: guide-article/pl/1440/records");
+    await runGuideArticle(browser, "pl", { width: 390, height: 844 }, editorialGuideSlugs[0], "partial");
+    console.log("browser quality passed: guide-article/pl/390/partial");
+    await runGuideArticle(browser, "pl", { width: 390, height: 844 }, editorialGuideSlugs[0], "unavailable");
+    console.log("browser quality passed: guide-article/pl/390/unavailable");
   } catch (error) {
     failures.push(error.message);
   }

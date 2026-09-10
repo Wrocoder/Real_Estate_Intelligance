@@ -208,7 +208,10 @@ Reuse these boundaries instead of creating parallel implementations:
    cautions, next checks and source-comparable alternatives. Price,
    infrastructure and planned-investment evidence remains below it with honest
    partial, empty and unavailable states.
-5. Product analytics event naming and funnel instrumentation are not yet a
+5. Guides now expose article-specific editorial ownership, review scope,
+   official sources and topic-specific disclaimers. Related area figures come
+   from the current API with provenance and explicit unavailable states.
+6. Product analytics event naming and funnel instrumentation are not yet a
    documented first-class contract across the main buying journey.
 
 ### Quality and operational risks
@@ -282,7 +285,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | --- | --- | --- | --- |
 | T5-01 | Simplify search around buyer inputs and ranking modes | DONE | T2-02 |
 | T5-02 | Rewrite area pages around fit, avoid, price, risk, alternatives, and evidence | DONE | T3-01 |
-| T5-03 | Keep SEO guides contextual, source-backed, and connected to `/check` | PARTIAL | T5-02 |
+| T5-03 | Keep SEO guides contextual, source-backed, and connected to `/check` | DONE | T5-02 |
 
 ### Phase 6: commercial and measurement layer
 
@@ -1227,10 +1230,58 @@ Verified:
 
 Follow-up:
 
-- P2-04 / T5-03 is now the next dependency-ready discovery task;
+- P2-04 / T5-03 is the next dependency in this historical checkpoint and is
+  completed in the section below;
 - production coverage still depends on imported provider data and refresh
   operations. The UI reports those gaps honestly but cannot create evidence
   that the configured sources do not supply.
+
+### P2-04 / T5-03: Verifiable Editorial Guides - DONE (2026-09-10)
+
+Changed:
+
+- introduced an article-specific editorial contract for all ten guide slugs,
+  including author, reviewer role, update date, review scope, disclaimer type
+  and relevant official sources with a description of what each source
+  supports;
+- used market, financial and legal disclaimers according to the article topic
+  without claiming that WartoMetr provides a valuation, credit decision, tax
+  advice or legal interpretation;
+- added `dateModified`, `inLanguage`, reviewer and source citations to Article
+  JSON-LD;
+- replaced static `seoAreas` figures inside guides with current area API data.
+  The UI distinguishes transaction and asking-price context, marks demo data,
+  exposes source and freshness, and handles loading, partial, unavailable and
+  retry states without stale fallbacks;
+- connected the guide catalog and every article to `/check` with guide source
+  context, while keeping supporting area and report actions secondary;
+- localized the guide interface for PL/EN/RU/UK. The Polish editorial corpus is
+  explicitly marked with `lang="pl"` and a localized availability notice, so
+  it is not presented as an accidental or complete translation.
+
+Verified:
+
+- frontend ESLint, TypeScript, `748` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- the full repository Playwright suite passed the existing check, save,
+  compare, negotiation, area, score and rental flows alongside the new guide
+  coverage;
+- focused Playwright covered the catalog at 390px and 1440px, every existing
+  guide slug on mobile, localized interface states for PL/EN/RU/UK, and live,
+  partial and unavailable related-area data;
+- console errors, failed requests, hydration errors and horizontal overflow
+  were checked;
+- Polish catalog and article screenshots were visually inspected at mobile and
+  desktop widths.
+
+Follow-up:
+
+- a named external legal or financial reviewer remains an organizational gate
+  and is not implied by the internal product-and-source review role;
+- full editorial-body translations can be commissioned later. Until then the
+  content language is declared honestly and the surrounding product interface
+  remains localized;
+- P2-05 is the next open product-quality task in roadmap order.
 
 ## Remaining External Limitations
 

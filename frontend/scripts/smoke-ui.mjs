@@ -114,6 +114,11 @@ const developersPage = read("app/developers/page.tsx");
 const developerDetailPage = read("app/developers/[developerId]/page.tsx");
 const guidesPage = read("app/guides/page.tsx");
 const guideDetailPage = read("app/guides/[guideId]/page.tsx");
+const guidesIndexContent = read("components/GuidesIndexContent.tsx");
+const guideArticleContent = read("components/GuideArticleContent.tsx");
+const guideEditorialMeta = read("components/GuideEditorialMeta.tsx");
+const guideRelatedAreas = read("components/GuideRelatedAreas.tsx");
+const guideUiCopy = read("lib/guideUiCopy.ts");
 const landingScene = read("components/LandingMapScene.tsx");
 const betaLeadForm = read("components/BetaLeadForm.tsx");
 const seoGuides = read("lib/seoGuides.ts");
@@ -595,24 +600,61 @@ expectIncludes("seo guides content", seoGuides, [
   "total-purchase-cost-poland",
   "internalLinks",
   "relatedAreaSlugs",
+  "editorial: editorial(",
+  "reviewScope",
+  "disclaimerKind",
+  "NBP - kwartalne informacje o rynku nieruchomości",
+  "Ministerstwo Sprawiedliwości - Księgi Wieczyste",
+  "KNF - ryzyko stopy procentowej",
 ]);
 expectMinSize("seo guides content", seoGuides, 20_000);
 
-expectIncludes("seo guides index", guidesPage, [
+expectIncludes("seo guides index", guidesPage + guidesIndexContent, [
+  "<GuidesIndexContent",
   "SEO_GUIDES.map",
   'href="/areas"',
-  'href="/check"',
+  'href="/check?source=guides"',
   "href={`/guides/${guide.slug}`}",
+  "guideCategory(guide.category, locale)",
+  'lang="pl"',
 ]);
 
-expectIncludes("seo guide detail", guideDetailPage, [
+expectIncludes("seo guide detail", guideDetailPage + guideArticleContent, [
   "generateStaticParams",
   "getSeoGuide",
   "application/ld+json",
+  "dateModified",
+  "citation: guide.editorial.sources.map",
+  "<GuideArticleContent",
   "guide.internalLinks.map",
-  "relatedAreas.map",
-  "Pełny raport",
-  'href="/check"',
+  "<GuideRelatedAreas",
+  "source=guide&guide=",
+  'lang="pl"',
+]);
+
+expectIncludes("guide editorial trust", guideEditorialMeta + guideUiCopy, [
+  "editorial.author",
+  "editorial.reviewer",
+  "editorial.updatedAt",
+  "editorial.reviewScope",
+  "editorial.sources.map",
+  "copy.disclaimer[editorial.disclaimerKind]",
+  "Article language: Polish",
+  "Язык материала: польский",
+  "Мова матеріалу: польська",
+]);
+
+expectIncludes("source-backed guide areas", guideRelatedAreas, [
+  "Promise.allSettled",
+  "api.getAreaStatistics(areaId)",
+  "area.median_price_per_m2 > 0",
+  'area.price_basis === "transaction_observed"',
+  'area.data_provenance.mode === "demo"',
+  "area.data_provenance.source_name",
+  "area.data_provenance.updated_at",
+  "copy.areasPartial",
+  "copy.areasError",
+  "void load()",
 ]);
 
 expectIncludes("live area directory", areasPage + areasDirectory, [

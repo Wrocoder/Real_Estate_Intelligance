@@ -415,7 +415,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-10): DONE.** Каталог сохраняет RCN rolling median, yearly medians, monthly history и provenance, а detail-view теперь начинается с условного buyer conclusion: кому район может подойти, кому может не подойти, какие ограничения данных действуют и что проверить по точному адресу. Сила price evidence зависит от source mode, sample size и полноты source/date/period; demo либо отсутствующая price evidence не могут получить HIGH. Похожие альтернативы выбираются динамически из того же городского area dataset по близости медианы. Infrastructure различает реальные записи, частично пустые категории, полностью пустой dataset и недоступный source: `0` больше не показывается как доказательство отсутствия объекта; отдельно видны scope, source links и source update либо честное `unknown`. Planned investments показывают status/year/source confidence и условно разделяются на potential improvement, construction disruption, supply pressure и unclear impact; district assignment явно не выдается за расстояние до конкретного дома. PL/EN/RU/UK локализованы. Release gate: ESLint, TypeScript, `717` smoke assertions, npm audit, production build и полный repository Playwright; area-specific scenarios прошли на 390/1440 px для listing/demo evidence, RCN-like transaction evidence, partial, empty и unavailable infrastructure states, все четыре локали, console/network/hydration и overflow. Polish desktop/mobile screenshots просмотрены визуально.
 
-### [ ] P2-04. Укрепить guides как редакционный продукт
+### [x] P2-04. Укрепить guides как редакционный продукт
 
 **Область:** `/guides`; `/guides/:slug`; все существующие guide slugs.
 
@@ -423,7 +423,7 @@ repository Playwright fallback.
 
 **Сложность:** M. **Зависимости:** editorial ownership, localization.
 
-**Текущий статус (2026-09-07): PARTIAL.** Основные guide routes и CTA существуют, но source/editorial/legal review, локализация и систематическая связь с актуальным coverage требуют завершения после P2-03.
+**Текущий статус (2026-09-10): DONE.** Все десять существующих guide slugs используют per-article editorial contract: видны author, reviewer role, дата обновления, scope проверки, тематически релевантные официальные источники и отдельный market/financial/legal disclaimer. JSON-LD содержит `dateModified`, `inLanguage`, reviewer и citations. Статические цифры из `seoAreas` удалены из статей: связанные районы загружают текущую API statistics, явно различают transaction/listing basis и demo mode, показывают source/freshness и имеют loading, partial, unavailable и retry states без подстановки устаревших значений. `/guides` и каждая статья системно ведут в `/check` с source context. Интерфейс локализован для PL/EN/RU/UK; польский editorial corpus имеет явный `lang="pl"` и локализованное уведомление вместо неявно смешанного перевода. Внешняя юридическая экспертиза не заявляется и остаётся организационным ограничением. Release gate: ESLint, TypeScript, `748` smoke assertions, npm audit (`0` vulnerabilities), production build, полный repository Playwright и focused guide Playwright для всех десяти slugs, PL/EN/RU/UK, 390/1440 px, live/partial/unavailable area data, console/network/hydration и overflow; Polish catalog/article mobile/desktop screenshots просмотрены визуально.
 
 ### [ ] P2-05. Привести mobile UX к отдельной композиции
 

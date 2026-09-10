@@ -9,6 +9,21 @@ export type SeoGuideSection = {
   bullets: string[];
 };
 
+export type SeoGuideSource = {
+  label: string;
+  href: string;
+  supports: string;
+};
+
+export type SeoGuideEditorial = {
+  author: string;
+  reviewer: string;
+  updatedAt: string;
+  reviewScope: string;
+  disclaimerKind: "market" | "financial" | "legal";
+  sources: SeoGuideSource[];
+};
+
 export type SeoGuide = {
   slug: string;
   category: string;
@@ -19,20 +34,66 @@ export type SeoGuide = {
   sections: SeoGuideSection[];
   relatedAreaSlugs: string[];
   internalLinks: SeoGuideLink[];
+  editorial: SeoGuideEditorial;
 };
 
-export const GUIDE_EDITORIAL_META = {
-  author: "Zespół redakcyjny WartoMetr",
-  reviewer: "Zespół kontroli treści WartoMetr",
-  updatedAt: "2026-09-04",
-  sources: [
-    { label: "GUS", href: "https://stat.gov.pl/" },
-    { label: "NBP", href: "https://nbp.pl/publikacje/" },
-    { label: "gov.pl", href: "https://www.gov.pl/web/rozwoj-technologia" },
-  ],
-  disclaimer:
-    "Materiał ma charakter informacyjny. Nie zastępuje indywidualnej analizy mieszkania, porady prawnej, finansowej ani decyzji kredytowej.",
-} as const;
+const SOURCES = {
+  nbpHousing: {
+    label: "NBP - kwartalne informacje o rynku nieruchomości",
+    href: "https://nbp.pl/publikacje/cykliczne-materialy-analityczne-nbp/rynek-nieruchomosci/informacja-kwartalna/",
+    supports: "Kontekst cen ofertowych i transakcyjnych oraz sytuacji na rynku mieszkaniowym.",
+  },
+  gusPrices: {
+    label: "GUS - wskaźnik zmian cen lokali mieszkalnych",
+    href: "https://stat.gov.pl/metainformacje/opis-wskaznikow-gus/wielkosci-i-wskazniki-oglaszane-gus/wskaznik-zmian-cen-dla-lokali-mieszkalnych/",
+    supports: "Metodyczny kontekst zmian cen mieszkań; nie jest wyceną konkretnego lokalu.",
+  },
+  wroclawInvestments: {
+    label: "SIP Wrocław - inwestycje miejskie",
+    href: "https://geoportal.wroclaw.pl/mapy/inwestycje/",
+    supports: "Status, lokalizacja i zakres miejskich projektów inwestycyjnych.",
+  },
+  wroclawTransport: {
+    label: "SIP Wrocław - dostęp do infrastruktury komunikacyjnej",
+    href: "https://geoportal.wroclaw.pl/mapy/dostep_do_infrastruktury_komunikacyjnej_miasta/",
+    supports: "Kontekst istniejącej i planowanej dostępności transportowej.",
+  },
+  wroclawPlans: {
+    label: "SIP Wrocław - miejscowe plany zagospodarowania",
+    href: "https://geoportal.wroclaw.pl/mapy/mpzp/",
+    supports: "Zakres i status planów miejscowych wymagających sprawdzenia dla adresu lub działki.",
+  },
+  landRegister: {
+    label: "Ministerstwo Sprawiedliwości - Księgi Wieczyste",
+    href: "https://www.gov.pl/web/sprawiedliwosc/ksiegi-wieczyste",
+    supports: "Oficjalny kontekst rejestru ksiąg wieczystych i dostępu do dokumentów.",
+  },
+  pcc: {
+    label: "podatki.gov.pl - podatek od czynności cywilnoprawnych",
+    href: "https://www.podatki.gov.pl/podatki-osobiste/pcc/informacje-podstawowe/",
+    supports: "Ogólne zasady PCC; zastosowanie i zwolnienia trzeba potwierdzić dla konkretnej transakcji.",
+  },
+  knfRates: {
+    label: "KNF - ryzyko stopy procentowej",
+    href: "https://www.knf.gov.pl/dla_konsumenta/kampanie_informacyjne/ryzyko_stopy_procentowej",
+    supports: "Ryzyko oprocentowania i informacje, które bank powinien przedstawić kredytobiorcy.",
+  },
+} satisfies Record<string, SeoGuideSource>;
+
+function editorial(
+  disclaimerKind: SeoGuideEditorial["disclaimerKind"],
+  reviewScope: string,
+  sources: SeoGuideSource[],
+): SeoGuideEditorial {
+  return {
+    author: "Zespół redakcyjny WartoMetr",
+    reviewer: "Weryfikacja produktu i źródeł WartoMetr",
+    updatedAt: "2026-09-10",
+    reviewScope,
+    disclaimerKind,
+    sources,
+  };
+}
 
 export const SEO_GUIDES: SeoGuide[] = [
   {
@@ -49,6 +110,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "WartoMetr pokazuje szacowany zakres ceny i poziom pewności, żeby nie opierać decyzji na jednej średniej.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "market",
+      "Sprawdzono rozróżnienie ceny ofertowej, transakcyjnej i wskaźnika zmian cen. Lokalne liczby należy potwierdzić na aktualnej stronie osiedla.",
+      [SOURCES.nbpHousing, SOURCES.gusPrices],
+    ),
     internalLinks: [
       { href: "/areas", label: "Dzielnice Wrocławia" },
       { href: "/areas/compare", label: "Porównaj dzielnice" },
@@ -92,6 +158,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Przy pierwszym mieszkaniu unikaj sytuacji, w której niska cena maskuje słabą infrastrukturę.",
     ],
     relatedAreaSlugs: ["wroclaw-krzyki", "wroclaw-fabryczna", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "market",
+      "Sprawdzono, czy tekst oddziela cel zakupu od faktów o cenie, transporcie i planach. Ranking osiedli nie jest przedstawiany jako uniwersalny.",
+      [SOURCES.nbpHousing, SOURCES.wroclawTransport, SOURCES.wroclawInvestments],
+    ),
     internalLinks: [
       { href: "/areas/compare", label: "Porównaj dzielnice" },
       { href: "/areas/wroclaw-krzyki", label: "Krzyki" },
@@ -135,6 +206,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Jeśli podobnych mieszkań jest mało, raport powinien jasno pokazać ograniczoną pewność danych.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki"],
+    editorial: editorial(
+      "market",
+      "Sprawdzono ograniczenia porównywania Wrocławia z okolicznymi miejscowościami oraz potrzebę weryfikacji transportu i planowania dla dokładnego adresu.",
+      [SOURCES.nbpHousing, SOURCES.wroclawTransport, SOURCES.wroclawPlans],
+    ),
     internalLinks: [
       { href: "/check", label: "Sprawdź mieszkanie pod miastem" },
       { href: "/?municipality=Kobierzyce", label: "Zobacz mieszkania w gminie Kobierzyce" },
@@ -178,6 +254,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Tańsza dzielnica może być gorszym wyborem, jeśli ma słabą płynność i infrastrukturę.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "market",
+      "Sprawdzono porównywalność zakresu geograficznego, rodzaju ceny i celu zakupu. Tekst nie tworzy automatycznego werdyktu dla dzielnicy.",
+      [SOURCES.nbpHousing, SOURCES.gusPrices, SOURCES.wroclawTransport],
+    ),
     internalLinks: [
       { href: "/areas/compare", label: "Porównaj dzielnice" },
       { href: "/compare", label: "Porównaj konkretne mieszkania" },
@@ -221,6 +302,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Raport powinien oddzielać hipotezę wzrostu od gwarancji finansowej.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "financial",
+      "Sprawdzono, czy potencjał wzrostu pozostaje hipotezą opartą na cenie, płynności i potwierdzonych planach, a nie obietnicą zwrotu.",
+      [SOURCES.nbpHousing, SOURCES.wroclawInvestments, SOURCES.wroclawPlans],
+    ),
     internalLinks: [
       { href: "/?mode=hidden_gems", label: "Znajdź mocne okazje" },
       { href: "/alerts", label: "Śledź warianty inwestycyjne" },
@@ -264,6 +350,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "W miejscach z małą liczbą podobnych ofert pokazuj niższą pewność analizy.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "market",
+      "Sprawdzono rozdzielenie danych regionalnych, miejskich i osiedlowych oraz ograniczenia wnioskowania z agregatów o konkretnej nieruchomości.",
+      [SOURCES.nbpHousing, SOURCES.gusPrices],
+    ),
     internalLinks: [
       { href: "/market", label: "Przegląd rynku" },
       { href: "/areas", label: "Dzielnice" },
@@ -307,6 +398,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Kalkulacja nie zastępuje decyzji banku ani rozmowy z doradcą.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki"],
+    editorial: editorial(
+      "financial",
+      "Sprawdzono zakres podstawowych kosztów i ryzyka stopy procentowej. Tekst nie ocenia zdolności kredytowej ani nie rekomenduje produktu bankowego.",
+      [SOURCES.knfRates, SOURCES.pcc],
+    ),
     internalLinks: [
       { href: "/mortgage", label: "Otwórz kalkulator kredytu" },
       { href: "/check", label: "Sprawdź mieszkanie z ratą" },
@@ -350,6 +446,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Przed zadatkiem potrzebna jest krótka lista rzeczy do potwierdzenia.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "legal",
+      "Sprawdzono, czy lista oddziela analizę ceny od dokumentów i wskazuje sprawy wymagające notariusza, prawnika, banku lub urzędu.",
+      [SOURCES.landRegister, SOURCES.pcc, SOURCES.wroclawPlans],
+    ),
     internalLinks: [
       { href: "/check", label: "Sprawdź mieszkanie" },
       { href: "/guides/ksiega-wieczysta-checklist", label: "Księga wieczysta" },
@@ -393,6 +494,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Wnioski prawne nie powinny opierać się wyłącznie na analizie automatycznej.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki"],
+    editorial: editorial(
+      "legal",
+      "Sprawdzono ogólną strukturę księgi i potrzebę specjalistycznej interpretacji wpisów. WartoMetr nie interpretuje skutków prawnych konkretnego dokumentu.",
+      [SOURCES.landRegister],
+    ),
     internalLinks: [
       { href: "/guides/purchase-checklist-poland", label: "Lista kontroli zakupu" },
       { href: "/mortgage", label: "Kredyt i budżet" },
@@ -436,6 +542,11 @@ export const SEO_GUIDES: SeoGuide[] = [
       "Rezerwa remontowa może zmienić decyzję mocniej niż rabat sprzedającego.",
     ],
     relatedAreaSlugs: ["wroclaw-fabryczna", "wroclaw-krzyki", "wroclaw-psie-pole"],
+    editorial: editorial(
+      "financial",
+      "Sprawdzono, czy budżet obejmuje koszt transakcji i finansowania bez przyjmowania jednej stawki podatku lub opłaty dla wszystkich kupujących.",
+      [SOURCES.pcc, SOURCES.knfRates, SOURCES.landRegister],
+    ),
     internalLinks: [
       { href: "/mortgage", label: "Kalkulator kredytu" },
       { href: "/guides/mortgage-calculator-poland", label: "Kredyt hipoteczny" },
