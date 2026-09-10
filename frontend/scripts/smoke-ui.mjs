@@ -287,6 +287,18 @@ expectIncludes("search explorer page", explorerPage, [
   "locale={locale}",
 ]);
 expectRegex("search explorer filters", explorerPage, /type Filters = \{[\s\S]*maxBuildingFloors/);
+expectIncludes("transparent buyer search", explorerPage, [
+  "purposeChanged",
+  'next.buyingPurpose === "investment"',
+  'parsed.buyingPurpose === "investment" && !params.has("sort")',
+  "activeFilterLabels(filters, product, copy, locale)",
+  "advancedLabels",
+  "copy.optionLabels.sort[filters.sort]",
+]);
+expectNotIncludes("search has no hidden intent thresholds", explorerPage, [
+  "applyIntentDefaults",
+  "isImplicitIntentFilter",
+]);
 expectMinSize("search explorer page", explorerPage, 20_000);
 
 expectIncludes("listing card i18n", listingCard, [
@@ -297,6 +309,15 @@ expectIncludes("listing card i18n", listingCard, [
   "copy.reportTitle",
   'listing.data_provenance.mode === "demo"',
   "copy.demoData",
+  "copy.fairPrice",
+  "copy.purposeFit[buyingPurpose]",
+  "scores.fair_price_low",
+  "scores.fair_price_high",
+]);
+expectNotIncludes("listing card hides unexplained score abbreviations", listingCard, [
+  "copy.scorePrefixes.investment",
+  "copy.scorePrefixes.risk",
+  "copy.scorePrefixes.negotiation",
 ]);
 
 expectIncludes("demo mode banner", demoModeBanner, [

@@ -201,8 +201,9 @@ Reuse these boundaries instead of creating parallel implementations:
 2. A compact durable buyer profile now carries intent, budget, and up to three
    priorities across check, comparison, and supported area ranking. Its effect
    is labeled as personalization and does not alter market facts.
-3. Search has buyer-facing modes and many filters, but internal/professional
-   controls remain close to the consumer experience in some routes.
+3. Search now keeps location, budget, rooms, size, market, intent and a visible
+   buyer-readable ranking on the primary surface. Professional thresholds stay
+   under advanced disclosure and are shown explicitly when applied.
 4. Area pages have dynamic evidence and planned investment data, but their
    narrative should answer who should live there, who should avoid it, and what
    alternatives exist before showing a directory of metrics.
@@ -269,7 +270,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 
 | ID | Task | Status | Dependency |
 | --- | --- | --- | --- |
-| T4-01 | Validate object-watch lifecycle, trigger baselines, event history, and delivery semantics | PARTIAL | T2-02, T1-03 |
+| T4-01 | Validate object-watch lifecycle, trigger baselines, event history, and delivery semantics | PARTIAL / BLOCKED | T2-02, T1-03 |
 | T4-02 | Generate adaptive viewing, document, seller-question, and negotiation actions from known risks | DONE | T3-03 |
 | T4-03 | Add a small durable buyer preference profile and use it transparently in fit and compare | DONE | T2-02, T1-01 |
 | T4-04 | Turn compare into recommendation plus explicit trade-offs while preserving detail access | DONE | T2-02, T4-03 |
@@ -278,7 +279,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 
 | ID | Task | Status | Dependency |
 | --- | --- | --- | --- |
-| T5-01 | Simplify search around buyer inputs and ranking modes | PARTIAL | T2-02 |
+| T5-01 | Simplify search around buyer inputs and ranking modes | DONE | T2-02 |
 | T5-02 | Rewrite area pages around fit, avoid, price, risk, alternatives, and evidence | PARTIAL | T3-01 |
 | T5-03 | Keep SEO guides contextual, source-backed, and connected to `/check` | PARTIAL | T5-02 |
 
@@ -1140,6 +1141,54 @@ Follow-up:
   external constraint;
 - P2-10 can now instrument `comparison_started` and `comparison_completed`
   against a stable comparison contract.
+
+### P1-09 / T4-01: Alert Delivery Audit - PARTIAL / BLOCKED (2026-09-10)
+
+Repository evidence confirms contextual object-watch creation, deterministic
+event previews, pause/resume/delete controls, persisted delivery jobs and
+user-visible delivery history. Completion remains externally blocked: the
+production worker schedules only daily email, SMTP and Telegram are not
+configured in the audited environment, and no OCI cadence or real-recipient
+delivery was observed. Instant, weekly and Telegram delivery must not be
+marketed as live until P0-05, provider credentials and OCI evidence are
+available.
+
+### P2-02 / T5-01: Transparent Buyer Search - DONE (2026-09-10)
+
+Changed:
+
+- kept location, district, rooms, budget, size, market, purchase intent and a
+  buyer-readable ranking control in the primary search form;
+- removed implicit intent-based analytical thresholds. Purchase intent changes
+  the visible default ranking but no longer silently excludes listings with
+  lower or unavailable investment, rental, liquidity or risk metrics;
+- preserved every manually selected advanced constraint in the URL and exposed
+  each one in the active-filter summary instead of hiding them behind a count;
+- replaced ambiguous ranking labels with their actual semantics: lowest price
+  per square metre, lowest risk, highest investment potential and highest
+  rental potential;
+- changed result cards to lead with verdict, fair-price range and purpose fit,
+  and removed unexplained investment/rental/negotiation score initials;
+- removed the duplicated summary metric grid and the no-op apply button.
+
+Verified:
+
+- frontend ESLint, TypeScript, `690` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- repository Playwright passed PL/EN/RU/UK rendering and the existing desktop,
+  tablet and mobile flows;
+- focused Playwright checks at 390px and 1440px confirmed visible intent,
+  district, liquidity and ranking state; reproducible URL state; the explicitly
+  requested liquidity API parameter; and the absence of hidden intent score
+  thresholds;
+- rendered Polish search views at 390px and 1440px were visually inspected.
+
+Follow-up:
+
+- the next dependency-ready product task is P2-03 / T5-02, replacing static
+  area content with dynamic, source-backed data;
+- P1-09 remains blocked on P0-05, provider configuration and OCI delivery
+  evidence rather than additional frontend presentation work.
 
 ## Remaining External Limitations
 

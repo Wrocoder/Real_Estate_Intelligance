@@ -19,7 +19,7 @@ import {
   type MapFeatureCollection,
   type MapQuery,
 } from "@/lib/api";
-import { money, numberValue, percent } from "@/lib/format";
+import { money } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { EXPLORER_COPY } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
@@ -154,10 +154,10 @@ const SEARCH_COPY = {
     maxSize: "Max m2",
     track: "Track apartments like these",
     advanced: "Advanced filters",
-    bestOverall: "Best overall",
-    bestValue: "Best value",
+    bestOverall: "Highest investment potential",
+    bestValue: "Lowest price per m2",
     lowestRisk: "Lowest risk",
-    bestForRent: "Best for rent",
+    bestForRent: "Highest rental potential",
     liquid: "Most liquid",
     negotiation: "Best negotiation opportunities",
     applied: "Applied filters",
@@ -181,10 +181,10 @@ const SEARCH_COPY = {
     maxSize: "Maks. m2",
     track: "Śledź podobne mieszkania",
     advanced: "Filtry zaawansowane",
-    bestOverall: "Najlepsze ogólnie",
-    bestValue: "Najlepsza wartość",
+    bestOverall: "Najwyższy potencjał inwestycyjny",
+    bestValue: "Najniższa cena za m2",
     lowestRisk: "Najniższe ryzyko",
-    bestForRent: "Najlepsze pod wynajem",
+    bestForRent: "Najwyższy potencjał najmu",
     liquid: "Najbardziej płynne",
     negotiation: "Najlepsze okazje do negocjacji",
     applied: "Zastosowane filtry",
@@ -208,10 +208,10 @@ const SEARCH_COPY = {
     maxSize: "Макс. m2",
     track: "Следить за похожими квартирами",
     advanced: "Расширенные фильтры",
-    bestOverall: "Лучшие в целом",
-    bestValue: "Лучшая цена",
+    bestOverall: "Самый высокий инвестиционный потенциал",
+    bestValue: "Самая низкая цена за m2",
     lowestRisk: "Самый низкий риск",
-    bestForRent: "Лучшие под аренду",
+    bestForRent: "Самый высокий арендный потенциал",
     liquid: "Самые ликвидные",
     negotiation: "Лучшие возможности для торга",
     applied: "Примененные фильтры",
@@ -235,10 +235,10 @@ const SEARCH_COPY = {
     maxSize: "Макс. m2",
     track: "Стежити за схожими квартирами",
     advanced: "Розширені фільтри",
-    bestOverall: "Найкращі загалом",
-    bestValue: "Найкраща ціна",
+    bestOverall: "Найвищий інвестиційний потенціал",
+    bestValue: "Найнижча ціна за m2",
     lowestRisk: "Найнижчий ризик",
-    bestForRent: "Найкращі під оренду",
+    bestForRent: "Найвищий орендний потенціал",
     liquid: "Найліквідніші",
     negotiation: "Найкращі можливості для торгу",
     applied: "Застосовані фільтри",
@@ -305,7 +305,6 @@ export default function ExplorerPage() {
   const [mapData, setMapData] = useState<MapFeatureCollection | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [compareIds, setCompareIds] = useState<string[]>([]);
   const [status, setStatus] = useState(EXPLORER_COPY.pl.status.loading);
@@ -329,7 +328,6 @@ export default function ExplorerPage() {
         setHiddenGemItems(search.items);
         setAreas(areaStats);
         setPage(search.page);
-        setTotal(search.total);
         setTotalPages(search.total_pages);
         setStatus(copy.status.hiddenGems(search.total, search.page, search.total_pages));
         setIsLoading(false);
@@ -344,7 +342,6 @@ export default function ExplorerPage() {
       setHiddenGemItems([]);
       setAreas(areaStats);
       setPage(search.page);
-      setTotal(search.total);
       setTotalPages(search.total_pages);
       setStatus(copy.status.found(search.total, search.page, search.total_pages));
       setIsLoading(false);
@@ -365,7 +362,7 @@ export default function ExplorerPage() {
       const parsedPage = Number(params.get("page"));
       if (Number.isInteger(parsedPage) && parsedPage > 0) setPage(parsedPage);
       if (hasFilters) {
-        setFilters((current) => applyIntentDefaults({ ...current, ...parsed }));
+        setFilters((current) => ({ ...current, ...parsed }));
         return;
       }
     }
@@ -458,22 +455,26 @@ export default function ExplorerPage() {
       filters.municipality ? area.city === filters.municipality : area.city === "Wrocław",
     )
     .map((area) => area.name);
-  const best = analyses[0];
-  const bestGem = hiddenGemItems[0] ?? null;
-  const selectedArea =
-    areas.find(
-      (area) =>
-        area.name === filters.district &&
-        (filters.municipality ? area.city === filters.municipality : area.city === "Wrocław"),
-    ) ??
-    areas.find((area) => area.city === (filters.municipality || "Wrocław")) ??
-    areas[0] ??
-    null;
   const compareHref = `/compare?ids=${compareIds.join(",")}`;
-  const appliedFilters = activeFilterLabels(filters, product, copy);
+  const appliedFilters = activeFilterLabels(filters, product, copy, locale);
 
   function updateFilters(next: Partial<Filters>) {
-    setFilters((current) => applyIntentDefaults({ ...current, ...next }));
+    setFilters((current) => {
+      const purposeChanged =
+        next.buyingPurpose !== undefined && next.buyingPurpose !== current.buyingPurpose;
+      return {
+        ...current,
+        ...next,
+        ...(purposeChanged
+          ? {
+              sort:
+                next.buyingPurpose === "investment"
+                  ? ("investment_score_desc" as const)
+                  : ("risk_score_asc" as const),
+            }
+          : {}),
+      };
+    });
     setPage(1);
   }
 
@@ -625,41 +626,6 @@ export default function ExplorerPage() {
         </div>
       </section>
 
-      <section className="metric-grid">
-        <div className="metric">
-          <span>{copy.metrics.found}</span>
-          <strong>{numberValue(total, locale)}</strong>
-        </div>
-        <div className="metric">
-          <span>
-            {filters.mode === "hidden_gems"
-              ? copy.metrics.bestGem
-              : copy.metrics.bestInvestment}
-          </span>
-          <strong>
-            {filters.mode === "hidden_gems"
-              ? bestGem
-                ? `${bestGem.gem_score}/100`
-                : "-"
-              : best
-                ? `${best.scores.investment_score}/100`
-                : "-"}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.medianArea}</span>
-          <strong>
-            {selectedArea ? `${money(selectedArea.median_price_per_m2, locale)}/m2` : "-"}
-          </strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.priceTrend90d}</span>
-          <strong>
-            {selectedArea ? percent(selectedArea.price_change_90d_pct, locale) : "-"}
-          </strong>
-        </div>
-      </section>
-
       <div className="panel" style={{ marginTop: 16, marginBottom: 16 }}>
         <div className="panel-header">
           <h2>{product.location}</h2>
@@ -794,6 +760,27 @@ export default function ExplorerPage() {
             >
               <option value="living">{product.living}</option>
               <option value="investment">{product.investment}</option>
+            </select>
+          </label>
+          <label className="field search-sort-field">
+            <span>{copy.filters.sort}</span>
+            <select
+              className="select"
+              value={filters.sort}
+              onChange={(event) => updateFilters({ sort: event.target.value as ListingSort })}
+            >
+              <option value="investment_score_desc">{product.bestOverall}</option>
+              <option value="price_per_m2_asc">{product.bestValue}</option>
+              <option value="risk_score_asc">{product.lowestRisk}</option>
+              <option value="rental_potential_score_desc">{product.bestForRent}</option>
+              <option value="liquidity_score_desc">{product.liquid}</option>
+              <option value="negotiation_score_desc">{product.negotiation}</option>
+              <option value="price_asc">{copy.optionLabels.sort.price_asc}</option>
+              <option value="price_desc">{copy.optionLabels.sort.price_desc}</option>
+              <option value="days_on_market_desc">
+                {copy.optionLabels.sort.days_on_market_desc}
+              </option>
+              <option value="newest">{copy.optionLabels.sort.newest}</option>
             </select>
           </label>
           <details className="advanced-filters">
@@ -1155,29 +1142,6 @@ export default function ExplorerPage() {
             </select>
           </label>
           <label className="field">
-            <span>{copy.filters.sort}</span>
-            <select
-              className="select"
-              value={filters.sort}
-              onChange={(event) => updateFilters({ sort: event.target.value as ListingSort })}
-            >
-              <option value="investment_score_desc">
-                {product.bestOverall}
-              </option>
-              <option value="price_per_m2_asc">{product.bestValue}</option>
-              <option value="risk_score_asc">{product.lowestRisk}</option>
-              <option value="rental_potential_score_desc">{product.bestForRent}</option>
-              <option value="liquidity_score_desc">{product.liquid}</option>
-              <option value="negotiation_score_desc">{product.negotiation}</option>
-              <option value="price_asc">{copy.optionLabels.sort.price_asc}</option>
-              <option value="price_desc">{copy.optionLabels.sort.price_desc}</option>
-              <option value="days_on_market_desc">
-                {copy.optionLabels.sort.days_on_market_desc}
-              </option>
-              <option value="newest">{copy.optionLabels.sort.newest}</option>
-            </select>
-          </label>
-          <label className="field">
             <span>{copy.filters.pageSize}</span>
             <select
               className="select"
@@ -1191,9 +1155,6 @@ export default function ExplorerPage() {
           </label>
             </div>
           </details>
-          <button className="button primary" type="button" onClick={() => setPage(1)}>
-            <Search size={16} /> {copy.actions.apply}
-          </button>
           <button className="button" type="button" onClick={enableHiddenGems}>
             <Gem size={16} /> {copy.actions.hiddenGems}
           </button>
@@ -1241,6 +1202,7 @@ export default function ExplorerPage() {
                   key={analysis.listing.id}
                   analysis={analysis}
                   locale={locale}
+                  buyingPurpose={filters.buyingPurpose}
                   isSelectedForCompare={compareIds.includes(analysis.listing.id)}
                   onToggleCompare={toggleCompare}
                   onFavorite={(listingId) => void addFavorite(listingId)}
@@ -1376,7 +1338,7 @@ function filtersToUrl(filters: Filters, page: number) {
   const params = new URLSearchParams();
   for (const key of URL_FILTER_FIELDS) {
     const value = filters[key];
-    if (value === defaultFilters[key] || value === "" || value === false || isImplicitIntentFilter(filters, key)) continue;
+    if (value === defaultFilters[key] || value === "" || value === false) continue;
     params.set(key === "query" ? "q" : key, String(value));
   }
   if (page > 1) params.set("page", String(page));
@@ -1391,6 +1353,9 @@ function filtersFromUrl(params: URLSearchParams): Partial<Filters> {
     const defaultValue = defaultFilters[key];
     (parsed as Record<string, string | boolean>)[key] = typeof defaultValue === "boolean" ? raw === "true" || raw === "1" : raw;
   }
+  if (parsed.buyingPurpose === "investment" && !params.has("sort")) {
+    parsed.sort = "investment_score_desc";
+  }
   return parsed;
 }
 
@@ -1398,46 +1363,75 @@ function activeFilterLabels(
   filters: Filters,
   product: typeof SEARCH_COPY[keyof typeof SEARCH_COPY],
   copy: typeof EXPLORER_COPY[keyof typeof EXPLORER_COPY],
+  locale: keyof typeof SEARCH_COPY,
 ) {
   const labels: string[] = [];
+  labels.push(`${product.location}: ${filters.municipality || copy.filters.wroclawCity}`);
+  labels.push(filters.buyingPurpose === "investment" ? product.investment : product.living);
   if (filters.query) labels.push(`${copy.filters.search}: ${filters.query}`);
-  if (filters.municipality) labels.push(`${product.location}: ${filters.municipality}`);
+  if (filters.voivodeship) labels.push(`${copy.filters.voivodeship}: ${filters.voivodeship}`);
   if (filters.district) labels.push(`${copy.filters.district}: ${filters.district}`);
-  if (filters.buyingPurpose !== defaultFilters.buyingPurpose) labels.push(filters.buyingPurpose === "investment" ? product.investment : product.living);
   if (filters.marketType) labels.push(`${product.market}: ${filters.marketType === "primary" ? product.primary : product.secondary}`);
   if (filters.rooms) labels.push(`${copy.filters.rooms}: ${filters.rooms}`);
   if (filters.minArea || filters.maxArea) labels.push(`${product.size}: ${filters.minArea || "0"}-${filters.maxArea || "∞"} m2`);
-  if (filters.maxPrice) labels.push(`${copy.filters.maxPrice}: ${filters.maxPrice}`);
+  if (filters.maxPrice) labels.push(`${copy.filters.maxPrice}: ${money(Number(filters.maxPrice), locale)}`);
   if (filters.mode === "hidden_gems") labels.push(copy.actions.hiddenGems);
-  const advancedKeys = ["buildingType", "renovationState", "hasBalcony", "hasTerrace", "hasGarden", "hasElevator", "parkingType", "heatingType", "minFloor", "maxFloor", "maxBuildingFloors", "minBuildingYear", "maxBuildingYear", "maxFairDelta", "minInvestment", "maxRisk", "minNegotiation", "minLiquidity", "minRental", "minDataQuality", "minDeveloperReputation", "minDeveloperConfidence", "minDeveloperCompleted", "minDeveloperActive", "requireDeveloper", "excludeDeveloperRisk", "maxCenterKm", "maxStopM", "maxSchoolM", "minMajorRoadM", "minIndustrialZoneM", "radiusKm"] as const;
-  const advancedCount = advancedKeys.filter((key) => filters[key] !== defaultFilters[key] && filters[key] !== "" && filters[key] !== false && !isImplicitIntentFilter(filters, key)).length;
-  if (advancedCount) labels.push(product.advancedApplied(advancedCount));
+  const advancedLabels: Array<[keyof Filters, string]> = [
+    ["buildingType", copy.filters.buildingType],
+    ["renovationState", copy.filters.renovationState],
+    ["parkingType", copy.filters.parking],
+    ["heatingType", copy.filters.heating],
+    ["minFloor", copy.filters.minFloor],
+    ["maxFloor", copy.filters.maxFloor],
+    ["maxBuildingFloors", copy.filters.maxBuildingFloors],
+    ["minBuildingYear", copy.filters.minBuildingYear],
+    ["maxBuildingYear", copy.filters.maxBuildingYear],
+    ["maxFairDelta", copy.filters.maxFairDelta],
+    ["minInvestment", copy.filters.minInvestment],
+    ["maxRisk", copy.filters.maxRisk],
+    ["minNegotiation", copy.filters.minNegotiation],
+    ["minLiquidity", copy.filters.minLiquidity],
+    ["minRental", copy.filters.minRental],
+    ["minDataQuality", copy.filters.minDataQuality],
+    ["minDeveloperReputation", copy.filters.minDeveloperReputation],
+    ["minDeveloperConfidence", copy.filters.minDeveloperConfidence],
+    ["minDeveloperCompleted", copy.filters.minDeveloperCompleted],
+    ["minDeveloperActive", copy.filters.minDeveloperActive],
+    ["maxCenterKm", copy.filters.maxCenterKm],
+    ["maxStopM", copy.filters.maxStopM],
+    ["maxSchoolM", copy.filters.maxSchoolM],
+    ["minMajorRoadM", copy.filters.minMajorRoadM],
+    ["minIndustrialZoneM", copy.filters.minIndustrialZoneM],
+    ["radiusKm", copy.filters.radiusFromCenter],
+  ];
+  for (const [key, label] of advancedLabels) {
+    const value = filters[key];
+    if (value === "" || value === false) continue;
+    const localizedValue =
+      key === "buildingType"
+        ? copy.optionLabels.buildingType[String(value)]
+        : key === "renovationState"
+          ? copy.optionLabels.renovationState[String(value)]
+          : key === "parkingType"
+            ? copy.optionLabels.parkingType[String(value)]
+            : key === "heatingType"
+              ? copy.optionLabels.heatingType[String(value)]
+              : undefined;
+    labels.push(`${label}: ${localizedValue ?? String(value)}`);
+  }
+  const booleanLabels: Array<[boolean, string]> = [
+    [filters.hasBalcony, copy.filters.balcony],
+    [filters.hasTerrace, copy.filters.terrace],
+    [filters.hasGarden, copy.filters.garden],
+    [filters.hasElevator, copy.filters.elevator],
+    [filters.requireDeveloper, copy.filters.requireDeveloper],
+    [filters.excludeDeveloperRisk, copy.filters.excludeDeveloperRisk],
+  ];
+  for (const [active, label] of booleanLabels) {
+    if (active) labels.push(label);
+  }
   labels.push(`${product.sortBy}: ${copy.optionLabels.sort[filters.sort] ?? filters.sort}`);
   return labels;
-}
-
-function isImplicitIntentFilter(filters: Filters, key: keyof Filters) {
-  if (filters.buyingPurpose === "living") return key === "maxRisk" && filters.maxRisk === "70";
-  return key === "minInvestment" && filters.minInvestment === "55"
-    || key === "minRental" && filters.minRental === "45"
-    || key === "minLiquidity" && filters.minLiquidity === "45";
-}
-
-function applyIntentDefaults(filters: Filters): Filters {
-  if (filters.buyingPurpose === "investment") {
-    return {
-      ...filters,
-      minInvestment: filters.minInvestment || "55",
-      minRental: filters.minRental || "45",
-      minLiquidity: filters.minLiquidity || "45",
-      sort: filters.sort === "risk_score_asc" ? filters.sort : "investment_score_desc",
-    };
-  }
-  return {
-    ...filters,
-    maxRisk: filters.maxRisk || "70",
-    sort: filters.sort === "investment_score_desc" ? "risk_score_asc" : filters.sort,
-  };
 }
 
 function buildHiddenGemQuery(filters: Filters, page: number): HiddenGemQuery {

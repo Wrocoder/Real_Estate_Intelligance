@@ -301,6 +301,8 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-07): PARTIAL.** Event/history foundation существует, но object-watch lifecycle, baseline updates и реальная delivery semantics не проверены end-to-end для пользовательских alerts; недоступные source capabilities должны быть явно заблокированы в UI.
 
+**Повторная проверка (2026-09-10): PARTIAL / BLOCKED.** В репозитории подтверждены contextual object-watch creation, deterministic preview events, pause/resume/delete, delivery jobs и user-visible history со статусами `sent`/`skipped`/`failed`/`dry_run`. Однако production scheduler реализован только для daily email, а SMTP/Telegram transports, OCI worker cadence и реальное внешнее доставление не настроены и не подтверждены. До выполнения P0-05 и появления provider/OCI evidence нельзя обещать instant/weekly/Telegram delivery или отмечать P1-09 выполненной.
+
 ### [ ] P1-10. Исправить mortgage и полную стоимость покупки
 
 **Область:** `/mortgage`; listing CTA; purchase costs; affordability.
@@ -393,7 +395,7 @@ repository Playwright fallback.
 
 **Сложность:** M. **Зависимости:** P1-07, route inventory.
 
-### [ ] P2-02. Сделать search прозрачным и управляемым
+### [x] P2-02. Сделать search прозрачным и управляемым
 
 **Область:** `/search`; filters; sort; result cards.
 
@@ -401,7 +403,7 @@ repository Playwright fallback.
 
 **Сложность:** M. **Зависимости:** P1-02, P1-13, P1-14.
 
-**Текущий статус (2026-09-07): PARTIAL.** Search работает, но default surface все еще содержит/опирается на internal analytical thresholds и нуждается в упрощении до location, budget, rooms, size и intent с пользовательскими ranking modes.
+**Текущий статус (2026-09-10): DONE.** Основной search surface теперь ограничен понятными buyer inputs: location, district, rooms, budget, size, market, intent и явно видимая сортировка. Переключение intent выбирает подходящий ranking mode, но больше не подставляет скрытые `minInvestment`/`minRental`/`minLiquidity`/`maxRisk` thresholds и не исключает объекты с missing analytics. Ручные профессиональные ограничения остаются внутри advanced disclosure и каждое примененное значение показывается отдельным локализованным filter chip; URL полностью воспроизводит state и поддерживает старые explicit `sort` parameters. Misleading `Best overall`/`Best value` заменены точными названиями аналитической сортировки. Result cards показывают verdict, estimated fair-price range и fit для выбранной цели вместо необъясненных `I/R/N` сокращений; лишняя metric grid и неработавшая кнопка Apply удалены. Release gate: ESLint; TypeScript; `690` smoke assertions; npm audit (`0` vulnerabilities); production Next.js build; полный repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile и отдельные search-transparency сценарии на 390/1440 px с проверкой URL round-trip, explicit advanced filter, отсутствия hidden intent thresholds, console/network/hydration и overflow. Оба rendered search viewport просмотрены визуально.
 
 ### [ ] P2-03. Перевести areas на динамические и проверяемые данные
 

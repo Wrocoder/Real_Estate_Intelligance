@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, FileText, Heart, MapPin } from "lucide-react";
+import { FileText, Heart, MapPin } from "lucide-react";
 
 import { ListingProvenance } from "@/components/ListingProvenance";
 
@@ -17,6 +17,7 @@ type Props = {
   isSelectedForCompare?: boolean;
   onToggleCompare?: (listingId: string) => void;
   locale?: Locale;
+  buyingPurpose?: "living" | "investment";
 };
 
 export function ListingCard({
@@ -26,10 +27,14 @@ export function ListingCard({
   isSelectedForCompare = false,
   onToggleCompare,
   locale = DEFAULT_LOCALE,
+  buyingPurpose = "living",
 }: Props) {
   const { listing, scores } = analysis;
   const copy = LISTING_CARD_COPY[locale];
   const verdictTone = decisionTone(scores);
+  const intentFit = analysis.buyer_decision?.intent_fit.find(
+    (fit) => fit.intent === (buyingPurpose === "investment" ? "investment" : "self"),
+  );
   const attributeLabels = [
     listing.building_type,
     listing.renovation_state,
@@ -76,20 +81,18 @@ export function ListingCard({
             ))}
           </div>
         ) : null}
-        <div className="meta-row">
+        <div className="listing-card-decision">
           <span className={`status-pill ${verdictTone}`}>
             {scoreLabel(scores.decision_label, locale)}
           </span>
-          <span className="score-pill">
-            <BarChart3 size={14} /> {copy.scorePrefixes.investment}{" "}
-            {scores.investment_score}
+          <span>
+            {copy.fairPrice}: {money(scores.fair_price_low, locale)}–{money(scores.fair_price_high, locale)}
           </span>
-          <span className="score-pill risk">
-            {copy.scorePrefixes.risk} {scores.risk_score}
-          </span>
-          <span className="score-pill">
-            {copy.scorePrefixes.negotiation} {scores.negotiation_score}
-          </span>
+          {intentFit ? (
+            <span>
+              {copy.purposeFit[buyingPurpose]}: {intentFit.score}/100
+            </span>
+          ) : null}
         </div>
       </div>
       <div className="toolbar">

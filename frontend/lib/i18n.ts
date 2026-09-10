@@ -157,11 +157,8 @@ export type ListingCardCopy = {
   pricePerM2: string;
   rooms: (count: number) => string;
   days: (count: number) => string;
-  scorePrefixes: {
-    investment: string;
-    risk: string;
-    negotiation: string;
-  };
+  fairPrice: string;
+  purposeFit: Record<"living" | "investment", string>;
   attributes: OptionLabelMap;
   parking: (value: string) => string;
   heating: (value: string) => string;
@@ -1554,7 +1551,8 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     pricePerM2: "m2",
     rooms: (count) => `${count} room${count === 1 ? "" : "s"}`,
     days: (count) => `${count} day${count === 1 ? "" : "s"}`,
-    scorePrefixes: { investment: "I", risk: "R", negotiation: "N" },
+    fairPrice: "Estimated fair price",
+    purposeFit: { living: "Fit for living", investment: "Fit for investment" },
     attributes: {
       apartment_block: "Apartment block",
       low_rise_block: "Low-rise block",
@@ -1590,7 +1588,8 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     pricePerM2: "m2",
     rooms: (count) => `${count} pok.`,
     days: (count) => `${count} dni`,
-    scorePrefixes: { investment: "I", risk: "R", negotiation: "N" },
+    fairPrice: "Szacowana uczciwa cena",
+    purposeFit: { living: "Dopasowanie do zamieszkania", investment: "Dopasowanie inwestycyjne" },
     attributes: {
       apartment_block: "Blok",
       low_rise_block: "Niska zabudowa",
@@ -1626,7 +1625,8 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     pricePerM2: "m2",
     rooms: (count) => `${count} ${pluralRu(count, "комната", "комнаты", "комнат")}`,
     days: (count) => `${count} ${pluralRu(count, "день", "дня", "дней")}`,
-    scorePrefixes: { investment: "I", risk: "R", negotiation: "N" },
+    fairPrice: "Оценка справедливой цены",
+    purposeFit: { living: "Подходит для жизни", investment: "Подходит для инвестиций" },
     attributes: {
       apartment_block: "Блок / многоквартирный",
       low_rise_block: "Низкая застройка",
@@ -1662,7 +1662,8 @@ export const LISTING_CARD_COPY: Record<Locale, ListingCardCopy> = {
     pricePerM2: "m2",
     rooms: (count) => `${count} ${pluralUk(count, "кімната", "кімнати", "кімнат")}`,
     days: (count) => `${count} днів`,
-    scorePrefixes: { investment: "I", risk: "R", negotiation: "N" },
+    fairPrice: "Оцінка справедливої ціни",
+    purposeFit: { living: "Підходить для життя", investment: "Підходить для інвестицій" },
     attributes: {
       apartment_block: "Блок / багатоквартирний",
       low_rise_block: "Низька забудова",
@@ -8099,7 +8100,7 @@ function optionLabels(locale: Locale): ExplorerCopy["optionLabels"] {
   const cardCopy = LISTING_CARD_COPY[locale];
   const sort: Record<Locale, OptionLabelMap> = {
     en: {
-      investment_score_desc: "Best overall",
+      investment_score_desc: "Highest investment potential",
       price_asc: "Price: low to high",
       price_desc: "Price: high to low",
       price_per_m2_asc: "Price/m2: low to high",
@@ -8115,7 +8116,7 @@ function optionLabels(locale: Locale): ExplorerCopy["optionLabels"] {
       newest: "Newest",
     },
     pl: {
-      investment_score_desc: "Najlepsze ogólnie",
+      investment_score_desc: "Najwyższy potencjał inwestycyjny",
       price_asc: "Cena: najniżej",
       price_desc: "Cena: najwyżej",
       price_per_m2_asc: "Cena/m2: najniżej",
@@ -8131,7 +8132,7 @@ function optionLabels(locale: Locale): ExplorerCopy["optionLabels"] {
       newest: "Najnowsze",
     },
     ru: {
-      investment_score_desc: "Лучшие в целом",
+      investment_score_desc: "Самый высокий инвестиционный потенциал",
       price_asc: "Цена: ниже",
       price_desc: "Цена: выше",
       price_per_m2_asc: "Цена/m2: ниже",
@@ -8147,7 +8148,7 @@ function optionLabels(locale: Locale): ExplorerCopy["optionLabels"] {
       newest: "Новые",
     },
     uk: {
-      investment_score_desc: "Найкращі загалом",
+      investment_score_desc: "Найвищий інвестиційний потенціал",
       price_asc: "Ціна: нижче",
       price_desc: "Ціна: вище",
       price_per_m2_asc: "Ціна/m2: нижче",

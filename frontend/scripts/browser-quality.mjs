@@ -770,7 +770,106 @@ async function runPartialCompareDecision(browser) {
   }
 }
 
+async function runTransparentSearch(browser, viewport) {
+  const context = await browser.newContext({
+    viewport,
+    locale: "pl-PL",
+  });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `search-transparency/pl/${viewport.width}`);
+  const listingRequests = [];
+  page.on("request", (request) => {
+    if (request.url().includes("/api/v1/listings?")) listingRequests.push(request.url());
+  });
+  try {
+    await page.goto(`${baseUrl}/?buyingPurpose=investment&district=Fabryczna&minLiquidity=60`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForTimeout(1500);
+    const listingCards = page.locator(".listing-card");
+    if ((await listingCards.count()) === 0) {
+      const mainText = await page.locator("main").innerText();
+      throw new Error(`search-transparency/pl/mobile: no result card rendered: ${mainText}`);
+    }
+    await listingCards.first().waitFor({ state: "visible", timeout: 15000 });
+    const filterText = await page.locator(".applied-filters").innerText();
+    for (const expected of [
+      "Na inwestycję",
+      "Fabryczna",
+      "Płynność od: 60",
+      "Najwyższy potencjał inwestycyjny",
+    ]) {
+      if (!filterText.includes(expected)) {
+        throw new Error(`search-transparency/pl/${viewport.width}: missing visible filter ${expected}`);
+      }
+    }
+    const cardText = await page.locator(".listing-card").first().innerText();
+    if (
+      !cardText.includes("Szacowana uczciwa cena") ||
+      !cardText.includes("Dopasowanie inwestycyjne")
+    ) {
+      throw new Error(`search-transparency/pl/${viewport.width}: result decision context is missing`);
+    }
+    const listingRequest = listingRequests.at(-1);
+    if (!listingRequest) {
+      throw new Error(`search-transparency/pl/${viewport.width}: listing request was not observed`);
+    }
+    const requestUrl = new URL(listingRequest);
+    if (requestUrl.searchParams.get("min_liquidity_score") !== "60") {
+      throw new Error(`search-transparency/pl/${viewport.width}: explicit advanced filter was not applied`);
+    }
+    for (const hiddenThreshold of [
+      "min_investment_score",
+      "min_rental_potential_score",
+      "max_risk_score",
+    ]) {
+      if (requestUrl.searchParams.has(hiddenThreshold)) {
+        throw new Error(
+          `search-transparency/pl/${viewport.width}: intent silently applied ${hiddenThreshold}`,
+        );
+      }
+    }
+    const currentUrl = new URL(page.url());
+    if (
+      currentUrl.searchParams.get("buyingPurpose") !== "investment" ||
+      currentUrl.searchParams.get("district") !== "Fabryczna" ||
+      currentUrl.searchParams.get("minLiquidity") !== "60" ||
+      currentUrl.searchParams.get("sort") !== "investment_score_desc"
+    ) {
+      throw new Error(`search-transparency/pl/${viewport.width}: URL state is not reproducible`);
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `search-transparency-pl-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "search-transparency") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runTransparentSearch(browser, viewport);
+      console.log(`browser quality passed: search-transparency/pl/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 try {
   for (const viewport of viewports) {
     for (const locale of locales) {
@@ -840,6 +939,17 @@ try {
   try {
     await runPartialCompareDecision(browser);
     console.log("browser quality passed: compare-decision/partial");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runTransparentSearch(browser, viewport);
+      console.log(`browser quality passed: search-transparency/pl/${viewport.width}`);
+    }
   } catch (error) {
     failures.push(error.message);
   }

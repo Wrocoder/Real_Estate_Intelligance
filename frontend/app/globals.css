@@ -592,6 +592,18 @@ summary:focus-visible {
   font-size: 13px;
 }
 
+.listing-card-decision {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .ai-verdict-body {
   display: grid;
   gap: 14px;
@@ -2807,6 +2819,10 @@ summary:focus-visible {
   grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.search-sort-field {
+  grid-column: span 2;
+}
+
 .advanced-filters {
   grid-column: 1 / -1;
   border-top: 1px solid var(--line);
@@ -4344,6 +4360,10 @@ summary:focus-visible {
 
   .form-grid.wide {
     grid-template-columns: 1fr;
+  }
+
+  .search-sort-field {
+    grid-column: auto;
   }
 
   .advanced-filter-grid {
