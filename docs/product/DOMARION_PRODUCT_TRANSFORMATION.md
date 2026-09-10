@@ -204,9 +204,10 @@ Reuse these boundaries instead of creating parallel implementations:
 3. Search now keeps location, budget, rooms, size, market, intent and a visible
    buyer-readable ranking on the primary surface. Professional thresholds stay
    under advanced disclosure and are shown explicitly when applied.
-4. Area pages have dynamic evidence and planned investment data, but their
-   narrative should answer who should live there, who should avoid it, and what
-   alternatives exist before showing a directory of metrics.
+4. Area detail pages now lead with a conditional buyer conclusion, suitability,
+   cautions, next checks and source-comparable alternatives. Price,
+   infrastructure and planned-investment evidence remains below it with honest
+   partial, empty and unavailable states.
 5. Product analytics event naming and funnel instrumentation are not yet a
    documented first-class contract across the main buying journey.
 
@@ -280,7 +281,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | ID | Task | Status | Dependency |
 | --- | --- | --- | --- |
 | T5-01 | Simplify search around buyer inputs and ranking modes | DONE | T2-02 |
-| T5-02 | Rewrite area pages around fit, avoid, price, risk, alternatives, and evidence | PARTIAL | T3-01 |
+| T5-02 | Rewrite area pages around fit, avoid, price, risk, alternatives, and evidence | DONE | T3-01 |
 | T5-03 | Keep SEO guides contextual, source-backed, and connected to `/check` | PARTIAL | T5-02 |
 
 ### Phase 6: commercial and measurement layer
@@ -1185,10 +1186,51 @@ Verified:
 
 Follow-up:
 
-- the next dependency-ready product task is P2-03 / T5-02, replacing static
-  area content with dynamic, source-backed data;
+- P2-03 / T5-02 is the next dependency in this historical checkpoint and is
+  completed in the section below;
 - P1-09 remains blocked on P0-05, provider configuration and OCI delivery
   evidence rather than additional frontend presentation work.
+
+### P2-03 / T5-02: Decision-First, Source-Backed Areas - DONE (2026-09-10)
+
+Changed:
+
+- added a conditional buyer conclusion before area analytics, covering who the
+  area may fit, who should be cautious, evidence limitations and concrete
+  checks to perform for the exact address;
+- derived price-evidence strength from source mode, sample size and provenance
+  completeness. Demo or missing price evidence cannot be presented as high
+  confidence;
+- selected comparable area alternatives dynamically from the same city dataset
+  by the closest observed median instead of using static recommendations;
+- distinguished populated, partial, empty and unavailable infrastructure data.
+  Zero records are no longer presented as proof that an amenity does not exist;
+- exposed infrastructure scope, source domains and update date, including an
+  explicit unknown state when source freshness is unavailable;
+- classified planned projects as potential improvement, construction
+  disruption, supply pressure or unclear impact, and exposed their status,
+  expected year, source and confidence without implying property-level
+  distance from district assignment;
+- localized the decision content, page heading and metadata for PL/EN/RU/UK.
+
+Verified:
+
+- frontend ESLint, TypeScript, `717` smoke assertions, npm audit with zero
+  vulnerabilities and the production Next.js build passed;
+- the full repository Playwright suite passed all existing flows and all four
+  supported locales;
+- focused area checks at 390px and 1440px covered listing/demo evidence,
+  transaction evidence, and partial, empty and unavailable infrastructure;
+- console errors, failed requests, hydration errors and horizontal overflow
+  were checked, and Polish mobile and desktop screenshots were visually
+  inspected.
+
+Follow-up:
+
+- P2-04 / T5-03 is now the next dependency-ready discovery task;
+- production coverage still depends on imported provider data and refresh
+  operations. The UI reports those gaps honestly but cannot create evidence
+  that the configured sources do not supply.
 
 ## Remaining External Limitations
 

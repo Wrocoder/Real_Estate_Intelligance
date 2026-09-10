@@ -770,6 +770,145 @@ async function runPartialCompareDecision(browser) {
   }
 }
 
+async function runAreaDecision(browser, locale, viewport, mode = "records") {
+  const context = await browser.newContext({
+    viewport,
+    locale: locale === "pl" ? "pl-PL" : locale,
+  });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `area-decision/${locale}/${viewport.width}/${mode}`;
+  const observation = await observe(page, label);
+  if (mode === "unavailable") {
+    await page.route("**/api/v1/infrastructure/**", async (route) => {
+      await route.fulfill({
+        status: 204,
+      });
+    });
+  }
+  if (mode === "empty") {
+    await page.route("**/api/v1/infrastructure/**", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: "[]",
+      });
+    });
+  }
+  if (mode === "transaction") {
+    await page.route("**/api/v1/areas/wroclaw-fabryczna/statistics", async (route) => {
+      const response = await route.fetch();
+      const area = await response.json();
+      await route.fulfill({
+        response,
+        json: {
+          ...area,
+          price_basis: "transaction_observed",
+          listing_metrics_available: false,
+          transaction_observation_count: 75,
+          data_provenance: {
+            ...area.data_provenance,
+            mode: "live",
+            source_name: "RCN GUGiK Local",
+            source_type: "transaction_register",
+            calculation_type: "calculated",
+            sample_size: 75,
+            geographic_scope: "Wrocław: Fabryczna",
+            time_range: "2025-09-01--2026-08-31",
+            updated_at: "2026-09-01T08:00:00Z",
+          },
+        },
+      });
+    });
+  }
+  const expected = {
+    pl: {
+      title: "Czy to osiedle pasuje do Twojego zakupu?",
+      conditional: "Wniosek warunkowy",
+      evidence: "Siła danych cenowych",
+      strength: mode === "transaction" ? "Wysoka" : "Niska",
+      checks: "Co sprawdzić przed decyzją",
+      alternatives: "Alternatywy do porównania",
+    },
+    en: {
+      title: "Does this neighborhood fit your purchase?",
+      conditional: "Conditional conclusion",
+      evidence: "Strength of price evidence",
+      strength: mode === "transaction" ? "High" : "Low",
+      checks: "What to verify before deciding",
+      alternatives: "Alternatives to compare",
+    },
+    ru: {
+      title: "Подходит ли район для вашей покупки?",
+      conditional: "Условный вывод",
+      evidence: "Надёжность данных о цене",
+      strength: mode === "transaction" ? "Высокая" : "Низкая",
+      checks: "Что проверить до решения",
+      alternatives: "Альтернативы для сравнения",
+    },
+    uk: {
+      title: "Чи підходить район для вашої купівлі?",
+      conditional: "Умовний висновок",
+      evidence: "Надійність даних про ціну",
+      strength: mode === "transaction" ? "Висока" : "Низька",
+      checks: "Що перевірити до рішення",
+      alternatives: "Альтернативи для порівняння",
+    },
+  }[locale];
+  const areaId = mode === "partial" ? "wroclaw-krzyki" : "wroclaw-fabryczna";
+  try {
+    await page.goto(`${baseUrl}/areas/${areaId}`, { waitUntil: "domcontentloaded" });
+    const guide = page.locator(".area-decision-guide");
+    await guide.waitFor({ state: "visible", timeout: 15000 });
+    const guideText = await guide.innerText();
+    for (const text of Object.values(expected)) {
+      if (!guideText.includes(text)) throw new Error(`${label}: missing ${text}`);
+    }
+    if ((await guide.locator(".area-alternative-list a").count()) < 2) {
+      throw new Error(`${label}: source-comparable area alternatives are missing`);
+    }
+    const evidenceText = await page.locator(".area-evidence").innerText();
+    if (mode === "records") {
+      if (!evidenceText.includes(locale === "pl" ? "Pewność źródła" : locale === "en" ? "Source confidence" : locale === "ru" ? "Надёжность источника" : "Надійність джерела")) {
+        throw new Error(`${label}: planned-investment confidence is missing`);
+      }
+      if ((await page.locator(".area-investment-heading .status-pill").count()) === 0) {
+        throw new Error(`${label}: planned-investment impact category is missing`);
+      }
+    }
+    if (mode === "partial" && !evidenceText.includes("brak rekordów")) {
+      throw new Error(`${label}: empty infrastructure records are presented as zero`);
+    }
+    if (mode === "partial" && !guideText.includes("zbiór ma luki")) {
+      throw new Error(`${label}: partial infrastructure coverage is not explained`);
+    }
+    if (mode === "empty" && !evidenceText.includes("brak rekordów")) {
+      throw new Error(`${label}: empty infrastructure dataset is presented as zero`);
+    }
+    if (mode === "empty" && !guideText.includes("brak rekordów nie potwierdza")) {
+      throw new Error(`${label}: empty infrastructure dataset does not constrain the conclusion`);
+    }
+    if (mode === "unavailable" && !evidenceText.includes("źródło niedostępne")) {
+      throw new Error(`${label}: unavailable infrastructure source is not explicit`);
+    }
+    if (mode === "unavailable" && !guideText.includes("część źródeł jest teraz niedostępna")) {
+      throw new Error(`${label}: unavailable coverage does not constrain the conclusion`);
+    }
+    if (mode === "transaction" && !guideText.includes("75 zarejestrowanych transakcji")) {
+      throw new Error(`${label}: transaction evidence and sample size are not explained`);
+    }
+    if (locale === "pl") {
+      await page.screenshot({
+        path: path.join(artifactDir, `area-decision-pl-${viewport.width}-${mode}.png`),
+        fullPage: true,
+      });
+    }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runTransparentSearch(browser, viewport) {
   const context = await browser.newContext({
     viewport,
@@ -850,6 +989,34 @@ async function runTransparentSearch(browser, viewport) {
 }
 
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "area-decision") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runAreaDecision(browser, "pl", viewport);
+      console.log(`browser quality passed: area-decision/pl/${viewport.width}/records`);
+    }
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "partial");
+    console.log("browser quality passed: area-decision/pl/390/partial");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "empty");
+    console.log("browser quality passed: area-decision/pl/390/empty");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "unavailable");
+    console.log("browser quality passed: area-decision/pl/390/unavailable");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "transaction");
+    console.log("browser quality passed: area-decision/pl/390/transaction");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "search-transparency") {
   try {
     for (const viewport of [
@@ -950,6 +1117,28 @@ try {
       await runTransparentSearch(browser, viewport);
       console.log(`browser quality passed: search-transparency/pl/${viewport.width}`);
     }
+  } catch (error) {
+    failures.push(error.message);
+  }
+  for (const locale of locales) {
+    try {
+      await runAreaDecision(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: area-decision/${locale}/390/records`);
+    } catch (error) {
+      failures.push(error.message);
+    }
+  }
+  try {
+    await runAreaDecision(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: area-decision/pl/1440/records");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "partial");
+    console.log("browser quality passed: area-decision/pl/390/partial");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "empty");
+    console.log("browser quality passed: area-decision/pl/390/empty");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "unavailable");
+    console.log("browser quality passed: area-decision/pl/390/unavailable");
+    await runAreaDecision(browser, "pl", { width: 390, height: 844 }, "transaction");
+    console.log("browser quality passed: area-decision/pl/390/transaction");
   } catch (error) {
     failures.push(error.message);
   }

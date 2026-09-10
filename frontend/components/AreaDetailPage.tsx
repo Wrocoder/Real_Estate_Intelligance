@@ -24,8 +24,8 @@ type Copy = {
 const COPY: Record<Locale, Copy> = {
   pl: {
     back: "Osiedla",
-    title: (name) => `${name}: dane o cenach mieszkań`,
-    subtitle: "Poziom cen transakcyjnych jest punktem odniesienia, a nie wyceną konkretnego mieszkania.",
+    title: (name) => `${name}: czy warto kupić tu mieszkanie?`,
+    subtitle: "Najpierw zobacz, co potwierdzają dane o cenach, otoczeniu i planowanych zmianach, a potem sprawdź konkretny adres.",
     compare: "Porównaj osiedla",
     check: "Sprawdź mieszkanie",
     loading: "Pobieramy dane osiedla...",
@@ -34,8 +34,8 @@ const COPY: Record<Locale, Copy> = {
   },
   en: {
     back: "Neighborhoods",
-    title: (name) => `${name}: apartment price data`,
-    subtitle: "The transaction price level is context, not a valuation of a specific apartment.",
+    title: (name) => `${name}: is it a good place to buy an apartment?`,
+    subtitle: "Start with what price, surroundings and planned-change data supports, then verify the specific address.",
     compare: "Compare neighborhoods",
     check: "Check an apartment",
     loading: "Fetching neighborhood data...",
@@ -44,8 +44,8 @@ const COPY: Record<Locale, Copy> = {
   },
   ru: {
     back: "Районы",
-    title: (name) => `${name}: данные о ценах квартир`,
-    subtitle: "Уровень цен сделок даёт ориентир, но не является оценкой конкретной квартиры.",
+    title: (name) => `${name}: стоит ли покупать здесь квартиру?`,
+    subtitle: "Сначала посмотрите, что подтверждают данные о ценах, окружении и планируемых изменениях, затем проверьте конкретный адрес.",
     compare: "Сравнить районы",
     check: "Проверить квартиру",
     loading: "Загружаем данные района...",
@@ -54,8 +54,8 @@ const COPY: Record<Locale, Copy> = {
   },
   uk: {
     back: "Райони",
-    title: (name) => `${name}: дані про ціни квартир`,
-    subtitle: "Рівень цін угод дає орієнтир, але не є оцінкою конкретної квартири.",
+    title: (name) => `${name}: чи варто купувати тут квартиру?`,
+    subtitle: "Спочатку перегляньте, що підтверджують дані про ціни, оточення і заплановані зміни, потім перевірте конкретну адресу.",
     compare: "Порівняти райони",
     check: "Перевірити квартиру",
     loading: "Завантажуємо дані району...",

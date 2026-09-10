@@ -100,6 +100,7 @@ const areaComparePage = read("app/areas/compare/page.tsx");
 const areaDetailPage = read("app/areas/[areaId]/page.tsx");
 const areaDetailContent = read("components/AreaDetailPage.tsx");
 const areaDynamicEvidence = read("components/AreaDynamicEvidence.tsx");
+const areaDecisionGuide = read("components/AreaDecisionGuide.tsx");
 const areaPriceHistoryChart = read("components/AreaPriceHistoryChart.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
@@ -650,6 +651,39 @@ expectIncludes("area transaction price history", areaDynamicEvidence + areaPrice
   "history.yearly.map",
   "point.serial - segment[segment.length - 1].serial > 1",
   "Monthly median price per m² across all available years",
+]);
+expectIncludes("decision-first area guidance", areaDynamicEvidence + areaDecisionGuide, [
+  "<AreaDecisionGuide",
+  "Czy to osiedle pasuje do Twojego zakupu?",
+  "transaction_observation_count",
+  "area.active_listings",
+  'area.data_provenance.mode === "demo"',
+  "completeProvenance",
+  "hasPriceEvidence",
+  "priceUnavailableSummary",
+  "allInfrastructureUnavailable",
+  "allInfrastructureEmpty",
+  "partialInfrastructure",
+  "avoidInvestmentUnknown",
+  "checkRental",
+  "comparableAreas.map",
+  "priceDifference(percent(difference, locale))",
+]);
+expectIncludes("area infrastructure unknown handling", areaDynamicEvidence, [
+  "infrastructureResults",
+  "value === null",
+  "value === 0",
+  "copy.unavailable",
+  "copy.noRecords",
+  "source_updated_at",
+  "infrastructure.sourceUrls",
+]);
+expectIncludes("planned area impact separation", areaDynamicEvidence, [
+  "plannedImpactCategory",
+  'type PlannedImpactCategory = "improvement" | "mixed" | "supply" | "unclear"',
+  "copy.investmentImpact[category]",
+  "item.confidence_score",
+  "copy.investmentScope",
 ]);
 
 expectIncludes("news page localization", newsPage, [

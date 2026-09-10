@@ -20,10 +20,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { areaId } = await params;
   const area = await getArea(areaId);
   const title = area
-    ? `${area.name}: ceny transakcyjne mieszkań | WartoMetr`
+    ? `${area.name}: czy warto kupić tu mieszkanie? | WartoMetr`
     : "Dane osiedla we Wrocławiu | WartoMetr";
   const description = area
-    ? `Mediana cen transakcyjnych mieszkań z ostatnich 12 miesięcy na osiedlu ${area.name} oraz miesięczna historia cen i źródło danych.`
+    ? `Sprawdź ceny, wiarygodność danych, infrastrukturę, ryzyka, planowane inwestycje i alternatywy dla osiedla ${area.name}.`
     : "Sprawdź dostępne dane transakcyjne dla osiedli Wrocławia.";
   return {
     title,

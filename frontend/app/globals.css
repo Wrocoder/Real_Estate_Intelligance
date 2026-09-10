@@ -4740,6 +4740,135 @@ summary:focus-visible {
   margin-top: 16px;
 }
 
+.area-decision-guide {
+  margin-top: 16px;
+  padding: 24px 0;
+  border-block: 1px solid var(--line);
+}
+
+.area-decision-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.area-decision-heading h2 {
+  margin: 8px 0 0;
+  font-size: 1.45rem;
+}
+
+.area-evidence-strength {
+  display: grid;
+  min-width: 220px;
+  gap: 2px;
+  padding-left: 16px;
+  border-left: 3px solid var(--accent);
+}
+
+.area-evidence-strength span,
+.area-evidence-strength small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.area-evidence-strength strong {
+  font-size: 1.05rem;
+  text-transform: capitalize;
+}
+
+.area-decision-summary {
+  max-width: 920px;
+  margin: 20px 0 0;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.area-decision-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 24px;
+}
+
+.area-decision-columns > div {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.area-decision-columns h3,
+.area-next-checks h3,
+.area-alternatives h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.area-decision-columns ul,
+.area-next-checks ol {
+  display: grid;
+  gap: 9px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.area-next-checks {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--warn);
+  background: var(--surface-muted);
+}
+
+.area-alternatives {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.area-alternatives > div:first-child p {
+  margin: 5px 0 0;
+  color: var(--muted);
+}
+
+.area-alternative-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.area-alternative-list a {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px 0;
+  border-bottom: 2px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.area-alternative-list a:hover {
+  border-color: var(--accent);
+}
+
+.area-alternative-list span,
+.area-alternative-list strong,
+.area-alternative-list small {
+  overflow-wrap: anywhere;
+}
+
+.area-alternative-list small {
+  color: var(--muted);
+}
+
+.area-decision-actions {
+  margin-top: 22px;
+}
+
 .area-evidence-meta {
   display: flex;
   flex-wrap: wrap;
@@ -4868,11 +4997,55 @@ summary:focus-visible {
 }
 
 .area-evidence-counts span {
+  display: grid;
+  gap: 2px;
   padding: 7px 9px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-muted);
   font-size: 0.86rem;
+}
+
+.area-evidence-counts b {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.area-infrastructure-provenance {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.area-infrastructure-provenance > span {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}
+
+.area-infrastructure-provenance a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.area-investment-list {
+  margin-top: 10px;
+}
+
+.area-investment-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.area-investment-heading .status-pill {
+  flex: 0 1 auto;
+  text-align: right;
 }
 
 .area-evidence-section > small,
@@ -4901,6 +5074,35 @@ summary:focus-visible {
 }
 
 @media (max-width: 640px) {
+  .area-decision-heading,
+  .area-decision-columns {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .area-decision-heading {
+    gap: 16px;
+  }
+
+  .area-evidence-strength {
+    min-width: 0;
+  }
+
+  .area-alternative-list {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .area-investment-heading {
+    display: grid;
+    gap: 7px;
+  }
+
+  .area-investment-heading .status-pill {
+    justify-self: start;
+    text-align: left;
+  }
+
   .area-evidence-meta {
     display: grid;
     gap: 6px;
