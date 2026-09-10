@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BarChart3, Brain, FileText, RefreshCw, ShieldCheck } from "lucide-react";
+import { BarChart3, Brain, ChevronDown, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { EmptyBlock, ErrorBlock, LoadingBlock } from "@/components/StateBlocks";
 import { DecisionSummary, decisionSummaryFromScores } from "@/components/DecisionSummary";
@@ -12,6 +12,8 @@ import {
   type AICompareAnswer,
   type BuyerProfile,
   type CompareItemMetrics,
+  type CompareRecommendation,
+  type CompareRecommendationSignal,
   type CompareResponse,
   type DeveloperReputation,
   type ListingAnalysis,
@@ -65,6 +67,10 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Personalized recommendation from your buyer profile",
     noBudgetFit: "None of the selected apartments fits your saved maximum price; the general recommendation is shown.",
     editProfile: "Edit buyer profile",
+    selectionHelp: "Choose 2 to 5 apartments. Only the selected IDs are compared and kept in the page link.",
+    unavailableRemoved: (count: number) => `${count} unavailable apartment${count === 1 ? " was" : "s were"} removed. The remaining selection is still being compared.`,
+    noMaterialTradeoffs: "No material trade-off was detected in the available comparison data.",
+    fallbackSummary: "This option best matches the selected purpose and the available comparison evidence.",
   },
   pl: {
     bestOverall: "Najlepsza opcja ogólnie",
@@ -81,6 +87,10 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Rekomendacja dopasowana do Twojego profilu kupującego",
     noBudgetFit: "Żadne z wybranych mieszkań nie mieści się w zapisanej cenie maksymalnej; pokazujemy rekomendację ogólną.",
     editProfile: "Edytuj profil kupującego",
+    selectionHelp: "Wybierz od 2 do 5 mieszkań. Porównujemy wyłącznie wskazane ID i zachowujemy je w linku strony.",
+    unavailableRemoved: (count: number) => `Usunięto ${count} niedostępne ${count === 1 ? "mieszkanie" : "mieszkania"}. Pozostałe wybrane oferty nadal są porównywane.`,
+    noMaterialTradeoffs: "W dostępnych danych porównawczych nie wykryto istotnego kompromisu.",
+    fallbackSummary: "Ta opcja najlepiej pasuje do wybranego celu i dostępnych danych porównawczych.",
   },
   ru: {
     bestOverall: "Лучший вариант в целом",
@@ -97,6 +107,10 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Персональная рекомендация по вашему профилю покупателя",
     noBudgetFit: "Ни одна выбранная квартира не укладывается в сохраненную максимальную цену; показана общая рекомендация.",
     editProfile: "Изменить профиль покупателя",
+    selectionHelp: "Выберите от 2 до 5 квартир. Сравниваются только выбранные ID, и они сохраняются в ссылке страницы.",
+    unavailableRemoved: (count: number) => `Недоступные объекты удалены: ${count}. Остальные выбранные квартиры продолжают сравниваться.`,
+    noMaterialTradeoffs: "По доступным данным существенный компромисс не выявлен.",
+    fallbackSummary: "Этот вариант лучше соответствует выбранной цели и доступным данным сравнения.",
   },
   uk: {
     bestOverall: "Найкращий варіант загалом",
@@ -113,6 +127,10 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Персональна рекомендація за вашим профілем покупця",
     noBudgetFit: "Жодна вибрана квартира не вкладається у збережену максимальну ціну; показано загальну рекомендацію.",
     editProfile: "Змінити профіль покупця",
+    selectionHelp: "Виберіть від 2 до 5 квартир. Порівнюються лише вибрані ID, і вони зберігаються в посиланні сторінки.",
+    unavailableRemoved: (count: number) => `Недоступні об'єкти видалено: ${count}. Решта вибраних квартир продовжує порівнюватися.`,
+    noMaterialTradeoffs: "За доступними даними суттєвого компромісу не виявлено.",
+    fallbackSummary: "Цей варіант найкраще відповідає вибраній меті та доступним даним порівняння.",
   },
 } as const;
 
@@ -143,15 +161,19 @@ export default function ComparePage() {
   const [status, setStatus] = useState<CompareStatusState>({ key: "loadingListings" });
   const [error, setError] = useState("");
   const [buyerProfile, setBuyerProfile] = useState<BuyerProfile | null>(null);
+  const [unavailableIds, setUnavailableIds] = useState<string[]>([]);
   const items = comparison?.items ?? [];
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const initialIds = (params.get("ids") ?? "")
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 5);
+    const initialIds = [
+      ...new Set(
+        (params.get("ids") ?? "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean),
+      ),
+    ].slice(0, 5);
     const initialIntent = params.get("intent") as PurchaseIntent | null;
     const hasInitialIntent = ["self", "family", "rental", "investment"].includes(initialIntent ?? "");
     if (hasInitialIntent) setIntent(initialIntent as PurchaseIntent);
@@ -170,6 +192,7 @@ export default function ComparePage() {
         ]);
         setAvailable(search.items);
         setBuyerProfile(account?.buyer_profile ?? null);
+        setUnavailableIds([]);
         if (!hasInitialIntent && account?.buyer_profile?.intent !== "unsure") {
           setIntent(account?.buyer_profile?.intent ?? "self");
         }
@@ -198,6 +221,13 @@ export default function ComparePage() {
         const response = await api.compareListings(selectedIds, intent);
         if (cancelled) return;
         setComparison(response);
+        if (response.unavailable_listing_ids.length > 0) {
+          setUnavailableIds(response.unavailable_listing_ids);
+          const missing = new Set(response.unavailable_listing_ids);
+          const remainingIds = selectedIds.filter((listingId) => !missing.has(listingId));
+          setSelectedIds(remainingIds);
+          syncCompareUrl(remainingIds, intent);
+        }
         setAiAnswer(null);
         setAiError("");
         setAiStatus({ key: "aiReady" });
@@ -228,13 +258,10 @@ export default function ComparePage() {
     () => new Map((comparison?.metrics ?? []).map((metric) => [metric.listing_id, metric])),
     [comparison],
   );
-  const personalizedBest = useMemo(
-    () => personalizedBestListing(comparison, buyerProfile, intent),
-    [buyerProfile, comparison, intent],
-  );
-  const recommendedListingId = personalizedBest.listingId ?? comparison?.summary.best_listing_id ?? "";
+  const recommendedListingId = comparison?.recommendation.listing_id ?? "";
 
   function toggleListing(listingId: string) {
+    setUnavailableIds([]);
     setSelectedIds((current) => {
       if (current.includes(listingId)) {
         const next = current.filter((item) => item !== listingId);
@@ -330,6 +357,7 @@ export default function ComparePage() {
           <span className="status-line">{compareStatusText(copy, status)}</span>
         </div>
         <div className="panel-body compare-selector">
+          <p className="muted compare-selection-help">{COMPARE_PRODUCT_COPY[locale].selectionHelp}</p>
           <label className="field" style={{ maxWidth: 280 }}>
             <span>{COMPARE_PRODUCT_COPY[locale].intentLabel}</span>
             <select className="select" value={intent} onChange={(event) => { const nextIntent = event.target.value as PurchaseIntent; setIntent(nextIntent); syncCompareUrl(selectedIds, nextIntent); }}>
@@ -342,7 +370,7 @@ export default function ComparePage() {
           {buyerProfile ? (
             <p className="profile-context-note compare-profile-note">
               <strong>{COMPARE_PRODUCT_COPY[locale].personalized}.</strong>{" "}
-              {personalizedBest.overBudget ? COMPARE_PRODUCT_COPY[locale].noBudgetFit : null}{" "}
+              {comparison?.recommendation.all_over_budget ? COMPARE_PRODUCT_COPY[locale].noBudgetFit : null}{" "}
               <Link href="/account">{COMPARE_PRODUCT_COPY[locale].editProfile}</Link>
             </p>
           ) : null}
@@ -359,12 +387,9 @@ export default function ComparePage() {
                 <span>
                   <strong>{analysis.listing.title}</strong>
                   <small>
-                    {analysis.listing.district} · {money(analysis.listing.price, locale)} · I{" "}
-                    {analysis.scores.investment_score} / R {analysis.scores.risk_score} ·{" "}
-                    {scoreLabel(analysis.scores.decision_label, locale)}
-                  </small>
-                  <small>
-                    {analysis.buyer_decision?.intent_fit.find((fit) => fit.intent === intent)?.label ?? "-"} · {analysis.buyer_decision?.intent_fit.find((fit) => fit.intent === intent)?.score ?? "-"}/100
+                    {analysis.listing.district} · {money(analysis.listing.price, locale)} ·{" "}
+                    {numberValue(analysis.listing.area_m2, locale)} m2 ·{" "}
+                    {copy.values.roomsShort(analysis.listing.rooms)}
                   </small>
                   {analysis.developer_reputation ? (
                     <small>
@@ -382,6 +407,13 @@ export default function ComparePage() {
         </div>
       </section>
 
+      {unavailableIds.length > 0 ? (
+        <div className="compare-unavailable-notice" role="status">
+          <strong>{COMPARE_PRODUCT_COPY[locale].unavailableRemoved(unavailableIds.length)}</strong>
+          <small>{unavailableIds.join(", ")}</small>
+        </div>
+      ) : null}
+
       {error ? (
         <ErrorBlock message={error} />
       ) : selectedIds.length < 2 ? (
@@ -395,8 +427,8 @@ export default function ComparePage() {
               copy={COMPARE_PRODUCT_COPY[locale]}
               items={items}
               metrics={comparison.metrics}
-              bestListingId={recommendedListingId}
-              badgeLabel={buyerProfile ? COMPARE_PRODUCT_COPY[locale].personalized : undefined}
+              recommendation={comparison.recommendation}
+              badgeLabel={comparison.recommendation.personalized ? COMPARE_PRODUCT_COPY[locale].personalized : undefined}
               locale={locale}
             />
           </section>
@@ -642,9 +674,6 @@ export default function ComparePage() {
                   <strong>
                     {metric.decision_score}/100 · {scoreLabel(metric.decision_label, locale)}
                   </strong>
-                  <small className="muted" style={{ display: "block", marginTop: 8 }}>
-                    {metric.recommendation}
-                  </small>
                   <div className="meta-row">
                     <span>
                       {copy.table.totalMoveInCost}: {money(metric.total_move_in_cost_pln, locale)}
@@ -682,18 +711,21 @@ export default function ComparePage() {
             })}
           </section>
 
-          <section className="panel">
-            <div className="panel-header">
-              <h2>{copy.sections.comparisonMatrix}</h2>
-              <span className="muted">
-                {copy.statuses.compareCount(items.length)} ·{" "}
-                {copy.values.mortgageAssumptions(
-                  comparison.mortgage_assumptions.down_payment_pct,
-                  comparison.mortgage_assumptions.loan_years,
-                  comparison.mortgage_assumptions.annual_interest_rate_pct,
-                )}
+          <details className="panel compare-details">
+            <summary className="panel-header">
+              <strong>{copy.sections.comparisonMatrix}</strong>
+              <span className="compare-details-meta">
+                <span className="muted">
+                  {copy.statuses.compareCount(items.length)} ·{" "}
+                  {copy.values.mortgageAssumptions(
+                    comparison.mortgage_assumptions.down_payment_pct,
+                    comparison.mortgage_assumptions.loan_years,
+                    comparison.mortgage_assumptions.annual_interest_rate_pct,
+                  )}
+                </span>
+                <ChevronDown aria-hidden="true" size={18} />
               </span>
-            </div>
+            </summary>
             <div className="table-scroll compare-table-desktop">
               <table className="table compare-table">
                 <thead>
@@ -732,7 +764,7 @@ export default function ComparePage() {
                 </article>
               ))}
             </div>
-          </section>
+          </details>
         </>
       )}
     </>
@@ -768,18 +800,19 @@ function RecommendationSummary({
   copy,
   items,
   metrics,
-  bestListingId,
+  recommendation,
   badgeLabel,
   locale,
 }: {
   copy: (typeof COMPARE_PRODUCT_COPY)[keyof typeof COMPARE_PRODUCT_COPY];
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
-  bestListingId: string;
+  recommendation: CompareRecommendation;
   badgeLabel?: string;
   locale: Locale;
 }) {
-  const item = items.find((analysis) => analysis.listing.id === bestListingId) ?? items[0];
+  const item =
+    items.find((analysis) => analysis.listing.id === recommendation.listing_id) ?? items[0];
   const metric = metrics.find((candidate) => candidate.listing_id === item?.listing.id);
   if (!item || !metric) return null;
 
@@ -797,44 +830,31 @@ function RecommendationSummary({
         decision={item.buyer_decision}
         fallback={decisionSummaryFromScores(item.scores, item.listing.price)}
         fallbackLabel={scoreLabel(item.scores.decision_label, locale)}
-        fallbackSummary={metric.recommendation}
+        fallbackSummary={copy.fallbackSummary}
         locale={locale}
       />
       <div className="compare-recommendation-grid">
         <div>
           <h3>{copy.why}</h3>
           <ul className="section-list compact">
-            <li>
-              {money(Math.abs(metric.estimated_discount_to_fair_mid_pln), locale)}{" "}
-              {copy.fairPrice}
-            </li>
-            <li>{metric.risk_score}/100 · {copy.lowerRisk}</li>
-            <li>
-              {metric.liquidity_score === null ? copy.unavailable : `${metric.liquidity_score}/100`} ·{" "}
-              {copy.liquidity}
-            </li>
-            {metric.reasons.slice(0, 2).map((reason) => (
-              <li key={reason}>{reason}</li>
+            {recommendation.reasons.map((reason, index) => (
+              <li key={`${reason.code}-${index}`}>
+                {recommendationSignalText(reason, locale)}
+              </li>
             ))}
           </ul>
         </div>
         <div>
           <h3>{copy.tradeoffs}</h3>
           <ul className="section-list compact">
-            {metric.warnings.length > 0 ? (
-              metric.warnings.slice(0, 4).map((warning) => <li key={warning}>{warning}</li>)
+            {recommendation.tradeoffs.length > 0 ? (
+              recommendation.tradeoffs.map((tradeoff, index) => (
+                <li key={`${tradeoff.code}-${index}`}>
+                  {recommendationSignalText(tradeoff, locale)}
+                </li>
+              ))
             ) : (
-              <>
-                <li>
-                  {numberValue(item.listing.area_m2, locale)} m2 · {copy.smaller}
-                </li>
-                <li>
-                  {item.listing.distance_to_center_km === null
-                    ? copy.unavailable
-                    : `${numberValue(item.listing.distance_to_center_km, locale)} km`} ·{" "}
-                  {copy.farther}
-                </li>
-              </>
+              <li>{copy.noMaterialTradeoffs}</li>
             )}
           </ul>
         </div>
@@ -1155,21 +1175,6 @@ function comparisonRows(
           : copy.values.plannedInvestments(item.listing.planned_investments_within_2km),
       ),
     },
-    {
-      id: "negotiation-argument",
-      label: copy.table.negotiationArgument,
-      values: items.map((item) => item.negotiation_arguments[0] ?? "-"),
-    },
-    {
-      id: "main-risk",
-      label: copy.table.mainRisk,
-      values: items.map((item) => item.scores.warnings[0] ?? copy.empty.noWarnings),
-    },
-    {
-      id: "recommendation",
-      label: copy.table.recommendation,
-      values: items.map((item) => metricById.get(item.listing.id)?.recommendation ?? "-"),
-    },
   ];
 }
 
@@ -1306,61 +1311,91 @@ function rentDetail(
   )}/${copy.values.monthly}`;
 }
 
-function personalizedBestListing(
-  comparison: CompareResponse | null,
-  profile: BuyerProfile | null,
-  activeIntent: PurchaseIntent,
-): { listingId: string | null; overBudget: boolean } {
-  if (!comparison || !profile) return { listingId: null, overBudget: false };
+function recommendationSignalText(signal: CompareRecommendationSignal, locale: Locale): string {
+  const value = signal.value ?? 0;
+  const reference = signal.reference_value ?? 0;
+  const score = `${numberValue(value, locale)}/100`;
+  const versus = { en: "vs", pl: "wobec", ru: "против", uk: "проти" }[locale];
+  const scoreComparison = `${score} ${versus} ${numberValue(reference, locale)}/100`;
+  const priceDifference = money(Math.max(value - reference, 0), locale);
+  const areaDifference = numberValue(Math.max(reference - value, 0), locale);
+  const distanceDifference = numberValue(Math.max(value - reference, 0), locale);
 
-  const listingsById = new Map(comparison.items.map((item) => [item.listing.id, item]));
-  const candidates = comparison.metrics.filter((metric) => {
-    const listing = listingsById.get(metric.listing_id)?.listing;
-    return listing && (profile.budget_pln === null || listing.price <= profile.budget_pln);
-  });
-  if (candidates.length === 0) {
-    return { listingId: null, overBudget: profile.budget_pln !== null };
-  }
-
-  const scored = candidates.map((metric) => {
-    const analysis = listingsById.get(metric.listing_id);
-    const intentFit = analysis?.buyer_decision?.intent_fit.find(
-      (fit) => fit.intent === activeIntent,
-    )?.score;
-    const values = [intentFit ?? metric.decision_score];
-    for (const priority of profile.priorities) {
-      const priorityValue = personalizedPriorityValue(priority, metric, analysis ?? null);
-      if (priorityValue !== null) values.push(priorityValue);
-    }
-    return {
-      listingId: metric.listing_id,
-      rank: metric.rank,
-      score: values.reduce((sum, value) => sum + value, 0) / values.length,
-    };
-  });
-  scored.sort((left, right) => right.score - left.score || left.rank - right.rank);
-  return { listingId: scored[0]?.listingId ?? null, overBudget: false };
-}
-
-function personalizedPriorityValue(
-  priority: BuyerProfile["priorities"][number],
-  metric: CompareItemMetrics,
-  analysis: ListingAnalysis | null,
-): number | null {
-  switch (priority) {
-    case "price_value":
-      return Math.max(0, Math.min(100, 100 - Math.max(metric.price_delta_to_fair_mid_pct, 0) * 3));
-    case "low_risk":
-      return 100 - metric.risk_score;
-    case "daily_living":
-      return analysis?.buyer_decision?.intent_fit.find((fit) => fit.intent === "self")?.score ?? null;
-    case "family_fit":
-      return analysis?.buyer_decision?.intent_fit.find((fit) => fit.intent === "family")?.score ?? null;
-    case "liquidity":
-      return metric.liquidity_score;
-    case "rental_income":
-      return metric.rental_potential_score;
-  }
+  const translations: Record<Locale, Record<CompareRecommendationSignal["code"], string>> = {
+    en: {
+      overall_balance: `${score} for the best overall balance of available factors`,
+      intent_fit: `${score} fit for the selected buying purpose`,
+      price_value: `${percent(value, locale)} against estimated fair value`,
+      low_risk: `${score} risk level, the lowest among the compared options`,
+      daily_living: `${score} fit for everyday living priorities`,
+      family_fit: `${score} fit for family priorities`,
+      liquidity: `${score} liquidity, the strongest available result`,
+      rental_income: `${score} rental potential, the strongest available result`,
+      budget_fit: `${money(value, locale)} stays within the saved ${money(reference, locale)} limit`,
+      higher_price: `${priceDifference} more than the least expensive option`,
+      higher_risk: `Higher risk: ${scoreComparison}`,
+      weaker_liquidity: `Weaker liquidity: ${scoreComparison}`,
+      weaker_rental_income: `Weaker rental potential: ${scoreComparison}`,
+      smaller_area: `${areaDifference} m2 less than the largest option`,
+      farther_from_center: `${distanceDifference} km farther from the city center`,
+      over_budget: `${priceDifference} above the saved maximum price`,
+    },
+    pl: {
+      overall_balance: `${score} za najlepszy ogólny bilans dostępnych czynników`,
+      intent_fit: `${score} dopasowania do wybranego celu zakupu`,
+      price_value: `${percent(value, locale)} względem szacowanej wartości rynkowej`,
+      low_risk: `Ryzyko ${score}, najniższe wśród porównywanych ofert`,
+      daily_living: `${score} dopasowania do codziennego życia`,
+      family_fit: `${score} dopasowania do potrzeb rodziny`,
+      liquidity: `Płynność ${score}, najlepszy dostępny wynik`,
+      rental_income: `Potencjał najmu ${score}, najlepszy dostępny wynik`,
+      budget_fit: `${money(value, locale)} mieści się w limicie ${money(reference, locale)}`,
+      higher_price: `O ${priceDifference} drożej od najtańszej opcji`,
+      higher_risk: `Wyższe ryzyko: ${scoreComparison}`,
+      weaker_liquidity: `Słabsza płynność: ${scoreComparison}`,
+      weaker_rental_income: `Słabszy potencjał najmu: ${scoreComparison}`,
+      smaller_area: `O ${areaDifference} m2 mniej od największej opcji`,
+      farther_from_center: `O ${distanceDifference} km dalej od centrum`,
+      over_budget: `O ${priceDifference} powyżej zapisanej ceny maksymalnej`,
+    },
+    ru: {
+      overall_balance: `${score} за лучший общий баланс доступных факторов`,
+      intent_fit: `${score} соответствия выбранной цели покупки`,
+      price_value: `${percent(value, locale)} относительно оценочной рыночной стоимости`,
+      low_risk: `Риск ${score}, самый низкий среди сравниваемых вариантов`,
+      daily_living: `${score} соответствия приоритетам для жизни`,
+      family_fit: `${score} соответствия потребностям семьи`,
+      liquidity: `Ликвидность ${score}, лучший доступный результат`,
+      rental_income: `Арендный потенциал ${score}, лучший доступный результат`,
+      budget_fit: `${money(value, locale)} укладывается в лимит ${money(reference, locale)}`,
+      higher_price: `На ${priceDifference} дороже самого доступного варианта`,
+      higher_risk: `Выше риск: ${scoreComparison}`,
+      weaker_liquidity: `Ниже ликвидность: ${scoreComparison}`,
+      weaker_rental_income: `Ниже арендный потенциал: ${scoreComparison}`,
+      smaller_area: `На ${areaDifference} m2 меньше самого большого варианта`,
+      farther_from_center: `На ${distanceDifference} км дальше от центра`,
+      over_budget: `На ${priceDifference} выше сохранённой максимальной цены`,
+    },
+    uk: {
+      overall_balance: `${score} за найкращий загальний баланс доступних чинників`,
+      intent_fit: `${score} відповідності вибраній меті купівлі`,
+      price_value: `${percent(value, locale)} відносно оціненої ринкової вартості`,
+      low_risk: `Ризик ${score}, найнижчий серед порівнюваних варіантів`,
+      daily_living: `${score} відповідності пріоритетам для життя`,
+      family_fit: `${score} відповідності потребам сім'ї`,
+      liquidity: `Ліквідність ${score}, найкращий доступний результат`,
+      rental_income: `Орендний потенціал ${score}, найкращий доступний результат`,
+      budget_fit: `${money(value, locale)} вкладається в ліміт ${money(reference, locale)}`,
+      higher_price: `На ${priceDifference} дорожче найдоступнішого варіанта`,
+      higher_risk: `Вищий ризик: ${scoreComparison}`,
+      weaker_liquidity: `Нижча ліквідність: ${scoreComparison}`,
+      weaker_rental_income: `Нижчий орендний потенціал: ${scoreComparison}`,
+      smaller_area: `На ${areaDifference} m2 менше найбільшого варіанта`,
+      farther_from_center: `На ${distanceDifference} км далі від центру`,
+      over_budget: `На ${priceDifference} вище збереженої максимальної ціни`,
+    },
+  };
+  return translations[locale][signal.code];
 }
 
 function syncCompareUrl(ids: string[], intent: PurchaseIntent) {

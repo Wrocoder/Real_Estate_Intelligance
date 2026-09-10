@@ -422,14 +422,24 @@ expectIncludes("compare page i18n", comparePage, [
 expectIncludes("compare decision summary", comparePage, [
   "<DecisionSummary",
   "decisionSummaryFromScores",
-  "fallbackSummary={metric.recommendation}",
+  "fallbackSummary={copy.fallbackSummary}",
+  "recommendationSignalText",
+  "recommendation.reasons.map",
+  "recommendation.tradeoffs.map",
 ]);
 expectIncludes("personalized comparison", comparePage, [
-  "personalizedBestListing",
-  "personalizedPriorityValue",
-  "profile.budget_pln",
-  "profile.priorities",
+  "comparison?.recommendation.listing_id",
+  "comparison.recommendation.personalized",
+  "comparison?.recommendation.all_over_budget",
+  "response.unavailable_listing_ids",
   "badgeLabel",
+]);
+expectNotIncludes("compare excludes unlocalized backend prose", comparePage, [
+  "metric.recommendation",
+  "metric.reasons",
+  "metric.warnings",
+  "item.negotiation_arguments[0]",
+  "item.scores.warnings[0]",
 ]);
 
 expectIncludes("map component", mapComponent, [

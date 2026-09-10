@@ -277,7 +277,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** P0-02, data model ownership, routing migration.
 
-### [ ] P1-08. Исправить comparison flow и contract
+### [x] P1-08. Исправить comparison flow и contract
 
 **Область:** `/compare`; comparison API; contextual add-to-compare actions.
 
@@ -287,7 +287,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** P0-02, P1-02, P1-07, P1-16.
 
-**Текущий статус (2026-09-07): PARTIAL.** Явный набор объектов сохранен, но recommendation/trade-offs еще не опираются на durable buyer profile, а detailed metric matrix остается слишком доминирующей на mobile.
+**Текущий статус (2026-09-10): DONE.** `/compare` принимает от двух до пяти уникальных stable listing IDs и возвращает requested/unavailable IDs, поэтому один недоступный объект удаляется из набора и URL без потери остальных результатов. Backend формирует versioned `compare-recommendation-v1` с intent, profile-backed budget/priorities, structured reason/trade-off codes и числовыми evidence values; frontend локализует только эти коды в PL/EN/RU/UK и не показывает raw backend prose. Существующий `decision_score` и аналитические формулы не изменены: recommendation использует только доступные signals, перенормирует их веса при missing data, а budget ограничивает кандидатов только когда хотя бы один объект в него укладывается. Recommendation идет перед доказательствами, detailed matrix свернута по умолчанию, а mobile показывает квартиры последовательно без широкой таблицы. Release gate: targeted compare suite `7 passed`; полный backend suite `440 passed, 1 skipped`; Ruff; ESLint; TypeScript; `675` smoke assertions; production Next.js build; OpenAPI regeneration; repository Playwright на desktop/tablet/mobile во всех локалях, включая partial unavailable property, intent-aware recommendation, console/network/hydration и overflow checks.
 
 ### [ ] P1-09. Довести alerts до понятного пользовательского сервиса
 

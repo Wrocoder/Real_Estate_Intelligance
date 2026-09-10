@@ -1,7 +1,7 @@
 # Domarion Product Transformation Audit
 
 Audit date: 2026-09-05
-Last verification refresh: 2026-09-09
+Last verification refresh: 2026-09-10
 Baseline commit: 230af7d (`Fix Alpine npm lockfile dependencies`)
 Product: Domarion / WartoMetr
 
@@ -198,9 +198,9 @@ Reuse these boundaries instead of creating parallel implementations:
 1. Object-watch API and UI foundations exist, but a complete event lifecycle
    for all requested triggers, baseline updates, and user-facing history still
    needs end-to-end validation.
-2. Buyer preference fields are represented mainly as purchase intent and
-   lightweight form inputs. A small durable profile for high-value preferences
-   is not yet a coherent cross-route product contract.
+2. A compact durable buyer profile now carries intent, budget, and up to three
+   priorities across check, comparison, and supported area ranking. Its effect
+   is labeled as personalization and does not alter market facts.
 3. Search has buyer-facing modes and many filters, but internal/professional
    controls remain close to the consumer experience in some routes.
 4. Area pages have dynamic evidence and planned investment data, but their
@@ -271,8 +271,8 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | --- | --- | --- | --- |
 | T4-01 | Validate object-watch lifecycle, trigger baselines, event history, and delivery semantics | PARTIAL | T2-02, T1-03 |
 | T4-02 | Generate adaptive viewing, document, seller-question, and negotiation actions from known risks | DONE | T3-03 |
-| T4-03 | Add a small durable buyer preference profile and use it transparently in fit and compare | NOT STARTED | T2-02, T1-01 |
-| T4-04 | Turn compare into recommendation plus explicit trade-offs while preserving detail access | PARTIAL | T2-02, T4-03 |
+| T4-03 | Add a small durable buyer preference profile and use it transparently in fit and compare | DONE | T2-02, T1-01 |
+| T4-04 | Turn compare into recommendation plus explicit trade-offs while preserving detail access | DONE | T2-02, T4-03 |
 
 ### Phase 5: understandable discovery and area value
 
@@ -1095,10 +1095,51 @@ Verified:
 
 Follow-up:
 
-- P1-08 can now simplify the remaining detailed comparison matrix around this
-  profile-backed recommendation;
+- P1-08 now consumes this profile in the completed comparison recommendation
+  contract described below;
 - P1-09 can use the same profile for monitoring relevance without changing
   alert facts or delivery semantics.
+
+### P1-08 / T4-04: Comparison Decision Flow - DONE (2026-09-10)
+
+Changed:
+
+- made the comparison request reject blank or duplicate IDs and retain the
+  explicit two-to-five listing selection as the reproducible URL state;
+- made partial comparison responses return both requested and unavailable IDs,
+  while still requiring at least two valid listings;
+- added deterministic `compare-recommendation-v1` output with purchase intent,
+  profile budget/priorities, structured reasons, explicit trade-offs and their
+  numeric reference values;
+- preserved the existing `decision_score` and all source analytics. The new
+  recommendation weights only available inputs and renormalizes around missing
+  values instead of synthesizing neutral scores;
+- made budget a candidate constraint only when at least one listing is within
+  budget; otherwise the response keeps the general recommendation and exposes
+  `all_over_budget`;
+- moved the recommendation before evidence, collapsed the detailed matrix by
+  default, localized structured reason/trade-off codes in PL/EN/RU/UK, and kept
+  mobile comparison as sequential listing panels rather than a wide table.
+
+Verified:
+
+- targeted comparison suite: `7 passed`; full backend suite: `440 passed, 1
+  skipped`; repository-wide Ruff passed;
+- frontend ESLint, TypeScript, `675` smoke assertions and the production Next.js
+  build passed;
+- generated OpenAPI TypeScript was refreshed from the running FastAPI contract;
+- repository Playwright passed all four locales at desktop, tablet and mobile,
+  plus recommendation-first rendering, partial unavailable listings, collapsed
+  detail, console/network/hydration and horizontal-overflow checks;
+- rendered Polish comparison views at 1440px and 390px were visually inspected.
+
+Follow-up:
+
+- the next dependency-ordered product task is P1-09 / T4-01, object-watch and
+  alert delivery semantics; provider and OCI-dependent acceptance remains an
+  external constraint;
+- P2-10 can now instrument `comparison_started` and `comparison_completed`
+  against a stable comparison contract.
 
 ## Remaining External Limitations
 

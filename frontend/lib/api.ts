@@ -2581,6 +2581,42 @@ export type CompareSummary = {
   notes: string[];
 };
 
+export type CompareRecommendationSignalCode =
+  | "overall_balance"
+  | "intent_fit"
+  | "price_value"
+  | "low_risk"
+  | "daily_living"
+  | "family_fit"
+  | "liquidity"
+  | "rental_income"
+  | "budget_fit"
+  | "higher_price"
+  | "higher_risk"
+  | "weaker_liquidity"
+  | "weaker_rental_income"
+  | "smaller_area"
+  | "farther_from_center"
+  | "over_budget";
+
+export type CompareRecommendationSignal = {
+  code: CompareRecommendationSignalCode;
+  value: number | null;
+  reference_value: number | null;
+};
+
+export type CompareRecommendation = {
+  version: string;
+  purchase_intent: PurchaseIntent;
+  listing_id: string;
+  score: number;
+  personalized: boolean;
+  all_over_budget: boolean;
+  applied_priorities: BuyerPriority[];
+  reasons: CompareRecommendationSignal[];
+  tradeoffs: CompareRecommendationSignal[];
+};
+
 export type RealtorClientShortlistRequest = {
   listing_ids: string[];
   client_name?: string | null;
@@ -2969,9 +3005,12 @@ export type ListingCorrectionResult = {
 };
 
 export type CompareResponse = {
+  requested_listing_ids: string[];
+  unavailable_listing_ids: string[];
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
   summary: CompareSummary;
+  recommendation: CompareRecommendation;
   mortgage_assumptions: CompareMortgageAssumptions;
 };
 

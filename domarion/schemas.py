@@ -2532,6 +2532,16 @@ class CompareRequest(BaseModel):
     listing_ids: list[str] = Field(min_length=2, max_length=5)
     purchase_intent: PurchaseIntent = "unsure"
 
+    @model_validator(mode="after")
+    def validate_listing_ids(self) -> "CompareRequest":
+        normalized = [listing_id.strip() for listing_id in self.listing_ids]
+        if any(not listing_id for listing_id in normalized):
+            raise ValueError("Comparison listing ids cannot be empty")
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("Comparison requires distinct listing ids")
+        self.listing_ids = normalized
+        return self
+
 
 class CompareMortgageAssumptions(BaseModel):
     down_payment_pct: float = Field(ge=0, le=100)
@@ -2595,10 +2605,53 @@ class CompareSummary(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+CompareRecommendationReasonCode = Literal[
+    "overall_balance",
+    "intent_fit",
+    "price_value",
+    "low_risk",
+    "daily_living",
+    "family_fit",
+    "liquidity",
+    "rental_income",
+    "budget_fit",
+]
+CompareRecommendationTradeoffCode = Literal[
+    "higher_price",
+    "higher_risk",
+    "weaker_liquidity",
+    "weaker_rental_income",
+    "smaller_area",
+    "farther_from_center",
+    "over_budget",
+]
+
+
+class CompareRecommendationSignal(BaseModel):
+    code: CompareRecommendationReasonCode | CompareRecommendationTradeoffCode
+    value: float | None = None
+    reference_value: float | None = None
+
+
+class CompareRecommendation(BaseModel):
+    version: str = "compare-recommendation-v1"
+    purchase_intent: PurchaseIntent
+    listing_id: str
+    score: int = Field(ge=0, le=100)
+    personalized: bool
+    all_over_budget: bool = False
+    applied_priorities: list[BuyerPriority] = Field(default_factory=list)
+    reasons: list[CompareRecommendationSignal] = Field(default_factory=list)
+    tradeoffs: list[CompareRecommendationSignal] = Field(default_factory=list)
+
+
 class CompareResponse(BaseModel):
+    requested_listing_ids: list[str]
+    unavailable_listing_ids: list[str] = Field(default_factory=list)
     items: list[ListingAnalysis]
     metrics: list[CompareItemMetrics]
     summary: CompareSummary
+    recommendation: CompareRecommendation
     mortgage_assumptions: CompareMortgageAssumptions
 
 

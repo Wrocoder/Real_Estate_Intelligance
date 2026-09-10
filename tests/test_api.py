@@ -962,6 +962,32 @@ def test_compare_requires_existing_ids() -> None:
     assert response.json()["error"]["params"]["missing_listing_ids"] == ["missing"]
 
 
+def test_compare_keeps_available_selection_when_one_listing_is_missing() -> None:
+    response = client.post(
+        "/api/v1/compare",
+        headers={
+            "X-Domarion-User-Id": "partial-compare-owner",
+            "X-Domarion-Plan": "buyer_pro",
+        },
+        json={"listing_ids": ["wr-001", "missing", "wr-002"]},
+    )
+    payload = response.json()
+
+    assert response.status_code == 200
+    assert payload["requested_listing_ids"] == ["wr-001", "missing", "wr-002"]
+    assert payload["unavailable_listing_ids"] == ["missing"]
+    assert [item["listing"]["id"] for item in payload["items"]] == ["wr-001", "wr-002"]
+
+
+def test_compare_rejects_duplicate_listing_ids() -> None:
+    response = client.post(
+        "/api/v1/compare",
+        json={"listing_ids": ["wr-001", "wr-001"]},
+    )
+
+    assert response.status_code == 422
+
+
 def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
     response = client.post(
         "/api/v1/compare",
@@ -970,6 +996,8 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
     payload = response.json()
 
     assert response.status_code == 200
+    assert payload["requested_listing_ids"] == ["wr-001", "wr-002"]
+    assert payload["unavailable_listing_ids"] == []
     assert [item["listing"]["id"] for item in payload["items"]] == ["wr-001", "wr-002"]
     assert {item["buyer_decision"]["selected_intent"] for item in payload["items"]} == {
         "investment"
@@ -1023,6 +1051,55 @@ def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
     assert summary["strongest_rental_listing_id"] in {"wr-001", "wr-002"}
     assert summary["average_estimated_monthly_payment_pln"] > 0
     assert summary["notes"]
+
+    recommendation = payload["recommendation"]
+    assert recommendation["version"] == "compare-recommendation-v1"
+    assert recommendation["purchase_intent"] == "investment"
+    assert recommendation["listing_id"] in {"wr-001", "wr-002"}
+    assert 0 <= recommendation["score"] <= 100
+    assert recommendation["reasons"]
+    assert recommendation["personalized"] is False
+
+    family_response = client.post(
+        "/api/v1/compare",
+        json={"listing_ids": ["wr-001", "wr-002"], "purchase_intent": "family"},
+    )
+    assert family_response.status_code == 200
+    assert family_response.json()["recommendation"]["score"] != recommendation["score"]
+
+
+def test_compare_uses_saved_buyer_profile_for_recommendation() -> None:
+    headers = {
+        "X-Domarion-User-Id": "profiled-compare-owner",
+        "X-Domarion-Plan": "buyer_pro",
+    }
+    saved = client.put(
+        "/api/v1/me/buyer-profile",
+        headers=headers,
+        json={
+            "intent": "family",
+            "budget_pln": 1_000_000,
+            "priorities": ["family_fit", "low_risk"],
+        },
+    )
+    assert saved.status_code == 200
+
+    response = client.post(
+        "/api/v1/compare",
+        headers=headers,
+        json={"listing_ids": ["wr-001", "wr-002"], "purchase_intent": "unsure"},
+    )
+    recommendation = response.json()["recommendation"]
+
+    assert response.status_code == 200
+    assert recommendation["purchase_intent"] == "family"
+    assert recommendation["personalized"] is True
+    assert recommendation["applied_priorities"] == ["family_fit", "low_risk"]
+    assert {reason["code"] for reason in recommendation["reasons"]} & {
+        "intent_fit",
+        "family_fit",
+        "low_risk",
+    }
 
 
 def test_realtor_client_shortlist_preview_builds_client_copy() -> None:

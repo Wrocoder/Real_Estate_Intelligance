@@ -4971,6 +4971,45 @@ export interface components {
              */
             rate_type: "fixed" | "variable";
         };
+        /** CompareRecommendation */
+        CompareRecommendation: {
+            /**
+             * Version
+             * @default compare-recommendation-v1
+             */
+            version: string;
+            /**
+             * Purchase Intent
+             * @enum {string}
+             */
+            purchase_intent: "self" | "family" | "rental" | "investment" | "unsure";
+            /** Listing Id */
+            listing_id: string;
+            /** Score */
+            score: number;
+            /** Personalized */
+            personalized: boolean;
+            /**
+             * All Over Budget
+             * @default false
+             */
+            all_over_budget: boolean;
+            /** Applied Priorities */
+            applied_priorities?: ("price_value" | "low_risk" | "daily_living" | "family_fit" | "liquidity" | "rental_income")[];
+            /** Reasons */
+            reasons?: components["schemas"]["CompareRecommendationSignal"][];
+            /** Tradeoffs */
+            tradeoffs?: components["schemas"]["CompareRecommendationSignal"][];
+        };
+        /** CompareRecommendationSignal */
+        CompareRecommendationSignal: {
+            /** Code */
+            code: ("overall_balance" | "intent_fit" | "price_value" | "low_risk" | "daily_living" | "family_fit" | "liquidity" | "rental_income" | "budget_fit") | ("higher_price" | "higher_risk" | "weaker_liquidity" | "weaker_rental_income" | "smaller_area" | "farther_from_center" | "over_budget");
+            /** Value */
+            value?: number | null;
+            /** Reference Value */
+            reference_value?: number | null;
+        };
         /** CompareRequest */
         CompareRequest: {
             /** Listing Ids */
@@ -4984,11 +5023,16 @@ export interface components {
         };
         /** CompareResponse */
         CompareResponse: {
+            /** Requested Listing Ids */
+            requested_listing_ids: string[];
+            /** Unavailable Listing Ids */
+            unavailable_listing_ids?: string[];
             /** Items */
             items: components["schemas"]["ListingAnalysis"][];
             /** Metrics */
             metrics: components["schemas"]["CompareItemMetrics"][];
             summary: components["schemas"]["CompareSummary"];
+            recommendation: components["schemas"]["CompareRecommendation"];
             mortgage_assumptions: components["schemas"]["CompareMortgageAssumptions"];
         };
         /** CompareSummary */

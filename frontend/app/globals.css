@@ -2918,6 +2918,56 @@ summary:focus-visible {
   gap: 10px;
 }
 
+.compare-selection-help {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.compare-unavailable-notice {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+  border: 1px solid #d8b65a;
+  border-radius: 8px;
+  background: #fff8e6;
+  padding: 12px 14px;
+  color: #5e4911;
+}
+
+.compare-unavailable-notice small {
+  overflow-wrap: anywhere;
+}
+
+.compare-details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  list-style: none;
+  cursor: pointer;
+}
+
+.compare-details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.compare-details-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  text-align: right;
+}
+
+.compare-details > summary svg {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.compare-details[open] > summary svg {
+  transform: rotate(180deg);
+}
+
 .compare-option {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -4269,6 +4319,15 @@ summary:focus-visible {
 
   .compare-mobile-cards {
     display: grid;
+  }
+
+  .compare-details > summary,
+  .compare-details-meta {
+    align-items: flex-start;
+  }
+
+  .compare-details-meta {
+    max-width: 65%;
   }
 
   .area-compare-table-desktop {

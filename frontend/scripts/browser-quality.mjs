@@ -340,8 +340,9 @@ async function runFailureState(browser) {
   const observation = await observe(page, "failure-state");
   try {
     await page.goto(`${baseUrl}/check`, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
     const urlInput = page.getByLabel("Link Otodom lub OLX");
-    await urlInput.fill("https://example.com/not-a-supported-listing");
+    await urlInput.fill("https://www.otodom.pl/pl/oferta/not-a-real-listing-ID404");
     await page.getByRole("checkbox").check();
     await page.getByRole("button", { name: "Sprawdź mieszkanie" }).click();
     await page.waitForTimeout(500);
@@ -662,6 +663,113 @@ async function runListingDecisionHierarchy(browser, viewport) {
   }
 }
 
+async function runCompareDecision(browser, locale, viewport) {
+  const context = await browser.newContext({ viewport, locale });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `compare-decision/${locale}/${viewport.width}`);
+  const expected = {
+    pl: { why: "Dlaczego", tradeoffs: "Kompromisy" },
+    en: { why: "Why", tradeoffs: "Trade-offs" },
+    ru: { why: "Почему", tradeoffs: "Компромиссы" },
+    uk: { why: "Чому", tradeoffs: "Компроміси" },
+  }[locale];
+  try {
+    await page.goto(`${baseUrl}/compare?ids=wr-001,wr-002&intent=family`, {
+      waitUntil: "domcontentloaded",
+    });
+    const recommendation = page.locator(".compare-recommendation");
+    const details = page.locator(".compare-details");
+    await recommendation.waitFor({ state: "visible", timeout: 15000 });
+    if ((await page.locator(".compare-option input:checked").count()) !== 2) {
+      throw new Error(`${observation.label}: explicit URL selection was not preserved`);
+    }
+    const recommendationText = await recommendation.innerText();
+    if (!recommendationText.includes(expected.why) || !recommendationText.includes(expected.tradeoffs)) {
+      throw new Error(`${observation.label}: localized reasons or trade-offs are missing`);
+    }
+    if ((await details.getAttribute("open")) !== null) {
+      throw new Error(`${observation.label}: detailed matrix should start collapsed`);
+    }
+    const recommendationBox = await recommendation.boundingBox();
+    const detailsBox = await details.boundingBox();
+    if (!recommendationBox || !detailsBox || detailsBox.y <= recommendationBox.y) {
+      throw new Error(`${observation.label}: recommendation does not precede detailed evidence`);
+    }
+    await page.locator(".compare-details > summary").click();
+    if ((await details.getAttribute("open")) === null) {
+      throw new Error(`${observation.label}: detailed matrix did not open`);
+    }
+    if (viewport.width <= 480) {
+      if (await page.locator(".compare-table-desktop").isVisible()) {
+        throw new Error(`${observation.label}: desktop comparison table is visible on mobile`);
+      }
+      await page.locator(".compare-mobile-cards").waitFor({ state: "visible" });
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `compare-${locale}-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
+async function runPartialCompareDecision(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 1440, height: 900 },
+    locale: "pl-PL",
+  });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const partialResponse = await context.request.post(`${apiBaseUrl}/api/v1/compare`, {
+    headers: {
+      "X-Domarion-User-Id": "browser-partial-compare",
+      "X-Domarion-Plan": "buyer_pro",
+    },
+    data: {
+      listing_ids: ["wr-001", "missing-browser-listing", "wr-002"],
+      purchase_intent: "family",
+    },
+  });
+  if (partialResponse.status() !== 200) {
+    throw new Error(`partial compare fixture failed: ${partialResponse.status()}`);
+  }
+  const partialPayload = await partialResponse.json();
+  const page = await context.newPage();
+  const observation = await observe(page, "compare-decision/partial");
+  let compareRequestCount = 0;
+  await page.route(`${apiBaseUrl}/api/v1/compare`, async (route) => {
+    compareRequestCount += 1;
+    if (compareRequestCount === 1) {
+      await route.fulfill({ json: partialPayload });
+      return;
+    }
+    await route.continue();
+  });
+  try {
+    await page.goto(
+      `${baseUrl}/compare?ids=wr-001,missing-browser-listing,wr-002&intent=family`,
+      { waitUntil: "domcontentloaded" },
+    );
+    await page.locator(".compare-unavailable-notice").waitFor({
+      state: "visible",
+      timeout: 15000,
+    });
+    await page.locator(".compare-recommendation").waitFor({ state: "visible" });
+    if ((await page.locator(".compare-option input:checked").count()) !== 2) {
+      throw new Error("compare-decision/partial: remaining selection was not preserved");
+    }
+    const currentUrl = new URL(page.url());
+    if (currentUrl.searchParams.get("ids") !== "wr-001,wr-002") {
+      throw new Error("compare-decision/partial: unavailable ID was not removed from the page link");
+    }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
 try {
   for (const viewport of viewports) {
@@ -714,6 +822,26 @@ try {
     } catch (error) {
       failures.push(error.message);
     }
+  }
+  for (const locale of locales) {
+    try {
+      await runCompareDecision(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: compare-decision/${locale}/mobile`);
+    } catch (error) {
+      failures.push(error.message);
+    }
+  }
+  try {
+    await runCompareDecision(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: compare-decision/pl/desktop");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    await runPartialCompareDecision(browser);
+    console.log("browser quality passed: compare-decision/partial");
+  } catch (error) {
+    failures.push(error.message);
   }
   for (const locale of locales) {
     try {
