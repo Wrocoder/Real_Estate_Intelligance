@@ -776,10 +776,21 @@ summary:focus-visible {
 
 .decision-summary-compact .buyer-decision-metrics {
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
 }
 
 .decision-summary-compact .metric {
-  padding: 10px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 10px 12px;
+}
+
+.decision-summary-compact .metric:first-child {
+  border-left: 0;
 }
 
 .decision-summary-compact .metric strong {
@@ -864,6 +875,12 @@ summary:focus-visible {
   display: grid;
   gap: 16px;
   padding: 0 0 18px;
+}
+
+.listing-secondary-disclosure > summary {
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .buyer-decision-details {
@@ -1161,6 +1178,34 @@ summary:focus-visible {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
+}
+
+.summary-strip {
+  gap: 0;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.summary-strip .metric {
+  border: 0;
+  border-left: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.summary-strip .metric:first-child {
+  border-left: 0;
+}
+
+.report-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.report-library-panel {
+  margin-top: 16px;
 }
 
 .metric {
@@ -4101,6 +4146,36 @@ summary:focus-visible {
   grid-column: 1 / -1;
 }
 
+.compare-primary,
+.compare-ranking-list {
+  margin-bottom: 16px;
+}
+
+.compare-highlight-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.compare-ranking-list {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.compare-ranking-item {
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 14px;
+}
+
+.compare-ranking-item:last-child {
+  border-right: 0;
+}
+
 .compare-recommendation-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -4472,6 +4547,34 @@ summary:focus-visible {
 
   .report-summary-grid .metric:last-child {
     grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .compare-highlight-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-highlight-strip .metric {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .compare-highlight-strip .metric:first-child {
+    border-top: 0;
+  }
+
+  .compare-ranking-list {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-ranking-item,
+  .compare-ranking-item:last-child {
+    border-right: 0;
+  }
+
+  .compare-ranking-item + .compare-ranking-item {
+    border-top: 1px solid var(--line);
   }
 
   .buyer-priority-grid {
@@ -4499,13 +4602,21 @@ summary:focus-visible {
 
   .listing-decision-actions {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .listing-decision-actions .button {
     justify-content: center;
     min-height: 42px;
     overflow-wrap: anywhere;
+  }
+
+  .listing-decision-actions .button.primary {
+    grid-column: 1 / -1;
+  }
+
+  .listing-decision-actions .button:last-child {
+    grid-column: 1 / -1;
   }
 
   .buyer-decision-hero {

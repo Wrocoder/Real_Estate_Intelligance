@@ -435,7 +435,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-10): DONE.** Общий consumer shell на mobile/tablet больше не занимает первый экран постоянной desktop-навигацией: brand остаётся видимым в компактном sticky header, а локализованные navigation и language controls открываются нативным keyboard-accessible disclosure. Основное содержание начинается сразу под header. Listing сохраняет verdict, fair-price range, confidence, risks и next action перед свёрнутой secondary analytics; compare показывает recommendation/trade-offs перед закрытой по умолчанию matrix; reports использует компактную двухколоночную summary grid на 390 px; длинный areas catalog сохраняет видимые primary actions, coverage и поиск без горизонтального скролла. Добавлен обязательный Playwright mobile-composition gate на 390 и 768 px с проверкой keyboard menu, sticky shell, first-content position, collapsed listing/compare details, report grid, console/network/hydration и overflow. Release gate: ESLint; TypeScript; `765` smoke assertions; npm audit (`0` vulnerabilities); production Next.js build; focused и полный repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile, включая existing expanded, partial, empty, unavailable, error/retry flows. Отрисованные areas, listing, compare и reports на 390 px просмотрены визуально.
 
-### [ ] P2-06. Снизить визуальную плотность и унифицировать компоненты
+### [x] P2-06. Снизить визуальную плотность и унифицировать компоненты
 
 **Область:** cards, badges, buttons, spacing, typography, chart hierarchy.
 
@@ -443,7 +443,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** `$domarion-ui-quality`, P1-04.
 
-**Текущий статус (2026-09-07): PARTIAL.** Общая система стала последовательнее, но listing/report/compare все еще дают secondary metrics слишком большой визуальный вес и требуют сокращения повторяющихся cards/panels.
+**Текущий статус (2026-09-10): DONE.** Общий `DecisionSummary` больше не повторяет verdict двумя badges: один семантический маркер обозначает вывод WartoMetr, а сам verdict остаётся главным заголовком. Compact summary metrics внутри compare/report cards переведены из вложенных cards в единую разделённую summary strip. Compare сохраняет одну доминирующую recommendation с reasons/trade-offs, удаляет дублирующий `best choice` highlight и показывает три независимых secondary signals и ranking как спокойные строки вместо второй и третьей серии равнозначных карточек. Reports оставляет три полезных account metrics, а async status вынесен из псевдометрики в `aria-live` status line. Listing визуально ослабляет additional analysis и на 390 px собирает primary action во всю ширину, secondary actions попарно и финальный report action полной строкой. Backend disclaimer и AI disclaimer больше не протекают английским текстом в локализованный listing: добавлены честные PL/EN/RU/UK consumer-copy варианты без изменения аналитического смысла. Release gate: ESLint; TypeScript; `795` smoke assertions; npm audit (`0` vulnerabilities); production Next.js build; focused visual-density Playwright на 390/1440 px и полный repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile, включая existing expanded, partial, empty, unavailable, error/retry flows. Listing, compare и reports визуально просмотрены на mobile и desktop; console/network/hydration и overflow проверены.
 
 ### [ ] P2-07. Разделить крупные frontend/backend модули и типизировать API
 

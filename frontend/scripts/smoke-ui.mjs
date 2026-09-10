@@ -171,6 +171,22 @@ expectIncludes("mobile composition browser gate", browserQuality, [
   ".compare-details",
   ".report-summary-grid",
 ]);
+expectIncludes("reduced visual density", globalStyles, [
+  ".summary-strip",
+  ".decision-summary-compact .metric",
+  ".listing-secondary-disclosure > summary",
+  ".compare-highlight-strip",
+  ".compare-ranking-list",
+  ".compare-ranking-item",
+]);
+expectIncludes("visual density browser gate", browserQuality, [
+  "runVisualDensity",
+  'BROWSER_QUALITY_SCENARIO === "visual-density"',
+  ".compare-highlight-strip > .metric",
+  ".compare-recommendation .decision-summary .status-pill",
+  ".report-summary-grid > .metric",
+  ".listing-decision-actions .button.primary",
+]);
 
 expectIncludes("api client contracts", apiClient, [
   "DataProvenance",
@@ -386,6 +402,24 @@ expectIncludes("shared decision summary", decisionSummary, [
   "confidenceScore",
   "decision-summary-next-step",
   "NEXT_STEPS",
+  "status ? copy.eyebrow",
+]);
+expectNotIncludes("decision summary avoids duplicate verdict badges", decisionSummary, [
+  '{status ? <span className="status-pill info">{copy.eyebrow}</span> : null}',
+]);
+expectIncludes("listing disclaimers use localized consumer copy", listingDetailPage, [
+  "copy.analysisDisclaimer",
+  "copy.assistantDisclaimer",
+]);
+expectNotIncludes("listing excludes backend disclaimer prose", listingDetailPage, [
+  "analysis.disclaimer",
+  "aiAnswer.disclaimer",
+]);
+expectIncludes("listing disclaimer translations", i18n, [
+  "This analysis supports initial screening and decision-making.",
+  "Analiza wspiera wstępną ocenę i podjęcie decyzji.",
+  "Анализ помогает предварительно оценить объект и принять решение.",
+  "Аналіз допомагає попередньо оцінити об'єкт і прийняти рішення.",
 ]);
 expectIncludes("check decision summary", checkPage, [
   "<BuyerDecisionPanel",
@@ -471,9 +505,16 @@ expectIncludes("compare decision summary", comparePage, [
   "recommendationSignalText",
   "recommendation.reasons.map",
   "recommendation.tradeoffs.map",
+  "compare-primary",
+  "compare-highlight-strip summary-strip",
+  "compare-ranking-list",
+  "compare-ranking-item",
+]);
+expectNotIncludes("compare avoids duplicate best-choice highlight", comparePage, [
+  "label={copy.metrics.bestChoice}",
 ]);
 expectIncludes("personalized comparison", comparePage, [
-  "comparison?.recommendation.listing_id",
+  "recommendation.listing_id",
   "comparison.recommendation.personalized",
   "comparison?.recommendation.all_over_budget",
   "response.unavailable_listing_ids",
@@ -523,6 +564,9 @@ expectIncludes("reports page", reportsPage, [
   "reportPdfUrl(report.id)",
   "REPORTS_LOADING_STEPS[locale]",
   "report-summary-grid",
+  "summary-strip",
+  'className="status-line" aria-live="polite"',
+  "report-library-panel",
 ]);
 expectIncludes("reports decision summary", reportsPage, ["<DecisionSummary", "report.decision_summary"]);
 expectRegex("reports card library", reportsPage, /report-library-grid[\s\S]*buyerReports\.map/);

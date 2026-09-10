@@ -239,13 +239,14 @@ export default function ReportsPage() {
           <p>{buyerCopy.subtitle}</p>
         </div>
         <div className="button-row">
+          <span className="status-line" aria-live="polite">{status}</span>
           <button className="button" type="button" onClick={() => void load()}>
             <RefreshCw size={16} /> {copy.actions.refresh}
           </button>
         </div>
       </header>
 
-      <section className="metric-grid report-summary-grid">
+      <section className="metric-grid report-summary-grid summary-strip">
         <div className="metric">
           <span>{buyerCopy.metrics.savedReports}</span>
           <strong>{buyerReports.length}</strong>
@@ -259,10 +260,6 @@ export default function ReportsPage() {
         <div className="metric">
           <span>{buyerCopy.metrics.credits}</span>
           <strong>{account ? account.usage.report_credits_available : 0}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.table.date}</span>
-          <strong>{status}</strong>
         </div>
       </section>
 
@@ -283,7 +280,7 @@ export default function ReportsPage() {
         </Link>
       </section>
 
-      <section className="panel" style={{ marginTop: 16 }}>
+      <section className="panel report-library-panel">
         <div className="panel-header">
           <h2>{buyerCopy.sections.library}</h2>
           <span className="muted">{copy.values.items(buyerReports.length)}</span>

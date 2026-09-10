@@ -1321,8 +1321,51 @@ Verified:
 
 Follow-up:
 
-- P2-06 should reduce repeated cards and secondary metric weight without
-  reopening the decision-first ordering established here.
+- P2-06 is completed in the section below; P2-07 is the next open engineering
+  quality task in roadmap order.
+
+### P2-06: Reduced Visual Density and Unified Hierarchy - DONE (2026-09-10)
+
+Changed:
+
+- removed the duplicate verdict badge from the shared decision summary. A
+  single semantic WartoMetr marker now supports the verdict headline instead
+  of repeating it;
+- introduced a shared quiet summary-strip treatment and applied it to compact
+  decision metrics, report account metrics and comparison highlights, avoiding
+  card-within-card composition while preserving all decision-relevant values;
+- removed the comparison highlight that duplicated the already dominant
+  recommendation. The remaining fair-price, monthly-cost and rental signals
+  are presented as secondary rows, and per-property ranking uses one divided
+  list instead of another group of equal-weight cards;
+- reduced the report summary to three useful account metrics and moved request
+  progress to an `aria-live` status line rather than presenting status as a
+  fourth analytical metric;
+- made additional listing analysis visually quieter and reorganized mobile
+  listing actions into a full-width primary command, paired secondary actions
+  and a balanced full-width final report command;
+- replaced raw English backend analysis and assistant disclaimers on the
+  listing route with equivalent consumer-facing PL/EN/RU/UK copy, and corrected
+  the remaining Russian and Ukrainian parking labels in that contract.
+
+Verified:
+
+- frontend ESLint, TypeScript, `795` smoke assertions, npm audit with zero
+  vulnerabilities and the 36-route production Next.js build passed;
+- focused Playwright covered listing, compare and reports at 390px and 1440px,
+  asserting one verdict marker, three non-duplicated comparison highlights,
+  borderless nested compact metrics, three report account metrics, localized
+  listing disclaimer copy and the balanced mobile action grid;
+- the full repository Playwright suite passed all PL/EN/RU/UK desktop, tablet
+  and mobile flows together with existing expanded, partial, unavailable,
+  error and retry coverage;
+- rendered listing, compare and reports screenshots were inspected at mobile
+  and desktop widths with no incoherent overlap or horizontal overflow.
+
+Follow-up:
+
+- P2-07 should split large modules only along proven domain boundaries and
+  must not become a standalone frontend or backend rewrite.
 
 ## Remaining External Limitations
 

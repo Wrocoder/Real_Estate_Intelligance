@@ -267,7 +267,7 @@ export default function ListingDetailPage() {
       <p className="status-line listing-action-status" aria-live="polite">{status}</p>
 
       <p className="muted listing-analysis-disclaimer">
-        {analysis.disclaimer}
+        {copy.analysisDisclaimer}
       </p>
 
       <details className="listing-section-disclosure listing-secondary-disclosure">
@@ -379,7 +379,7 @@ export default function ListingDetailPage() {
                       </span>
                     ))}
                   </div>
-                  <small className="muted">{aiAnswer.disclaimer}</small>
+                  <small className="muted">{copy.assistantDisclaimer}</small>
                 </div>
               </div>
             </div>

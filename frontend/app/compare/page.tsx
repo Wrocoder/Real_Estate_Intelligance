@@ -258,8 +258,6 @@ export default function ComparePage() {
     () => new Map((comparison?.metrics ?? []).map((metric) => [metric.listing_id, metric])),
     [comparison],
   );
-  const recommendedListingId = comparison?.recommendation.listing_id ?? "";
-
   function toggleListing(listingId: string) {
     setUnavailableIds([]);
     setSelectedIds((current) => {
@@ -422,7 +420,7 @@ export default function ComparePage() {
         <LoadingBlock label={compareStatusText(copy, status)} steps={COMPARE_PRODUCT_COPY[locale].loadingSteps} />
       ) : (
         <>
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
+          <section className="compare-primary">
             <RecommendationSummary
               copy={COMPARE_PRODUCT_COPY[locale]}
               items={items}
@@ -433,12 +431,7 @@ export default function ComparePage() {
             />
           </section>
 
-          <section className="metric-grid" style={{ marginBottom: 16 }}>
-            <Metric
-              label={copy.metrics.bestChoice}
-              value={listingShort(items, recommendedListingId, copy)}
-              detail={metricDetail(metricById.get(recommendedListingId), copy, locale)}
-            />
+          <section className="metric-grid compare-highlight-strip summary-strip">
             <Metric
               label={copy.metrics.belowFairPrice}
               value={listingShort(items, comparison.summary.best_value_listing_id, copy)}
@@ -662,11 +655,11 @@ export default function ComparePage() {
             </div>
           </section>
 
-          <section className="grid-3" style={{ marginBottom: 16 }}>
+          <section className="grid-3 compare-ranking-list">
             {comparison.metrics.map((metric) => {
               const item = items.find((analysis) => analysis.listing.id === metric.listing_id);
               return (
-                <article className="metric" key={metric.listing_id}>
+                <article className="metric compare-ranking-item" key={metric.listing_id}>
                   <span>
                     {copy.values.rank(metric.rank)} ·{" "}
                     {item ? item.listing.district : metric.listing_id}
@@ -1253,18 +1246,6 @@ function listingShort(items: ListingAnalysis[], listingId: string | null, copy: 
   const item = items.find((analysis) => analysis.listing.id === listingId);
   if (!item) return listingId;
   return `${item.listing.district}, ${copy.values.roomsShort(item.listing.rooms)}`;
-}
-
-function metricDetail(
-  metric: CompareItemMetrics | undefined,
-  copy: ComparePageCopy,
-  locale: Parameters<typeof money>[1],
-) {
-  return metric
-    ? `${metric.decision_score}/100 · ${money(metric.estimated_monthly_payment_pln, locale)}/${
-        copy.values.monthly
-      }`
-    : "";
 }
 
 function fairDetail(

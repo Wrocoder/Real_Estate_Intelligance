@@ -242,9 +242,8 @@ export function DecisionSummary({
         <div>
           <div className="meta-row">
             <span className={`status-pill ${status ? verdictTone(status) : "info"}`}>
-              {status ? VERDICT_LABELS[locale][status] : fallbackLabel ?? copy.analysisSignal}
+              {status ? copy.eyebrow : fallbackLabel ?? copy.analysisSignal}
             </span>
-            {status ? <span className="status-pill info">{copy.eyebrow}</span> : null}
           </div>
           <h2>{headline}</h2>
           <p>{summary}</p>

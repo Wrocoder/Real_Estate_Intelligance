@@ -1165,6 +1165,8 @@ export type DevelopersPageCopy = {
 
 export type ListingDetailCopy = {
   demoData: string;
+  analysisDisclaimer: string;
+  assistantDisclaimer: string;
   actions: {
     back: string;
     refresh: string;
@@ -5791,6 +5793,10 @@ export const DEVELOPERS_PAGE_COPY: Record<Locale, DevelopersPageCopy> = {
 export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   en: {
     demoData: "Demo data",
+    analysisDisclaimer:
+      "This analysis supports initial screening and decision-making. It is not financial, legal or investment advice, a certified valuation, or a guarantee of price, financing, legal status or future performance.",
+    assistantDisclaimer:
+      "The answer is based on available WartoMetr data. Verify important facts and documents before making a purchase decision.",
     actions: {
       back: "Back",
       refresh: "Refresh",
@@ -5956,6 +5962,10 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   },
   pl: {
     demoData: "Dane demonstracyjne",
+    analysisDisclaimer:
+      "Analiza wspiera wstępną ocenę i podjęcie decyzji. Nie stanowi porady finansowej, prawnej ani inwestycyjnej, operatu szacunkowego ani gwarancji ceny, finansowania, stanu prawnego lub przyszłych wyników.",
+    assistantDisclaimer:
+      "Odpowiedź opiera się na dostępnych danych WartoMetr. Przed decyzją o zakupie zweryfikuj ważne fakty i dokumenty.",
     actions: {
       back: "Wstecz",
       refresh: "Odśwież",
@@ -6121,6 +6131,10 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   },
   ru: {
     demoData: "Демонстрационные данные",
+    analysisDisclaimer:
+      "Анализ помогает предварительно оценить объект и принять решение. Это не финансовая, юридическая или инвестиционная консультация, не официальный отчёт об оценке и не гарантия цены, финансирования, правового статуса или будущих результатов.",
+    assistantDisclaimer:
+      "Ответ основан на доступных данных WartoMetr. Перед решением о покупке проверьте важные факты и документы.",
     actions: {
       back: "Назад",
       refresh: "Обновить",
@@ -6194,7 +6208,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       buildingType: "Тип здания",
       renovationState: "Состояние",
       amenities: "Удобства",
-      parking: "Parking",
+      parking: "Парковка",
       heating: "Отопление",
     },
     fields: {
@@ -6288,6 +6302,10 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
   },
   uk: {
     demoData: "Демонстраційні дані",
+    analysisDisclaimer:
+      "Аналіз допомагає попередньо оцінити об'єкт і прийняти рішення. Це не фінансова, юридична чи інвестиційна консультація, не офіційний звіт про оцінку і не гарантія ціни, фінансування, правового статусу або майбутніх результатів.",
+    assistantDisclaimer:
+      "Відповідь ґрунтується на доступних даних WartoMetr. Перед рішенням про купівлю перевірте важливі факти й документи.",
     actions: {
       back: "Назад",
       refresh: "Оновити",
@@ -6361,7 +6379,7 @@ export const LISTING_DETAIL_COPY: Record<Locale, ListingDetailCopy> = {
       buildingType: "Тип будівлі",
       renovationState: "Стан",
       amenities: "Зручності",
-      parking: "Parking",
+      parking: "Паркування",
       heating: "Опалення",
     },
     fields: {

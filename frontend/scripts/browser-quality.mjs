@@ -967,6 +967,89 @@ async function runMobileComposition(browser, viewport) {
   }
 }
 
+async function runVisualDensity(browser, viewport) {
+  const context = await browser.newContext({ viewport, locale: "pl-PL" });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `visual-density/${viewport.width}`;
+  const observation = await observe(page, label);
+  try {
+    await page.goto(`${baseUrl}/compare?ids=wr-001,wr-002&intent=self`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.locator(".compare-recommendation").waitFor({ state: "visible", timeout: 15000 });
+    if ((await page.locator(".compare-highlight-strip > .metric").count()) !== 3) {
+      throw new Error(`${label}: comparison highlights should contain three non-duplicated signals`);
+    }
+    if ((await page.locator(".compare-recommendation .decision-summary .status-pill").count()) !== 1) {
+      throw new Error(`${label}: compact decision summary repeats verdict badges`);
+    }
+    const compactMetricBorder = await page
+      .locator(".compare-recommendation .decision-summary-compact .metric")
+      .first()
+      .evaluate((element) => getComputedStyle(element).borderTopWidth);
+    if (compactMetricBorder !== "0px") {
+      throw new Error(`${label}: compact decision metrics still render as nested cards`);
+    }
+    await page.locator(".compare-ranking-list .compare-ranking-item").first().waitFor({ state: "visible" });
+    await page.screenshot({
+      path: path.join(artifactDir, `visual-density-compare-${viewport.width}.png`),
+      fullPage: true,
+    });
+
+    await page.goto(`${baseUrl}/reports`, { waitUntil: "domcontentloaded" });
+    await page.locator(".report-summary-grid").waitFor({ state: "visible", timeout: 15000 });
+    if ((await page.locator(".report-summary-grid > .metric").count()) !== 3) {
+      throw new Error(`${label}: report summary should contain only useful account metrics`);
+    }
+    await page.locator(".page-header .status-line").waitFor({ state: "visible" });
+    await page.screenshot({
+      path: path.join(artifactDir, `visual-density-reports-${viewport.width}.png`),
+      fullPage: true,
+    });
+
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    if ((await page.locator(".buyer-decision .decision-summary .status-pill").count()) !== 1) {
+      throw new Error(`${label}: listing decision repeats verdict badges`);
+    }
+    const listingText = await page.locator("main").innerText();
+    if (
+      !listingText.includes("Analiza wspiera wstępną ocenę") ||
+      listingText.includes("Scoring outputs are decision-support")
+    ) {
+      throw new Error(`${label}: listing disclaimer is not localized`);
+    }
+    if (viewport.width <= 640) {
+      const actionColumns = await page.locator(".listing-decision-actions").evaluate(
+        (element) => getComputedStyle(element).gridTemplateColumns.split(" ").length,
+      );
+      if (actionColumns !== 2) {
+        throw new Error(`${label}: secondary listing actions should use two mobile columns`);
+      }
+      const primaryColumn = await page
+        .locator(".listing-decision-actions .button.primary")
+        .evaluate((element) => getComputedStyle(element).gridColumnEnd);
+      if (primaryColumn !== "-1") {
+        throw new Error(`${label}: primary listing action should span the mobile action grid`);
+      }
+      const finalColumn = await page
+        .locator(".listing-decision-actions .button:last-child")
+        .evaluate((element) => getComputedStyle(element).gridColumnEnd);
+      if (finalColumn !== "-1") {
+        throw new Error(`${label}: mobile listing action grid ends with an incomplete row`);
+      }
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `visual-density-listing-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runAreaDecision(browser, locale, viewport, mode = "records") {
   const context = await browser.newContext({
     viewport,
@@ -1186,6 +1269,26 @@ async function runTransparentSearch(browser, viewport) {
 }
 
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "visual-density") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runVisualDensity(browser, viewport);
+      console.log(`browser quality passed: visual-density/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "mobile-composition") {
   try {
     for (const viewport of [
@@ -1302,6 +1405,17 @@ try {
   try {
     await runFailureState(browser);
     console.log("browser quality passed: failure-state");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runVisualDensity(browser, viewport);
+      console.log(`browser quality passed: visual-density/${viewport.width}`);
+    }
   } catch (error) {
     failures.push(error.message);
   }
