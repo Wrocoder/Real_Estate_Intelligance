@@ -245,7 +245,7 @@ export default function ReportsPage() {
         </div>
       </header>
 
-      <section className="metric-grid">
+      <section className="metric-grid report-summary-grid">
         <div className="metric">
           <span>{buyerCopy.metrics.savedReports}</span>
           <strong>{buyerReports.length}</strong>

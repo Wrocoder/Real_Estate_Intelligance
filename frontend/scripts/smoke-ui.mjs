@@ -130,6 +130,7 @@ const scoreLabels = read("lib/scoreLabels.ts");
 const formatters = read("lib/format.ts");
 const useLocalePreference = read("lib/useLocalePreference.ts");
 const sitemap = read("app/sitemap.ts");
+const browserQuality = read("scripts/browser-quality.mjs");
 
 const consumerSource = fs
   .readdirSync(path.join(root, "app"), { recursive: true })
@@ -152,6 +153,23 @@ expectIncludes("responsive guardrails", globalStyles, [
   ".table-scroll .table",
   ".map-layer-controls",
   "max-height: 178px;",
+]);
+expectIncludes("mobile composition", globalStyles, [
+  ".mobile-nav-disclosure",
+  ".mobile-nav-summary",
+  ".mobile-nav-disclosure:not([open]) > .mobile-nav-content",
+  ".mobile-nav-disclosure[open] > .mobile-nav-content",
+  ".report-summary-grid",
+  "grid-template-columns: repeat(2, minmax(0, 1fr));",
+]);
+expectIncludes("mobile composition browser gate", browserQuality, [
+  "runMobileComposition",
+  'BROWSER_QUALITY_SCENARIO === "mobile-composition"',
+  "{ width: 390, height: 844 }",
+  "{ width: 768, height: 1024 }",
+  ".listing-section-disclosure[open]",
+  ".compare-details",
+  ".report-summary-grid",
 ]);
 
 expectIncludes("api client contracts", apiClient, [
@@ -504,6 +522,7 @@ expectIncludes("reports page", reportsPage, [
   "reportContentUrl(report.id)",
   "reportPdfUrl(report.id)",
   "REPORTS_LOADING_STEPS[locale]",
+  "report-summary-grid",
 ]);
 expectIncludes("reports decision summary", reportsPage, ["<DecisionSummary", "report.decision_summary"]);
 expectRegex("reports card library", reportsPage, /report-library-grid[\s\S]*buyerReports\.map/);
@@ -1030,6 +1049,9 @@ expectIncludes("primary navigation", layout, [
   "<LanguageSwitcher",
   "<DemoModeBanner",
   "<AuthSessionNotice",
+  "MOBILE_MENU_LABEL",
+  '<details className="mobile-nav-disclosure">',
+  '<summary className="mobile-nav-summary">',
 ]);
 expectIncludes("document outline and keyboard entry", layout, [
   'id="main-content"',

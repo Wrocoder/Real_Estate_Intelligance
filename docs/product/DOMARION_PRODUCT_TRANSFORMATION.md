@@ -1281,7 +1281,48 @@ Follow-up:
 - full editorial-body translations can be commissioned later. Until then the
   content language is declared honestly and the surrounding product interface
   remains localized;
-- P2-05 is the next open product-quality task in roadmap order.
+- P2-05 is completed in the section below; P2-06 is the next open
+  product-quality task in roadmap order.
+
+### P2-05: Mobile-Specific Consumer Composition - DONE (2026-09-10)
+
+Changed:
+
+- replaced the permanently expanded mobile/tablet sidebar with a compact
+  sticky brand header and a localized native disclosure for navigation and
+  language controls; the menu remains keyboard accessible and desktop keeps
+  the established full navigation;
+- kept the listing verdict, fair-value evidence, confidence, major risks and
+  next action ahead of collapsed supporting analytics, and verified that the
+  comparison recommendation and trade-offs remain ahead of its collapsed
+  matrix;
+- changed the mobile reports summary from a long single-column sequence to a
+  stable two-column composition, with the final date metric spanning the row;
+- added a focused browser contract for the areas, listing, compare and reports
+  routes at 390px and 768px. It checks the sticky shell, keyboard menu,
+  first-content position, collapsed detail hierarchy, report columns and
+  horizontal overflow alongside console, request and hydration failures;
+- added smoke contracts protecting the mobile shell, report composition and
+  both browser-gate viewport sizes.
+
+Verified:
+
+- frontend ESLint, TypeScript, `765` smoke assertions, npm audit with zero
+  vulnerabilities and the 36-route production Next.js build passed;
+- focused Playwright passed the mobile composition scenario at 390px and
+  768px;
+- the full repository Playwright suite passed PL/EN/RU/UK desktop, tablet and
+  mobile coverage plus existing check, save, listing, compare, negotiation,
+  action-plan, search, area, guide, score and rental success/partial/error
+  scenarios;
+- rendered 390px screenshots for areas, listing, compare and reports were
+  inspected; primary actions and conclusions remained visible without
+  incoherent overlap or horizontal scrolling.
+
+Follow-up:
+
+- P2-06 should reduce repeated cards and secondary metric weight without
+  reopening the decision-first ordering established here.
 
 ## Remaining External Limitations
 

@@ -425,7 +425,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-10): DONE.** Все десять существующих guide slugs используют per-article editorial contract: видны author, reviewer role, дата обновления, scope проверки, тематически релевантные официальные источники и отдельный market/financial/legal disclaimer. JSON-LD содержит `dateModified`, `inLanguage`, reviewer и citations. Статические цифры из `seoAreas` удалены из статей: связанные районы загружают текущую API statistics, явно различают transaction/listing basis и demo mode, показывают source/freshness и имеют loading, partial, unavailable и retry states без подстановки устаревших значений. `/guides` и каждая статья системно ведут в `/check` с source context. Интерфейс локализован для PL/EN/RU/UK; польский editorial corpus имеет явный `lang="pl"` и локализованное уведомление вместо неявно смешанного перевода. Внешняя юридическая экспертиза не заявляется и остаётся организационным ограничением. Release gate: ESLint, TypeScript, `748` smoke assertions, npm audit (`0` vulnerabilities), production build, полный repository Playwright и focused guide Playwright для всех десяти slugs, PL/EN/RU/UK, 390/1440 px, live/partial/unavailable area data, console/network/hydration и overflow; Polish catalog/article mobile/desktop screenshots просмотрены визуально.
 
-### [ ] P2-05. Привести mobile UX к отдельной композиции
+### [x] P2-05. Привести mobile UX к отдельной композиции
 
 **Область:** все consumer routes на 390 px и tablet viewport.
 
@@ -433,7 +433,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** P1 result/compare/navigation tasks.
 
-**Текущий статус (2026-09-07): PARTIAL.** Критические переполнения исправлялись, но listing/report/compare и длинный список areas требуют повторной композиционной проверки на 390 px, tablet и zoom, включая sticky actions и expanded states.
+**Текущий статус (2026-09-10): DONE.** Общий consumer shell на mobile/tablet больше не занимает первый экран постоянной desktop-навигацией: brand остаётся видимым в компактном sticky header, а локализованные navigation и language controls открываются нативным keyboard-accessible disclosure. Основное содержание начинается сразу под header. Listing сохраняет verdict, fair-price range, confidence, risks и next action перед свёрнутой secondary analytics; compare показывает recommendation/trade-offs перед закрытой по умолчанию matrix; reports использует компактную двухколоночную summary grid на 390 px; длинный areas catalog сохраняет видимые primary actions, coverage и поиск без горизонтального скролла. Добавлен обязательный Playwright mobile-composition gate на 390 и 768 px с проверкой keyboard menu, sticky shell, first-content position, collapsed listing/compare details, report grid, console/network/hydration и overflow. Release gate: ESLint; TypeScript; `765` smoke assertions; npm audit (`0` vulnerabilities); production Next.js build; focused и полный repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile, включая existing expanded, partial, empty, unavailable, error/retry flows. Отрисованные areas, listing, compare и reports на 390 px просмотрены визуально.
 
 ### [ ] P2-06. Снизить визуальную плотность и унифицировать компоненты
 

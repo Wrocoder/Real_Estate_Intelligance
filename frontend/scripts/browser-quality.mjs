@@ -880,6 +880,93 @@ async function runGuideArticle(browser, locale, viewport, slug, mode = "records"
   }
 }
 
+async function runMobileComposition(browser, viewport) {
+  const context = await browser.newContext({ viewport, locale: "pl-PL" });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `mobile-composition/${viewport.width}`;
+  const observation = await observe(page, label);
+  try {
+    await page.goto(`${baseUrl}/areas`, { waitUntil: "domcontentloaded" });
+    const disclosure = page.locator(".mobile-nav-disclosure");
+    const summary = page.locator(".mobile-nav-summary");
+    await summary.waitFor({ state: "visible" });
+    if (await disclosure.evaluate((element) => element.open)) {
+      throw new Error(`${label}: navigation should be collapsed initially`);
+    }
+    const sidebarPosition = await page.locator(".sidebar").evaluate(
+      (element) => getComputedStyle(element).position,
+    );
+    if (sidebarPosition !== "sticky") {
+      throw new Error(`${label}: compact navigation is not sticky`);
+    }
+    await summary.focus();
+    await page.keyboard.press("Enter");
+    if (!(await disclosure.evaluate((element) => element.open))) {
+      throw new Error(`${label}: keyboard did not open navigation`);
+    }
+    await page.locator(".mobile-nav-content .nav-list").waitFor({ state: "visible" });
+    await summary.click();
+    if (await disclosure.evaluate((element) => element.open)) {
+      throw new Error(`${label}: navigation did not close`);
+    }
+    const areasHeading = await page.getByRole("heading", { level: 1 }).boundingBox();
+    if (!areasHeading || areasHeading.y > 240) {
+      throw new Error(`${label}: compact navigation still delays primary area content`);
+    }
+    await page.locator(".areas-directory-search input").waitFor({ state: "visible" });
+    if (viewport.width === 390) {
+      await page.screenshot({
+        path: path.join(artifactDir, "mobile-composition-areas-390.png"),
+        fullPage: true,
+      });
+    }
+
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    if ((await page.locator(".listing-section-disclosure[open]").count()) !== 0) {
+      throw new Error(`${label}: secondary listing analytics should start collapsed`);
+    }
+    if (viewport.width === 390) {
+      await page.screenshot({
+        path: path.join(artifactDir, "mobile-composition-listing-390.png"),
+        fullPage: true,
+      });
+    }
+
+    await page.goto(`${baseUrl}/compare?ids=wr-001,wr-002&intent=living`, { waitUntil: "domcontentloaded" });
+    await page.locator(".compare-recommendation").waitFor({ state: "visible", timeout: 15000 });
+    if (await page.locator(".compare-details").evaluate((element) => element.open)) {
+      throw new Error(`${label}: comparison matrix should start collapsed`);
+    }
+    if (viewport.width === 390) {
+      await page.screenshot({
+        path: path.join(artifactDir, "mobile-composition-compare-390.png"),
+        fullPage: true,
+      });
+    }
+
+    await page.goto(`${baseUrl}/reports`, { waitUntil: "domcontentloaded" });
+    await page.locator(".report-summary-grid").waitFor({ state: "visible", timeout: 15000 });
+    const columns = await page.locator(".report-summary-grid").evaluate(
+      (element) => getComputedStyle(element).gridTemplateColumns.split(" ").length,
+    );
+    if (viewport.width <= 640 && columns !== 2) {
+      throw new Error(`${label}: report summary is not compact on mobile`);
+    }
+
+    if (viewport.width === 390) {
+      await page.screenshot({
+        path: path.join(artifactDir, "mobile-composition-reports-390.png"),
+        fullPage: true,
+      });
+    }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runAreaDecision(browser, locale, viewport, mode = "records") {
   const context = await browser.newContext({
     viewport,
@@ -1099,6 +1186,26 @@ async function runTransparentSearch(browser, viewport) {
 }
 
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "mobile-composition") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+    ]) {
+      await runMobileComposition(browser, viewport);
+      console.log(`browser quality passed: mobile-composition/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "guide-editorial") {
   try {
     for (const viewport of [
@@ -1240,6 +1347,17 @@ try {
     } catch (error) {
       failures.push(error.message);
     }
+  }
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 768, height: 1024 },
+    ]) {
+      await runMobileComposition(browser, viewport);
+      console.log(`browser quality passed: mobile-composition/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
   }
   try {
     await runCompareDecision(browser, "pl", { width: 1440, height: 900 });

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
+import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -24,6 +25,13 @@ const BRAND_TAGLINE = {
   en: "Apartment check",
   ru: "Проверка квартиры",
   uk: "Перевірка квартири",
+} as const;
+
+const MOBILE_MENU_LABEL = {
+  pl: "Menu",
+  en: "Menu",
+  ru: "Меню",
+  uk: "Меню",
 } as const;
 
 export const metadata: Metadata = {
@@ -52,8 +60,16 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 <small>{BRAND_TAGLINE[initialLocale]}</small>
               </span>
             </Link>
-            <LocalizedNavigation initialLocale={initialLocale} />
-            <LanguageSwitcher initialLocale={initialLocale} />
+            <details className="mobile-nav-disclosure">
+              <summary className="mobile-nav-summary">
+                <Menu aria-hidden="true" size={18} />
+                <span>{MOBILE_MENU_LABEL[initialLocale]}</span>
+              </summary>
+              <div className="mobile-nav-content">
+                <LocalizedNavigation initialLocale={initialLocale} />
+                <LanguageSwitcher initialLocale={initialLocale} />
+              </div>
+            </details>
           </aside>
           <a className="skip-link" href="#main-content">
             {SKIP_TO_CONTENT[initialLocale]}

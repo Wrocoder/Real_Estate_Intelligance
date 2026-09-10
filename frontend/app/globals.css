@@ -228,6 +228,19 @@ summary:focus-visible {
   color: #ffffff;
 }
 
+.mobile-nav-disclosure,
+.mobile-nav-content {
+  display: contents;
+}
+
+.mobile-nav-summary {
+  display: none;
+}
+
+.mobile-nav-disclosure:not([open]) > .mobile-nav-content {
+  display: contents;
+}
+
 .main {
   min-width: 0;
   overflow-x: hidden;
@@ -4108,8 +4121,73 @@ summary:focus-visible {
   }
 
   .sidebar {
-    position: static;
+    position: sticky;
+    z-index: 40;
+    top: 0;
     height: auto;
+  }
+
+  .mobile-nav-disclosure {
+    position: absolute;
+    top: 14px;
+    right: 18px;
+    display: block;
+  }
+
+  .mobile-nav-summary {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 38px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 6px;
+    padding: 0 12px;
+    background: rgba(255, 255, 255, 0.06);
+    color: #ffffff;
+    font-weight: 700;
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .mobile-nav-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .mobile-nav-summary:focus-visible {
+    outline-color: #ffffff;
+  }
+
+  .mobile-nav-disclosure:not([open]) > .mobile-nav-content {
+    display: none;
+  }
+
+  .mobile-nav-disclosure[open] > .mobile-nav-content {
+    position: absolute;
+    top: 46px;
+    right: 0;
+    display: grid;
+    width: min(380px, calc(100vw - 36px));
+    max-height: calc(100vh - 76px);
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 6px;
+    background: #111a22;
+    padding: 12px;
+    box-shadow: 0 12px 30px rgba(10, 18, 25, 0.28);
+  }
+
+  .mobile-nav-content .nav-list {
+    grid-template-columns: 1fr;
+    margin-top: 0;
+  }
+
+  .mobile-nav-content .nav-group,
+  .mobile-nav-content .nav-auth-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-nav-content .language-switcher {
+    margin-top: 12px;
   }
 
   .nav-list {
@@ -4265,6 +4343,16 @@ summary:focus-visible {
     width: 100%;
   }
 
+  .mobile-nav-disclosure {
+    top: 9px;
+    right: 14px;
+  }
+
+  .mobile-nav-disclosure[open] > .mobile-nav-content {
+    top: 44px;
+    width: min(340px, calc(100vw - 28px));
+  }
+
   .sidebar * {
     min-width: 0;
   }
@@ -4376,6 +4464,14 @@ summary:focus-visible {
   .form-grid,
   .crm-subgrid {
     grid-template-columns: 1fr;
+  }
+
+  .report-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .report-summary-grid .metric:last-child {
+    grid-column: 1 / -1;
   }
 
   .buyer-priority-grid {
