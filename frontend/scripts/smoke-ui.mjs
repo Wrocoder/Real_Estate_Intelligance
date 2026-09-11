@@ -1118,6 +1118,22 @@ expectIncludes("mortgage financial hierarchy", mortgagePage, [
   "financial-summary",
   "mortgage-cash-grid",
   "financial-metric total",
+  "total_purchase_cost_pln",
+  "monthly_principal_interest_pln",
+  "monthly_non_loan_costs_pln",
+  "first_home_pcc_exemption",
+  "result.note_codes.map",
+  "result.legal_context.sources.map",
+  "mortgage-assumptions",
+]);
+expectNotIncludes("mortgage does not render backend prose", mortgagePage, [
+  "{result.disclaimer}",
+  "result.notes.map",
+  "{scenario.label}",
+]);
+expectIncludes("mortgage OpenAPI contract", openApiContract, [
+  "MortgageCalculationRequestContract",
+  "calculate_mortgage_budget_api_v1_mortgage_calculate_post",
 ]);
 expectIncludes("financial values use tabular numerals", globalStyles, ["font-variant-numeric: tabular-nums"]);
 expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}</h2>"]);

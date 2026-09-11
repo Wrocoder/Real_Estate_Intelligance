@@ -1403,9 +1403,53 @@ Verified:
 Follow-up:
 
 - remaining large modules should continue to be split only while implementing
-  their owning product slices; P1-10 is the next repository-actionable core
-  task, while P0-05, P1-09 and P1-12 still require external provider or OCI
-  evidence for full completion.
+  their owning product slices; P0-05, P1-09 and P1-12 still require external
+  provider or OCI evidence for full completion.
+
+### P1-10: Mortgage and Full Purchase Cost - DONE (2026-09-11)
+
+Changed:
+
+- made the API return separate, inspectable values for apartment price,
+  transaction costs, renovation/additional costs, full purchase budget and
+  cash required at signing instead of assembling an ambiguous total in the
+  browser;
+- separated the loan instalment from insurance and entered housing costs, and
+  kept total loan repayment distinct from recurring non-loan costs;
+- added an explicit secondary-market PCC treatment, including standard 2%, a
+  user-declared first-home exemption and a separately identified manual
+  exclusion. The exemption is never inferred from missing data;
+- refreshed official PCC-rate, PCC-exemption and maximum notary-rate sources
+  on 2026-09-11, exposed all sources through the API and UI, and clearly stated
+  that entered fees remain estimates without an individual legal review;
+- replaced backend Polish scenario/note prose on `/mortgage` with structured
+  codes and consumer-facing PL/EN/RU/UK messages;
+- reduced the initial form to decision-critical assumptions, moved secondary
+  fees into progressive disclosure, preserved listing context in the mortgage
+  CTA and replaced the clipped mobile scenario table with a readable mobile
+  composition;
+- derived mortgage request and response types from generated OpenAPI instead
+  of maintaining a second manual TypeScript contract.
+
+Verified:
+
+- Ruff and the full backend suite passed with `442 passed, 1 skipped`, including
+  standard PCC, primary-market, declared exemption and manual-exclusion cases;
+- frontend ESLint, TypeScript, `810` smoke assertions, npm audit with zero
+  vulnerabilities and the 36-route production build passed;
+- focused Playwright verified the real calculation flow, declared exemption,
+  localized scenarios, source presentation, console/network health and no
+  horizontal overflow in PL/EN/RU/UK at 390px and in Polish at 1440px;
+- the complete repository Playwright gate then passed all existing desktop,
+  tablet, mobile, success, partial-data, failure and recovery scenarios;
+- rendered mobile and desktop mortgage screenshots were visually inspected;
+  the mobile scenario composition was corrected and rechecked.
+
+Remaining limitation:
+
+- the calculator is budgeting support, not a bank affordability decision,
+  credit offer or individual legal/tax opinion. User-entered notary, court,
+  commission and additional costs must be confirmed for the specific purchase.
 
 ## Remaining External Limitations
 

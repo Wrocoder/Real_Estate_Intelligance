@@ -7479,6 +7479,11 @@ export interface components {
              * @enum {string}
              */
             status: "unknown" | "comfortable" | "stretched" | "high_risk";
+            /**
+             * Method Code
+             * @default budgeting_dti_35_45
+             */
+            method_code: string;
             /** Monthly Income Pln */
             monthly_income_pln?: number | null;
             /** Available For Mortgage Comfortable Pln */
@@ -7563,10 +7568,20 @@ export interface components {
              */
             renovation_budget_pln: number;
             /**
+             * Additional Purchase Costs Pln
+             * @default 0
+             */
+            additional_purchase_costs_pln: number;
+            /**
              * Include Pcc
              * @default true
              */
             include_pcc: boolean;
+            /**
+             * First Home Pcc Exemption
+             * @default false
+             */
+            first_home_pcc_exemption: boolean;
         };
         /** MortgageCalculationResult */
         MortgageCalculationResult: {
@@ -7577,6 +7592,8 @@ export interface components {
             affordability: components["schemas"]["MortgageAffordability"];
             /** Notes */
             notes: string[];
+            /** Note Codes */
+            note_codes: ("down_payment_below_10" | "down_payment_below_20" | "secondary_pcc_included" | "secondary_pcc_excluded" | "first_home_pcc_exemption_selected" | "primary_market_no_pcc" | "variable_rate_risk" | "affordability_stretched" | "affordability_high_risk" | "within_budgeting_thresholds")[];
             /** Disclaimer */
             disclaimer: string;
             legal_context: components["schemas"]["MortgageLegalContext"];
@@ -7605,6 +7622,17 @@ export interface components {
             agent_commission_pln: number;
             /** Renovation Budget Pln */
             renovation_budget_pln: number;
+            /** Additional Purchase Costs Pln */
+            additional_purchase_costs_pln: number;
+            /** Transaction Costs Pln */
+            transaction_costs_pln: number;
+            /** Total Purchase Cost Pln */
+            total_purchase_cost_pln: number;
+            /**
+             * Pcc Treatment
+             * @enum {string}
+             */
+            pcc_treatment: "not_applicable" | "excluded_by_user" | "standard_2pct" | "first_home_exemption";
             /** Upfront Cash Needed Pln */
             upfront_cash_needed_pln: number;
         };
@@ -7616,6 +7644,19 @@ export interface components {
             source_name: string;
             /** Source Url */
             source_url: string;
+            /** Method Version */
+            method_version: string;
+            /** Sources */
+            sources: components["schemas"]["MortgageLegalSource"][];
+        };
+        /** MortgageLegalSource */
+        MortgageLegalSource: {
+            /** Code */
+            code: string;
+            /** Name */
+            name: string;
+            /** Url */
+            url: string;
         };
         /** MortgageScenario */
         MortgageScenario: {
@@ -7629,6 +7670,8 @@ export interface components {
             loan_years: number;
             /** Monthly Principal Interest Pln */
             monthly_principal_interest_pln: number;
+            /** Monthly Non Loan Costs Pln */
+            monthly_non_loan_costs_pln: number;
             /** Monthly Total Payment Pln */
             monthly_total_payment_pln: number;
             /** Total Interest Pln */

@@ -193,7 +193,7 @@ export default function ListingDetailPage() {
   const displayedDecision = postViewingResult?.updated_decision ?? analysis.buyer_decision;
   const compareIds = [listingId, analysis.comparables[0]?.id].filter(Boolean).join(",");
   const compareHref = compareIds ? `/compare?ids=${encodeURIComponent(compareIds)}` : "/compare";
-  const mortgageHref = `/mortgage?property_price_pln=${encodeURIComponent(listing.price)}&market_type=${encodeURIComponent(listing.market_type)}`;
+  const mortgageHref = `/mortgage?property_price_pln=${encodeURIComponent(listing.price)}&market_type=${encodeURIComponent(listing.market_type)}&listing_id=${encodeURIComponent(listing.id)}`;
   const developer = analysis.developer_reputation;
   const priceHistoryPoints = analysis.price_history.map((point) => ({
     label: point.observed_at,

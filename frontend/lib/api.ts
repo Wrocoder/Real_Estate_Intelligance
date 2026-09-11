@@ -10,6 +10,7 @@ import {
 } from "./api/comparison";
 import type {
   ApiSchema,
+  MortgageCalculationRequestContract,
   SaveBuyerProfileRequestContract,
   WithRequired,
 } from "./openApiContract";
@@ -2172,75 +2173,11 @@ export type CrmSharePreview = {
   disclaimer: string;
 };
 
-export type MortgageCalculationRequest = {
-  property_price_pln: number;
-  down_payment_pln: number;
-  loan_years?: number;
-  annual_interest_rate_pct?: number;
-  rate_type?: "fixed" | "variable";
-  market_type?: "primary" | "secondary";
-  monthly_income_pln?: number | null;
-  monthly_existing_debt_pln?: number;
-  monthly_housing_costs_pln?: number;
-  insurance_monthly_pln?: number;
-  notary_fee_pln?: number;
-  court_fees_pln?: number;
-  bank_commission_pct?: number;
-  agent_commission_pct?: number;
-  renovation_budget_pln?: number;
-  include_pcc?: boolean;
-};
-
-export type MortgageCostBreakdown = {
-  property_price_pln: number;
-  down_payment_pln: number;
-  down_payment_pct: number;
-  loan_amount_pln: number;
-  loan_to_value_pct: number;
-  pcc_tax_pln: number;
-  notary_fee_pln: number;
-  court_fees_pln: number;
-  bank_commission_pln: number;
-  agent_commission_pln: number;
-  renovation_budget_pln: number;
-  upfront_cash_needed_pln: number;
-};
-
-export type MortgageScenario = {
-  scenario_code: string;
-  label: string;
-  annual_interest_rate_pct: number;
-  loan_years: number;
-  monthly_principal_interest_pln: number;
-  monthly_total_payment_pln: number;
-  total_interest_pln: number;
-  total_repaid_pln: number;
-  debt_to_income_pct: number | null;
-};
-
-export type MortgageAffordability = {
-  status: "unknown" | "comfortable" | "stretched" | "high_risk";
-  monthly_income_pln: number | null;
-  available_for_mortgage_comfortable_pln: number | null;
-  available_for_mortgage_stretched_pln: number | null;
-  base_debt_to_income_pct: number | null;
-  payment_to_income_pct: number | null;
-  monthly_buffer_after_payment_pln: number | null;
-};
-
-export type MortgageCalculationResult = {
-  costs: MortgageCostBreakdown;
-  base_scenario: MortgageScenario;
-  scenarios: MortgageScenario[];
-  affordability: MortgageAffordability;
-  notes: string[];
-  disclaimer: string;
-  legal_context: {
-    checked_at: string;
-    source_name: string;
-    source_url: string;
-  };
-};
+export type MortgageCalculationRequest = MortgageCalculationRequestContract;
+export type MortgageCostBreakdown = ApiSchema<"MortgageCostBreakdown">;
+export type MortgageScenario = ApiSchema<"MortgageScenario">;
+export type MortgageAffordability = ApiSchema<"MortgageAffordability">;
+export type MortgageCalculationResult = ApiSchema<"MortgageCalculationResult">;
 
 export type PartnerReferralType =
   | "mortgage"

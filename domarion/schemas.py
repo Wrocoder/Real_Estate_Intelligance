@@ -277,6 +277,24 @@ DeveloperAliasType = Literal[
 ]
 MortgageRateType = Literal["fixed", "variable"]
 MortgageAffordabilityStatus = Literal["unknown", "comfortable", "stretched", "high_risk"]
+MortgagePccTreatment = Literal[
+    "not_applicable",
+    "excluded_by_user",
+    "standard_2pct",
+    "first_home_exemption",
+]
+MortgageNoteCode = Literal[
+    "down_payment_below_10",
+    "down_payment_below_20",
+    "secondary_pcc_included",
+    "secondary_pcc_excluded",
+    "first_home_pcc_exemption_selected",
+    "primary_market_no_pcc",
+    "variable_rate_risk",
+    "affordability_stretched",
+    "affordability_high_risk",
+    "within_budgeting_thresholds",
+]
 MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
 MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]
 ScoringServiceAudience = Literal["buyer", "realtor", "investor", "underwriting", "developer"]
@@ -2891,7 +2909,9 @@ class MortgageCalculationRequest(BaseModel):
     bank_commission_pct: float = Field(default=0, ge=0, le=10)
     agent_commission_pct: float = Field(default=0, ge=0, le=5)
     renovation_budget_pln: int = Field(default=0, ge=0)
+    additional_purchase_costs_pln: int = Field(default=0, ge=0)
     include_pcc: bool = True
+    first_home_pcc_exemption: bool = False
 
 
 class MortgageCostBreakdown(BaseModel):
@@ -2906,6 +2926,10 @@ class MortgageCostBreakdown(BaseModel):
     bank_commission_pln: int
     agent_commission_pln: int
     renovation_budget_pln: int
+    additional_purchase_costs_pln: int
+    transaction_costs_pln: int
+    total_purchase_cost_pln: int
+    pcc_treatment: MortgagePccTreatment
     upfront_cash_needed_pln: int
 
 
@@ -2915,6 +2939,7 @@ class MortgageScenario(BaseModel):
     annual_interest_rate_pct: float
     loan_years: int
     monthly_principal_interest_pln: int
+    monthly_non_loan_costs_pln: int
     monthly_total_payment_pln: int
     total_interest_pln: int
     total_repaid_pln: int
@@ -2923,6 +2948,7 @@ class MortgageScenario(BaseModel):
 
 class MortgageAffordability(BaseModel):
     status: MortgageAffordabilityStatus
+    method_code: str = "budgeting_dti_35_45"
     monthly_income_pln: int | None = None
     available_for_mortgage_comfortable_pln: int | None = None
     available_for_mortgage_stretched_pln: int | None = None
@@ -2931,10 +2957,18 @@ class MortgageAffordability(BaseModel):
     monthly_buffer_after_payment_pln: int | None = None
 
 
+class MortgageLegalSource(BaseModel):
+    code: str
+    name: str
+    url: str
+
+
 class MortgageLegalContext(BaseModel):
     checked_at: str
     source_name: str
     source_url: str
+    method_version: str
+    sources: list[MortgageLegalSource]
 
 
 class MortgageCalculationResult(BaseModel):
@@ -2943,6 +2977,7 @@ class MortgageCalculationResult(BaseModel):
     scenarios: list[MortgageScenario]
     affordability: MortgageAffordability
     notes: list[str]
+    note_codes: list[MortgageNoteCode]
     disclaimer: str
     legal_context: MortgageLegalContext
 

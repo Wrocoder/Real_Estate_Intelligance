@@ -1268,7 +1268,63 @@ async function runTransparentSearch(browser, viewport) {
   }
 }
 
+async function runMortgageBudget(browser, locale, viewport) {
+  const context = await browser.newContext({
+    viewport,
+    locale: locale === "pl" ? "pl-PL" : locale,
+  });
+  await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, `mortgage-budget/${locale}/${viewport.width}`);
+  const labels = {
+    pl: { total: "Pełny budżet zakupu", scenario: "Stopa +2 pp", details: "Dodatkowe koszty i założenia", exemption: "Deklaruję prawo do zwolnienia PCC" },
+    en: { total: "Full purchase budget", scenario: "Rate +2 pp", details: "Additional costs and assumptions", exemption: "I declare eligibility for the first-home PCC exemption" },
+    ru: { total: "Полный бюджет покупки", scenario: "Ставка +2 п.п.", details: "Дополнительные расходы и допущения", exemption: "Я заявляю право на освобождение от PCC" },
+    uk: { total: "Повний бюджет купівлі", scenario: "Ставка +2 в.п.", details: "Додаткові витрати та припущення", exemption: "Я заявляю право на звільнення від PCC" },
+  }[locale];
+  try {
+    await page.goto(`${baseUrl}/mortgage?property_price_pln=800000&market_type=secondary&listing_id=wr-001`, { waitUntil: "domcontentloaded" });
+    await page.getByText(labels.total, { exact: true }).first().waitFor({ timeout: 15000 });
+    await page.getByText(labels.scenario, { exact: true }).waitFor({ timeout: 15000 });
+    await page.locator(".mortgage-assumptions > summary").click();
+    await page.getByText(labels.details, { exact: true }).waitFor();
+    await page.getByText(labels.exemption, { exact: false }).click();
+    await page.getByRole("button", { name: /Aktualizuj|Update|Обновить|Оновити/ }).click();
+    await page.locator(".mortgage-cash-grid .metric").filter({ hasText: "PCC" }).getByText(/0/).waitFor();
+    const text = await page.locator("main").innerText();
+    if (locale !== "pl" && /Bazowy scenariusz|Zmienna stopa zwiększa|Szacunek techniczny/.test(text)) {
+      throw new Error(`${locale}: backend mortgage prose leaked into the UI`);
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, `mortgage-budget-${locale}-${viewport.width}.png`),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "mortgage-budget") {
+  try {
+    for (const locale of locales) {
+      await runMortgageBudget(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: mortgage-budget/${locale}/390`);
+    }
+    await runMortgageBudget(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: mortgage-budget/pl/1440");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "visual-density") {
   try {
     for (const viewport of [

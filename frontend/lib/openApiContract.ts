@@ -15,3 +15,7 @@ export type CompareRequestContract = NonNullable<
 export type SaveBuyerProfileRequestContract = NonNullable<
   operations["save_my_buyer_profile_api_v1_me_buyer_profile_put"]["requestBody"]
 >["content"]["application/json"];
+
+export type MortgageCalculationRequestContract = NonNullable<
+  operations["calculate_mortgage_budget_api_v1_mortgage_calculate_post"]["requestBody"]
+>["content"]["application/json"];

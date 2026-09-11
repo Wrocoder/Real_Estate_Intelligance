@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Calculator, RefreshCw, Send } from "lucide-react";
+import { Calculator, ChevronDown, RefreshCw, Send } from "lucide-react";
 
 import { ErrorBlock } from "@/components/StateBlocks";
 import {
@@ -32,7 +33,9 @@ type MortgageFormState = {
   bank_commission_pct: string;
   agent_commission_pct: string;
   renovation_budget_pln: string;
+  additional_purchase_costs_pln: string;
   include_pcc: boolean;
+  first_home_pcc_exemption: boolean;
 };
 
 type ReferralFormState = {
@@ -62,7 +65,9 @@ const DEFAULT_FORM: MortgageFormState = {
   bank_commission_pct: "0",
   agent_commission_pct: "0",
   renovation_budget_pln: "30000",
+  additional_purchase_costs_pln: "0",
   include_pcc: true,
+  first_home_pcc_exemption: false,
 };
 
 const DEFAULT_REFERRAL_FORM: ReferralFormState = {
@@ -435,10 +440,153 @@ const COPY = {
   },
 } as const;
 
+const DETAIL_COPY: Record<Locale, {
+  listingContext: string;
+  backToListing: string;
+  totalPurchaseCost: string;
+  monthlyLoan: string;
+  monthlyWithCosts: string;
+  monthlyNonLoanCosts: string;
+  additionalAssumptions: string;
+  additionalPurchaseCosts: string;
+  pccLabel: string;
+  firstHomeExemption: string;
+  firstHomeHelp: string;
+  monthlyComposition: string;
+  transactionCosts: string;
+  legalBasis: string;
+  legalCaveat: string;
+  scenarioLabels: Record<string, string>;
+  noteLabels: Record<string, string>;
+}> = {
+  en: {
+    listingContext: "Calculation for the selected apartment",
+    backToListing: "Back to apartment",
+    totalPurchaseCost: "Full purchase budget",
+    monthlyLoan: "Loan instalment",
+    monthlyWithCosts: "Monthly with housing costs",
+    monthlyNonLoanCosts: "Insurance and housing costs",
+    additionalAssumptions: "Additional costs and assumptions",
+    additionalPurchaseCosts: "Parking, storage and other costs",
+    pccLabel: "Include 2% PCC for the secondary market",
+    firstHomeExemption: "I declare eligibility for the first-home PCC exemption",
+    firstHomeHelp: "Eligibility depends on ownership history and the legal form of prior rights. Confirm it with a notary or tax adviser before signing.",
+    monthlyComposition: "The monthly total includes the loan instalment, insurance and entered housing costs. Total loan repayment does not include housing costs.",
+    transactionCosts: "Taxes and transaction fees",
+    legalBasis: "Legal assumptions and sources",
+    legalCaveat: "Official sources were checked on the date shown. Entered fees remain estimates; this calculation has not received an individual legal or bank review.",
+    scenarioLabels: { base: "Base", rate_plus_2pp: "Rate +2 pp", rate_minus_1pp: "Rate -1 pp" },
+    noteLabels: {
+      down_payment_below_10: "The down payment is below the typical 10% minimum.",
+      down_payment_below_20: "The down payment is below 20%; additional insurance may be required.",
+      secondary_pcc_included: "The estimate includes 2% PCC for a secondary-market purchase.",
+      secondary_pcc_excluded: "PCC was excluded at your request; verify whether it applies before signing.",
+      first_home_pcc_exemption_selected: "PCC was set to zero based on your first-home exemption declaration.",
+      primary_market_no_pcc: "PCC is not added for the primary market.",
+      variable_rate_risk: "A variable rate can raise the instalment; review the +2 pp scenario.",
+      affordability_stretched: "The entered income leaves a narrow budgeting margin.",
+      affordability_high_risk: "Debt and housing costs exceed the conservative 45% budgeting threshold.",
+      within_budgeting_thresholds: "The entered assumptions fit the conservative budgeting thresholds.",
+    },
+  },
+  pl: {
+    listingContext: "Kalkulacja dla wybranego mieszkania",
+    backToListing: "Wróć do mieszkania",
+    totalPurchaseCost: "Pełny budżet zakupu",
+    monthlyLoan: "Rata kredytu",
+    monthlyWithCosts: "Miesięcznie z kosztami mieszkania",
+    monthlyNonLoanCosts: "Ubezpieczenie i koszty mieszkania",
+    additionalAssumptions: "Dodatkowe koszty i założenia",
+    additionalPurchaseCosts: "Parking, komórka i inne koszty",
+    pccLabel: "Uwzględnij PCC 2% dla rynku wtórnego",
+    firstHomeExemption: "Deklaruję prawo do zwolnienia PCC przy zakupie pierwszego mieszkania",
+    firstHomeHelp: "Prawo do zwolnienia zależy od historii własności i formy wcześniejszych praw. Potwierdź je z notariuszem lub doradcą podatkowym przed podpisaniem umowy.",
+    monthlyComposition: "Miesięczna suma obejmuje ratę kredytu, ubezpieczenie i wpisane koszty mieszkania. Łączna spłata kredytu nie obejmuje kosztów mieszkania.",
+    transactionCosts: "Podatki i koszty transakcji",
+    legalBasis: "Założenia prawne i źródła",
+    legalCaveat: "Oficjalne źródła sprawdzono we wskazanym dniu. Wpisane opłaty są szacunkami; kalkulacja nie przeszła indywidualnej weryfikacji prawnej ani bankowej.",
+    scenarioLabels: { base: "Bazowy", rate_plus_2pp: "Stopa +2 pp", rate_minus_1pp: "Stopa -1 pp" },
+    noteLabels: {
+      down_payment_below_10: "Wkład własny jest poniżej typowego minimum 10%.",
+      down_payment_below_20: "Wkład własny jest poniżej 20%; może być wymagane dodatkowe ubezpieczenie.",
+      secondary_pcc_included: "Szacunek obejmuje PCC 2% dla zakupu na rynku wtórnym.",
+      secondary_pcc_excluded: "PCC pominięto na Twoje życzenie; przed umową sprawdź, czy podatek ma zastosowanie.",
+      first_home_pcc_exemption_selected: "PCC ustawiono na zero na podstawie deklaracji zwolnienia dla pierwszego mieszkania.",
+      primary_market_no_pcc: "Dla rynku pierwotnego PCC nie jest doliczany.",
+      variable_rate_risk: "Zmienna stopa może podnieść ratę; sprawdź scenariusz +2 pp.",
+      affordability_stretched: "Podany dochód pozostawia niewielki margines budżetowy.",
+      affordability_high_risk: "Długi i koszty mieszkania przekraczają konserwatywny próg budżetowy 45%.",
+      within_budgeting_thresholds: "Podane założenia mieszczą się w konserwatywnych progach budżetowych.",
+    },
+  },
+  ru: {
+    listingContext: "Расчёт для выбранной квартиры",
+    backToListing: "Вернуться к квартире",
+    totalPurchaseCost: "Полный бюджет покупки",
+    monthlyLoan: "Платёж по кредиту",
+    monthlyWithCosts: "В месяц с расходами на жильё",
+    monthlyNonLoanCosts: "Страховка и расходы на жильё",
+    additionalAssumptions: "Дополнительные расходы и допущения",
+    additionalPurchaseCosts: "Паркинг, кладовая и другие расходы",
+    pccLabel: "Учесть PCC 2% для вторичного рынка",
+    firstHomeExemption: "Я заявляю право на освобождение от PCC при покупке первого жилья",
+    firstHomeHelp: "Право зависит от истории собственности и формы прежних прав. Подтвердите его у нотариуса или налогового консультанта до сделки.",
+    monthlyComposition: "Месячная сумма включает платёж по кредиту, страховку и введённые расходы на жильё. Полная выплата кредита не включает расходы на жильё.",
+    transactionCosts: "Налоги и расходы на сделку",
+    legalBasis: "Правовые допущения и источники",
+    legalCaveat: "Официальные источники проверены на указанную дату. Введённые сборы остаются оценкой; расчёт не проходил индивидуальную юридическую или банковскую проверку.",
+    scenarioLabels: { base: "Базовый", rate_plus_2pp: "Ставка +2 п.п.", rate_minus_1pp: "Ставка -1 п.п." },
+    noteLabels: {
+      down_payment_below_10: "Первоначальный взнос ниже типичного минимума 10%.",
+      down_payment_below_20: "Первоначальный взнос ниже 20%; может потребоваться дополнительная страховка.",
+      secondary_pcc_included: "Расчёт включает PCC 2% для вторичного рынка.",
+      secondary_pcc_excluded: "PCC исключён по вашему выбору; перед сделкой проверьте, применяется ли налог.",
+      first_home_pcc_exemption_selected: "PCC установлен в ноль на основании заявления о льготе для первого жилья.",
+      primary_market_no_pcc: "Для первичного рынка PCC не добавляется.",
+      variable_rate_risk: "Переменная ставка может увеличить платёж; проверьте сценарий +2 п.п.",
+      affordability_stretched: "Указанный доход оставляет небольшой запас бюджета.",
+      affordability_high_risk: "Долги и расходы на жильё превышают консервативный порог бюджета 45%.",
+      within_budgeting_thresholds: "Введённые параметры укладываются в консервативные пороги бюджета.",
+    },
+  },
+  uk: {
+    listingContext: "Розрахунок для обраної квартири",
+    backToListing: "Повернутися до квартири",
+    totalPurchaseCost: "Повний бюджет купівлі",
+    monthlyLoan: "Платіж за кредитом",
+    monthlyWithCosts: "Щомісяця з витратами на житло",
+    monthlyNonLoanCosts: "Страхування та витрати на житло",
+    additionalAssumptions: "Додаткові витрати та припущення",
+    additionalPurchaseCosts: "Паркінг, комора та інші витрати",
+    pccLabel: "Врахувати PCC 2% для вторинного ринку",
+    firstHomeExemption: "Я заявляю право на звільнення від PCC для першого житла",
+    firstHomeHelp: "Право залежить від історії власності та форми попередніх прав. Підтвердьте його в нотаріуса або податкового консультанта до угоди.",
+    monthlyComposition: "Місячна сума включає платіж за кредитом, страхування та введені витрати на житло. Повна виплата кредиту не включає витрати на житло.",
+    transactionCosts: "Податки та витрати на угоду",
+    legalBasis: "Правові припущення та джерела",
+    legalCaveat: "Офіційні джерела перевірено на вказану дату. Введені збори залишаються оцінкою; розрахунок не проходив індивідуальної юридичної чи банківської перевірки.",
+    scenarioLabels: { base: "Базовий", rate_plus_2pp: "Ставка +2 в.п.", rate_minus_1pp: "Ставка -1 в.п." },
+    noteLabels: {
+      down_payment_below_10: "Початковий внесок нижчий за типовий мінімум 10%.",
+      down_payment_below_20: "Початковий внесок нижчий за 20%; може знадобитися додаткове страхування.",
+      secondary_pcc_included: "Розрахунок включає PCC 2% для вторинного ринку.",
+      secondary_pcc_excluded: "PCC виключено за вашим вибором; до угоди перевірте, чи застосовується податок.",
+      first_home_pcc_exemption_selected: "PCC встановлено в нуль на підставі заяви про пільгу для першого житла.",
+      primary_market_no_pcc: "Для первинного ринку PCC не додається.",
+      variable_rate_risk: "Змінна ставка може збільшити платіж; перевірте сценарій +2 в.п.",
+      affordability_stretched: "Вказаний дохід залишає невеликий запас бюджету.",
+      affordability_high_risk: "Борги та витрати на житло перевищують консервативний поріг бюджету 45%.",
+      within_budgeting_thresholds: "Введені параметри вкладаються в консервативні межі бюджету.",
+    },
+  },
+};
+
 export default function MortgagePage() {
   const { locale } = useLocalePreference();
   const searchParams = useSearchParams();
   const copy = COPY[locale];
+  const detailCopy = DETAIL_COPY[locale];
+  const listingId = searchParams.get("listing_id");
   const [form, setForm] = useState<MortgageFormState>(DEFAULT_FORM);
   const [contextApplied, setContextApplied] = useState(false);
   const [referralForm, setReferralForm] =
@@ -475,7 +623,9 @@ export default function MortgagePage() {
         bank_commission_pct: toNumber(form.bank_commission_pct),
         agent_commission_pct: toNumber(form.agent_commission_pct),
         renovation_budget_pln: toNumber(form.renovation_budget_pln),
+        additional_purchase_costs_pln: toNumber(form.additional_purchase_costs_pln),
         include_pcc: form.include_pcc,
+        first_home_pcc_exemption: form.first_home_pcc_exemption,
       });
       setResult(payload);
       setStatus(copy.calculated);
@@ -492,7 +642,13 @@ export default function MortgagePage() {
       setForm((current) => ({
         ...current,
         ...(price > 0 ? { property_price_pln: String(Math.round(price)) } : {}),
-        ...(market === "primary" || market === "secondary" ? { market_type: market } : {}),
+        ...(market === "primary" || market === "secondary"
+          ? {
+              market_type: market,
+              include_pcc: market === "secondary",
+              first_home_pcc_exemption: false,
+            }
+          : {}),
       }));
     }
     setContextApplied(true);
@@ -505,6 +661,15 @@ export default function MortgagePage() {
 
   function updateField<K extends keyof MortgageFormState>(key: K, value: MortgageFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateMarket(market: MortgageFormState["market_type"]) {
+    setForm((current) => ({
+      ...current,
+      market_type: market,
+      include_pcc: market === "secondary",
+      first_home_pcc_exemption: false,
+    }));
   }
 
   function updateReferralField<K extends keyof ReferralFormState>(
@@ -559,24 +724,31 @@ export default function MortgagePage() {
         </button>
       </header>
 
+      {listingId ? (
+        <div className="context-strip mortgage-listing-context">
+          <span>{detailCopy.listingContext}</span>
+          <Link href={`/listings/${encodeURIComponent(listingId)}`}>{detailCopy.backToListing}</Link>
+        </div>
+      ) : null}
+
       {error ? <ErrorBlock message={error} /> : null}
 
       <section className="metric-grid mortgage-summary-grid">
+        <div className="metric">
+          <span>{detailCopy.totalPurchaseCost}</span>
+          <strong>{result ? money(result.costs.total_purchase_cost_pln, locale) : "—"}</strong>
+        </div>
         <div className="metric">
           <span>{copy.metrics.cashNeeded}</span>
           <strong>{result ? money(result.costs.upfront_cash_needed_pln, locale) : "—"}</strong>
         </div>
         <div className="metric">
-          <span>{copy.metrics.loan}</span>
-          <strong>{result ? money(result.costs.loan_amount_pln, locale) : "—"}</strong>
+          <span>{detailCopy.monthlyLoan}</span>
+          <strong>{result ? money(result.base_scenario.monthly_principal_interest_pln, locale) : "—"}</strong>
         </div>
         <div className="metric">
-          <span>{copy.metrics.monthly}</span>
+          <span>{detailCopy.monthlyWithCosts}</span>
           <strong>{result ? money(result.base_scenario.monthly_total_payment_pln, locale) : "—"}</strong>
-        </div>
-        <div className="metric">
-          <span>{copy.metrics.affordability}</span>
-          <strong>{affordabilityLabel}</strong>
         </div>
       </section>
 
@@ -629,12 +801,7 @@ export default function MortgagePage() {
                 <select
                   className="select"
                   value={form.market_type}
-                  onChange={(event) =>
-                    updateField(
-                      "market_type",
-                      event.target.value as MortgageFormState["market_type"],
-                    )
-                  }
+                  onChange={(event) => updateMarket(event.target.value as MortgageFormState["market_type"])}
                 >
                   <option value="secondary">{copy.options.secondary}</option>
                   <option value="primary">{copy.options.primary}</option>
@@ -648,6 +815,38 @@ export default function MortgagePage() {
                 value={form.monthly_income_pln}
                 onChange={(value) => updateField("monthly_income_pln", value)}
               />
+            </div>
+
+            {form.market_type === "secondary" ? (
+              <div className="mortgage-tax-options">
+                <label className="compare-toggle">
+                  <input
+                    type="checkbox"
+                    checked={form.include_pcc}
+                    onChange={(event) => {
+                      updateField("include_pcc", event.target.checked);
+                      if (!event.target.checked) updateField("first_home_pcc_exemption", false);
+                    }}
+                  />
+                  {detailCopy.pccLabel}
+                </label>
+                {form.include_pcc ? (
+                  <label className="compare-toggle">
+                    <input
+                      type="checkbox"
+                      checked={form.first_home_pcc_exemption}
+                      onChange={(event) => updateField("first_home_pcc_exemption", event.target.checked)}
+                    />
+                    {detailCopy.firstHomeExemption}
+                  </label>
+                ) : null}
+                {form.first_home_pcc_exemption ? <p className="field-help">{detailCopy.firstHomeHelp}</p> : null}
+              </div>
+            ) : null}
+
+            <details className="mortgage-assumptions">
+              <summary><ChevronDown size={16} /> {detailCopy.additionalAssumptions}</summary>
+              <div className="form-grid" style={{ marginTop: 12 }}>
               <NumberField
                 label={copy.form.debts}
                 value={form.monthly_existing_debt_pln}
@@ -690,19 +889,13 @@ export default function MortgagePage() {
                 value={form.renovation_budget_pln}
                 onChange={(value) => updateField("renovation_budget_pln", value)}
               />
-            </div>
-
-            <label className="field" style={{ marginTop: 12 }}>
-              <span>PCC 2% (secondary market)</span>
-              <select
-                className="select"
-                value={form.include_pcc ? "yes" : "no"}
-                onChange={(event) => updateField("include_pcc", event.target.value === "yes")}
-              >
-                <option value="yes">{copy.form.include}</option>
-                <option value="no">{copy.form.exclude}</option>
-              </select>
-            </label>
+                <NumberField
+                  label={detailCopy.additionalPurchaseCosts}
+                  value={form.additional_purchase_costs_pln}
+                  onChange={(value) => updateField("additional_purchase_costs_pln", value)}
+                />
+              </div>
+            </details>
             <p className="status-line">{status}</p>
           </div>
         </div>
@@ -733,28 +926,44 @@ export default function MortgagePage() {
                       {formatNullableMoney(result.affordability.monthly_buffer_after_payment_pln, locale)}
                     </strong>
                   </li>
+                  <li>
+                    <span>{detailCopy.monthlyNonLoanCosts}</span>
+                    <strong>{money(result.base_scenario.monthly_non_loan_costs_pln, locale)}</strong>
+                  </li>
+                  <li>
+                    <span>{copy.metrics.affordability}</span>
+                    <strong>{affordabilityLabel}</strong>
+                  </li>
                 </ul>
                 <div className="decision-callout" style={{ marginTop: 16 }}>
                   <strong>{copy.result.marketTreatment}</strong>
                   <p>
                     {form.market_type === "primary" ? copy.result.marketPrimary : copy.result.marketSecondary}
                   </p>
-                  <small>{copy.result.legalFreshness(result.legal_context.checked_at)}</small>{" "}
-                  <a href={result.legal_context.source_url} target="_blank" rel="noreferrer">
-                    {result.legal_context.source_name}
-                  </a>
                 </div>
                 <ul className="section-list" style={{ marginTop: 12 }}>
-                  {result.notes.map((note) => (
-                    <li key={note}>{note}</li>
+                  {result.note_codes.map((noteCode) => (
+                    <li key={noteCode}>{detailCopy.noteLabels[noteCode] ?? noteCode}</li>
                   ))}
                 </ul>
                 <p className="muted" style={{ marginBottom: 0 }}>
-                  {result.disclaimer}
+                  {detailCopy.monthlyComposition}
                 </p>
                 <p className="muted" style={{ marginBottom: 0, marginTop: 8 }}>
                   {copy.result.affordabilityWarning}
                 </p>
+                <details className="mortgage-legal-details">
+                  <summary><ChevronDown size={16} /> {detailCopy.legalBasis}</summary>
+                  <p>{copy.result.legalFreshness(result.legal_context.checked_at)}</p>
+                  <ul className="section-list compact">
+                    {result.legal_context.sources.map((source) => (
+                      <li key={source.code}>
+                        <a href={source.url} target="_blank" rel="noreferrer">{source.name}</a>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="muted">{detailCopy.legalCaveat}</p>
+                </details>
               </>
             ) : (
               <div className="empty-state">{copy.result.empty}</div>
@@ -769,7 +978,7 @@ export default function MortgagePage() {
             <h2>{copy.result.scenarios}</h2>
           </div>
           <div className="panel-body">
-            <table className="table">
+            <table className="table mortgage-scenario-table">
               <thead>
                 <tr>
                   <th>{copy.result.scenario}</th>
@@ -783,12 +992,12 @@ export default function MortgagePage() {
               <tbody>
                 {result.scenarios.map((scenario) => (
                   <tr key={scenario.scenario_code}>
-                    <td>{scenario.label}</td>
-                    <td>{formatPlainPct(scenario.annual_interest_rate_pct, locale)}</td>
-                    <td>{money(scenario.monthly_total_payment_pln, locale)}</td>
-                    <td>{formatNullablePct(scenario.debt_to_income_pct, locale)}</td>
-                    <td>{money(scenario.total_interest_pln, locale)}</td>
-                    <td>{money(scenario.total_repaid_pln, locale)}</td>
+                    <td data-label={copy.result.scenario}>{detailCopy.scenarioLabels[scenario.scenario_code] ?? scenario.scenario_code}</td>
+                    <td data-label={copy.result.rate}>{formatPlainPct(scenario.annual_interest_rate_pct, locale)}</td>
+                    <td data-label={copy.result.payment}>{money(scenario.monthly_total_payment_pln, locale)}</td>
+                    <td data-label="DTI">{formatNullablePct(scenario.debt_to_income_pct, locale)}</td>
+                    <td data-label={copy.result.overpayment}>{money(scenario.total_interest_pln, locale)}</td>
+                    <td data-label={copy.result.totalRepayment}>{money(scenario.total_repaid_pln, locale)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -810,6 +1019,11 @@ export default function MortgagePage() {
               <CostMetric label={copy.form.bankCommission} locale={locale} value={result.costs.bank_commission_pln} />
               <CostMetric label={copy.form.agentCommission} locale={locale} value={result.costs.agent_commission_pln} />
               <CostMetric label={copy.form.renovation} locale={locale} value={result.costs.renovation_budget_pln} />
+              <CostMetric label={detailCopy.additionalPurchaseCosts} locale={locale} value={result.costs.additional_purchase_costs_pln} />
+              <div className="metric financial-metric">
+                <span>{detailCopy.transactionCosts}</span>
+                <strong>{money(result.costs.transaction_costs_pln, locale)}</strong>
+              </div>
               <div className="metric financial-metric total">
                 <span>{copy.result.totalCash}</span>
                 <strong>{money(result.costs.upfront_cash_needed_pln, locale)}</strong>
@@ -823,13 +1037,8 @@ export default function MortgagePage() {
                 <strong>{money(result.base_scenario.total_repaid_pln, locale)}</strong>
               </div>
               <div className="metric financial-metric total">
-                <span>{copy.result.totalOutlay}</span>
-                <strong>
-                  {money(
-                    result.costs.upfront_cash_needed_pln + result.base_scenario.total_repaid_pln,
-                    locale,
-                  )}
-                </strong>
+                <span>{detailCopy.totalPurchaseCost}</span>
+                <strong>{money(result.costs.total_purchase_cost_pln, locale)}</strong>
               </div>
             </div>
           </div>
@@ -996,10 +1205,10 @@ function formatPlainPct(value: number, locale: Locale) {
   return `${numberValue(value, locale)}%`;
 }
 
-function formatNullablePct(value: number | null, locale: Locale) {
-  return value === null ? "—" : formatPlainPct(value, locale);
+function formatNullablePct(value: number | null | undefined, locale: Locale) {
+  return value == null ? "—" : formatPlainPct(value, locale);
 }
 
-function formatNullableMoney(value: number | null, locale: Locale) {
-  return value === null ? "—" : money(value, locale);
+function formatNullableMoney(value: number | null | undefined, locale: Locale) {
+  return value == null ? "—" : money(value, locale);
 }
