@@ -79,6 +79,8 @@ services:
         value: postgres
       - key: CUSTOM_DASHBOARD_STORE_BACKEND
         value: postgres
+      - key: PRODUCT_ANALYTICS_STORE_BACKEND
+        value: postgres
       - key: REPORT_ARTIFACT_STORAGE_BACKEND
         value: s3
       - key: REPORT_ARTIFACT_S3_ENDPOINT_URL
@@ -202,6 +204,8 @@ services:
       - key: NEWS_STORE_BACKEND
         value: postgres
       - key: CUSTOM_DASHBOARD_STORE_BACKEND
+        value: postgres
+      - key: PRODUCT_ANALYTICS_STORE_BACKEND
         value: postgres
       - key: REPORT_ARTIFACT_STORAGE_BACKEND
         value: s3

@@ -480,7 +480,7 @@ repository Playwright fallback.
 
 **Сложность:** S. **Зависимости:** стабильные entity identifiers.
 
-### [ ] P2-10. Реализовать продуктовую аналитику decision funnel
+### [x] P2-10. Реализовать продуктовую аналитику decision funnel
 
 **Область:** `/check`; listing/report; comparables; risks; negotiation; saved; compare; pricing; checkout.
 
@@ -488,7 +488,7 @@ repository Playwright fallback.
 
 **Критерии приемки:** документированы и реализованы `check_started`, `check_completed`, `report_opened`, `verdict_viewed`, `comparables_opened`, `risk_opened`, `negotiation_opened`, `negotiation_message_generated`, `property_saved`, `comparison_started`, `comparison_completed`, `pricing_viewed`, `checkout_started`, `purchase_completed`; свойства событий не содержат URL объявления, полного адреса или иных ненужных PII; naming/versioning проверены тестами.
 
-**Текущий статус (2026-09-07): NOT STARTED.** Обязательные funnel events в текущем приложении не обнаружены.
+**Текущий статус (2026-09-11): DONE.** Все 14 событий реализованы как версионированный privacy-bounded контракт. Клиент передаёт только категориальные свойства из allowlist и случайный session journey UUID; URL объявления, адреса, entity IDs, контакты и свободный текст запрещены серверной валидацией. Production использует PostgreSQL с 180-дневным retention, а команда получает только агрегированный admin funnel без доступа к сырым событиям. Контракт, naming/versioning, retention, миграция, production-конфигурация и реальные browser POST-запросы покрыты release gate.
 
 **Сложность:** L. **Зависимости:** P0-02, P1-04, P1-08, P1-12.
 

@@ -13,6 +13,7 @@ type Props = {
   decision: BuyerDecisionPackage | null;
   confidenceScore?: number | null;
   locale: Locale;
+  onNegotiationOpened?: () => void;
 };
 
 type BuyerDecisionCopy = {
@@ -438,7 +439,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
 };
 
-export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props) {
+export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegotiationOpened }: Props) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   if (!decision) return null;
@@ -471,7 +472,10 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale }: Props)
       <button
         className="button primary buyer-decision-cta"
         type="button"
-        onClick={() => revealDecisionSection(detailsRef.current, "buyer-negotiation")}
+        onClick={() => {
+          onNegotiationOpened?.();
+          revealDecisionSection(detailsRef.current, "buyer-negotiation");
+        }}
       >
         <ClipboardCheck size={16} /> {copy.cta}
       </button>

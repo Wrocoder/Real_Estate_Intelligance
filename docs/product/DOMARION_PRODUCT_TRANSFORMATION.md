@@ -211,8 +211,9 @@ Reuse these boundaries instead of creating parallel implementations:
 5. Guides now expose article-specific editorial ownership, review scope,
    official sources and topic-specific disclaimers. Related area figures come
    from the current API with provenance and explicit unavailable states.
-6. Product analytics event naming and funnel instrumentation are not yet a
-   documented first-class contract across the main buying journey.
+6. Product analytics now has a documented versioned contract across the main
+   buying journey, privacy-bounded properties, durable production storage and
+   an aggregate-only admin funnel.
 
 ### Quality and operational risks
 
@@ -292,7 +293,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | ID | Task | Status | Dependency |
 | --- | --- | --- | --- |
 | T6-01 | Centralize and verify pricing ladder and entitlement copy | PARTIAL | T1-02 |
-| T6-02 | Document and implement product funnel events without unnecessary personal data | NOT STARTED | T2-02, T1-01 |
+| T6-02 | Document and implement product funnel events without unnecessary personal data | DONE | T2-02, T1-01 |
 | T6-03 | Produce final product review and remove low-value complexity | NOT STARTED | T1-03, T2-04, T6-02 |
 
 ## Dependency Graph
@@ -1450,6 +1451,50 @@ Remaining limitation:
 - the calculator is budgeting support, not a bank affordability decision,
   credit offer or individual legal/tax opinion. User-entered notary, court,
   commission and additional costs must be confirmed for the specific purchase.
+
+### P2-10 / T6-02: Privacy-Bounded Decision Funnel - DONE (2026-09-11)
+
+Changed:
+
+- defined and documented a versioned `1.0` contract for all 14 required funnel
+  events across check, verdict, evidence, risks, negotiation, saved properties,
+  comparison, reports, pricing and checkout;
+- limited event properties to server-validated categorical allowlists and a
+  random session journey UUID. Listing URLs, addresses, entity IDs, contact
+  data, custom questions and other free text are neither required nor accepted;
+- added anonymous write-only event ingestion and an admin-only aggregate funnel
+  endpoint. The product exposes no raw-event read endpoint;
+- added PostgreSQL storage, Alembic migration `0040`, a 180-day retention rule,
+  explicit production backend gates for Oracle/Render/staging and fail-open
+  client delivery so telemetry cannot block the buying journey;
+- treats `purchase_completed` as a fulfilled order observed by the pricing
+  page after checkout. The order ID is used only as a local session dedupe key
+  and is never sent in the analytics event.
+
+Verified:
+
+- backend contract tests cover all event names, schema version, allowlisted
+  values, rejected sensitive/free-text properties, aggregate-only output and
+  retention; Ruff and the full backend suite passed with `448 passed, 1 skipped`;
+- Alembic reports a single `0040_product_analytics_events` head and generates
+  the expected table and indexes in offline PostgreSQL SQL;
+- Oracle preflight accepts the staging example only with the analytics backend
+  configured for PostgreSQL;
+- frontend ESLint, TypeScript, 831 smoke assertions, npm audit and the 36-route
+  production build passed;
+- focused Playwright observed real `202` event POSTs for listing decision,
+  risks, comparable evidence, negotiation, comparison and pricing on a 390px
+  viewport, and verified UUID/version/privacy plus console, request and layout
+  health;
+- the complete repository Playwright gate passed all existing desktop, tablet,
+  mobile, localization, success, partial-data, unavailable, failure and recovery
+  scenarios after instrumentation was enabled.
+
+Remaining limitation:
+
+- production payment-provider credentials and a fulfilled live purchase remain
+  an external P1-12/T1-02 validation gate. The event contract is implemented,
+  but repository tests cannot substitute for that commercial evidence.
 
 ## Remaining External Limitations
 

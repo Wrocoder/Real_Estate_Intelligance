@@ -20,6 +20,7 @@ import { money, numberValue } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { COMPARE_PAGE_COPY } from "@/lib/i18n";
 import { scoreLabel } from "@/lib/scoreLabels";
+import { productIntent, trackProductEvent } from "@/lib/productAnalytics";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 import {
   InsightColumn,
@@ -207,10 +208,21 @@ export default function ComparePage() {
     async function loadCompare() {
       setError("");
       setStatus({ key: "comparing" });
+      trackProductEvent("comparison_started", locale, {
+        surface: "compare",
+        intent: productIntent(intent),
+        comparison_size: Math.min(selectedIds.length, 4),
+      });
       try {
         const response = await api.compareListings(selectedIds, intent);
         if (cancelled) return;
         setComparison(response);
+        trackProductEvent("comparison_completed", locale, {
+          surface: "compare",
+          intent: productIntent(intent),
+          comparison_size: Math.min(selectedIds.length, 4),
+          result_state: response.unavailable_listing_ids.length ? "partial" : "success",
+        });
         if (response.unavailable_listing_ids.length > 0) {
           setUnavailableIds(response.unavailable_listing_ids);
           const missing = new Set(response.unavailable_listing_ids);

@@ -1,6 +1,7 @@
 import re
 from datetime import date, datetime
 from typing import Any, Literal
+from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -294,6 +295,22 @@ MortgageNoteCode = Literal[
     "affordability_stretched",
     "affordability_high_risk",
     "within_budgeting_thresholds",
+]
+ProductEventName = Literal[
+    "check_started",
+    "check_completed",
+    "report_opened",
+    "verdict_viewed",
+    "comparables_opened",
+    "risk_opened",
+    "negotiation_opened",
+    "negotiation_message_generated",
+    "property_saved",
+    "comparison_started",
+    "comparison_completed",
+    "pricing_viewed",
+    "checkout_started",
+    "purchase_completed",
 ]
 MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
 MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]
@@ -2891,6 +2908,35 @@ class CustomDashboardPreview(BaseModel):
     widgets: list[CustomDashboardWidgetSnapshot] = Field(default_factory=list)
     source_notes: list[str] = Field(default_factory=list)
     disclaimer: str
+
+
+class ProductEventCreate(BaseModel):
+    event_name: ProductEventName
+    journey_id: UUID
+    schema_version: Literal["1.0"] = "1.0"
+    locale: Literal["pl", "en", "ru", "uk"]
+    properties: dict[str, str | int | bool] = Field(default_factory=dict, max_length=8)
+
+
+class ProductEventAccepted(BaseModel):
+    accepted: bool = True
+    event_name: ProductEventName
+    schema_version: Literal["1.0"] = "1.0"
+
+
+class ProductFunnelStage(BaseModel):
+    event_name: ProductEventName
+    event_count: int
+    unique_journeys: int
+
+
+class ProductFunnelSummary(BaseModel):
+    schema_version: Literal["1.0"] = "1.0"
+    window_days: int
+    generated_at: datetime
+    total_events: int
+    unique_journeys: int
+    stages: list[ProductFunnelStage]
 
 
 class MortgageCalculationRequest(BaseModel):

@@ -34,6 +34,10 @@ export type DataProvenance = {
   updated_at?: string | null;
 };
 
+export type ProductEventCreate = ApiSchema<"ProductEventCreate">;
+export type ProductEventName = ProductEventCreate["event_name"];
+export type ProductFunnelSummary = ApiSchema<"ProductFunnelSummary">;
+
 export type ProvenanceCalculationType =
   | "observed"
   | "calculated"
@@ -3293,6 +3297,15 @@ function toQueryString<T extends object>(params: T) {
 }
 
 export const api = {
+  recordProductEvent: (payload: ProductEventCreate) =>
+    request<ApiSchema<"ProductEventAccepted">>("/api/v1/product-events", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getAdminProductFunnel: (days = 30) =>
+    request<ProductFunnelSummary>(`/api/v1/admin/product-funnel?days=${days}`, {
+      headers: ADMIN_HEADERS,
+    }),
   register: (payload: { email: string; password: string; display_name?: string }) =>
     request<AuthSession>("/api/v1/auth/register", {
       method: "POST",

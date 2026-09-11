@@ -108,6 +108,15 @@ const areaPriceHistoryChart = read("components/AreaPriceHistoryChart.tsx");
 const listingDetailPage = read("app/listings/[id]/page.tsx");
 const pricingPage = read("app/pricing/page.tsx");
 const mortgagePage = read("app/mortgage/page.tsx");
+const productAnalytics = read("lib/productAnalytics.ts");
+const productAnalyticsSurfaces = [
+  productAnalytics,
+  checkPage,
+  listingDetailPage,
+  comparePage,
+  reportsPage,
+  pricingPage,
+].join("\n");
 const buyerBetaPage = read("app/beta/page.tsx");
 const buyerBetaContent = read("components/BuyerBetaContent.tsx");
 const realtorsPage = read("app/realtors/page.tsx");
@@ -1134,6 +1143,31 @@ expectNotIncludes("mortgage does not render backend prose", mortgagePage, [
 expectIncludes("mortgage OpenAPI contract", openApiContract, [
   "MortgageCalculationRequestContract",
   "calculate_mortgage_budget_api_v1_mortgage_calculate_post",
+]);
+expectIncludes("versioned decision funnel events", productAnalyticsSurfaces, [
+  'schema_version: "1.0"',
+  '"check_started"',
+  '"check_completed"',
+  '"report_opened"',
+  '"verdict_viewed"',
+  '"comparables_opened"',
+  '"risk_opened"',
+  '"negotiation_opened"',
+  '"negotiation_message_generated"',
+  '"property_saved"',
+  '"comparison_started"',
+  '"comparison_completed"',
+  '"pricing_viewed"',
+  '"checkout_started"',
+  '"purchase_completed"',
+]);
+expectNotIncludes("product events do not collect direct identifiers", productAnalytics, [
+  "source_url",
+  "address",
+  "listing_id",
+  "report_id",
+  "email",
+  "phone",
 ]);
 expectIncludes("financial values use tabular numerals", globalStyles, ["font-variant-numeric: tabular-nums"]);
 expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}</h2>"]);

@@ -20,6 +20,7 @@ import { dateValue } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
 import { REPORTS_PAGE_COPY, type Locale, type ReportsPageCopy } from "@/lib/i18n";
 import { useLocalePreference } from "@/lib/useLocalePreference";
+import { trackProductEvent } from "@/lib/productAnalytics";
 
 const REPORTS_BUYER_COPY: Record<
   Locale,
@@ -328,10 +329,22 @@ export default function ReportsPage() {
                     </div>
 
                     <div className="button-row">
-                      <a className="button primary" href={reportContentUrl(report.id)} target="_blank" rel="noreferrer">
+                      <a
+                        className="button primary"
+                        href={reportContentUrl(report.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => trackProductEvent("report_opened", locale, { surface: "reports", report_type: report.audience })}
+                      >
                         <ExternalLink size={16} /> {buyerCopy.actions.openHtml}
                       </a>
-                      <a className="button" href={reportPdfUrl(report.id)} target="_blank" rel="noreferrer">
+                      <a
+                        className="button"
+                        href={reportPdfUrl(report.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={() => trackProductEvent("report_opened", locale, { surface: "reports", report_type: report.audience })}
+                      >
                         <Download size={16} /> {buyerCopy.actions.openPdf}
                       </a>
                     </div>

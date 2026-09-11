@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     ai_insight_store_backend: str = "memory"
     news_store_backend: str = "memory"
     custom_dashboard_store_backend: str = "memory"
+    product_analytics_store_backend: str = "memory"
     report_artifact_storage_backend: str = "disabled"
     report_artifact_local_dir: str = ".domarion/report-artifacts"
     report_artifact_public_base_url: str | None = None

@@ -136,6 +136,7 @@ def _production_settings() -> Settings:
             "ai_insight_store_backend",
             "news_store_backend",
             "custom_dashboard_store_backend",
+            "product_analytics_store_backend",
         )
     }
     return Settings(

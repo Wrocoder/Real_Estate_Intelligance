@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from domarion import __version__
 from domarion.api import router
 from domarion.api.auth_routes import router as auth_router
+from domarion.api.product_analytics_routes import router as product_analytics_router
 from domarion.core import Settings, get_settings
 from domarion.ingestion_admin_store import IngestionAdminStore
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
@@ -186,6 +187,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(auth_router)
+    app.include_router(product_analytics_router)
     app.include_router(router)
     return app
 

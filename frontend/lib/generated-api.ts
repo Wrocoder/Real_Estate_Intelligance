@@ -123,6 +123,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/product-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record Product Event */
+        post: operations["record_product_event_api_v1_product_events_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/admin/product-funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Product Funnel */
+        get: operations["get_product_funnel_api_v1_admin_product_funnel_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/listings": {
         parameters: {
             query?: never;
@@ -8668,6 +8702,87 @@ export interface components {
              */
             listing_events_created: number;
         };
+        /** ProductEventAccepted */
+        ProductEventAccepted: {
+            /**
+             * Accepted
+             * @default true
+             */
+            accepted: boolean;
+            /**
+             * Event Name
+             * @enum {string}
+             */
+            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /** ProductEventCreate */
+        ProductEventCreate: {
+            /**
+             * Event Name
+             * @enum {string}
+             */
+            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            /**
+             * Journey Id
+             * Format: uuid
+             */
+            journey_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Locale
+             * @enum {string}
+             */
+            locale: "pl" | "en" | "ru" | "uk";
+            /** Properties */
+            properties?: {
+                [key: string]: string | number | boolean;
+            };
+        };
+        /** ProductFunnelStage */
+        ProductFunnelStage: {
+            /**
+             * Event Name
+             * @enum {string}
+             */
+            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            /** Event Count */
+            event_count: number;
+            /** Unique Journeys */
+            unique_journeys: number;
+        };
+        /** ProductFunnelSummary */
+        ProductFunnelSummary: {
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Window Days */
+            window_days: number;
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+            /** Total Events */
+            total_events: number;
+            /** Unique Journeys */
+            unique_journeys: number;
+            /** Stages */
+            stages: components["schemas"]["ProductFunnelStage"][];
+        };
         /** ProductionReadinessCheck */
         ProductionReadinessCheck: {
             /** Name */
@@ -10970,6 +11085,72 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    record_product_event_api_v1_product_events_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProductEventCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductEventAccepted"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_product_funnel_api_v1_admin_product_funnel_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: {
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProductFunnelSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

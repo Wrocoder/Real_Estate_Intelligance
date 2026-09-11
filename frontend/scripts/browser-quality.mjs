@@ -1305,7 +1305,88 @@ async function runMortgageBudget(browser, locale, viewport) {
   }
 }
 
+async function runProductAnalytics(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "pl-PL",
+  });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const page = await context.newPage();
+  const observation = await observe(page, "product-analytics/pl/mobile");
+  const acceptedEvents = [];
+  page.on("response", (response) => {
+    const request = response.request();
+    if (request.method() !== "POST" || !request.url().endsWith("/api/v1/product-events")) return;
+    acceptedEvents.push({ payload: request.postDataJSON(), status: response.status() });
+  });
+  try {
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    await page.locator(".listing-evidence-disclosure > summary").click();
+    await page.getByRole("button", { name: "Przygotuj negocjację", exact: true }).click();
+    await page.waitForTimeout(500);
+
+    await page.goto(`${baseUrl}/compare?ids=wr-001,wr-002&intent=self`, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.locator(".compare-recommendation").waitFor({ state: "visible", timeout: 15000 });
+    await page.goto(`${baseUrl}/pricing`, { waitUntil: "domcontentloaded" });
+    await page.locator(".pricing-grid").waitFor({ state: "visible", timeout: 15000 });
+    await page.waitForTimeout(750);
+
+    const names = new Set(acceptedEvents.map((event) => event.payload.event_name));
+    for (const expected of [
+      "verdict_viewed",
+      "risk_opened",
+      "comparables_opened",
+      "negotiation_opened",
+      "comparison_started",
+      "comparison_completed",
+      "pricing_viewed",
+    ]) {
+      if (!names.has(expected)) throw new Error(`product analytics event was not observed: ${expected}`);
+    }
+    const forbidden = /source_url|listing_url|address|listing_id|report_id|email|phone|message/i;
+    for (const event of acceptedEvents) {
+      if (event.status !== 202) {
+        throw new Error(`${event.payload.event_name}: product analytics returned ${event.status}`);
+      }
+      if (event.payload.schema_version !== "1.0") {
+        throw new Error(`${event.payload.event_name}: unexpected analytics schema version`);
+      }
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.payload.journey_id)) {
+        throw new Error(`${event.payload.event_name}: journey id is not a random UUID`);
+      }
+      if (forbidden.test(JSON.stringify(event.payload))) {
+        throw new Error(`${event.payload.event_name}: sensitive property leaked into analytics`);
+      }
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, "product-analytics-pl-mobile.png"),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "product-analytics") {
+  try {
+    await runProductAnalytics(browser);
+    console.log("browser quality passed: product-analytics/pl/mobile");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "mortgage-budget") {
   try {
     for (const locale of locales) {

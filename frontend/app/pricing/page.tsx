@@ -28,6 +28,11 @@ import {
 } from "@/lib/api";
 import { money, numberValue } from "@/lib/format";
 import { PRICING_PAGE_COPY, type Locale, type PricingPageCopy } from "@/lib/i18n";
+import {
+  productPaymentProvider,
+  trackProductEvent,
+  trackProductEventOnce,
+} from "@/lib/productAnalytics";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
 type ReportContext = {
@@ -279,6 +284,20 @@ export default function PricingPage() {
       setPlans(planData);
       setProducts(productData);
       setOrders(orderData);
+      for (const order of orderData) {
+        if (order.status === "fulfilled") {
+          trackProductEventOnce(
+            "purchase_completed",
+            locale,
+            {
+              surface: "checkout",
+              report_type: order.audience,
+              payment_provider: "unknown",
+            },
+            order.id,
+          );
+        }
+      }
       setStatus(copy.statuses.ready);
     } catch (caught) {
       if (caught instanceof ApiError && caught.status === 401) {
@@ -294,6 +313,10 @@ export default function PricingPage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    trackProductEventOnce("pricing_viewed", locale, { surface: "pricing" }, "page");
+  }, [locale]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -319,6 +342,11 @@ export default function PricingPage() {
         product_code: product.code,
         audience: product.audience,
         billing_details: billingPayload(billingForm),
+      });
+      trackProductEvent("checkout_started", locale, {
+        surface: "pricing",
+        report_type: product.audience,
+        payment_provider: productPaymentProvider(checkout.provider),
       });
       setOrders((current) => [
         checkout.order,

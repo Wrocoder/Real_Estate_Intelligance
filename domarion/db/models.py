@@ -1033,6 +1033,18 @@ class PaymentWebhookEvent(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
 
+class ProductAnalyticsEvent(Base):
+    __tablename__ = "product_analytics_events"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    journey_id: Mapped[str] = mapped_column(String(36), index=True)
+    event_name: Mapped[str] = mapped_column(String(80), index=True)
+    schema_version: Mapped[str] = mapped_column(String(12))
+    locale: Mapped[str] = mapped_column(String(8), index=True)
+    properties_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+
 class UserFavorite(Base):
     __tablename__ = "user_favorites"
     __table_args__ = (UniqueConstraint("owner_id", "listing_id"),)

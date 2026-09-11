@@ -55,6 +55,12 @@ import { localizedError } from "@/lib/errorMessages";
 import { CHECK_PAGE_COPY, type CheckPageCopy, type Locale } from "@/lib/i18n";
 import { decisionTone, scoreExplanationReasons, scoreLabel } from "@/lib/scoreLabels";
 import { useLocalePreference } from "@/lib/useLocalePreference";
+import {
+  productConfidence,
+  productIntent,
+  productVerdict,
+  trackProductEvent,
+} from "@/lib/productAnalytics";
 
 type CheckFormState = {
   title: string;
@@ -434,9 +440,16 @@ export default function CheckListingPage() {
     setSavedReport(null);
     setPostViewingResult(null);
     setStatus(copy.statuses.calculating);
+    trackProductEvent("check_started", locale, {
+      surface: "check",
+      intent: productIntent(form.purchase_intent),
+      market_type: form.market_type,
+      entry_mode: "manual",
+    });
     try {
       const payload = await api.analyzeUserSubmittedListing(buildListingPayload(form));
       setResult(payload);
+      trackCompletedAnalysis(payload);
       setReportResult(null);
       setSavedReport(null);
       setPostViewingResult(null);
@@ -472,6 +485,12 @@ export default function CheckListingPage() {
     setReferencePreview(null);
     resetAIAnswer(copy.statuses.aiReadyAfterCheck);
     setUrlImportStatus(product.importStatus);
+    trackProductEvent("check_started", locale, {
+      surface: "check",
+      intent: productIntent(form.purchase_intent),
+      market_type: form.market_type,
+      entry_mode: "url",
+    });
     try {
       const payload = await api.importUserSubmittedListingFromUrl(form.source_url, true);
       const updatedForm = mergeImportedFields(form, payload.fields);
@@ -509,6 +528,12 @@ export default function CheckListingPage() {
   }
 
   async function createReport() {
+    trackProductEvent("check_started", locale, {
+      surface: "check",
+      intent: productIntent(form.purchase_intent),
+      market_type: form.market_type,
+      entry_mode: "manual",
+    });
     await createReportFromForm(form);
   }
 
@@ -533,6 +558,7 @@ export default function CheckListingPage() {
         audience: "buyer",
       });
       setResult(payload.analysis);
+      trackCompletedAnalysis(payload.analysis);
       setReportResult(payload);
       setSavedReport(null);
       setPostViewingResult(null);
@@ -610,6 +636,12 @@ export default function CheckListingPage() {
         audience: aiAudience,
       });
       setAiAnswer(answer);
+      if (selectedAIQuestion === "negotiation" && !answer.refused) {
+        trackProductEvent("negotiation_message_generated", locale, {
+          surface: "check",
+          result_state: "success",
+        });
+      }
       setAiStatus(
         answer.refused ? copy.statuses.aiRefused : copy.statuses.aiSaved(answer.usage_log_id ?? answer.subject_id),
       );
@@ -633,6 +665,32 @@ export default function CheckListingPage() {
 
   function updateField<K extends keyof CheckFormState>(key: K, value: CheckFormState[K]) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function trackCompletedAnalysis(payload: UserSubmittedListingAnalysis) {
+    const confidence = productConfidence(payload.confidence_score);
+    trackProductEvent("check_completed", locale, {
+      surface: "check",
+      intent: productIntent(payload.analysis.buyer_decision?.selected_intent),
+      market_type: payload.analysis.listing.market_type ?? form.market_type,
+      result_state: payload.analysis.buyer_decision ? "success" : "partial",
+      confidence_level: confidence,
+    });
+    trackProductEvent("verdict_viewed", locale, {
+      surface: "check",
+      verdict: productVerdict(payload.analysis.buyer_decision?.verdict.status),
+      confidence_level: confidence,
+    });
+    trackProductEvent("risk_opened", locale, {
+      surface: "check",
+      evidence_state: payload.analysis.buyer_decision?.verdict.top_risks.length
+        ? "available"
+        : "insufficient",
+    });
+    trackProductEvent("comparables_opened", locale, {
+      surface: "check",
+      evidence_state: payload.analysis.comparables.length ? "available" : "insufficient",
+    });
   }
 
   const analysis = result?.analysis ?? null;
@@ -777,6 +835,14 @@ export default function CheckListingPage() {
           confidenceScore={result?.confidence_score ?? analysis?.scores.fair_price_confidence_score ?? null}
           decision={displayedDecision}
           locale={locale}
+          onNegotiationOpened={() =>
+            trackProductEvent("negotiation_opened", locale, {
+              surface: "check",
+              evidence_state: displayedDecision.negotiation.scenario_status === "available"
+                ? "available"
+                : "insufficient",
+            })
+          }
         />
       ) : null}
 

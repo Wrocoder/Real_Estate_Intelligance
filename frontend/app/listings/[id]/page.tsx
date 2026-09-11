@@ -45,6 +45,7 @@ import { dateValue, money, percent } from "@/lib/format";
 import { LISTING_DETAIL_COPY, type ListingDetailCopy } from "@/lib/i18n";
 import { decisionTone, scoreLabel } from "@/lib/scoreLabels";
 import { SEO_GUIDES } from "@/lib/seoGuides";
+import { productConfidence, productVerdict, trackProductEvent } from "@/lib/productAnalytics";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 
 const LISTING_LOADING_STEPS = {
@@ -80,6 +81,15 @@ export default function ListingDetailPage() {
     try {
       const data = await api.getAnalysis(listingId);
       setAnalysis(data);
+      trackProductEvent("verdict_viewed", locale, {
+        surface: "listing",
+        verdict: productVerdict(data.buyer_decision?.verdict.status),
+        confidence_level: productConfidence(data.scores.fair_price_confidence_score),
+      });
+      trackProductEvent("risk_opened", locale, {
+        surface: "listing",
+        evidence_state: data.buyer_decision?.verdict.top_risks.length ? "available" : "insufficient",
+      });
       setPostViewingResult(null);
       setStatus(copy.statuses.analyticsUpdated);
       try {
@@ -132,6 +142,7 @@ export default function ListingDetailPage() {
   async function addFavorite() {
     try {
       await api.addFavorite(listingId, copy.favoriteNote);
+      trackProductEvent("property_saved", locale, { surface: "listing" });
       setStatus(copy.statuses.favoriteAdded);
     } catch (caught) {
       setStatus(localizedError(caught, locale, copy.statuses.backendUnavailable));
@@ -163,6 +174,12 @@ export default function ListingDetailPage() {
         audience: aiAudience,
       });
       setAiAnswer(answer);
+      if (selectedAIQuestion === "negotiation" && !answer.refused) {
+        trackProductEvent("negotiation_message_generated", locale, {
+          surface: "listing",
+          result_state: "success",
+        });
+      }
       setAiStatus(
         answer.refused
           ? copy.statuses.aiRefused
@@ -233,7 +250,17 @@ export default function ListingDetailPage() {
         />
       ) : null}
 
-      <details className="listing-section-disclosure listing-evidence-disclosure">
+      <details
+        className="listing-section-disclosure listing-evidence-disclosure"
+        onToggle={(event) => {
+          if (event.currentTarget.open) {
+            trackProductEvent("comparables_opened", locale, {
+              surface: "listing",
+              evidence_state: analysis.comparables.length ? "available" : "insufficient",
+            });
+          }
+        }}
+      >
         <summary>{copy.sections.marketEvidence}</summary>
         <div className="listing-section-disclosure-body">
           <ComparableEvidencePanel analysis={analysis} locale={locale} />
@@ -249,7 +276,17 @@ export default function ListingDetailPage() {
           <Link className="button" href={compareHref}>
             <Columns2 size={16} /> {copy.actions.compare}
           </Link>
-          <button className="button" type="button" onClick={revealNegotiation}>
+          <button
+            className="button"
+            type="button"
+            onClick={() => {
+              trackProductEvent("negotiation_opened", locale, {
+                surface: "listing",
+                evidence_state: displayedDecision.negotiation.scenario_status === "available" ? "available" : "insufficient",
+              });
+              revealNegotiation();
+            }}
+          >
             <FileText size={16} /> {copy.actions.negotiate}
           </button>
           <button className="button" type="button" onClick={() => void trackListing()}>

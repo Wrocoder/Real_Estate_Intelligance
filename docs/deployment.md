@@ -187,6 +187,7 @@ Persistent stores:
 | `INGESTION_ADMIN_STORE_BACKEND` | jobs, logs, sources, audit and deletion requests | `memory` | `postgres` |
 | `USER_SUBMITTED_LISTING_STORE_BACKEND` | private drafts and source references | `memory` | `postgres` |
 | `PARTNER_REFERRAL_STORE_BACKEND` | beta/partner leads and scores | `memory` | `postgres` |
+| `PRODUCT_ANALYTICS_STORE_BACKEND` | privacy-bounded decision funnel events | `memory` | `postgres` |
 | `AI_INSIGHT_STORE_BACKEND` | stored AI summaries and answers | `memory` | `postgres` |
 | `NEWS_STORE_BACKEND` | news articles and admin edits | `memory` | `postgres` |
 | `CUSTOM_DASHBOARD_STORE_BACKEND` | enterprise dashboard configs | `memory` | `postgres` |

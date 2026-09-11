@@ -28,6 +28,7 @@ REQUIRED_POSTGRES_BACKENDS = {
     "AI_INSIGHT_STORE_BACKEND": "ai_insight_store_backend",
     "NEWS_STORE_BACKEND": "news_store_backend",
     "CUSTOM_DASHBOARD_STORE_BACKEND": "custom_dashboard_store_backend",
+    "PRODUCT_ANALYTICS_STORE_BACKEND": "product_analytics_store_backend",
 }
 VALID_WORKER_TASKS = {
     "daily-email-alerts",
