@@ -1367,6 +1367,46 @@ Follow-up:
 - P2-07 should split large modules only along proven domain boundaries and
   must not become a standalone frontend or backend rewrite.
 
+### P2-07: Typed Comparison Domain Boundary - DONE (2026-09-11)
+
+Changed:
+
+- split the stabilized comparison vertical slice without a broad rewrite:
+  the route now owns data loading and interaction orchestration, while shared
+  presentation components, comparison rows, localized recommendation signals
+  and status helpers live in a dedicated comparison module;
+- reduced `app/compare/page.tsx` from 1,388 to 760 lines and moved comparison,
+  shortlist preview and compare AI requests out of the 4,500-line shared API
+  client into a dedicated domain client;
+- derived the compare request, buyer-profile request, purchase intent,
+  priorities and normalized compare response types from generated OpenAPI
+  schemas and operations instead of repeating those contracts manually;
+- moved `/compare`, realtor shortlist preview and listing-resolution/plan-limit
+  logic from the 6,300-line backend routes module into a dedicated `APIRouter`;
+- preserved URLs, response models, operation IDs and OpenAPI ordering. No
+  valuation, ranking, recommendation or missing-data semantics changed.
+
+Verified:
+
+- Ruff and the full backend suite passed with `440 passed, 1 skipped`;
+- frontend ESLint, TypeScript, `798` smoke assertions, npm audit with zero
+  vulnerabilities and the 36-route production build passed;
+- regenerating the client from the refactored backend produced no OpenAPI diff;
+- the full repository Playwright gate passed PL/EN/RU/UK desktop, tablet and
+  mobile flows, including comparison success, partial selection, loading and
+  failure states;
+- after the backend router split, the live comparison flow was rechecked at
+  1440px and 390px with two URL-selected properties, a visible recommendation,
+  the correct desktop/mobile evidence composition, and no console, request or
+  overflow failures.
+
+Follow-up:
+
+- remaining large modules should continue to be split only while implementing
+  their owning product slices; P1-10 is the next repository-actionable core
+  task, while P0-05, P1-09 and P1-12 still require external provider or OCI
+  evidence for full completion.
+
 ## Remaining External Limitations
 
 - Customer interviews, paid sales, legal review, payment credentials, OCI

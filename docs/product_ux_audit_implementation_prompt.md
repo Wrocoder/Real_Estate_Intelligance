@@ -445,7 +445,7 @@ repository Playwright fallback.
 
 **Текущий статус (2026-09-10): DONE.** Общий `DecisionSummary` больше не повторяет verdict двумя badges: один семантический маркер обозначает вывод WartoMetr, а сам verdict остаётся главным заголовком. Compact summary metrics внутри compare/report cards переведены из вложенных cards в единую разделённую summary strip. Compare сохраняет одну доминирующую recommendation с reasons/trade-offs, удаляет дублирующий `best choice` highlight и показывает три независимых secondary signals и ranking как спокойные строки вместо второй и третьей серии равнозначных карточек. Reports оставляет три полезных account metrics, а async status вынесен из псевдометрики в `aria-live` status line. Listing визуально ослабляет additional analysis и на 390 px собирает primary action во всю ширину, secondary actions попарно и финальный report action полной строкой. Backend disclaimer и AI disclaimer больше не протекают английским текстом в локализованный listing: добавлены честные PL/EN/RU/UK consumer-copy варианты без изменения аналитического смысла. Release gate: ESLint; TypeScript; `795` smoke assertions; npm audit (`0` vulnerabilities); production Next.js build; focused visual-density Playwright на 390/1440 px и полный repository Playwright для PL/EN/RU/UK на desktop/tablet/mobile, включая existing expanded, partial, empty, unavailable, error/retry flows. Listing, compare и reports визуально просмотрены на mobile и desktop; console/network/hydration и overflow проверены.
 
-### [ ] P2-07. Разделить крупные frontend/backend модули и типизировать API
+### [x] P2-07. Разделить крупные frontend/backend модули и типизировать API
 
 **Область:** большие page/API modules; generated OpenAPI client; domain boundaries.
 
@@ -453,7 +453,7 @@ repository Playwright fallback.
 
 **Сложность:** XL. **Зависимости:** стабилизация P0/P1 API; не выполнять как отдельный rewrite.
 
-**Текущий статус (2026-09-07): PARTIAL.** Generated API contract используется, но крупные page/domain modules остаются сложными. Делить только по мере работы над открытыми P0/P1 vertical slices, без отдельного rewrite.
+**Текущий статус (2026-09-11): DONE.** Без общего rewrite выделен стабилизированный comparison vertical slice. `app/compare/page.tsx` теперь отвечает за загрузку и orchestration, а presentation-компоненты, таблица, локализованные recommendation signals и status helpers вынесены в отдельный domain module; размер route-файла уменьшен с 1388 до 760 строк. Compare, shortlist preview и compare AI transport вынесены из общего `lib/api.ts` в отдельный client. Request payload `/compare`, buyer-profile payload, intent, priorities и ключевые compare response-типы выводятся из generated OpenAPI schemas/operations с явной нормализацией только полей, которые backend гарантирует defaults. Backend `/compare` и shortlist preview вместе с resolution/limit logic вынесены из 6300-строчного общего routes-модуля в отдельный `APIRouter`; URL, response models, operation IDs и порядок OpenAPI сохранены. Release gate: Ruff; полный backend suite `440 passed, 1 skipped`; ESLint; TypeScript; `798` smoke assertions; npm audit без уязвимостей; production build на 36 routes; regenerated OpenAPI без diff; полный repository Playwright для PL/EN/RU/UK, desktop/tablet/mobile и failure/partial states; после backend split дополнительно проверен реальный compare flow на 1440/390 px без console/network/overflow ошибок. Визуальных и аналитических изменений нет.
 
 ### [x] P2-08. Добавить browser quality gate в CI
 

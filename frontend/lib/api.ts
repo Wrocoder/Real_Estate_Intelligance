@@ -3,6 +3,16 @@ import {
   currentApiBaseUrl,
   request,
 } from "./apiClient";
+import {
+  answerCompareAIQuestion,
+  buildRealtorClientShortlist,
+  compareListings,
+} from "./api/comparison";
+import type {
+  ApiSchema,
+  SaveBuyerProfileRequestContract,
+  WithRequired,
+} from "./openApiContract";
 
 export { API_BASE_URL, ApiError } from "./apiClient";
 export type {
@@ -1238,7 +1248,7 @@ export type PropertyScores = {
 };
 
 export type BuyerVerdictStatus = "buy" | "negotiate" | "avoid" | "verify_first";
-export type PurchaseIntent = "self" | "family" | "rental" | "investment" | "unsure";
+export type PurchaseIntent = ApiSchema<"BuyerProfile">["intent"];
 export type DueDiligencePriority = "critical" | "high" | "medium" | "low";
 export type DueDiligenceCheckStatus =
   | "known"
@@ -1917,24 +1927,14 @@ export type UserAccount = {
   updated_at: string;
 };
 
-export type BuyerPriority =
-  | "price_value"
-  | "low_risk"
-  | "daily_living"
-  | "family_fit"
-  | "liquidity"
-  | "rental_income";
+export type BuyerPriority = NonNullable<ApiSchema<"BuyerProfile">["priorities"]>[number];
 
-export type BuyerProfile = {
-  owner_id: string;
-  intent: PurchaseIntent;
-  budget_pln: number | null;
-  priorities: BuyerPriority[];
-  created_at: string;
-  updated_at: string;
-};
+export type BuyerProfile = WithRequired<
+  ApiSchema<"BuyerProfile">,
+  "budget_pln" | "priorities"
+>;
 
-export type BuyerProfilePayload = Pick<BuyerProfile, "intent" | "budget_pln" | "priorities">;
+export type BuyerProfilePayload = SaveBuyerProfileRequestContract;
 
 export type Subscription = {
   id: string;
@@ -2519,100 +2519,43 @@ export type HiddenGemsResponse = {
   filters: Record<string, unknown>;
 };
 
-export type CompareMortgageAssumptions = {
-  down_payment_pct: number;
-  loan_years: number;
-  annual_interest_rate_pct: number;
-  rate_type: "fixed" | "variable";
-};
+export type CompareMortgageAssumptions = ApiSchema<"CompareMortgageAssumptions">;
 
-export type CompareItemMetrics = {
-  listing_id: string;
-  rank: number;
-  decision_score: number;
-  decision_label: PropertyScores["decision_label"];
-  price_label: PropertyScores["price_label"];
-  risk_label: PropertyScores["risk_label"];
-  liquidity_label: PropertyScores["liquidity_label"];
-  rental_potential_label: PropertyScores["rental_potential_label"];
-  investment_score: number;
-  risk_score: number;
-  negotiation_score: number;
-  liquidity_score: number | null;
-  rental_potential_score: number | null;
-  price_per_m2_pln: number;
-  fair_price_mid_pln: number;
-  price_delta_to_fair_mid_pct: number;
-  fair_price_gap_pln: number;
-  estimated_discount_to_fair_mid_pln: number;
-  down_payment_pln: number;
-  loan_amount_pln: number;
-  estimated_monthly_payment_pln: number;
-  estimated_monthly_payment_per_m2_pln: number;
-  upfront_cash_needed_pln: number;
-  renovation_estimate_pln: number;
-  furniture_estimate_pln: number;
-  transaction_costs_pln: number;
-  total_move_in_cost_pln: number;
-  ready_to_move_alternative_price_pln: number | null;
-  post_renovation_value_gap_pln: number | null;
-  max_reasonable_offer_pln: number | null;
-  opening_offer_pln: number | null;
-  estimated_gross_rental_yield_pct: number | null;
-  estimated_monthly_rent_pln: number | null;
-  recommendation: string;
-  reasons: string[];
-  warnings: string[];
-};
+export type CompareItemMetrics = WithRequired<
+  ApiSchema<"CompareItemMetrics">,
+  | "liquidity_score"
+  | "rental_potential_score"
+  | "ready_to_move_alternative_price_pln"
+  | "post_renovation_value_gap_pln"
+  | "estimated_gross_rental_yield_pct"
+  | "estimated_monthly_rent_pln"
+  | "reasons"
+  | "warnings"
+>;
 
-export type CompareSummary = {
-  best_listing_id: string;
-  best_value_listing_id: string;
-  best_total_cost_listing_id: string;
-  lowest_monthly_payment_listing_id: string;
-  strongest_liquidity_listing_id: string | null;
-  strongest_rental_listing_id: string | null;
-  riskiest_listing_id: string;
-  average_price_per_m2: number;
-  average_estimated_monthly_payment_pln: number;
-  average_total_move_in_cost_pln: number;
-  average_liquidity_score: number | null;
-  average_rental_potential_score: number | null;
-  notes: string[];
-};
+export type CompareSummary = WithRequired<
+  ApiSchema<"CompareSummary">,
+  | "strongest_liquidity_listing_id"
+  | "strongest_rental_listing_id"
+  | "average_liquidity_score"
+  | "average_rental_potential_score"
+  | "notes"
+>;
 
-export type CompareRecommendationSignalCode =
-  | "overall_balance"
-  | "intent_fit"
-  | "price_value"
-  | "low_risk"
-  | "daily_living"
-  | "family_fit"
-  | "liquidity"
-  | "rental_income"
-  | "budget_fit"
-  | "higher_price"
-  | "higher_risk"
-  | "weaker_liquidity"
-  | "weaker_rental_income"
-  | "smaller_area"
-  | "farther_from_center"
-  | "over_budget";
+export type CompareRecommendationSignalCode = ApiSchema<"CompareRecommendationSignal">["code"];
 
-export type CompareRecommendationSignal = {
-  code: CompareRecommendationSignalCode;
-  value: number | null;
-  reference_value: number | null;
-};
+export type CompareRecommendationSignal = WithRequired<
+  ApiSchema<"CompareRecommendationSignal">,
+  "value" | "reference_value"
+>;
 
-export type CompareRecommendation = {
-  version: string;
-  purchase_intent: PurchaseIntent;
-  listing_id: string;
-  score: number;
-  personalized: boolean;
-  all_over_budget: boolean;
-  applied_priorities: BuyerPriority[];
+export type CompareRecommendation = Omit<
+  WithRequired<
+    ApiSchema<"CompareRecommendation">,
+    "applied_priorities" | "reasons" | "tradeoffs"
+  >,
+  "reasons" | "tradeoffs"
+> & {
   reasons: CompareRecommendationSignal[];
   tradeoffs: CompareRecommendationSignal[];
 };
@@ -3004,14 +2947,14 @@ export type ListingCorrectionResult = {
   corrected_by: string | null;
 };
 
-export type CompareResponse = {
-  requested_listing_ids: string[];
-  unavailable_listing_ids: string[];
+export type CompareResponse = Omit<
+  WithRequired<ApiSchema<"CompareResponse">, "unavailable_listing_ids">,
+  "items" | "metrics" | "summary" | "recommendation"
+> & {
   items: ListingAnalysis[];
   metrics: CompareItemMetrics[];
   summary: CompareSummary;
   recommendation: CompareRecommendation;
-  mortgage_assumptions: CompareMortgageAssumptions;
 };
 
 export type ReportProduct = {
@@ -4309,26 +4252,9 @@ export const api = {
     request<ReportOrder>(`/api/v1/report-orders/${orderId}/fulfill`, {
       method: "POST",
     }),
-  compareListings: (listingIds: string[], purchaseIntent: PurchaseIntent = "unsure") =>
-    request<CompareResponse>("/api/v1/compare", {
-      method: "POST",
-      body: JSON.stringify({ listing_ids: listingIds, purchase_intent: purchaseIntent }),
-    }),
-  buildRealtorClientShortlist: (payload: RealtorClientShortlistRequest) =>
-    request<RealtorClientShortlist>("/api/v1/realtor/client-shortlists/preview", {
-      method: "POST",
-      body: JSON.stringify({
-        listing_ids: payload.listing_ids,
-        client_name: payload.client_name || null,
-        intro: payload.intro || null,
-        include_source_links: payload.include_source_links ?? false,
-      }),
-    }),
-  answerCompareAIQuestion: (payload: AICompareAnswerRequest) =>
-    request<AICompareAnswer>("/api/v1/ai/compare/answer", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }),
+  compareListings,
+  buildRealtorClientShortlist,
+  answerCompareAIQuestion,
   updateSubscription: (plan: SubscriptionPlan) =>
     request<AccountSummary>("/api/v1/me/subscription", {
       method: "PATCH",

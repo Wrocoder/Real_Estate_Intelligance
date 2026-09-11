@@ -85,6 +85,9 @@ const savedPage = read("app/saved/page.tsx");
 const savedApartmentsPage = read("components/SavedApartmentsPage.tsx");
 const legacySavedPage = read("app/check/drafts/page.tsx");
 const comparePage = read("app/compare/page.tsx");
+const comparePresentation = read("components/compare/ComparePresentation.tsx");
+const comparisonApi = read("lib/api/comparison.ts");
+const openApiContract = read("lib/openApiContract.ts");
 const listingCard = read("components/ListingCard.tsx");
 const demoModeBanner = read("components/DemoModeBanner.tsx");
 const authForm = read("components/AuthForm.tsx");
@@ -498,7 +501,7 @@ expectIncludes("compare page i18n", comparePage, [
   "compare-table-desktop",
   "compare-mobile-cards",
 ]);
-expectIncludes("compare decision summary", comparePage, [
+expectIncludes("compare decision summary", comparePage + comparePresentation, [
   "<DecisionSummary",
   "decisionSummaryFromScores",
   "fallbackSummary={copy.fallbackSummary}",
@@ -513,7 +516,7 @@ expectIncludes("compare decision summary", comparePage, [
 expectNotIncludes("compare avoids duplicate best-choice highlight", comparePage, [
   "label={copy.metrics.bestChoice}",
 ]);
-expectIncludes("personalized comparison", comparePage, [
+expectIncludes("personalized comparison", comparePage + comparePresentation, [
   "recommendation.listing_id",
   "comparison.recommendation.personalized",
   "comparison?.recommendation.all_over_budget",
@@ -1058,7 +1061,14 @@ expectIncludes("actionable check error recovery", read("app/check/page.tsx"), [
   "manualEntryRequested",
   "open={manualEntryOpen}",
 ]);
-expectIncludes("analytics request contract", apiClient, ["purchase_intent: purchaseIntent"]);
+expectIncludes("analytics request contract", comparisonApi, [
+  "const payload: CompareRequestContract",
+  "purchase_intent: purchaseIntent",
+]);
+expectIncludes("generated operation request types", openApiContract, [
+  'operations["compare_listings_api_v1_compare_post"]',
+  'operations["save_my_buyer_profile_api_v1_me_buyer_profile_put"]',
+]);
 expectIncludes("typed API boundary", apiClient, ["import {", 'from "./apiClient"']);
 expectIncludes("API request transport", apiTransport, ['credentials: "include"']);
 expectIncludes("API transport boundary", apiTransport, [
@@ -1078,6 +1088,7 @@ expectNotIncludes(
     read("components/FutureImpactNarrativePanel.tsx"),
     read("components/Charts.tsx"),
     read("app/compare/page.tsx"),
+    read("components/compare/ComparePresentation.tsx"),
     read("app/check/page.tsx"),
     read("app/listings/[id]/page.tsx"),
     read("app/news/page.tsx"),
