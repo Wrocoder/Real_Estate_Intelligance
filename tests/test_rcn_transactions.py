@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
@@ -13,6 +13,7 @@ def _feature(**overrides):
     feature = {
         "feature_id": "lokale.1",
         "tran_przestrzen_nazw": "PL.PZGiK.RCN",
+        "teryt": "0264",
         "tran_lokalny_id_iip": "transaction-1",
         "tran_wersja_id": "2026-01-10T12:00:00",
         "tran_rodzaj_trans": "wolnyRynek",
@@ -68,6 +69,84 @@ def test_normalize_rcn_feature_rejects_non_residential_rows():
         assert "non-residential" in str(exc)
     else:
         raise AssertionError("non-residential RCN row was accepted")
+
+
+def test_normalize_rcn_feature_accepts_a_bounded_polish_region():
+    record = rcn_transactions.normalize_rcn_feature(
+        _feature(
+            teryt="1261",
+            lok_adres="MSC:Kraków;UL:Długa;NR_PORZ:1",
+        ),
+        row_number=1,
+        source_name="RCN GUGiK",
+        source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+        expected_teryt_prefix="12",
+    )
+
+    assert record.city == "Kraków"
+    assert record.area_id == "rcn-1261-krakow-city"
+    assert record.teryt == "1261"
+    assert record.normalized_payload["voivodeship"] == "małopolskie"
+
+
+def test_normalize_rcn_feature_rejects_a_row_outside_requested_region():
+    try:
+        rcn_transactions.normalize_rcn_feature(
+            _feature(teryt="1465", lok_adres="MSC:Warszawa;UL:Długa;NR_PORZ:1"),
+            row_number=1,
+            source_name="RCN GUGiK",
+            source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+            expected_teryt_prefix="12",
+        )
+    except rcn_transactions.RcnTransactionError as exc:
+        assert "regional scope" in str(exc)
+    else:
+        raise AssertionError("out-of-scope RCN row was accepted")
+
+
+def test_copy_record_preserves_matching_authoritative_district_assignment():
+    record = rcn_transactions.normalize_rcn_feature(
+        _feature(),
+        row_number=1,
+        source_name="RCN GUGiK",
+        source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+    )
+    row = SimpleNamespace(
+        district="Stare Miasto",
+        area_id="wroclaw-stare-miasto",
+        geometry_x=record.geometry_x,
+        geometry_y=record.geometry_y,
+        normalized_payload={
+            "district": "Stare Miasto",
+            "area_id": "wroclaw-stare-miasto",
+            "district_assignment_source": "Wrocław Geoportal",
+        },
+    )
+
+    rcn_transactions._copy_record(row, record, ingestion_job_id="job-1")
+
+    assert row.district == "Stare Miasto"
+    assert row.area_id == "wroclaw-stare-miasto"
+    assert row.normalized_payload["district_assignment_source"] == "Wrocław Geoportal"
+
+
+def test_market_scopes_refresh_when_observations_leave_rolling_window():
+    refresh_at = datetime(2026, 9, 12, 8)
+
+    class Session:
+        def execute(self, statement):  # noqa: ANN001
+            return SimpleNamespace(
+                all=lambda: [("Kraków", "rcn-1261-krakow-city")]
+            )
+
+    scopes = rcn_transactions._scopes_crossing_market_window(
+        Session(),
+        source_id=7,
+        previous_refresh_at=refresh_at - timedelta(days=1),
+        refresh_at=refresh_at,
+    )
+
+    assert scopes == {("Kraków", "rcn-1261-krakow-city")}
 
 
 def test_import_rcn_transactions_writes_transaction_table_only(monkeypatch, tmp_path):

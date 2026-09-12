@@ -4,6 +4,7 @@ import os
 import sys
 import time
 from contextlib import contextmanager
+from datetime import UTC, datetime, timedelta
 
 from domarion.core import get_settings
 from domarion.db.session import SessionLocal
@@ -21,6 +22,14 @@ from domarion.ingestion.district_boundaries import (
 from domarion.ingestion.infrastructure_references import import_infrastructure_references
 from domarion.ingestion.partner_csv import read_partner_csv
 from domarion.ingestion.planned_investments import import_planned_investments
+from domarion.ingestion.rcn_poland import (
+    POLISH_VOIVODESHIPS,
+    build_rcn_region_url,
+    checkpoint_since_version,
+    combine_rcn_region_results,
+    load_rcn_region_checkpoints,
+    parse_region_codes,
+)
 from domarion.ingestion.rcn_transactions import (
     RcnTransactionError,
     import_rcn_transactions,
@@ -97,6 +106,11 @@ def main() -> None:
     rcn_parser.add_argument("--max-rows", type=int, default=100_000)
     rcn_parser.add_argument("--max-pages", type=int, default=500)
     rcn_parser.add_argument("--timeout-seconds", type=float, default=30.0)
+    rcn_parser.add_argument(
+        "--teryt-prefix",
+        choices=tuple(POLISH_VOIVODESHIPS),
+        help="Validate a Poland-wide regional WFS slice by voivodeship TERYT prefix.",
+    )
     rental_parser = subparsers.add_parser(
         "import-rental-observations",
         help="Import an approved long-term apartment rental CSV into PostgreSQL.",
@@ -380,6 +394,7 @@ def main() -> None:
                     max_rows=args.max_rows,
                     max_pages=args.max_pages,
                     timeout_seconds=args.timeout_seconds,
+                    expected_teryt_prefix=args.teryt_prefix,
                 )
                 if not args.dry_run:
                     session.commit()
@@ -704,6 +719,12 @@ def _run_worker_task(task: str, args: argparse.Namespace) -> dict:
             }
         if settings.data_repository_backend != "postgres":
             raise SystemExit("rcn-transactions requires DATA_REPOSITORY_BACKEND=postgres.")
+        if os.getenv("RCN_TRANSACTIONS_SCOPE", "wroclaw").strip().casefold() == "poland":
+            return _run_poland_rcn_task(
+                args,
+                base_location=location,
+                source_name=source_name,
+            )
         try:
             with SessionLocal() as session:
                 if not args.run_once and not rcn_import_is_due(
@@ -759,6 +780,107 @@ def _run_worker_task(task: str, args: argparse.Namespace) -> dict:
     raise SystemExit(f"Unknown worker task: {task}")
 
 
+def _run_poland_rcn_task(
+    args: argparse.Namespace,
+    *,
+    base_location: str,
+    source_name: str,
+) -> dict[str, object]:
+    try:
+        region_codes = parse_region_codes(os.getenv("RCN_POLAND_REGION_CODES"))
+        initial_lookback_days = max(
+            365,
+            int(os.getenv("RCN_POLAND_INITIAL_LOOKBACK_DAYS", "730")),
+        )
+        overlap_days = max(1, int(os.getenv("RCN_POLAND_OVERLAP_DAYS", "14")))
+        boundary_payload = None
+        with SessionLocal() as session:
+            checkpoints = load_rcn_region_checkpoints(session, source_name=source_name)
+            boundary_location = os.getenv("RCN_DISTRICT_BOUNDARIES_LOCATION")
+            if boundary_location:
+                boundary_result = import_district_boundaries(
+                    session,
+                    boundary_location,
+                    source_name=os.getenv(
+                        "RCN_DISTRICT_BOUNDARIES_SOURCE_NAME",
+                        "Wrocław Geoportal osiedle boundaries",
+                    ),
+                    source_url=os.getenv(
+                        "RCN_DISTRICT_BOUNDARIES_SOURCE_URL",
+                        "https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
+                    ),
+                    source_crs=int(os.getenv("RCN_DISTRICT_BOUNDARIES_SOURCE_CRS", "2177")),
+                    dry_run=not args.apply,
+                )
+                boundary_payload = boundary_result.as_dict()
+                if args.apply:
+                    session.commit()
+    except (DistrictBoundaryError, TypeError, ValueError) as exc:
+        return {"task": "rcn-transactions", "status": "blocked", "message": str(exc)}
+
+    initial_since = datetime.now(UTC).replace(tzinfo=None) - timedelta(
+        days=initial_lookback_days
+    )
+    results: list[dict[str, object]] = []
+    failures: list[dict[str, str]] = []
+    for code in region_codes:
+        since_version = checkpoint_since_version(
+            checkpoints.get(code),
+            initial_since=initial_since,
+            overlap_days=overlap_days,
+        )
+        try:
+            location = build_rcn_region_url(
+                base_location,
+                teryt_prefix=code,
+                since_version=since_version,
+            )
+            with SessionLocal() as session:
+                result = import_rcn_transactions(
+                    session,
+                    location,
+                    source_name=source_name,
+                    dry_run=not args.apply,
+                    max_rows=int(os.getenv("RCN_TRANSACTIONS_MAX_ROWS", "500000")),
+                    max_pages=int(os.getenv("RCN_TRANSACTIONS_MAX_PAGES", "500")),
+                    timeout_seconds=float(
+                        os.getenv("RCN_TRANSACTIONS_TIMEOUT_SECONDS", "30")
+                    ),
+                    expected_teryt_prefix=code,
+                    metrics_refresh_since=(
+                        checkpoints[code].last_successful_at
+                        if code in checkpoints
+                        else None
+                    ),
+                )
+                payload = {
+                    **result.as_dict(),
+                    "teryt_prefix": code,
+                    "voivodeship": POLISH_VOIVODESHIPS[code],
+                    "since_version": since_version,
+                }
+                if args.apply:
+                    session.commit()
+            results.append(payload)
+        except (RcnTransactionError, ValueError) as exc:
+            failures.append(
+                {
+                    "teryt_prefix": code,
+                    "voivodeship": POLISH_VOIVODESHIPS[code],
+                    "message": str(exc),
+                }
+            )
+
+    payload = combine_rcn_region_results(results)
+    payload["regions_requested"] = len(region_codes)
+    payload["regions_failed"] = failures
+    payload["district_boundaries"] = boundary_payload
+    payload["status"] = "succeeded" if not failures else "partial" if results else "blocked"
+    if args.apply:
+        payload["telegram"] = _send_rcn_telegram_report(payload)
+    return payload
+
+
 def _run_production_preflight(args: argparse.Namespace) -> None:
     settings = get_settings()
     with contextmanager(get_ingestion_admin_store)() as store:
@@ -782,9 +904,18 @@ def _send_rcn_telegram_report(payload: dict[str, object]) -> dict[str, object]:
         rejection_summary = "; ".join(
             f"{reason}: {count}" for reason, count in list(rejection_reasons.items())[:3]
         )
+    failed_regions = payload.get("regions_failed")
+    failed_region_count = len(failed_regions) if isinstance(failed_regions, list) else 0
     message = "\n".join(
         [
-            "WartoMetr: daily Wrocław RCN transaction update",
+            (
+                "WartoMetr: daily RCN transaction update — "
+                f"{payload.get('scope_label') or 'Wrocław'}"
+            ),
+            (
+                f"Regions: {payload.get('regions_processed', 1)} processed, "
+                f"{failed_region_count} failed"
+            ),
             f"Source rows: {payload.get('rows_seen', 0)}",
             f"Accepted residential rows: {payload.get('rows_accepted', 0)}",
             f"New transactions: {payload.get('transactions_created', 0)}",

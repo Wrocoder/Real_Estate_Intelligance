@@ -2,7 +2,9 @@
 
 Status: implementation in progress; release gate is still open.
 Date: 2026-09-05
-Scope: Wroclaw apartment listing data, PostgreSQL persistence, history-aware market metrics, and the Check Apartment flow.
+Scope: Poland-wide RCN apartment transactions, Wrocław listing data,
+PostgreSQL persistence, history-aware market metrics, and the Check Apartment
+flow.
 
 ## Current State
 
@@ -380,8 +382,8 @@ row.
   non-secret validation placeholders; real OCI env was not read locally.
 - Local API in non-demo mode: `/health=200`, `/ready=200`.
 - Not verified: PostgreSQL migration against a live OCI database, a complete
-  Wrocław RCN export, district boundary enrichment, transaction-level report
-  evidence rendering, or rendered browser QA.
+  nationwide RCN regional backfill, nationwide district boundary enrichment,
+  transaction-level report evidence rendering, or rendered browser QA.
 
 ## Report Data Contract
 
@@ -399,9 +401,10 @@ private user-submitted URLs.
 
 ## Final Readiness Definition
 
-This pipeline is ready for a real Wroclaw source only when an approved source
-feed/export is available and T1–T7 pass. The repository can be made production
-ready without pretending that a portal can be exhaustively crawled. Until an
-approved feed is configured and a successful run is recorded, the product must
-describe market coverage as unavailable/limited and must not claim that Check
-Apartment is backed by the complete Wroclaw market.
+This pipeline is ready for a real Poland-wide source only when the approved
+source decision covers the intended regions and T1–T7 pass. The regional RCN
+worker uses bounded residential TERYT requests and per-region checkpoints; it
+does not crawl portal pages. Until an approved source is configured and a
+successful regional backfill is recorded, the product must describe market
+coverage as unavailable or limited and must not claim complete nationwide
+coverage.

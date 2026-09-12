@@ -332,6 +332,7 @@ class TransactionObservation(Base):
         ForeignKey("ingestion_jobs.id"), index=True
     )
     source_observation_id: Mapped[str] = mapped_column(String(180))
+    logical_transaction_id: Mapped[str] = mapped_column(String(180))
     source_url: Mapped[str | None] = mapped_column(String(500))
     source_namespace: Mapped[str | None] = mapped_column(String(180))
     source_version: Mapped[str | None] = mapped_column(String(80))

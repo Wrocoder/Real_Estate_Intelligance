@@ -253,6 +253,10 @@ Alerts and workers:
 | `ALERT_WORKER_SEND` | send daily email alerts instead of dry-run | `false` |
 | `ALERT_WORKER_MAX_MATCHES` | max matches per alert delivery | `10` |
 | `ALERT_WORKER_LIMIT` | max active alerts scanned per batch | `500` |
+| `RCN_TRANSACTIONS_SCOPE` | `wroclaw` BBOX compatibility mode or regional `poland` mode | `wroclaw` |
+| `RCN_POLAND_REGION_CODES` | voivodeship TERYT prefixes or `all` | `all` |
+| `RCN_POLAND_INITIAL_LOOKBACK_DAYS` | bounded history loaded before a region has a checkpoint | `730` |
+| `RCN_POLAND_OVERLAP_DAYS` | overlap before the latest regional source-version checkpoint | `14` |
 
 API-lite:
 

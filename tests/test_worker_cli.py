@@ -124,3 +124,90 @@ def test_worker_cli_reports_rcn_import_to_telegram(monkeypatch, capsys) -> None:
     assert "Accepted snapshot fingerprint: abc123" in message
     assert "District assignments refreshed: 3" in message
     assert "Nowe rekordy" not in message
+
+
+def test_worker_cli_routes_poland_scope_to_regional_runner(monkeypatch, capsys) -> None:
+    monkeypatch.setenv("RCN_TRANSACTIONS_LOCATION", "https://example.test/rcn")
+    monkeypatch.setenv("RCN_TRANSACTIONS_SOURCE_NAME", "RCN test")
+    monkeypatch.setenv("RCN_TRANSACTIONS_SCOPE", "poland")
+    monkeypatch.setattr(
+        cli,
+        "get_settings",
+        lambda: SimpleNamespace(data_repository_backend="postgres"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "_run_poland_rcn_task",
+        lambda args, **kwargs: {
+            "status": "succeeded",
+            "regions_processed": 16,
+            "base_location": kwargs["base_location"],
+        },
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["domarion", "worker", "--task", "rcn-transactions", "--run-once", "--apply"],
+    )
+
+    cli.main()
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["results"][0]["status"] == "succeeded"
+    assert payload["results"][0]["regions_processed"] == 16
+    assert payload["results"][0]["base_location"] == "https://example.test/rcn"
+
+
+def test_poland_runner_commits_each_region_independently(monkeypatch) -> None:
+    commits = []
+    imported_codes = []
+
+    class FakeSession:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback) -> None:
+            return None
+
+        def commit(self) -> None:
+            commits.append(True)
+
+    class FakeRcnResult:
+        def as_dict(self):  # noqa: ANN001
+            return {
+                "rows_seen": 1,
+                "rows_accepted": 1,
+                "rows_rejected": 0,
+                "transactions_created": 1,
+                "transactions_changed": 0,
+                "transactions_reconfirmed": 0,
+                "districts_assigned": 0,
+                "transactions_with_unresolved_district": 0,
+                "rejection_reason_counts": {},
+                "accepted_snapshot_fingerprint": "abc",
+                "latest_source_version": "2026-08-10",
+                "latest_transaction_date": "2026-07-24",
+            }
+
+    def fake_import(session, location, **kwargs):  # noqa: ANN001
+        imported_codes.append(kwargs["expected_teryt_prefix"])
+        return FakeRcnResult()
+
+    monkeypatch.setenv("RCN_POLAND_REGION_CODES", "12,14")
+    monkeypatch.delenv("RCN_DISTRICT_BOUNDARIES_LOCATION", raising=False)
+    monkeypatch.setattr(cli, "SessionLocal", FakeSession)
+    monkeypatch.setattr(cli, "load_rcn_region_checkpoints", lambda *args, **kwargs: {})
+    monkeypatch.setattr(cli, "import_rcn_transactions", fake_import)
+    monkeypatch.setattr(cli, "_send_rcn_telegram_report", lambda payload: {"status": "sent"})
+
+    result = cli._run_poland_rcn_task(
+        SimpleNamespace(apply=True),
+        base_location="https://mapy.geoportal.gov.pl/wss/service/rcn",
+        source_name="RCN GUGiK",
+    )
+
+    assert result["status"] == "succeeded"
+    assert result["regions_processed"] == 2
+    assert result["regions_failed"] == []
+    assert imported_codes == ["12", "14"]
+    assert len(commits) == 2

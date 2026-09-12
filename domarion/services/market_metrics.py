@@ -30,6 +30,7 @@ def refresh_market_metrics(
     city: str = "Wrocław",
     minimum_quality: int = 60,
     now: datetime | None = None,
+    transaction_area_id: str | None = None,
 ) -> dict[str, object]:
     """Refresh area statistics without turning transactions into listings."""
 
@@ -39,6 +40,7 @@ def refresh_market_metrics(
         listing
         for listing in repository.list_listings(city=city)
         if listing.data_quality_score >= minimum_quality
+        and (transaction_area_id is None or listing.area_id == transaction_area_id)
     ]
     transaction_history = [
         transaction
@@ -46,6 +48,7 @@ def refresh_market_metrics(
             session,
             city=city,
             minimum_quality=minimum_quality,
+            area_id=transaction_area_id,
         )
         if transaction.transaction_date <= calculated_at
     ]
@@ -56,7 +59,12 @@ def refresh_market_metrics(
         if transaction.transaction_date >= transaction_cutoff
     ]
 
-    session.execute(delete(AreaStatistic).where(AreaStatistic.city == city))
+    delete_scope = (
+        AreaStatistic.city == city
+        if transaction_area_id is None
+        else AreaStatistic.area_id == transaction_area_id
+    )
+    session.execute(delete(AreaStatistic).where(delete_scope))
     if not listings and not transactions:
         return {
             "city": city,
@@ -75,6 +83,11 @@ def refresh_market_metrics(
         .join(ListingSource, ListingSource.id == PropertySource.source_id)
         .where(
             Property.city == city,
+            *(
+                (Property.area_id == transaction_area_id,)
+                if transaction_area_id is not None
+                else ()
+            ),
             ListingSource.is_demo.is_(False),
             ListingSource.is_active.is_(True),
             ListingSource.legal_status == "approved",
@@ -90,7 +103,7 @@ def refresh_market_metrics(
     current_by_area: dict[str, list] = defaultdict(list)
     for listing in listings:
         current_by_area[listing.area_id].append(listing)
-    city_area_id = slugify(f"{city}-city")
+    city_area_id = transaction_area_id or slugify(f"{city}-city")
     transactions_by_area: dict[str, list[TransactionObservation]] = defaultdict(list)
     for transaction in transactions:
         transactions_by_area[transaction.area_id or city_area_id].append(transaction)
@@ -104,7 +117,12 @@ def refresh_market_metrics(
 
     new_cutoff = calculated_at - timedelta(days=30)
     baseline_cutoff = calculated_at - timedelta(days=90)
-    removed_by_area = _removed_counts(session, city=city, cutoff=new_cutoff)
+    removed_by_area = _removed_counts(
+        session,
+        city=city,
+        cutoff=new_cutoff,
+        area_id=transaction_area_id,
+    )
     areas_updated = 0
     for area_id in sorted(set(current_by_area) | set(transactions_by_area)):
         area_listings = current_by_area.get(area_id, [])
@@ -225,12 +243,17 @@ def _load_transactions(
     city: str,
     minimum_quality: int,
     cutoff: datetime | None = None,
+    area_id: str | None = None,
 ) -> list[TransactionObservation]:
+    scope_filters = (
+        (TransactionObservation.area_id == area_id,) if area_id is not None else ()
+    )
     rows = session.scalars(
         select(TransactionObservation)
         .join(ListingSource, ListingSource.id == TransactionObservation.source_id)
         .where(
             TransactionObservation.city == city,
+            *scope_filters,
             ListingSource.is_demo.is_(False),
             ListingSource.is_active.is_(True),
             ListingSource.legal_status == "approved",
@@ -330,7 +353,14 @@ def _source_names(rows: list[TransactionObservation]) -> list[str]:
     return names
 
 
-def _removed_counts(session: Session, *, city: str, cutoff: datetime) -> dict[str, int]:
+def _removed_counts(
+    session: Session,
+    *,
+    city: str,
+    cutoff: datetime,
+    area_id: str | None = None,
+) -> dict[str, int]:
+    scope_filters = (Property.area_id == area_id,) if area_id is not None else ()
     rows = session.scalars(
         select(ListingEvent)
         .join(PropertySource, PropertySource.id == ListingEvent.property_source_id)
@@ -338,6 +368,7 @@ def _removed_counts(session: Session, *, city: str, cutoff: datetime) -> dict[st
         .join(ListingSource, ListingSource.id == PropertySource.source_id)
         .where(
             Property.city == city,
+            *scope_filters,
             ListingSource.is_demo.is_(False),
             ListingSource.is_active.is_(True),
             ListingSource.legal_status == "approved",

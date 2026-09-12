@@ -32,6 +32,7 @@ from domarion.db.models import (
 )
 from domarion.ingestion.district_boundaries import assign_transaction_districts
 from domarion.ingestion.partner_csv import slugify
+from domarion.ingestion.rcn_poland import POLISH_VOIVODESHIPS, voivodeship_for_teryt
 from domarion.services.market_metrics import refresh_market_metrics
 from domarion.services.transaction_versions import transaction_identity
 
@@ -66,6 +67,7 @@ class RcnTransactionError(ValueError):
 @dataclass(frozen=True)
 class RcnTransactionRecord:
     source_observation_id: str
+    logical_transaction_id: str
     source_url: str | None
     source_namespace: str | None
     source_version: str | None
@@ -152,8 +154,11 @@ def load_rcn_features(
     location_text = str(location)
     parsed = urlparse(location_text)
     if parsed.scheme in {"http", "https"}:
-        if not any(key.casefold() == "bbox" for key in parse_qs(parsed.query)):
-            raise RcnTransactionError("Remote RCN WFS URL must contain an explicit bbox.")
+        has_bbox = any(key.casefold() == "bbox" for key in parse_qs(parsed.query))
+        if not has_bbox and _teryt_prefix_from_url(location_text) is None:
+            raise RcnTransactionError(
+                "Remote RCN WFS URL must contain an explicit bbox or a bounded TERYT filter."
+            )
         features: list[dict[str, object]] = []
         next_url: str | None = _prepare_wfs_url(location_text)
         total_bytes = 0
@@ -192,6 +197,7 @@ def normalize_rcn_feature(
     source_name: str,
     source_url: str | None,
     observed_at: datetime | None = None,
+    expected_teryt_prefix: str | None = None,
 ) -> RcnTransactionRecord:
     if not isinstance(feature, dict):
         raise RcnTransactionError(f"Row {row_number}: RCN feature must be an object.")
@@ -212,14 +218,32 @@ def normalize_rcn_feature(
         source_id = f"{namespace or 'rcn'}:{local_id}:{version}"
     source_id = str(source_id)[:180]
 
+    teryt = _text(_first(row, "teryt"))
+    voivodeship = voivodeship_for_teryt(teryt)
+    if voivodeship is None:
+        raise RcnTransactionError(f"Row {row_number}: a valid Polish TERYT code is required.")
+    if expected_teryt_prefix and not teryt.startswith(expected_teryt_prefix):
+        raise RcnTransactionError(
+            f"Row {row_number}: TERYT code is outside the requested regional scope."
+        )
+
     address = _text(_first(row, "address", "lok_adres"))
     city = _text(_first(row, "city")) or _city_from_rcn_address(address)
-    if not city or slugify(city) != "wroclaw":
+    if not city:
+        raise RcnTransactionError(f"Row {row_number}: transaction locality is required.")
+    if expected_teryt_prefix is None and slugify(city) != "wroclaw":
         raise RcnTransactionError(f"Row {row_number}: only Wrocław transactions are accepted.")
+    if len(city) > 80:
+        raise RcnTransactionError(f"Row {row_number}: transaction locality is too long.")
     district = _text(_first(row, "district"))
-    area_id = _text(_first(row, "area_id")) or (
-        slugify(f"{city}-{district}") if district else "wroclaw-city"
+    default_area_id = (
+        "wroclaw-city"
+        if slugify(city) == "wroclaw" and not district
+        else slugify(f"{city}-{district}")
+        if district
+        else f"rcn-{teryt}-{slugify(city)}-city"
     )
+    area_id = _text(_first(row, "area_id")) or default_area_id
 
     property_type = _text(_first(row, "property_type", "nier_rodzaj"))
     function = _text(_first(row, "lok_funkcja"))
@@ -266,7 +290,8 @@ def normalize_rcn_feature(
         "source_observation_id": source_id,
         "source_namespace": namespace,
         "source_version": version,
-        "teryt": _text(_first(row, "teryt")),
+        "teryt": teryt,
+        "voivodeship": voivodeship,
         "transaction_date": transaction_date.isoformat(),
         "city": city,
         "district": district,
@@ -304,10 +329,11 @@ def normalize_rcn_feature(
     }
     return RcnTransactionRecord(
         source_observation_id=source_id,
+        logical_transaction_id=transaction_identity(source_id, version),
         source_url=source_url,
         source_namespace=namespace,
         source_version=version,
-        teryt=_text(_first(row, "teryt")),
+        teryt=teryt,
         transaction_date=transaction_date,
         observed_at=captured_at,
         city=city,
@@ -348,11 +374,17 @@ def import_rcn_transactions(
     max_rows: int = 100_000,
     timeout_seconds: float = DEFAULT_RCN_TIMEOUT_SECONDS,
     max_pages: int = DEFAULT_RCN_MAX_PAGES,
+    expected_teryt_prefix: str | None = None,
+    metrics_refresh_since: datetime | None = None,
 ) -> RcnImportResult:
     source = session.scalar(select(ListingSource).where(ListingSource.name == source_name))
     _assert_source_is_approved(source)
     if urlparse(str(location)).scheme in {"http", "https"}:
         _assert_url_scope(source, str(location))
+    url_teryt_prefix = _teryt_prefix_from_url(str(location))
+    if expected_teryt_prefix and url_teryt_prefix != expected_teryt_prefix:
+        raise RcnTransactionError("RCN URL TERYT filter does not match the requested region.")
+    regional_prefix = expected_teryt_prefix or url_teryt_prefix
     features = load_rcn_features(
         location,
         timeout_seconds=timeout_seconds,
@@ -373,6 +405,7 @@ def import_rcn_transactions(
                 row_number=row_number,
                 source_name=source_name,
                 source_url=source.base_url,
+                expected_teryt_prefix=regional_prefix,
             )
             if record.source_observation_id in seen_ids:
                 raise RcnTransactionError(f"Row {row_number}: duplicate transaction identifier.")
@@ -443,6 +476,8 @@ def import_rcn_transactions(
             "latest_transaction_date": (
                 latest_transaction_date.date().isoformat() if latest_transaction_date else None
             ),
+            "teryt_prefix": regional_prefix,
+            "voivodeship": POLISH_VOIVODESHIPS.get(regional_prefix or ""),
         },
         started_at=now,
         created_at=now,
@@ -469,14 +504,26 @@ def import_rcn_transactions(
             )
         )
 
-    existing_rows = session.scalars(
-        select(TransactionObservation).where(TransactionObservation.source_id == source.id)
-    ).all()
+    incoming_logical_ids = {record.logical_transaction_id for record in records}
+    existing_rows = []
+    logical_id_list = sorted(incoming_logical_ids)
+    for start in range(0, len(logical_id_list), 10_000):
+        existing_rows.extend(
+            session.scalars(
+                select(TransactionObservation).where(
+                    TransactionObservation.source_id == source.id,
+                    TransactionObservation.logical_transaction_id.in_(
+                        logical_id_list[start : start + 10_000]
+                    ),
+                )
+            ).all()
+        )
     existing_by_observation_id = {row.source_observation_id: row for row in existing_rows}
     known_transaction_ids = {
         transaction_identity(row.source_observation_id, row.source_version) for row in existing_rows
     }
     created = changed = reconfirmed = 0
+    affected_market_scopes: set[tuple[str, str]] = set()
     for record in records:
         row = existing_by_observation_id.get(record.source_observation_id)
         transaction_id = transaction_identity(
@@ -487,6 +534,7 @@ def import_rcn_transactions(
             row = TransactionObservation(
                 source_id=source.id,
                 source_observation_id=record.source_observation_id,
+                logical_transaction_id=record.logical_transaction_id,
                 created_at=record.observed_at,
             )
             session.add(row)
@@ -496,18 +544,50 @@ def import_rcn_transactions(
             else:
                 created += 1
                 known_transaction_ids.add(transaction_id)
+            affected_market_scopes.add((record.city, record.area_id))
         else:
             reconfirmed += 1
         _copy_record(row, record, ingestion_job_id=job.id)
+    if metrics_refresh_since is not None:
+        affected_market_scopes.update(
+            _scopes_crossing_market_window(
+                session,
+                source_id=source.id,
+                previous_refresh_at=metrics_refresh_since,
+                refresh_at=now,
+            )
+        )
     job.rows_seen = len(features)
     job.errors_count = len(rejected)
     job.status = "succeeded"
     job.finished_at = datetime.now(UTC).replace(tzinfo=None)
     job.updated_at = job.finished_at
     session.flush()
-    district_assignment = assign_transaction_districts(session)
+    district_assignment = (
+        assign_transaction_districts(session)
+        if regional_prefix in {None, "02"}
+        else {"matched": 0, "unresolved": 0, "boundaries": 0}
+    )
+    if district_assignment["matched"]:
+        affected_market_scopes.add(("Wrocław", "wroclaw-city"))
+    if regional_prefix in {None, "02"}:
+        affected_market_scopes.add(("Wrocław", "wroclaw-city"))
     session.expire_all()
-    metrics = refresh_market_metrics(session, city="Wrocław")
+    metric_results = [
+        refresh_market_metrics(
+            session,
+            city=city,
+            transaction_area_id=None if city == "Wrocław" else area_id,
+        )
+        for city, area_id in sorted(affected_market_scopes)
+    ]
+    metrics = {
+        "cities_updated": len(metric_results),
+        "areas_updated": sum(int(item.get("areas_updated", 0)) for item in metric_results),
+        "transaction_observations": sum(
+            int(item.get("transaction_observations", 0)) for item in metric_results
+        ),
+    }
     return RcnImportResult(
         source_name=source_name,
         rows_seen=len(features),
@@ -528,6 +608,30 @@ def import_rcn_transactions(
             latest_transaction_date.date().isoformat() if latest_transaction_date else None
         ),
     )
+
+
+def _scopes_crossing_market_window(
+    session: Session,
+    *,
+    source_id: int,
+    previous_refresh_at: datetime,
+    refresh_at: datetime,
+) -> set[tuple[str, str]]:
+    previous_cutoff = previous_refresh_at - timedelta(days=365)
+    current_cutoff = refresh_at - timedelta(days=365)
+    if current_cutoff <= previous_cutoff:
+        return set()
+    rows = session.execute(
+        select(TransactionObservation.city, TransactionObservation.area_id)
+        .where(
+            TransactionObservation.source_id == source_id,
+            TransactionObservation.transaction_date >= previous_cutoff,
+            TransactionObservation.transaction_date < current_cutoff,
+            TransactionObservation.area_id.is_not(None),
+        )
+        .distinct()
+    ).all()
+    return {(str(city), str(area_id)) for city, area_id in rows}
 
 
 def rcn_import_is_due(
@@ -562,8 +666,18 @@ def _copy_record(
     *,
     ingestion_job_id: str,
 ) -> None:
+    preserve_spatial_assignment = (
+        record.district is None
+        and getattr(row, "district", None) is not None
+        and getattr(row, "geometry_x", None) == record.geometry_x
+        and getattr(row, "geometry_y", None) == record.geometry_y
+    )
+    previous_district = getattr(row, "district", None)
+    previous_area_id = getattr(row, "area_id", None)
+    previous_payload = dict(getattr(row, "normalized_payload", {}) or {})
     for field in (
         "source_url",
+        "logical_transaction_id",
         "source_namespace",
         "source_version",
         "teryt",
@@ -597,6 +711,12 @@ def _copy_record(
         "normalized_payload",
     ):
         setattr(row, field, getattr(record, field))
+    if preserve_spatial_assignment:
+        row.district = previous_district
+        row.area_id = previous_area_id
+        for key in ("district", "area_id", "district_assignment_source"):
+            if key in previous_payload:
+                row.normalized_payload[key] = previous_payload[key]
     row.ingestion_job_id = ingestion_job_id
     row.updated_at = record.observed_at
 
@@ -632,6 +752,20 @@ def _prepare_wfs_url(url: str) -> str:
     if "sortby" not in keys:
         query.append(("sortBy", DEFAULT_RCN_SORT_BY))
     return urlunparse(parsed._replace(query=urlencode(query)))
+
+
+def _teryt_prefix_from_url(url: str) -> str | None:
+    filters = [value for key, value in parse_qsl(urlparse(url).query) if key.casefold() == "filter"]
+    if len(filters) != 1:
+        return None
+    match = re.search(
+        r"<[^>]*ValueReference>\s*(?:ms:)?teryt\s*</[^>]*ValueReference>"
+        r"[\s\S]*?<[^>]*Literal>\s*(\d{2})\*\s*</[^>]*Literal>",
+        filters[0],
+        flags=re.IGNORECASE,
+    )
+    prefix = match.group(1) if match else None
+    return prefix if prefix in POLISH_VOIVODESHIPS else None
 
 
 def _next_start_index_url(url: str, *, returned_count: int) -> str | None:

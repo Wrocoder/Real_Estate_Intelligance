@@ -169,15 +169,20 @@ MARKET_DATA_FEED_MAX_LISTINGS=10000
 MARKET_DATA_FEED_TIMEOUT_SECONDS=20
 
 # Optional official RCN/GUGiK transaction import. Keep disabled until the
-# source registry entry is approved and the bbox-scoped WFS URL is tested.
-RCN_TRANSACTIONS_LOCATION=https://mapy.geoportal.gov.pl/wss/service/rcn?service=WFS&version=2.0.0&request=GetFeature&typeNames=ms%3Alokale&outputFormat=GML3&count=1000&BBOX=<wroclaw-bbox>,EPSG%3A2180
+# source registry entry is approved and the bounded regional WFS mode is tested.
+RCN_TRANSACTIONS_LOCATION=https://mapy.geoportal.gov.pl/wss/service/rcn
 # Must exactly match the approved Source Registry entry in PostgreSQL.
 RCN_TRANSACTIONS_SOURCE_NAME=RCN GUGiK
-RCN_TRANSACTIONS_MAX_ROWS=100000
+RCN_TRANSACTIONS_SCOPE=poland
+RCN_POLAND_REGION_CODES=all
+RCN_POLAND_INITIAL_LOOKBACK_DAYS=730
+RCN_POLAND_OVERLAP_DAYS=14
+RCN_TRANSACTIONS_MAX_ROWS=500000
 RCN_TRANSACTIONS_MAX_PAGES=500
 RCN_TRANSACTIONS_TIMEOUT_SECONDS=30
 RCN_TRANSACTIONS_INTERVAL_SECONDS=86400
 
+# Optional Wrocław osiedle enrichment inside the national RCN import.
 # Download the official Wrocław osiedle boundary ZIP to the VM first.
 # The worker mounts this host directory read-only into /srv/domarion/data.
 # Run as the VM administrator, for example:
@@ -233,14 +238,20 @@ docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml ru
   --source-name "$MARKET_DATA_FEED_SOURCE_NAME" --dry-run
 ```
 
-For RCN, use the separate transaction command. The source registry must have
+For RCN, use the regional worker path. The source registry must have
 `source_type=transaction_register`, `legal_status=approved`,
 `ingestion_method=rcn_wfs`, `is_demo=false` and market-report usage enabled:
 
 ```bash
-domarion import-rcn-transactions "$RCN_TRANSACTIONS_LOCATION" \
-  --source-name "$RCN_TRANSACTIONS_SOURCE_NAME" --dry-run
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml \
+  run --rm --no-deps -e RCN_POLAND_REGION_CODES=12 worker \
+  domarion worker --task rcn-transactions --run-once
 ```
+
+The example performs a dry validation of małopolskie only. Remove the region
+override and add `--apply` only after inspecting that result. The first applied
+`all` run backfills the configured lookback independently for every
+voivodeship; subsequent cron runs use per-region checkpoints and overlap.
 
 The command stores transaction observations separately from listing snapshots.
 It uses the `ms:lokale` GML fields exposed by the official RCN WFS and does not

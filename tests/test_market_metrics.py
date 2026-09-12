@@ -181,6 +181,52 @@ def test_refresh_market_metrics_uses_rcn_without_active_listings(monkeypatch):
     assert area.listing_metrics_available is False
 
 
+def test_refresh_market_metrics_keeps_national_locality_scope_qualified(monkeypatch):
+    calculated_at = datetime(2026, 9, 5)
+    area_id = "rcn-1261-krakow-city"
+    transactions = [
+        SimpleNamespace(
+            area_id=area_id,
+            district=None,
+            price_per_m2=15000,
+            transaction_date=calculated_at - timedelta(days=20),
+            source=None,
+        )
+    ]
+    session = _Session([])
+
+    class _Repository:
+        def __init__(self, session_arg, include_demo_data):
+            assert session_arg is session
+            assert include_demo_data is False
+
+        def list_listings(self, city):
+            assert city == "Kraków"
+            return []
+
+    def load_transactions(*args, **kwargs):  # noqa: ANN002, ANN003
+        assert kwargs["city"] == "Kraków"
+        assert kwargs["area_id"] == area_id
+        return transactions
+
+    monkeypatch.setattr(market_metrics, "PostgresRealEstateRepository", _Repository)
+    monkeypatch.setattr(market_metrics, "_load_transactions", load_transactions)
+
+    result = market_metrics.refresh_market_metrics(
+        session,
+        city="Kraków",
+        transaction_area_id=area_id,
+        now=calculated_at,
+    )
+
+    assert result["status"] == "updated"
+    area = session.added[0]
+    assert area.area_id == area_id
+    assert area.name == "Kraków"
+    assert area.city == "Kraków"
+    assert area.transaction_median_price_per_m2 == 15000
+
+
 def test_latest_transaction_versions_excludes_superseded_history():
     older = SimpleNamespace(
         id=1,

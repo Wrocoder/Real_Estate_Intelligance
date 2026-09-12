@@ -1607,3 +1607,25 @@ External gate:
   horizontal overflow. The in-app browser remained unavailable because of its
   environment `sandboxPolicy`, so repository Playwright was used for actual
   desktop/mobile browser verification.
+
+## Poland-wide RCN Coverage Update (2026-09-12)
+
+- **DONE in repository:** Expanded the scheduled RCN transaction import from a
+  Wrocław-only bounding box to all 16 Polish voivodeships. The worker issues
+  separate residential WFS requests by official two-digit TERYT prefix and
+  records an independent successful checkpoint for every region.
+- **DONE:** Added a bounded initial lookback and a configurable checkpoint
+  overlap. Exact source versions remain idempotent, changed versions remain in
+  history, and a failed region does not roll back regions already committed in
+  the same national run.
+- **DONE:** Added stable TERYT-qualified locality identifiers for nationwide
+  market statistics, preventing same-named localities from sharing one
+  aggregate. Wrocław retains its authoritative osiedle boundary assignment;
+  other places stay at locality scope until reviewed boundary sources exist.
+- **DONE:** Limited metric rebuilds to the localities affected by new or changed
+  source versions and added an indexed logical transaction identity used by
+  current-version selection.
+- **OPERATOR SETUP REQUIRED:** Apply migration `0041`, confirm that the approved
+  source-registry decision covers nationwide RCN use, set
+  `RCN_TRANSACTIONS_SCOPE=poland`, and run the first regional backfill before
+  treating nationwide coverage as available in production.
