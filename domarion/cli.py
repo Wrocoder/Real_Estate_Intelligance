@@ -776,14 +776,29 @@ def _run_production_preflight(args: argparse.Namespace) -> None:
 def _send_rcn_telegram_report(payload: dict[str, object]) -> dict[str, object]:
     """Keep ingestion successful when an optional operator notification is unavailable."""
 
+    rejection_reasons = payload.get("rejection_reason_counts")
+    rejection_summary = "none"
+    if isinstance(rejection_reasons, dict) and rejection_reasons:
+        rejection_summary = "; ".join(
+            f"{reason}: {count}" for reason, count in list(rejection_reasons.items())[:3]
+        )
     message = "\n".join(
         [
             "WartoMetr: daily Wrocław RCN transaction update",
+            f"Source rows: {payload.get('rows_seen', 0)}",
+            f"Accepted residential rows: {payload.get('rows_accepted', 0)}",
             f"New transactions: {payload.get('transactions_created', 0)}",
             f"Changed transactions: {payload.get('transactions_changed', 0)}",
             f"Reconfirmed transactions: {payload.get('transactions_reconfirmed', 0)}",
             f"Rejected source rows: {payload.get('rows_rejected', 0)}",
-            f"Assigned to districts: {payload.get('districts_assigned', 0)}",
+            f"Top rejection reasons: {rejection_summary}",
+            f"Latest source version: {payload.get('latest_source_version') or 'unknown'}",
+            f"Latest transaction date: {payload.get('latest_transaction_date') or 'unknown'}",
+            (
+                "Accepted snapshot fingerprint: "
+                f"{payload.get('accepted_snapshot_fingerprint') or 'unknown'}"
+            ),
+            f"District assignments refreshed: {payload.get('districts_assigned', 0)}",
             (
                 "Without a district assignment: "
                 f"{payload.get('transactions_with_unresolved_district', 0)}"

@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+from hashlib import sha256
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
@@ -112,6 +114,10 @@ class RcnImportResult:
     transactions_with_unresolved_district: int = 0
     market_metrics: dict[str, object] | None = None
     rejected_rows: tuple[dict[str, object], ...] = ()
+    rejection_reason_counts: dict[str, int] | None = None
+    accepted_snapshot_fingerprint: str | None = None
+    latest_source_version: str | None = None
+    latest_transaction_date: str | None = None
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -127,6 +133,10 @@ class RcnImportResult:
             "transactions_with_unresolved_district": self.transactions_with_unresolved_district,
             "market_metrics": self.market_metrics,
             "rejected_rows": list(self.rejected_rows),
+            "rejection_reason_counts": self.rejection_reason_counts or {},
+            "accepted_snapshot_fingerprint": self.accepted_snapshot_fingerprint,
+            "latest_source_version": self.latest_source_version,
+            "latest_transaction_date": self.latest_transaction_date,
         }
 
 
@@ -353,6 +363,8 @@ def import_rcn_transactions(
 
     records: list[RcnTransactionRecord] = []
     rejected: list[dict[str, object]] = []
+    rejection_reason_counts: Counter[str] = Counter()
+    rejection_sample_rows: defaultdict[str, list[int]] = defaultdict(list)
     seen_ids: set[str] = set()
     for row_number, feature in enumerate(features, start=1):
         try:
@@ -367,7 +379,34 @@ def import_rcn_transactions(
             seen_ids.add(record.source_observation_id)
             records.append(record)
         except RcnTransactionError as exc:
-            rejected.append({"row": row_number, "message": str(exc)})
+            message = str(exc)
+            rejected.append({"row": row_number, "message": message})
+            reason = re.sub(r"^Row \d+:\s*", "", message)
+            rejection_reason_counts[reason] += 1
+            if len(rejection_sample_rows[reason]) < 10:
+                rejection_sample_rows[reason].append(row_number)
+
+    fingerprint_rows = []
+    for record in records:
+        stable_payload = dict(record.normalized_payload)
+        stable_payload.pop("observed_at", None)
+        fingerprint_rows.append(
+            json.dumps(stable_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+    snapshot_fingerprint = (
+        sha256("\n".join(sorted(fingerprint_rows)).encode("utf-8")).hexdigest()
+        if fingerprint_rows
+        else None
+    )
+    latest_source_version = max(
+        (record.source_version for record in records if record.source_version),
+        default=None,
+    )
+    latest_transaction_date = max(
+        (record.transaction_date for record in records),
+        default=None,
+    )
+    rejection_counts = dict(rejection_reason_counts.most_common())
 
     if dry_run:
         return RcnImportResult(
@@ -377,6 +416,12 @@ def import_rcn_transactions(
             rows_rejected=len(rejected),
             dry_run=True,
             rejected_rows=tuple(rejected[:100]),
+            rejection_reason_counts=rejection_counts,
+            accepted_snapshot_fingerprint=snapshot_fingerprint,
+            latest_source_version=latest_source_version,
+            latest_transaction_date=(
+                latest_transaction_date.date().isoformat() if latest_transaction_date else None
+            ),
         )
 
     now = datetime.now(UTC).replace(tzinfo=None)
@@ -392,6 +437,12 @@ def import_rcn_transactions(
             "rows_accepted": len(records),
             "rows_rejected": len(rejected),
             "record_type": "transaction_observation",
+            "rejection_reason_counts": rejection_counts,
+            "accepted_snapshot_fingerprint": snapshot_fingerprint,
+            "latest_source_version": latest_source_version,
+            "latest_transaction_date": (
+                latest_transaction_date.date().isoformat() if latest_transaction_date else None
+            ),
         },
         started_at=now,
         created_at=now,
@@ -399,7 +450,7 @@ def import_rcn_transactions(
     )
     session.add(job)
     session.flush()
-    for item in rejected:
+    for reason, count in rejection_reason_counts.most_common():
         session.add(
             DataQualityLog(
                 id=str(uuid4()),
@@ -408,8 +459,12 @@ def import_rcn_transactions(
                 source_listing_id=None,
                 severity="error",
                 code="rcn_row_rejected",
-                message=str(item["message"]),
-                payload=item,
+                message=f"{count} RCN source rows rejected: {reason}",
+                payload={
+                    "reason": reason,
+                    "count": count,
+                    "sample_rows": rejection_sample_rows[reason],
+                },
                 created_at=now,
             )
         )
@@ -466,6 +521,12 @@ def import_rcn_transactions(
         transactions_with_unresolved_district=district_assignment["unresolved"],
         market_metrics=metrics,
         rejected_rows=tuple(rejected[:100]),
+        rejection_reason_counts=rejection_counts,
+        accepted_snapshot_fingerprint=snapshot_fingerprint,
+        latest_source_version=latest_source_version,
+        latest_transaction_date=(
+            latest_transaction_date.date().isoformat() if latest_transaction_date else None
+        ),
     )
 
 

@@ -65,10 +65,16 @@ def test_worker_cli_reports_rcn_import_to_telegram(monkeypatch, capsys) -> None:
     class FakeRcnResult:
         def as_dict(self):  # noqa: ANN001
             return {
+                "rows_seen": 15,
+                "rows_accepted": 14,
                 "transactions_created": 4,
                 "transactions_changed": 2,
                 "transactions_reconfirmed": 8,
                 "rows_rejected": 1,
+                "rejection_reason_counts": {"non-residential": 1},
+                "accepted_snapshot_fingerprint": "abc123",
+                "latest_source_version": "2026-08-10T14:23:36",
+                "latest_transaction_date": "2026-07-24",
                 "districts_assigned": 3,
                 "transactions_with_unresolved_district": 1,
             }
@@ -107,7 +113,14 @@ def test_worker_cli_reports_rcn_import_to_telegram(monkeypatch, capsys) -> None:
     assert payload["results"][0]["transactions_created"] == 4
     assert payload["results"][0]["telegram"]["status"] == "sent"
     message = payload["results"][0]["telegram"]["metadata"]["message"]
+    assert "Source rows: 15" in message
+    assert "Accepted residential rows: 14" in message
     assert "New transactions: 4" in message
     assert "Changed transactions: 2" in message
     assert "Reconfirmed transactions: 8" in message
+    assert "Top rejection reasons: non-residential: 1" in message
+    assert "Latest source version: 2026-08-10T14:23:36" in message
+    assert "Latest transaction date: 2026-07-24" in message
+    assert "Accepted snapshot fingerprint: abc123" in message
+    assert "District assignments refreshed: 3" in message
     assert "Nowe rekordy" not in message

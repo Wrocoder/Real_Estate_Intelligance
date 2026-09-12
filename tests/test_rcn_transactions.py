@@ -4,7 +4,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
-from domarion.db.models import TransactionObservation
+from domarion.db.models import DataQualityLog, TransactionObservation
 from domarion.ingestion import rcn_transactions
 from domarion.ingestion.district_boundaries import load_district_boundaries
 
@@ -170,6 +170,16 @@ def test_import_rcn_transactions_distinguishes_new_changed_and_reconfirmed(monke
             tran_lokalny_id_iip="transaction-2",
             tran_wersja_id="2026-02-11T12:00:00",
         ),
+        _feature(
+            tran_lokalny_id_iip="transaction-3",
+            tran_wersja_id="2026-02-12T12:00:00",
+            lok_funkcja="inne",
+        ),
+        _feature(
+            tran_lokalny_id_iip="transaction-4",
+            tran_wersja_id="2026-02-13T12:00:00",
+            lok_funkcja="inne",
+        ),
     ]
     path.write_text(json.dumps({"type": "FeatureCollection", "features": features}))
     source = SimpleNamespace(
@@ -218,8 +228,9 @@ def test_import_rcn_transactions_distinguishes_new_changed_and_reconfirmed(monke
     )
     monkeypatch.setattr(rcn_transactions, "refresh_market_metrics", lambda *args, **kwargs: {})
 
+    result_session = Session()
     result = rcn_transactions.import_rcn_transactions(
-        Session(),
+        result_session,
         path,
         source_name="RCN GUGiK",
     )
@@ -227,6 +238,17 @@ def test_import_rcn_transactions_distinguishes_new_changed_and_reconfirmed(monke
     assert result.transactions_created == 1
     assert result.transactions_changed == 1
     assert result.transactions_reconfirmed == 1
+    assert result.rows_rejected == 2
+    assert result.rejection_reason_counts == {
+        "non-residential RCN feature rejected.": 2,
+    }
+    assert result.latest_source_version == "2026-02-11T12:00:00"
+    assert result.latest_transaction_date == "2026-01-08"
+    assert len(result.accepted_snapshot_fingerprint or "") == 64
+    quality_logs = [row for row in result_session.added if isinstance(row, DataQualityLog)]
+    assert len(quality_logs) == 1
+    assert quality_logs[0].payload["count"] == 2
+    assert quality_logs[0].payload["sample_rows"] == [4, 5]
 
 
 def test_load_district_boundaries_reads_geojson_without_inventing_names(tmp_path):

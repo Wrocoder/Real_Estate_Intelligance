@@ -114,3 +114,13 @@ launcher uses a single explicit run at 08:00 and a filesystem lock. A
 successful write returns English Telegram counts for new, changed,
 reconfirmed, rejected and district-assigned rows. Telegram is optional and
 never turns a successful data import into a failed import.
+
+The operator report also includes the total and accepted row counts, the latest
+source version and transaction date, and a SHA-256 fingerprint of the stable
+accepted payload. Equal fingerprints prove that the accepted source snapshot
+did not change between runs even though every row was reconfirmed. Rejection
+counts are grouped by reason in both the notification and `data_quality_logs`;
+sample row numbers are retained without writing tens of thousands of duplicate
+quality-log records on every full-snapshot refresh. `District assignments
+refreshed` is the number spatially assigned during the current run, not a count
+of newly discovered districts or transactions.
