@@ -160,6 +160,8 @@ services:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
+    environment:
+      INTERNAL_ROUTES_ENABLED: ${INTERNAL_ROUTES_ENABLED:-false}
     depends_on:
       api:
         condition: service_healthy

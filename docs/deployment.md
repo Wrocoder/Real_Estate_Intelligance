@@ -316,6 +316,7 @@ Backend поддерживает optional Sentry integration. Она включ�
 | --- | --- |
 | `NEXT_PUBLIC_API_BASE_URL` | Публичный URL backend API |
 | `NEXT_PUBLIC_SITE_URL` | Публичный URL frontend для sitemap/canonical URLs |
+| `INTERNAL_ROUTES_ENABLED` | `false` для публичного frontend; `true` только для отдельного защищённого internal deployment |
 
 Production API требует `AUTH_SESSION_SECRET` длиной не менее 32 символов из secret
 manager и `AUTH_STORE_BACKEND=postgres`. Header/demo identity разрешена только при

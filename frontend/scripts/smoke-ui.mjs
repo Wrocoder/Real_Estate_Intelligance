@@ -96,6 +96,9 @@ const mapComponent = read("components/PropertyMap.tsx");
 const reportsPage = read("app/reports/page.tsx");
 const alertsPage = read("app/alerts/page.tsx");
 const adminPage = read("app/admin/page.tsx");
+const adminLayout = read("app/admin/layout.tsx");
+const marketLayout = read("app/market/layout.tsx");
+const internalRouteBoundary = read("components/InternalRouteBoundary.tsx");
 const accountPage = read("app/account/page.tsx");
 const areasPage = read("app/areas/page.tsx");
 const areasDirectory = read("components/AreasDirectory.tsx");
@@ -610,6 +613,15 @@ expectIncludes("admin page", adminPage, [
 ]);
 expectRegex("admin audit table", adminPage, /filteredAuditLogs[\s\S]*auditLog\.action_type/);
 expectMinSize("admin page", adminPage, 50_000);
+expectIncludes("production internal route boundary", internalRouteBoundary, [
+  'process.env.INTERNAL_ROUTES_ENABLED',
+  'process.env.NODE_ENV !== "production"',
+  "notFound()",
+]);
+expectIncludes("internal layouts use route boundary", adminLayout + marketLayout, [
+  "InternalRouteBoundary",
+  'dynamic = "force-dynamic"',
+]);
 
 expectIncludes("payments page", pricingPage, [
   "api.listReportProducts()",

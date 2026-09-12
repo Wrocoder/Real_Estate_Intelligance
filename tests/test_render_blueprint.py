@@ -38,6 +38,10 @@ def test_render_blueprint_defines_mvp_production_topology() -> None:
     assert "python -m alembic upgrade head" in api["preDeployCommand"]
     assert "domarion production-preflight" in api["preDeployCommand"]
 
+    frontend = services["domarion-frontend"]
+    frontend_env = {item["key"]: item for item in frontend["envVars"]}
+    assert frontend_env["INTERNAL_ROUTES_ENABLED"]["value"] == "false"
+
     worker = services["domarion-worker"]
     assert worker["type"] == "worker"
     assert worker["dockerCommand"] == "domarion worker"

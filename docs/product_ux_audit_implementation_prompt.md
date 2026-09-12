@@ -303,7 +303,7 @@ repository Playwright fallback.
 
 **Повторная проверка (2026-09-10): PARTIAL / BLOCKED.** В репозитории подтверждены contextual object-watch creation, deterministic preview events, pause/resume/delete, delivery jobs и user-visible history со статусами `sent`/`skipped`/`failed`/`dry_run`. Однако production scheduler реализован только для daily email, а SMTP/Telegram transports, OCI worker cadence и реальное внешнее доставление не настроены и не подтверждены. До выполнения P0-05 и появления provider/OCI evidence нельзя обещать instant/weekly/Telegram delivery или отмечать P1-09 выполненной.
 
-### [ ] P1-10. Исправить mortgage и полную стоимость покупки
+### [x] P1-10. Исправить mortgage и полную стоимость покупки
 
 **Область:** `/mortgage`; listing CTA; purchase costs; affordability.
 
@@ -313,7 +313,7 @@ repository Playwright fallback.
 
 **Сложность:** L. **Зависимости:** legal/product review, P0-03, source freshness.
 
-**Текущий статус (2026-09-07): PARTIAL.** Основные расчеты реализованы, но legal/product review и freshness налогов/сборов не подтверждены для production release.
+**Текущий статус (2026-09-11): DONE.** API и UI отдельно показывают цену квартиры, PCC, введённые transaction/renovation/additional costs, полный бюджет, cash required, loan instalment и recurring non-loan costs. Primary/secondary market и явно заявленное first-home PCC exemption не смешиваются; официальные источники PCC и maximum notary rates обновлены 2026-09-11. PL/EN/RU/UK, listing context, mobile composition, OpenAPI contract и расчётные boundary cases прошли полный release gate. Калькулятор остаётся budgeting support, а не банковским или индивидуальным legal/tax решением.
 
 ### [x] P1-11. Сделать negotiation output сценарным и доказуемым
 
@@ -500,7 +500,7 @@ repository Playwright fallback.
 
 **Критерии приемки:** пройдены сценарии A-E из transformation roadmap; проверены loading/empty/partial/error/retry, console/network и локали; internal/debug/demo surfaces недоступны production users; выполнен полный relevant test suite; создан `docs/product/DOMARION_FINAL_PRODUCT_REVIEW.md` с limitations, data gaps, metrics и remaining P0/P1/P2.
 
-**Текущий статус (2026-09-07): NOT STARTED.** Выполнять только после P0-05, P2-10 и завершения открытых core-flow блоков.
+**Текущий статус (2026-09-12): REPOSITORY REVIEW DONE / EXTERNAL GATE OPEN.** Создан `docs/product/DOMARION_FINAL_PRODUCT_REVIEW.md`; сценарии A-D подтверждены, а E подтверждён до persisted object watch и честного delivery state. Public production frontend возвращает `404` для `/admin` и internal `/market`, demo mode блокируется production policy. Полный repository release gate пройден. Финальный статус остаётся незакрытым до P0-05: нужны live payment, OCI backup/restore/monitoring, реальная alert delivery и human legal/source/paid-report QA evidence, после чего A-E должны быть повторены на deployed candidate.
 
 **Сложность:** L. **Зависимости:** P0-05, P1-04, P1-06, P1-08, P1-09, P2-05, P2-10.
 

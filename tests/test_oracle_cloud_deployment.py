@@ -53,6 +53,9 @@ def test_oracle_compose_defines_single_vm_topology() -> None:
     frontend_args = services["frontend"]["build"]["args"]
     assert "NEXT_PUBLIC_API_BASE_URL" in frontend_args
     assert "NEXT_PUBLIC_SITE_URL" in frontend_args
+    assert services["frontend"]["environment"]["INTERNAL_ROUTES_ENABLED"].endswith(
+        ":-false}"
+    )
 
     api_volumes = services["api"]["volumes"]
     worker_volumes = services["worker"]["volumes"]
@@ -72,6 +75,7 @@ def test_oracle_env_example_is_staging_safe_by_default() -> None:
     assert "@db:5432/" in env["DATABASE_URL"]
     assert env["REDIS_URL"] == "redis://redis:6379/0"
     assert env["REPORT_ARTIFACT_STORAGE_BACKEND"] == "local"
+    assert env["INTERNAL_ROUTES_ENABLED"] == "false"
 
     for key, value in env.items():
         if key.endswith("_BACKEND") and key not in {"REPORT_ARTIFACT_STORAGE_BACKEND"}:

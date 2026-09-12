@@ -1,7 +1,7 @@
 # Domarion Product Transformation Audit
 
 Audit date: 2026-09-05
-Last verification refresh: 2026-09-10
+Last verification refresh: 2026-09-12
 Baseline commit: 230af7d (`Fix Alpine npm lockfile dependencies`)
 Product: Domarion / WartoMetr
 
@@ -46,7 +46,9 @@ The current public and internal route inventory includes:
 - `/account` for buyer account plus agency/CRM functionality;
 - `/guides`, `/news`, `/developers` for acquisition and evidence content;
 - `/beta` and `/realtors` for campaign/professional entry points;
-- `/market` and `/admin` for internal/professional and administrative work.
+- `/market` and `/admin` for internal/professional and administrative work;
+  both return `404` in the public production frontend unless an explicitly
+  protected internal deployment enables them.
 
 Navigation and sitemap work already separates consumer, contextual, pro, beta,
 and admin routes. The remaining product risk is density and role mixing inside
@@ -294,7 +296,7 @@ validation gates are either closed or explicitly limited to an invite-only beta.
 | --- | --- | --- | --- |
 | T6-01 | Centralize and verify pricing ladder and entitlement copy | PARTIAL | T1-02 |
 | T6-02 | Document and implement product funnel events without unnecessary personal data | DONE | T2-02, T1-01 |
-| T6-03 | Produce final product review and remove low-value complexity | NOT STARTED | T1-03, T2-04, T6-02 |
+| T6-03 | Produce final product review and remove low-value complexity | REPOSITORY REVIEW DONE / EXTERNAL GATE OPEN | T1-03, T2-04, T6-02 |
 
 ## Dependency Graph
 
@@ -1495,6 +1497,51 @@ Remaining limitation:
 - production payment-provider credentials and a fulfilled live purchase remain
   an external P1-12/T1-02 validation gate. The event contract is implemented,
   but repository tests cannot substitute for that commercial evidence.
+
+### P2-11 / T6-03: Final Product Review - REPOSITORY REVIEW DONE / EXTERNAL GATE OPEN (2026-09-12)
+
+Changed:
+
+- created `docs/product/DOMARION_FINAL_PRODUCT_REVIEW.md` with scenarios A-E,
+  data limitations, measurement criteria, remaining P0/P1/P2 work and an
+  explicit deployed-candidate recheck procedure;
+- made `/admin` and the internal `/market` dashboard return `404` in the public
+  production frontend. A separate protected deployment must explicitly set
+  `INTERNAL_ROUTES_ENABLED=true`, while server-side admin authorization remains
+  mandatory;
+- removed the remaining public guide link to the internal market dashboard;
+- added browser gates for production route separation and the signed-in
+  save-to-object-watch journey through My apartments and alert delivery state;
+- synchronized the stale P1-10 roadmap checkbox with its completed mortgage and
+  full purchase-cost implementation.
+
+Repository result:
+
+- scenarios A-D are complete in repository QA;
+- scenario E is complete through save, reopen, object-watch creation, trigger
+  presentation and honest no-delivery state;
+- no further consumer feature expansion is recommended before real operational
+  and commercial evidence exists.
+
+Verified:
+
+- Ruff and the full backend suite passed with `448 passed, 1 skipped`;
+- frontend ESLint, TypeScript, `836` smoke assertions, npm audit with zero
+  vulnerabilities and the production build passed;
+- the complete Playwright gate passed PL/EN/RU/UK on desktop, tablet and mobile,
+  including loading, partial, empty, unavailable, error/retry, negotiation,
+  comparison, saved/monitoring and production route-separation scenarios;
+- Oracle and Render deployment contracts passed with the public internal-route
+  switch fixed to `false`; a production server started with the explicit
+  runtime override returned `200` for the internal routes, confirming that the
+  protected-deployment escape hatch remains functional.
+
+External gate:
+
+- P2-11/T6-03 must not be marked fully DONE until P0-05 supplies live checkout,
+  OCI backup/restore/monitoring, real alert delivery and recorded human
+  legal/source/paid-report QA evidence, followed by A-E on the deployed
+  production candidate.
 
 ## Remaining External Limitations
 

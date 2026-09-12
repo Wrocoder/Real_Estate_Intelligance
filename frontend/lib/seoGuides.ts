@@ -356,7 +356,7 @@ export const SEO_GUIDES: SeoGuide[] = [
       [SOURCES.nbpHousing, SOURCES.gusPrices],
     ),
     internalLinks: [
-      { href: "/market", label: "Przegląd rynku" },
+      { href: "/guides/wroclaw-price-per-m2", label: "Ceny mieszkań we Wrocławiu" },
       { href: "/areas", label: "Dzielnice" },
       { href: "/guides/where-to-buy-near-wroclaw", label: "Gdzie kupić pod Wrocławiem" },
       { href: "/areas", label: "Dane dzielnic" },

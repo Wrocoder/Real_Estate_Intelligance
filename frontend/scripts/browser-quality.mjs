@@ -421,6 +421,58 @@ async function runCriticalFlow(browser) {
   }
 }
 
+async function runSavedMonitoringFlow(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "pl-PL",
+  });
+  await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
+  const registration = await context.request.post(`${apiBaseUrl}/api/v1/auth/register`, {
+    data: {
+      email: `saved-monitoring-${Date.now()}@domarion.local`,
+      password: "SavedMonitoring-123!",
+      display_name: "Saved monitoring fixture",
+    },
+  });
+  if (registration.status() !== 201) {
+    throw new Error(`saved monitoring authentication failed: ${registration.status()}`);
+  }
+  const page = await context.newPage();
+  const observation = await observe(page, "saved-monitoring/mobile");
+  try {
+    await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
+    await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    await page.getByRole("button", { name: "Ulubione", exact: true }).click();
+    await page.locator(".listing-action-status").filter({ hasText: "Dodano do ulubionych" }).waitFor();
+    await page.getByRole("button", { name: "Śledź zmiany", exact: true }).click();
+    await page.locator(".listing-action-status").filter({ hasText: "Śledzenie włączone" }).waitFor();
+
+    await page.goto(`${baseUrl}/saved`, { waitUntil: "domcontentloaded" });
+    const savedCard = page.locator(".apartment-card").filter({ hasText: "Ulubione mieszkanie" });
+    await savedCard.waitFor({ state: "visible", timeout: 15000 });
+    if (!(await savedCard.innerText()).includes("Fabryczna")) {
+      throw new Error("saved apartment does not retain recognizable property context");
+    }
+
+    await page.goto(`${baseUrl}/alerts`, { waitUntil: "domcontentloaded" });
+    const watchCard = page.locator(".alert-track-card").filter({ hasText: "Śledź to mieszkanie" });
+    await watchCard.waitFor({ state: "visible", timeout: 15000 });
+    const watchText = await watchCard.innerText();
+    for (const expected of ["Cena się zmieniła", "Pojawiła się tańsza podobna oferta", "Nie wykonano jeszcze próby dostarczenia"]) {
+      if (!watchText.includes(expected)) {
+        throw new Error(`saved monitoring state is missing: ${expected}`);
+      }
+    }
+    await page.screenshot({
+      path: path.join(artifactDir, "saved-monitoring-pl-mobile.png"),
+      fullPage: true,
+    });
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 async function runProvenanceSurfaces(browser) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
@@ -1371,7 +1423,64 @@ async function runProductAnalytics(browser) {
   }
 }
 
+async function runProductionRouteSeparation(browser) {
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    locale: "pl-PL",
+  });
+  const page = await context.newPage();
+  const observation = await observe(page, "production-route-separation");
+  try {
+    for (const route of ["/admin", "/market"]) {
+      const response = await page.goto(`${baseUrl}${route}`, { waitUntil: "domcontentloaded" });
+      if (response?.status() !== 404) {
+        throw new Error(`${route}: internal route returned ${response?.status() ?? "no response"}`);
+      }
+      const mainText = await page.locator("main").innerText();
+      if (/Internal Admin|ingestion dashboard|Rynek nieruchomości/.test(mainText)) {
+        throw new Error(`${route}: internal content is visible in the public frontend`);
+      }
+    }
+    observation.consoleErrors = observation.consoleErrors.filter(
+      (message) => !/Failed to load resource: the server responded with a status of 404/.test(message),
+    );
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
 const browser = await chromium.launch({ headless: true });
+if (process.env.BROWSER_QUALITY_SCENARIO === "production-route-separation") {
+  try {
+    await runProductionRouteSeparation(browser);
+    console.log("browser quality passed: production-route-separation");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "saved-monitoring") {
+  try {
+    await runSavedMonitoringFlow(browser);
+    console.log("browser quality passed: saved-monitoring/pl/mobile");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "product-analytics") {
   try {
     await runProductAnalytics(browser);
@@ -1540,6 +1649,12 @@ try {
     }
   }
   try {
+    await runProductionRouteSeparation(browser);
+    console.log("browser quality passed: production-route-separation");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
     await runFailureState(browser);
     console.log("browser quality passed: failure-state");
   } catch (error) {
@@ -1559,6 +1674,12 @@ try {
   try {
     await runCriticalFlow(browser);
     console.log("browser quality passed: critical-flow");
+  } catch (error) {
+    failures.push(error.message);
+  }
+  try {
+    await runSavedMonitoringFlow(browser);
+    console.log("browser quality passed: saved-monitoring/pl/mobile");
   } catch (error) {
     failures.push(error.message);
   }
