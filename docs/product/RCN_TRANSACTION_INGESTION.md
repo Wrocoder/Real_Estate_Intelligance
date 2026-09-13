@@ -151,7 +151,10 @@ the import time. The price-per-m² calculation prefers `lok_cena_brutto`, then
 `nier_cena_brutto`, then `tran_cena_brutto`; the selected basis is persisted.
 Rows without a positive apartment area, price, date, stable source/version
 identifier, valid Polish TERYT code or locality are quarantined in
-`data_quality_logs`.
+`data_quality_logs`. Dates before 1900 or later than the import day (allowing a
+one-day timezone margin), and usable or ancillary areas outside the supported
+`NUMERIC(8,2)` range, are also quarantined instead of aborting a regional
+transaction or entering market analytics.
 
 ## Fair-price behavior
 

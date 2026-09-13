@@ -41,6 +41,8 @@ DEFAULT_RCN_TIMEOUT_SECONDS = 30.0
 DEFAULT_RCN_MAX_PAGES = 500
 DEFAULT_RCN_PAGE_SIZE = 1_000
 DEFAULT_RCN_SORT_BY = "tran_lokalny_id_iip A,lok_id_lokalu A,tran_wersja_id A"
+EARLIEST_RCN_TRANSACTION_DATE = datetime(1900, 1, 1)
+MAX_RCN_AREA_M2 = Decimal("999999.99")
 ALLOWED_RCN_METHODS = {
     "rcn_wfs",
     "authorized_api",
@@ -260,9 +262,28 @@ def normalize_rcn_feature(
     transaction_date = _parse_datetime(
         _first(row, "transaction_date", "dok_data"), row_number, "transaction date"
     )
+    captured_at = observed_at or datetime.now(UTC).replace(tzinfo=None)
+    if captured_at.tzinfo is not None:
+        captured_at = captured_at.astimezone(UTC).replace(tzinfo=None)
+    if (
+        transaction_date < EARLIEST_RCN_TRANSACTION_DATE
+        or transaction_date > captured_at + timedelta(days=1)
+    ):
+        raise RcnTransactionError(
+            f"Row {row_number}: transaction date is outside the supported range."
+        )
     area_m2 = _decimal(
         _first(row, "area_m2", "lok_pow_uzyt"), row_number, "usable area", positive=True
     )
+    if area_m2 > MAX_RCN_AREA_M2:
+        raise RcnTransactionError(
+            f"Row {row_number}: usable area is outside the supported range."
+        )
+    ancillary_area = _decimal_or_none(_first(row, "ancillary_area_m2", "lok_pow_przyn"))
+    if ancillary_area is not None and not 0 <= ancillary_area <= MAX_RCN_AREA_M2:
+        raise RcnTransactionError(
+            f"Row {row_number}: ancillary area is outside the supported range."
+        )
     local_price = _money(_first(row, "property_price_gross", "lok_cena_brutto"))
     property_price = local_price or _money(_first(row, "nier_cena_brutto"))
     transaction_price = _money(_first(row, "transaction_price_gross", "tran_cena_brutto"))
@@ -291,7 +312,6 @@ def normalize_rcn_feature(
     if lat is None and geometry_x is None:
         quality -= 10
 
-    captured_at = observed_at or datetime.now(UTC).replace(tzinfo=None)
     payload = {
         "source_name": source_name,
         "source_observation_id": source_id,
@@ -318,16 +338,7 @@ def normalize_rcn_feature(
         "price_per_m2": float(Decimal(property_price) / area_m2),
         "rooms": _integer_or_none(_first(row, "rooms", "lok_liczba_izb")),
         "floor": _integer_or_none(_first(row, "floor", "lok_nr_kond")),
-        "ancillary_area_m2": (
-            float(ancillary_area)
-            if (
-                ancillary_area := _decimal_or_none(
-                    _first(row, "ancillary_area_m2", "lok_pow_przyn")
-                )
-            )
-            is not None
-            else None
-        ),
+        "ancillary_area_m2": float(ancillary_area) if ancillary_area is not None else None,
         "lat": float(lat) if lat is not None else None,
         "lon": float(lon) if lon is not None else None,
         "geometry_x": float(geometry_x) if geometry_x is not None else None,
@@ -362,7 +373,7 @@ def normalize_rcn_feature(
         price_per_m2=Decimal(property_price) / area_m2,
         rooms=_integer_or_none(_first(row, "rooms", "lok_liczba_izb")),
         floor=_integer_or_none(_first(row, "floor", "lok_nr_kond")),
-        ancillary_area_m2=_decimal_or_none(_first(row, "ancillary_area_m2", "lok_pow_przyn")),
+        ancillary_area_m2=ancillary_area,
         lat=lat,
         lon=lon,
         geometry_x=geometry_x,

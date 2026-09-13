@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
@@ -88,6 +88,41 @@ def test_transaction_observation_money_columns_support_national_rcn_totals():
             TransactionObservation.__table__.columns[column_name].type,
             BigInteger,
         )
+
+
+def test_normalize_rcn_feature_rejects_impossible_transaction_dates():
+    for value in ("0006-04-21", "2028-03-02"):
+        try:
+            rcn_transactions.normalize_rcn_feature(
+                _feature(dok_data=value),
+                row_number=1,
+                source_name="RCN GUGiK",
+                source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+                observed_at=datetime(2026, 9, 13, tzinfo=UTC),
+            )
+        except rcn_transactions.RcnTransactionError as exc:
+            assert "transaction date is outside the supported range" in str(exc)
+        else:
+            raise AssertionError(f"impossible transaction date {value} was accepted")
+
+
+def test_normalize_rcn_feature_rejects_areas_outside_storage_range():
+    for field, value, label in (
+        ("lok_pow_uzyt", "1000000", "usable area"),
+        ("lok_pow_przyn", "290000016", "ancillary area"),
+        ("lok_pow_przyn", "-1", "ancillary area"),
+    ):
+        try:
+            rcn_transactions.normalize_rcn_feature(
+                _feature(**{field: value}),
+                row_number=1,
+                source_name="RCN GUGiK",
+                source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+            )
+        except rcn_transactions.RcnTransactionError as exc:
+            assert f"{label} is outside the supported range" in str(exc)
+        else:
+            raise AssertionError(f"out-of-range {label} {value} was accepted")
 
 
 def test_normalize_rcn_feature_rejects_non_residential_rows():
