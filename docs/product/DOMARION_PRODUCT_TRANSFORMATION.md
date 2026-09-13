@@ -1629,3 +1629,18 @@ External gate:
   source-registry decision covers nationwide RCN use, set
   `RCN_TRANSACTIONS_SCOPE=poland`, and run the first regional backfill before
   treating nationwide coverage as available in production.
+
+## Major-city RCN District Detail Update (2026-09-13)
+
+- **DONE in repository:** Generalized the authoritative boundary importer and
+  PostGIS point-in-polygon assignment from Wrocław to multiple cities.
+- **DONE:** Added a provenance-bearing manifest for Wrocław, Warszawa, Kraków,
+  Gdańsk, Lublin, Poznań and Łódź, while retaining the legacy Wrocław settings.
+- **DONE:** District reassignment now rebuilds both the previous locality scope
+  and the new district scope, preventing stale city aggregates after a polygon
+  match or boundary revision.
+- **OPERATOR SETUP REQUIRED:** Download and legally review the current official
+  municipal polygon files, normalize their declared CRS when necessary, place
+  them in the mounted OCI data directory and record a successful dry run and
+  applied spatial assignment. Repository support alone is not evidence that a
+  city's district coverage is live.

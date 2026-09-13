@@ -1,6 +1,7 @@
 import json
 import sys
 from collections.abc import Iterator
+from pathlib import Path
 from types import SimpleNamespace
 
 from domarion import cli
@@ -211,3 +212,31 @@ def test_poland_runner_commits_each_region_independently(monkeypatch) -> None:
     assert result["regions_failed"] == []
     assert imported_codes == ["12", "14"]
     assert len(commits) == 2
+
+
+def test_boundary_environment_uses_manifest_and_legacy_fallback(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    manifest = tmp_path / "districts.json"
+    manifest.write_text(
+        json.dumps(
+            [
+                {
+                    "city": "Kraków",
+                    "location": "krakow.zip",
+                    "source_name": "MSIP Kraków",
+                    "source_crs": 2178,
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("RCN_DISTRICT_BOUNDARIES_MANIFEST", str(manifest))
+    monkeypatch.setenv("RCN_DISTRICT_BOUNDARIES_LOCATION", "/data/wroclaw.zip")
+
+    configs = cli._district_boundary_configs_from_environment()
+
+    assert [config.city for config in configs] == ["Kraków", "Wrocław"]
+    assert configs[0].location == str(tmp_path / "krakow.zip")
+    assert configs[1].source_crs == 2177

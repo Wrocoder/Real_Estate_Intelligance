@@ -182,7 +182,12 @@ RCN_TRANSACTIONS_MAX_PAGES=500
 RCN_TRANSACTIONS_TIMEOUT_SECONDS=30
 RCN_TRANSACTIONS_INTERVAL_SECONDS=86400
 
-# Optional Wrocław osiedle enrichment inside the national RCN import.
+# Optional authoritative district detail for major cities. Start from
+# deploy/oracle/rcn-district-boundaries.example.json and place every referenced
+# local boundary file under /srv/domarion/data.
+RCN_DISTRICT_BOUNDARIES_MANIFEST=/srv/domarion/data/district-boundaries.json
+
+# Legacy Wrocław-only osiedle enrichment inside the national RCN import.
 # Download the official Wrocław osiedle boundary ZIP to the VM first.
 # The worker mounts this host directory read-only into /srv/domarion/data.
 # Run as the VM administrator, for example:
@@ -202,6 +207,27 @@ ALERT_TELEGRAM_ENABLED=true
 ALERT_TELEGRAM_BOT_TOKEN=<bot-token>
 RCN_TRANSACTIONS_TELEGRAM_CHAT_ID=<chat-id>
 ```
+
+Prepare the multi-city manifest and the directly downloadable official files:
+
+```bash
+sudo install -d -o domarion -g domarion /srv/domarion/data/districts
+sudo cp deploy/oracle/rcn-district-boundaries.example.json \
+  /srv/domarion/data/district-boundaries.json
+sudo curl -fL https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip \
+  -o /srv/domarion/data/districts/krakow.zip
+sudo curl -fL https://gis.lublin.eu/api/shp/administracja/dzielnice_granice \
+  -o /srv/domarion/data/districts/lublin.zip
+sudo curl -fL 'https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson' \
+  -o /srv/domarion/data/districts/lodz.geojson
+sudo chown -R domarion:domarion /srv/domarion/data
+```
+
+Export the current official Warszawa, Gdańsk and Poznań polygons from the
+municipal sources recorded in the example manifest to the remaining GeoJSON
+paths. Remove a city entry until its file, usage terms, CRS and district-name
+field have been verified; the worker intentionally refuses an incomplete
+manifest.
 
 Install the daily Oracle staging schedule as an administrator. Use `sudoedit`
 to create `/etc/cron.d/domarion-rcn-daily` with exactly:
@@ -252,6 +278,20 @@ The example performs a dry validation of małopolskie only. Remove the region
 override and add `--apply` only after inspecting that result. The first applied
 `all` run backfills the configured lookback independently for every
 voivodeship; subsequent cron runs use per-region checkpoints and overlap.
+
+The dry-run result must list every configured city under
+`district_boundaries`, each with a non-zero `rows_seen`. A missing or malformed
+manifest file blocks the regional run rather than silently presenting a city
+aggregate as district-level evidence. Files declared with EPSG:2180 can be
+prepared with GDAL, for example:
+
+```bash
+ogr2ogr -f GeoJSON -t_srs EPSG:2180 \
+  /srv/domarion/data/districts/warszawa.geojson downloaded-warszawa-boundaries.shp
+```
+
+Use the actual CRS published by each municipality as the input CRS; do not
+label untransformed coordinates as EPSG:2180.
 
 The command stores transaction observations separately from listing snapshots.
 It uses the `ms:lokale` GML fields exposed by the official RCN WFS and does not

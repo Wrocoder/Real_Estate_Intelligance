@@ -15,9 +15,12 @@ from domarion.ingestion.db_writer import (
 )
 from domarion.ingestion.developers import import_developer_feed
 from domarion.ingestion.district_boundaries import (
+    DEFAULT_BOUNDARY_SOURCE_URL,
     DistrictBoundaryError,
+    DistrictBoundarySourceConfig,
     assign_transaction_districts,
     import_district_boundaries,
+    load_district_boundary_manifest,
 )
 from domarion.ingestion.infrastructure_references import import_infrastructure_references
 from domarion.ingestion.partner_csv import read_partner_csv
@@ -125,23 +128,29 @@ def main() -> None:
     rental_parser.add_argument("--max-rows", type=int, default=100_000)
     boundary_parser = subparsers.add_parser(
         "import-district-boundaries",
-        help="Import authoritative Wrocław district/osiedle polygons from GeoJSON or SHP/ZIP.",
+        help="Import authoritative city district/osiedle polygons from GeoJSON or SHP/ZIP.",
     )
     boundary_parser.add_argument("location", help="Local GeoJSON, Shapefile or ZIP path.")
+    boundary_parser.add_argument("--city", default="Wrocław")
     boundary_parser.add_argument(
         "--source-name",
-        default="Wrocław Geoportal osiedle boundaries",
+        default=None,
         help="Provenance label for the boundary dataset.",
     )
     boundary_parser.add_argument(
         "--source-url",
-        default="https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
+        default=None,
     )
-    boundary_parser.add_argument("--source-crs", type=int, default=2177)
+    boundary_parser.add_argument("--source-crs", type=int, default=None)
     boundary_parser.add_argument("--dry-run", action="store_true")
-    subparsers.add_parser(
+    assignment_parser = subparsers.add_parser(
         "assign-transaction-districts",
         help="Assign existing geocoded RCN observations to imported district polygons.",
+    )
+    assignment_parser.add_argument(
+        "--city",
+        action="append",
+        help="Limit assignment to a city; may be supplied more than once.",
     )
     planned_parser = subparsers.add_parser(
         "import-planned-investments",
@@ -428,13 +437,25 @@ def main() -> None:
                 "import-district-boundaries writes require DATA_REPOSITORY_BACKEND=postgres."
             )
         try:
+            if args.city != "Wrocław" and (
+                not args.source_name or args.source_crs is None
+            ):
+                raise DistrictBoundaryError(
+                    "Non-Wrocław boundary imports require --source-name and --source-crs."
+                )
             with SessionLocal() as session:
                 result = import_district_boundaries(
                     session,
                     args.location,
-                    source_name=args.source_name,
-                    source_url=args.source_url,
-                    source_crs=args.source_crs,
+                    city=args.city,
+                    source_name=(
+                        args.source_name or "Wrocław Geoportal osiedle boundaries"
+                    ),
+                    source_url=(
+                        args.source_url
+                        or (DEFAULT_BOUNDARY_SOURCE_URL if args.city == "Wrocław" else None)
+                    ),
+                    source_crs=args.source_crs or 2177,
                     dry_run=args.dry_run,
                 )
                 if not args.dry_run:
@@ -449,12 +470,26 @@ def main() -> None:
                 "assign-transaction-districts requires DATA_REPOSITORY_BACKEND=postgres."
             )
         with SessionLocal() as session:
-            result = assign_transaction_districts(session)
-            metrics = refresh_market_metrics(session, city="Wrocław")
+            result = assign_transaction_districts(session, cities=args.city)
+            metric_refresh_scopes = {
+                (city, None if city == "Wrocław" else area_id)
+                for city, area_id in result["affected_scopes"]
+            }
+            metric_results = [
+                refresh_market_metrics(
+                    session,
+                    city=city,
+                    transaction_area_id=area_id,
+                )
+                for city, area_id in sorted(
+                    metric_refresh_scopes,
+                    key=lambda scope: (scope[0], scope[1] or ""),
+                )
+            ]
             session.commit()
         _print_json(
             json.dumps(
-                {"district_assignment": result, "market_metrics": metrics},
+                {"district_assignment": result, "market_metrics": metric_results},
                 ensure_ascii=False,
                 indent=2,
             )
@@ -793,28 +828,23 @@ def _run_poland_rcn_task(
             int(os.getenv("RCN_POLAND_INITIAL_LOOKBACK_DAYS", "730")),
         )
         overlap_days = max(1, int(os.getenv("RCN_POLAND_OVERLAP_DAYS", "14")))
-        boundary_payload = None
+        boundary_payload: list[dict[str, object]] = []
         with SessionLocal() as session:
             checkpoints = load_rcn_region_checkpoints(session, source_name=source_name)
-            boundary_location = os.getenv("RCN_DISTRICT_BOUNDARIES_LOCATION")
-            if boundary_location:
+            boundary_configs = _district_boundary_configs_from_environment()
+            for boundary_config in boundary_configs:
                 boundary_result = import_district_boundaries(
                     session,
-                    boundary_location,
-                    source_name=os.getenv(
-                        "RCN_DISTRICT_BOUNDARIES_SOURCE_NAME",
-                        "Wrocław Geoportal osiedle boundaries",
-                    ),
-                    source_url=os.getenv(
-                        "RCN_DISTRICT_BOUNDARIES_SOURCE_URL",
-                        "https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
-                    ),
-                    source_crs=int(os.getenv("RCN_DISTRICT_BOUNDARIES_SOURCE_CRS", "2177")),
+                    boundary_config.location,
+                    city=boundary_config.city,
+                    source_name=boundary_config.source_name,
+                    source_url=boundary_config.source_url,
+                    source_crs=boundary_config.source_crs,
                     dry_run=not args.apply,
                 )
-                boundary_payload = boundary_result.as_dict()
-                if args.apply:
-                    session.commit()
+                boundary_payload.append(boundary_result.as_dict())
+            if args.apply and boundary_configs:
+                session.commit()
     except (DistrictBoundaryError, TypeError, ValueError) as exc:
         return {"task": "rcn-transactions", "status": "blocked", "message": str(exc)}
 
@@ -881,6 +911,33 @@ def _run_poland_rcn_task(
     return payload
 
 
+def _district_boundary_configs_from_environment() -> tuple[DistrictBoundarySourceConfig, ...]:
+    manifest_location = os.getenv("RCN_DISTRICT_BOUNDARIES_MANIFEST")
+    configs = list(
+        load_district_boundary_manifest(manifest_location)
+        if manifest_location
+        else ()
+    )
+    legacy_location = os.getenv("RCN_DISTRICT_BOUNDARIES_LOCATION")
+    if legacy_location and not any(config.city == "Wrocław" for config in configs):
+        configs.append(
+            DistrictBoundarySourceConfig(
+                city="Wrocław",
+                location=legacy_location,
+                source_name=os.getenv(
+                    "RCN_DISTRICT_BOUNDARIES_SOURCE_NAME",
+                    "Wrocław Geoportal osiedle boundaries",
+                ),
+                source_url=os.getenv(
+                    "RCN_DISTRICT_BOUNDARIES_SOURCE_URL",
+                    "https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
+                ),
+                source_crs=int(os.getenv("RCN_DISTRICT_BOUNDARIES_SOURCE_CRS", "2177")),
+            )
+        )
+    return tuple(configs)
+
+
 def _run_production_preflight(args: argparse.Namespace) -> None:
     settings = get_settings()
     with contextmanager(get_ingestion_admin_store)() as store:
@@ -930,6 +987,7 @@ def _send_rcn_telegram_report(payload: dict[str, object]) -> dict[str, object]:
                 f"{payload.get('accepted_snapshot_fingerprint') or 'unknown'}"
             ),
             f"District assignments refreshed: {payload.get('districts_assigned', 0)}",
+            f"District assignments reset: {payload.get('district_assignments_reset', 0)}",
             (
                 "Without a district assignment: "
                 f"{payload.get('transactions_with_unresolved_district', 0)}"

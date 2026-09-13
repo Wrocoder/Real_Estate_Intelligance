@@ -113,6 +113,7 @@ class RcnImportResult:
     transactions_changed: int = 0
     transactions_reconfirmed: int = 0
     districts_assigned: int = 0
+    district_assignments_reset: int = 0
     transactions_with_unresolved_district: int = 0
     market_metrics: dict[str, object] | None = None
     rejected_rows: tuple[dict[str, object], ...] = ()
@@ -132,6 +133,7 @@ class RcnImportResult:
             "transactions_changed": self.transactions_changed,
             "transactions_reconfirmed": self.transactions_reconfirmed,
             "districts_assigned": self.districts_assigned,
+            "district_assignments_reset": self.district_assignments_reset,
             "transactions_with_unresolved_district": self.transactions_with_unresolved_district,
             "market_metrics": self.market_metrics,
             "rejected_rows": list(self.rejected_rows),
@@ -236,12 +238,17 @@ def normalize_rcn_feature(
     if len(city) > 80:
         raise RcnTransactionError(f"Row {row_number}: transaction locality is too long.")
     district = _text(_first(row, "district"))
-    default_area_id = (
+    locality_area_id = (
         "wroclaw-city"
+        if slugify(city) == "wroclaw"
+        else f"rcn-{teryt}-{slugify(city)}-city"
+    )
+    default_area_id = (
+        locality_area_id
         if slugify(city) == "wroclaw" and not district
         else slugify(f"{city}-{district}")
         if district
-        else f"rcn-{teryt}-{slugify(city)}-city"
+        else locality_area_id
     )
     area_id = _text(_first(row, "area_id")) or default_area_id
 
@@ -296,6 +303,7 @@ def normalize_rcn_feature(
         "city": city,
         "district": district,
         "area_id": area_id,
+        "locality_area_id": locality_area_id,
         "address": address,
         "property_type": property_type,
         "property_right": _text(_first(row, "property_right", "nier_prawo")),
@@ -563,23 +571,31 @@ def import_rcn_transactions(
     job.finished_at = datetime.now(UTC).replace(tzinfo=None)
     job.updated_at = job.finished_at
     session.flush()
-    district_assignment = (
-        assign_transaction_districts(session)
-        if regional_prefix in {None, "02"}
-        else {"matched": 0, "unresolved": 0, "boundaries": 0}
+    district_assignment = assign_transaction_districts(
+        session,
+        cities={record.city for record in records},
     )
-    if district_assignment["matched"]:
-        affected_market_scopes.add(("Wrocław", "wroclaw-city"))
+    affected_market_scopes.update(
+        (str(city), str(area_id))
+        for city, area_id in district_assignment.get("affected_scopes", [])
+    )
     if regional_prefix in {None, "02"}:
         affected_market_scopes.add(("Wrocław", "wroclaw-city"))
     session.expire_all()
+    metric_refresh_scopes = {
+        (city, None if city == "Wrocław" else area_id)
+        for city, area_id in affected_market_scopes
+    }
     metric_results = [
         refresh_market_metrics(
             session,
             city=city,
-            transaction_area_id=None if city == "Wrocław" else area_id,
+            transaction_area_id=area_id,
         )
-        for city, area_id in sorted(affected_market_scopes)
+        for city, area_id in sorted(
+            metric_refresh_scopes,
+            key=lambda scope: (scope[0], scope[1] or ""),
+        )
     ]
     metrics = {
         "cities_updated": len(metric_results),
@@ -597,8 +613,9 @@ def import_rcn_transactions(
         transactions_created=created,
         transactions_changed=changed,
         transactions_reconfirmed=reconfirmed,
-        districts_assigned=district_assignment["matched"],
-        transactions_with_unresolved_district=district_assignment["unresolved"],
+        districts_assigned=int(district_assignment["matched"]),
+        district_assignments_reset=int(district_assignment["reset"]),
+        transactions_with_unresolved_district=int(district_assignment["unresolved"]),
         market_metrics=metrics,
         rejected_rows=tuple(rejected[:100]),
         rejection_reason_counts=rejection_counts,
@@ -714,7 +731,12 @@ def _copy_record(
     if preserve_spatial_assignment:
         row.district = previous_district
         row.area_id = previous_area_id
-        for key in ("district", "area_id", "district_assignment_source"):
+        for key in (
+            "district",
+            "area_id",
+            "district_assignment_source",
+            "district_assignment_source_url",
+        ):
             if key in previous_payload:
                 row.normalized_payload[key] = previous_payload[key]
     row.ingestion_job_id = ingestion_job_id

@@ -170,6 +170,7 @@ def combine_rcn_region_results(results: list[dict[str, object]]) -> dict[str, ob
             "transactions_changed",
             "transactions_reconfirmed",
             "districts_assigned",
+            "district_assignments_reset",
             "transactions_with_unresolved_district",
         ):
             counters[key] += int(result.get(key) or 0)

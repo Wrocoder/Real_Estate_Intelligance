@@ -257,6 +257,7 @@ Alerts and workers:
 | `RCN_POLAND_REGION_CODES` | voivodeship TERYT prefixes or `all` | `all` |
 | `RCN_POLAND_INITIAL_LOOKBACK_DAYS` | bounded history loaded before a region has a checkpoint | `730` |
 | `RCN_POLAND_OVERLAP_DAYS` | overlap before the latest regional source-version checkpoint | `14` |
+| `RCN_DISTRICT_BOUNDARIES_MANIFEST` | mounted JSON manifest of authoritative per-city district files | empty |
 
 API-lite:
 

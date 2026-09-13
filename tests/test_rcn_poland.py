@@ -95,6 +95,7 @@ def test_combine_region_results_preserves_region_evidence() -> None:
                 "rows_accepted": 8,
                 "rows_rejected": 2,
                 "transactions_created": 3,
+                "district_assignments_reset": 2,
                 "rejection_reason_counts": {"invalid": 2},
                 "accepted_snapshot_fingerprint": "aaa",
                 "latest_source_version": "2026-08-10",
@@ -114,6 +115,7 @@ def test_combine_region_results_preserves_region_evidence() -> None:
     assert combined["regions_processed"] == 2
     assert combined["rows_seen"] == 30
     assert combined["rows_accepted"] == 28
+    assert combined["district_assignments_reset"] == 2
     assert combined["rejection_reason_counts"] == {"invalid": 2}
     assert combined["latest_source_version"] == "2026-08-11"
     assert len(combined["accepted_snapshot_fingerprint"]) == 64

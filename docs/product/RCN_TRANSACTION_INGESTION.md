@@ -60,11 +60,38 @@ for a controlled first run. The normal daily configuration is `all`. Market
 statistics are recalculated only for localities containing newly created or
 newly versioned observations, plus localities whose observations crossed the
 rolling 365-day cutoff since their previous successful regional refresh.
-Wrocław additionally retains its authoritative
-osiedle polygon split; other localities remain at locality scope until their
-own legally reviewed administrative boundaries are integrated.
+Cities listed in `RCN_DISTRICT_BOUNDARIES_MANIFEST` additionally receive an
+authoritative district/osiedle polygon split. Other localities remain at
+locality scope until their own reviewed boundary sources are integrated.
 
-## Wrocław district split
+## Major-city district split
+
+The same PostGIS join supports any city whose authoritative district polygons
+are configured. The initial operational manifest covers Wrocław, Warszawa,
+Kraków, Gdańsk, Lublin, Poznań and Łódź. Copy
+`deploy/oracle/rcn-district-boundaries.example.json` to the mounted data
+directory, download the named municipal datasets, and convert files that use a
+different format when needed. The manifest may declare each source's real EPSG
+code because PostGIS transforms it to RCN's EPSG:2180 during assignment. Keep
+the original municipal URL in `source_url`; conversion changes the transport
+format, not the data provenance.
+
+```env
+RCN_DISTRICT_BOUNDARIES_MANIFEST=/srv/domarion/data/district-boundaries.json
+```
+
+Every manifest entry requires `city`, `location`, `source_name` and
+`source_crs`; `source_url` is optional but strongly recommended. Relative file
+locations are resolved from the manifest directory. GeoJSON properties named
+`name`, `district`, `DZIELNICA`, `OSIEDLE`, `NAZWA`, `NAZWA_DZ`, `NAZWAOSIED`
+or `JEDN_POM` are accepted. A polygon without an explicit name is rejected.
+
+The importer stores district area IDs as `<city-slug>-<district-slug>`. When a
+boundary changes, both the previous aggregate and the newly assigned district
+aggregate are rebuilt. Points outside every authoritative polygon stay in the
+TERYT-qualified city aggregate and are reported as unresolved.
+
+### Wrocław source
 
 The official Wrocław Geoportal publishes the osiedle boundary ZIP:
 `https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip`. The file is
@@ -72,17 +99,19 @@ in EPSG:2177; RCN point coordinates are retained in EPSG:2180 and PostGIS
 performs the transformation for the spatial join. The boundaries are stored
 separately in `district_boundaries`, with source and CRS provenance.
 
-Load the boundaries once on a new environment:
+The legacy single-city command remains available:
 
 ```bash
-domarion import-district-boundaries /srv/domarion/data/granice-osiedli.zip
+domarion import-district-boundaries /srv/domarion/data/granice-osiedli.zip \
+  --city Wrocław --source-name "Wrocław Geoportal osiedle boundaries"
 ```
 
 Set `RCN_DISTRICT_BOUNDARIES_LOCATION` to that local ZIP path. On Oracle
 staging, the daily task is launched by cron at 08:00 Europe/Warsaw and refreshes
 the polygons before the transaction import. Covered observations receive the official
 osiedle name and `area_id=wroclaw-<slug>`; unresolved points remain visible in
-the city aggregate.
+the city aggregate. The legacy environment variables are still supported when
+no Wrocław entry exists in the multi-city manifest.
 
 ## Source registry gate
 
@@ -165,4 +194,6 @@ counts are grouped by reason in both the notification and `data_quality_logs`;
 sample row numbers are retained without writing tens of thousands of duplicate
 quality-log records on every full-snapshot refresh. `District assignments
 refreshed` is the number spatially assigned during the current run, not a count
-of newly discovered districts or transactions.
+of newly discovered districts or transactions. `District assignments reset`
+counts observations returned to their locality aggregate because a revised
+official boundary no longer covers the point.

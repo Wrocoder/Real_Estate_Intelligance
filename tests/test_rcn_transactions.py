@@ -6,7 +6,12 @@ from urllib.parse import parse_qs, urlparse
 
 from domarion.db.models import DataQualityLog, TransactionObservation
 from domarion.ingestion import rcn_transactions
-from domarion.ingestion.district_boundaries import load_district_boundaries
+from domarion.ingestion.district_boundaries import (
+    assign_transaction_districts,
+    import_district_boundaries,
+    load_district_boundaries,
+    load_district_boundary_manifest,
+)
 
 
 def _feature(**overrides):
@@ -87,6 +92,7 @@ def test_normalize_rcn_feature_accepts_a_bounded_polish_region():
     assert record.area_id == "rcn-1261-krakow-city"
     assert record.teryt == "1261"
     assert record.normalized_payload["voivodeship"] == "małopolskie"
+    assert record.normalized_payload["locality_area_id"] == "rcn-1261-krakow-city"
 
 
 def test_normalize_rcn_feature_rejects_a_row_outside_requested_region():
@@ -120,6 +126,7 @@ def test_copy_record_preserves_matching_authoritative_district_assignment():
             "district": "Stare Miasto",
             "area_id": "wroclaw-stare-miasto",
             "district_assignment_source": "Wrocław Geoportal",
+            "district_assignment_source_url": "https://geoportal.wroclaw.pl/",
         },
     )
 
@@ -128,6 +135,10 @@ def test_copy_record_preserves_matching_authoritative_district_assignment():
     assert row.district == "Stare Miasto"
     assert row.area_id == "wroclaw-stare-miasto"
     assert row.normalized_payload["district_assignment_source"] == "Wrocław Geoportal"
+    assert row.normalized_payload["district_assignment_source_url"] == (
+        "https://geoportal.wroclaw.pl/"
+    )
+    assert row.normalized_payload["locality_area_id"] == "wroclaw-city"
 
 
 def test_market_scopes_refresh_when_observations_leave_rolling_window():
@@ -300,9 +311,11 @@ def test_import_rcn_transactions_distinguishes_new_changed_and_reconfirmed(monke
     monkeypatch.setattr(
         rcn_transactions,
         "assign_transaction_districts",
-        lambda session: {
+        lambda session, **kwargs: {
             "matched": 0,
+            "reset": 0,
             "unresolved": 0,
+            "affected_scopes": [],
         },
     )
     monkeypatch.setattr(rcn_transactions, "refresh_market_metrics", lambda *args, **kwargs: {})
@@ -366,3 +379,112 @@ def test_load_district_boundaries_reads_geojson_without_inventing_names(tmp_path
     assert records[0].slug == "stare-miasto"
     assert records[0].source_crs == 2177
     assert records[0].geometry_wkt.startswith("MULTIPOLYGON(")
+
+
+def test_boundary_manifest_supports_multiple_major_cities(tmp_path):
+    manifest = tmp_path / "districts.json"
+    manifest.write_text(
+        json.dumps(
+            [
+                {
+                    "city": "Warszawa",
+                    "location": "warszawa.geojson",
+                    "source_name": "Warszawa Open Data",
+                    "source_url": "https://mapa.um.warszawa.pl/",
+                    "source_crs": 2180,
+                },
+                {
+                    "city": "Kraków",
+                    "location": "krakow.geojson",
+                    "source_name": "MSIP Kraków",
+                    "source_crs": 2180,
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    configs = load_district_boundary_manifest(manifest)
+
+    assert [config.city for config in configs] == ["Warszawa", "Kraków"]
+    assert configs[0].location == str(tmp_path / "warszawa.geojson")
+    assert configs[1].source_url is None
+
+
+def test_boundary_import_accepts_an_explicit_non_wroclaw_city(tmp_path):
+    path = tmp_path / "warszawa.geojson"
+    path.write_text(
+        json.dumps(
+            {
+                "type": "FeatureCollection",
+                "features": [
+                    {
+                        "type": "Feature",
+                        "properties": {"DZIELNICA": "Mokotów"},
+                        "geometry": {
+                            "type": "Polygon",
+                            "coordinates": [[[1, 1], [2, 1], [2, 2], [1, 1]]],
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = import_district_boundaries(
+        SimpleNamespace(),
+        path,
+        city="Warszawa",
+        source_name="Warszawa Open Data",
+        source_url="https://mapa.um.warszawa.pl/",
+        source_crs=2180,
+        dry_run=True,
+    )
+
+    assert result.city == "Warszawa"
+    assert result.rows_seen == 1
+    assert result.dry_run is True
+
+
+def test_assignment_returns_old_and_new_market_scopes():
+    class Session:
+        def __init__(self):
+            self.scalar_results = iter([2, 1])
+
+        def scalar(self, statement):  # noqa: ANN001
+            return next(self.scalar_results)
+
+        def scalars(self, statement):  # noqa: ANN001
+            return SimpleNamespace(all=lambda: ["Warszawa"])
+
+        def execute(self, statement, parameters):  # noqa: ANN001
+            assert parameters == {"cities": ["Warszawa"]}
+            return SimpleNamespace(
+                fetchall=lambda: [
+                    (
+                        "Warszawa",
+                        "rcn-1465-warszawa-city",
+                        "warszawa-mokotow",
+                        True,
+                    ),
+                    (
+                        "Warszawa",
+                        "warszawa-old-boundary",
+                        "rcn-1465-warszawa-city",
+                        False,
+                    ),
+                ]
+            )
+
+    result = assign_transaction_districts(Session(), cities={"Warszawa"})
+
+    assert result["matched"] == 1
+    assert result["reset"] == 1
+    assert result["unresolved"] == 1
+    assert result["cities"] == ["Warszawa"]
+    assert result["affected_scopes"] == [
+        ("Warszawa", "rcn-1465-warszawa-city"),
+        ("Warszawa", "warszawa-mokotow"),
+        ("Warszawa", "warszawa-old-boundary"),
+    ]
