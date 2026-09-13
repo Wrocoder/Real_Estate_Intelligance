@@ -158,6 +158,20 @@ def test_normalize_rcn_feature_accepts_a_bounded_polish_region():
     assert record.normalized_payload["locality_area_id"] == "rcn-1261-krakow-city"
 
 
+def test_normalize_rcn_feature_uses_major_city_teryt_when_address_is_missing():
+    record = rcn_transactions.normalize_rcn_feature(
+        _feature(teryt="3064", lok_adres=None),
+        row_number=1,
+        source_name="RCN GUGiK",
+        source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+        expected_teryt_prefix="30",
+    )
+
+    assert record.city == "Poznań"
+    assert record.area_id == "rcn-3064-poznan-city"
+    assert record.normalized_payload["voivodeship"] == "wielkopolskie"
+
+
 def test_parse_gml_epsg_2180_converts_axis_order_to_easting_northing():
     body = b"""<wfs:FeatureCollection
         xmlns:wfs="http://www.opengis.net/wfs/2.0"

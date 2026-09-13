@@ -52,6 +52,15 @@ CANONICAL_MAJOR_CITY_NAMES = {
     "warszawa": "Warszawa",
     "wroclaw": "Wrocław",
 }
+MAJOR_CITY_NAMES_BY_TERYT = {
+    "0264": "Wrocław",
+    "0663": "Lublin",
+    "1061": "Łódź",
+    "1261": "Kraków",
+    "1465": "Warszawa",
+    "2261": "Gdańsk",
+    "3064": "Poznań",
+}
 ALLOWED_RCN_METHODS = {
     "rcn_wfs",
     "authorized_api",
@@ -242,7 +251,8 @@ def normalize_rcn_feature(
 
     address = _text(_first(row, "address", "lok_adres"))
     city = _canonical_city_name(
-        _text(_first(row, "city")) or _city_from_rcn_address(address)
+        _text(_first(row, "city")) or _city_from_rcn_address(address),
+        teryt=teryt,
     )
     if not city:
         raise RcnTransactionError(f"Row {row_number}: transaction locality is required.")
@@ -1006,7 +1016,10 @@ def _city_from_rcn_address(address: str | None) -> str | None:
     return match.group(1).strip() if match else None
 
 
-def _canonical_city_name(city: str | None) -> str | None:
+def _canonical_city_name(city: str | None, *, teryt: str | None) -> str | None:
+    teryt_city = MAJOR_CITY_NAMES_BY_TERYT.get(teryt or "")
     if city is None:
-        return None
+        return teryt_city
+    if teryt_city is not None and slugify(city) == slugify(teryt_city):
+        return teryt_city
     return CANONICAL_MAJOR_CITY_NAMES.get(slugify(city), city)

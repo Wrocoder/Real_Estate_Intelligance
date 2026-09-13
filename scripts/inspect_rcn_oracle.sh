@@ -25,7 +25,7 @@ SELECT city,
        count(*) FILTER (WHERE district IS NOT NULL) AS district_assigned,
        count(DISTINCT district) FILTER (WHERE district IS NOT NULL) AS districts
 FROM transaction_observations
-WHERE city IN ('Wrocław', 'Kraków', 'Lublin', 'Łódź')
+WHERE city IN ('Wrocław', 'Kraków', 'Warszawa', 'Gdańsk', 'Lublin', 'Poznań', 'Łódź')
 GROUP BY city
 ORDER BY city;
 SQL

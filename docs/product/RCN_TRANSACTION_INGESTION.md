@@ -152,7 +152,9 @@ the import time. The price-per-m² calculation prefers `lok_cena_brutto`, then
 GML points declared as `EPSG:2180` are converted from the CRS axis order
 `northing,easting` to the stored/PostGIS order `x=easting,y=northing` before
 district assignment. Target major-city names are canonicalized for consistent
-market and boundary scopes.
+market and boundary scopes. When a major-city address is absent, the exact
+official city TERYT code supplies the locality instead of discarding an
+otherwise attributable transaction.
 Rows without a positive apartment area, price, date, stable source/version
 identifier, valid Polish TERYT code or locality are quarantined in
 `data_quality_logs`. Dates before 1900 or later than the import day (allowing a

@@ -167,7 +167,7 @@ def test_oracle_rcn_inspection_reports_national_and_city_coverage() -> None:
 
     assert "count(DISTINCT left(teryt, 2)) AS voivodeships" in inspector
     assert "GROUP BY left(teryt, 2)" in inspector
-    for city in ("Wrocław", "Kraków", "Lublin", "Łódź"):
+    for city in ("Wrocław", "Kraków", "Warszawa", "Gdańsk", "Lublin", "Poznań", "Łódź"):
         assert city in inspector
 
 
