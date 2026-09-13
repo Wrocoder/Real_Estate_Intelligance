@@ -85,6 +85,11 @@ images, snapshots the previous remote env file under
 `/srv/domarion/env/snapshots`, writes the new env file and runs
 `scripts/deploy_oracle_cloud.sh --pull-images` on the VM.
 
+For an operator-driven deploy from a machine without GitHub CLI access, a commit
+to `main` whose message contains `[deploy-oci]` follows the same protected path.
+It publishes the ARM64 images, deploys them, provisions the verified RCN district
+boundary set, and runs one national RCN refresh. Ordinary pushes do not deploy.
+
 OCI logical Postgres backups can be scheduled on the VM with:
 
 ```bash

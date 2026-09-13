@@ -1,0 +1,30 @@
+[
+  {
+    "city": "Wrocław",
+    "location": "granice-osiedli.zip",
+    "source_name": "Wrocław Geoportal osiedle boundaries",
+    "source_url": "https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
+    "source_crs": 2177
+  },
+  {
+    "city": "Kraków",
+    "location": "districts/krakow.zip",
+    "source_name": "MSIP Kraków administrative districts",
+    "source_url": "https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip",
+    "source_crs": 2178
+  },
+  {
+    "city": "Lublin",
+    "location": "districts/lublin.zip",
+    "source_name": "Lublin Open Data district boundaries",
+    "source_url": "https://gis.lublin.eu/api/shp/administracja/dzielnice_granice",
+    "source_crs": 2179
+  },
+  {
+    "city": "Łódź",
+    "location": "districts/lodz.geojson",
+    "source_name": "Łódź auxiliary unit boundaries",
+    "source_url": "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson",
+    "source_crs": 2180
+  }
+]

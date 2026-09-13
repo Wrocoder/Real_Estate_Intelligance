@@ -160,6 +160,35 @@ def test_oracle_rcn_cron_launcher_is_one_shot_and_locked() -> None:
     assert '"$status" -eq 75' in launcher
 
 
+def test_oracle_rcn_inspection_reports_national_and_city_coverage() -> None:
+    inspector = (ROOT / "scripts" / "inspect_rcn_oracle.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "count(DISTINCT left(teryt, 2)) AS voivodeships" in inspector
+    assert "GROUP BY left(teryt, 2)" in inspector
+    for city in ("Wrocław", "Kraków", "Lublin", "Łódź"):
+        assert city in inspector
+
+
+def test_oracle_verified_district_manifest_contains_only_validated_sources() -> None:
+    manifest = json.loads(
+        (
+            ROOT / "deploy" / "oracle" / "rcn-district-boundaries.verified.json"
+        ).read_text(encoding="utf-8")
+    )
+
+    assert {entry["city"] for entry in manifest} == {
+        "Wrocław",
+        "Kraków",
+        "Lublin",
+        "Łódź",
+    }
+    assert all(entry["location"] for entry in manifest)
+    assert all(entry["source_url"].startswith("https://") for entry in manifest)
+    assert all(isinstance(entry["source_crs"], int) for entry in manifest)
+
+
 def test_oracle_vm_bootstrap_script_sets_runtime_guardrails() -> None:
     bootstrap_script = (ROOT / "scripts" / "bootstrap_oracle_vm.sh").read_text(
         encoding="utf-8"
@@ -223,11 +252,17 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert deploy_job["needs"] == ["docker-publish"]
     assert deploy_job["environment"]["name"] == "oci-staging"
     assert "inputs.deploy_oci == true" in deploy_job["if"]
+    assert "[deploy-oci]" in deploy_job["if"]
     assert "OCI_SSH_PRIVATE_KEY" in workflow_text
     assert "OCI_SSH_KNOWN_HOSTS" in workflow_text
     assert "OCI_ENV_FILE" in workflow_text
     assert "/srv/domarion/env/snapshots" in workflow_text
     assert "scripts/deploy_oracle_cloud.sh --pull-images" in workflow_text
+    assert "RCN_TRANSACTIONS_SCOPE=poland" in workflow_text
+    assert "RCN_POLAND_REGION_CODES=all" in workflow_text
+    assert "rcn-district-boundaries.verified.json" in workflow_text
+    assert "scripts/run_rcn_daily_oracle.sh" in workflow_text
+    assert "scripts/inspect_rcn_oracle.sh" in workflow_text
 
 
 def test_oracle_preflight_blocks_example_placeholders() -> None:
