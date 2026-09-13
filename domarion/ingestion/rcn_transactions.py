@@ -43,6 +43,15 @@ DEFAULT_RCN_PAGE_SIZE = 1_000
 DEFAULT_RCN_SORT_BY = "tran_lokalny_id_iip A,lok_id_lokalu A,tran_wersja_id A"
 EARLIEST_RCN_TRANSACTION_DATE = datetime(1900, 1, 1)
 MAX_RCN_AREA_M2 = Decimal("999999.99")
+CANONICAL_MAJOR_CITY_NAMES = {
+    "gdansk": "Gdańsk",
+    "krakow": "Kraków",
+    "lodz": "Łódź",
+    "lublin": "Lublin",
+    "poznan": "Poznań",
+    "warszawa": "Warszawa",
+    "wroclaw": "Wrocław",
+}
 ALLOWED_RCN_METHODS = {
     "rcn_wfs",
     "authorized_api",
@@ -232,7 +241,9 @@ def normalize_rcn_feature(
         )
 
     address = _text(_first(row, "address", "lok_adres"))
-    city = _text(_first(row, "city")) or _city_from_rcn_address(address)
+    city = _canonical_city_name(
+        _text(_first(row, "city")) or _city_from_rcn_address(address)
+    )
     if not city:
         raise RcnTransactionError(f"Row {row_number}: transaction locality is required.")
     if expected_teryt_prefix is None and slugify(city) != "wroclaw":
@@ -864,14 +875,17 @@ def _parse_response(body: bytes, source_url: str) -> tuple[list[dict[str, object
             if name in {"boundedBy", "msGeometry"}:
                 continue
             row[name] = (child.text or "").strip() or None
+        point = next((node for node in element.iter() if _local_name(node.tag) == "Point"), None)
+        if point is not None:
+            row["_geometry_crs"] = point.attrib.get("srsName")
         pos = next((node.text for node in element.iter() if _local_name(node.tag) == "pos"), None)
         if pos:
             coordinates = pos.split()
             if len(coordinates) >= 2:
-                row["_geometry_x"], row["_geometry_y"] = coordinates[:2]
-        point = next((node for node in element.iter() if _local_name(node.tag) == "Point"), None)
-        if point is not None:
-            row["_geometry_crs"] = point.attrib.get("srsName")
+                if "2180" in str(row.get("_geometry_crs") or ""):
+                    row["_geometry_y"], row["_geometry_x"] = coordinates[:2]
+                else:
+                    row["_geometry_x"], row["_geometry_y"] = coordinates[:2]
         features.append(row)
     next_url = root.attrib.get("next")
     if next_url and not _same_origin_path(source_url, next_url):
@@ -990,3 +1004,9 @@ def _city_from_rcn_address(address: str | None) -> str | None:
         return None
     match = re.search(r"(?:^|;)MSC:([^;]+)", address, flags=re.IGNORECASE)
     return match.group(1).strip() if match else None
+
+
+def _canonical_city_name(city: str | None) -> str | None:
+    if city is None:
+        return None
+    return CANONICAL_MAJOR_CITY_NAMES.get(slugify(city), city)

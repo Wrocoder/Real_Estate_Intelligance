@@ -143,7 +143,7 @@ def test_normalize_rcn_feature_accepts_a_bounded_polish_region():
     record = rcn_transactions.normalize_rcn_feature(
         _feature(
             teryt="1261",
-            lok_adres="MSC:Kraków;UL:Długa;NR_PORZ:1",
+            lok_adres="MSC:KRAKÓW;UL:Długa;NR_PORZ:1",
         ),
         row_number=1,
         source_name="RCN GUGiK",
@@ -156,6 +156,29 @@ def test_normalize_rcn_feature_accepts_a_bounded_polish_region():
     assert record.teryt == "1261"
     assert record.normalized_payload["voivodeship"] == "małopolskie"
     assert record.normalized_payload["locality_area_id"] == "rcn-1261-krakow-city"
+
+
+def test_parse_gml_epsg_2180_converts_axis_order_to_easting_northing():
+    body = b"""<wfs:FeatureCollection
+        xmlns:wfs="http://www.opengis.net/wfs/2.0"
+        xmlns:ms="http://mapserver.gis.umn.edu/mapserver"
+        xmlns:gml="http://www.opengis.net/gml">
+      <wfs:member><ms:lokale gml:id="lokale.1">
+        <ms:tran_lokalny_id_iip>transaction-1</ms:tran_lokalny_id_iip>
+        <ms:msGeometry><gml:Point srsName="urn:ogc:def:crs:EPSG::2180">
+          <gml:pos>372911.381 742142.023</gml:pos>
+        </gml:Point></ms:msGeometry>
+      </ms:lokale></wfs:member>
+    </wfs:FeatureCollection>"""
+
+    features, _next_url = rcn_transactions._parse_response(
+        body,
+        "https://mapy.geoportal.gov.pl/wss/service/rcn",
+    )
+
+    assert features[0]["_geometry_x"] == "742142.023"
+    assert features[0]["_geometry_y"] == "372911.381"
+    assert features[0]["_geometry_crs"] == "urn:ogc:def:crs:EPSG::2180"
 
 
 def test_normalize_rcn_feature_rejects_a_row_outside_requested_region():

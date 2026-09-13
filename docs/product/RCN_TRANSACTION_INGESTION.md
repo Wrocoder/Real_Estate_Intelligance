@@ -149,6 +149,10 @@ domarion import-rcn-transactions "$RCN_TRANSACTIONS_LOCATION" \
 `transaction_date` is the date of the transaction document. `observed_at` is
 the import time. The price-per-m² calculation prefers `lok_cena_brutto`, then
 `nier_cena_brutto`, then `tran_cena_brutto`; the selected basis is persisted.
+GML points declared as `EPSG:2180` are converted from the CRS axis order
+`northing,easting` to the stored/PostGIS order `x=easting,y=northing` before
+district assignment. Target major-city names are canonicalized for consistent
+market and boundary scopes.
 Rows without a positive apartment area, price, date, stable source/version
 identifier, valid Polish TERYT code or locality are quarantined in
 `data_quality_logs`. Dates before 1900 or later than the import day (allowing a
