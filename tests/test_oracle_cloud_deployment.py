@@ -252,7 +252,6 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert deploy_job["needs"] == ["docker-publish"]
     assert deploy_job["environment"]["name"] == "oci-staging"
     assert "inputs.deploy_oci == true" in deploy_job["if"]
-    assert "[deploy-oci]" in deploy_job["if"]
     assert "OCI_SSH_PRIVATE_KEY" in workflow_text
     assert "OCI_SSH_KNOWN_HOSTS" in workflow_text
     assert "OCI_ENV_FILE" in workflow_text
@@ -263,6 +262,17 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert "rcn-district-boundaries.verified.json" in workflow_text
     assert "scripts/run_rcn_daily_oracle.sh" in workflow_text
     assert "scripts/inspect_rcn_oracle.sh" in workflow_text
+
+    direct_deploy_job = workflow["jobs"]["deploy-oci-direct"]
+    assert direct_deploy_job["needs"] == [
+        "backend",
+        "browser-quality",
+        "docker-build",
+        "frontend",
+    ]
+    assert direct_deploy_job["environment"]["name"] == "oci-staging"
+    assert "[deploy-oci]" in direct_deploy_job["if"]
+    assert "scripts/deploy_oracle_cloud.sh'" in workflow_text
 
 
 def test_oracle_preflight_blocks_example_placeholders() -> None:

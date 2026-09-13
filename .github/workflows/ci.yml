@@ -230,8 +230,7 @@ jobs:
     if: >-
       (github.event_name == 'push' &&
         github.ref == 'refs/heads/main' &&
-        (vars.OCI_IMAGE_PUBLISH_ENABLED == 'true' ||
-          contains(github.event.head_commit.message, '[deploy-oci]'))) ||
+        vars.OCI_IMAGE_PUBLISH_ENABLED == 'true') ||
       (github.event_name == 'workflow_dispatch' &&
         (inputs.publish_images == true || inputs.deploy_oci == true))
     permissions:
@@ -325,10 +324,9 @@ jobs:
     needs:
       - docker-publish
     if: >-
+      github.event_name == 'workflow_dispatch' &&
       github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'workflow_dispatch' && inputs.deploy_oci == true) ||
-        (github.event_name == 'push' &&
-          contains(github.event.head_commit.message, '[deploy-oci]')))
+      inputs.deploy_oci == true
     environment:
       name: oci-staging
     timeout-minutes: 360
@@ -460,5 +458,106 @@ jobs:
           ssh "${ssh_common[@]}" "$ssh_target" \
             'cd /srv/domarion/app && scripts/run_rcn_daily_oracle.sh'
 
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && scripts/inspect_rcn_oracle.sh'
+
+  deploy-oci-direct:
+    name: Deploy OCI Staging From Source
+    runs-on: ubuntu-latest
+    needs:
+      - backend
+      - browser-quality
+      - docker-build
+      - frontend
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main' &&
+      contains(github.event.head_commit.message, '[deploy-oci]')
+    environment:
+      name: oci-staging
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Configure SSH
+        env:
+          OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OCI_SSH_PRIVATE_KEY"
+          test -n "$OCI_SSH_KNOWN_HOSTS"
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+          printf '%s\n' "$OCI_SSH_PRIVATE_KEY" > "$HOME/.ssh/oci_deploy_key"
+          printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/oci_deploy_key" "$HOME/.ssh/known_hosts"
+
+      - name: Deploy, refresh national RCN and inspect
+        env:
+          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
+          OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '22' }}
+          OCI_DEPLOY_USER: ${{ vars.OCI_DEPLOY_USER || 'domarion' }}
+        run: |
+          set -euo pipefail
+
+          test -n "$OCI_DEPLOY_HOST"
+          ssh_target="${OCI_DEPLOY_USER}@${OCI_DEPLOY_HOST}"
+          ssh_common=(
+            -i "$HOME/.ssh/oci_deploy_key"
+            -p "$OCI_DEPLOY_PORT"
+            -o IdentitiesOnly=yes
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
+          )
+          scp_common=(
+            -i "$HOME/.ssh/oci_deploy_key"
+            -P "$OCI_DEPLOY_PORT"
+            -o IdentitiesOnly=yes
+          )
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'set -eu;
+             install -d /srv/domarion/data/districts /srv/domarion/env/snapshots;
+             cp /srv/domarion/env/oracle.env "/srv/domarion/env/snapshots/oracle.env.$(date -u +%Y%m%dT%H%M%SZ)";
+             curl -fL --retry 3 https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip -o /srv/domarion/data/granice-osiedli.zip.tmp;
+             mv /srv/domarion/data/granice-osiedli.zip.tmp /srv/domarion/data/granice-osiedli.zip;
+             curl -fL --retry 3 https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip -o /srv/domarion/data/districts/krakow.zip.tmp;
+             mv /srv/domarion/data/districts/krakow.zip.tmp /srv/domarion/data/districts/krakow.zip;
+             curl -fL --retry 3 https://gis.lublin.eu/api/shp/administracja/dzielnice_granice -o /srv/domarion/data/districts/lublin.zip.tmp;
+             mv /srv/domarion/data/districts/lublin.zip.tmp /srv/domarion/data/districts/lublin.zip;
+             curl -fL --retry 3 "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson" -o /srv/domarion/data/districts/lodz.geojson.tmp;
+             mv /srv/domarion/data/districts/lodz.geojson.tmp /srv/domarion/data/districts/lodz.geojson;
+             chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
+
+          scp "${scp_common[@]}" \
+            deploy/oracle/rcn-district-boundaries.verified.json \
+            "$ssh_target:/srv/domarion/data/district-boundaries.json"
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            "set -eu;
+             env=/srv/domarion/env/oracle.env;
+             tmp=\$(mktemp);
+             awk '!/^(RCN_TRANSACTIONS_LOCATION|RCN_TRANSACTIONS_SOURCE_NAME|RCN_TRANSACTIONS_SCOPE|RCN_POLAND_REGION_CODES|RCN_POLAND_INITIAL_LOOKBACK_DAYS|RCN_POLAND_OVERLAP_DAYS|RCN_TRANSACTIONS_MAX_ROWS|RCN_TRANSACTIONS_MAX_PAGES|RCN_TRANSACTIONS_TIMEOUT_SECONDS|RCN_DISTRICT_BOUNDARIES_MANIFEST)=/' \"\$env\" > \"\$tmp\";
+             printf '%s\n' \
+               'RCN_TRANSACTIONS_LOCATION=https://mapy.geoportal.gov.pl/wss/service/rcn' \
+               'RCN_TRANSACTIONS_SOURCE_NAME=RCN GUGiK' \
+               'RCN_TRANSACTIONS_SCOPE=poland' \
+               'RCN_POLAND_REGION_CODES=all' \
+               'RCN_POLAND_INITIAL_LOOKBACK_DAYS=730' \
+               'RCN_POLAND_OVERLAP_DAYS=14' \
+               'RCN_TRANSACTIONS_MAX_ROWS=500000' \
+               'RCN_TRANSACTIONS_MAX_PAGES=500' \
+               'RCN_TRANSACTIONS_TIMEOUT_SECONDS=30' \
+               'RCN_DISTRICT_BOUNDARIES_MANIFEST=/srv/domarion/data/district-boundaries.json' >> \"\$tmp\";
+             chmod 600 \"\$tmp\";
+             mv \"\$tmp\" \"\$env\""
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && scripts/deploy_oracle_cloud.sh'
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && scripts/run_rcn_daily_oracle.sh'
           ssh "${ssh_common[@]}" "$ssh_target" \
             'cd /srv/domarion/app && scripts/inspect_rcn_oracle.sh'
