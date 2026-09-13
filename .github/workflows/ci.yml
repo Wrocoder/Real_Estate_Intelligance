@@ -361,6 +361,7 @@ jobs:
       - name: Configure SSH
         env:
           OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_PRIVATE_KEY_PASSPHRASE: ${{ secrets.OCI_SSH_PRIVATE_KEY_PASSPHRASE }}
           OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
@@ -374,6 +375,21 @@ jobs:
           printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/oci_deploy_key"
           chmod 600 "$HOME/.ssh/known_hosts"
+
+          if [[ -n "$OCI_SSH_PRIVATE_KEY_PASSPHRASE" ]]; then
+            eval "$(ssh-agent -s)"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+            echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+            askpass_script="$(mktemp)"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              'printf "%s\n" "$OCI_SSH_PRIVATE_KEY_PASSPHRASE"' \
+              > "$askpass_script"
+            chmod 700 "$askpass_script"
+            DISPLAY=:0 SSH_ASKPASS="$askpass_script" SSH_ASKPASS_REQUIRE=force \
+              setsid -w ssh-add "$HOME/.ssh/oci_deploy_key" </dev/null
+            rm -f "$askpass_script"
+          fi
 
       - name: Deploy over SSH
         env:
@@ -483,6 +499,7 @@ jobs:
       - name: Configure SSH
         env:
           OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
+          OCI_SSH_PRIVATE_KEY_PASSPHRASE: ${{ secrets.OCI_SSH_PRIVATE_KEY_PASSPHRASE }}
           OCI_SSH_KNOWN_HOSTS: ${{ secrets.OCI_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
@@ -494,6 +511,21 @@ jobs:
           printf '%s\n' "$OCI_SSH_PRIVATE_KEY" > "$HOME/.ssh/oci_deploy_key"
           printf '%s\n' "$OCI_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/oci_deploy_key" "$HOME/.ssh/known_hosts"
+
+          if [[ -n "$OCI_SSH_PRIVATE_KEY_PASSPHRASE" ]]; then
+            eval "$(ssh-agent -s)"
+            echo "SSH_AUTH_SOCK=$SSH_AUTH_SOCK" >> "$GITHUB_ENV"
+            echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+            askpass_script="$(mktemp)"
+            printf '%s\n' \
+              '#!/usr/bin/env bash' \
+              'printf "%s\n" "$OCI_SSH_PRIVATE_KEY_PASSPHRASE"' \
+              > "$askpass_script"
+            chmod 700 "$askpass_script"
+            DISPLAY=:0 SSH_ASKPASS="$askpass_script" SSH_ASKPASS_REQUIRE=force \
+              setsid -w ssh-add "$HOME/.ssh/oci_deploy_key" </dev/null
+            rm -f "$askpass_script"
+          fi
 
       - name: Deploy, refresh national RCN and inspect
         env:

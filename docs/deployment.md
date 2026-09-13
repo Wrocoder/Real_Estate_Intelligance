@@ -75,7 +75,8 @@ OCI staging deploy is a protected `workflow_dispatch` path. Configure GitHub
 Environment `oci-staging` with manual approval, then set:
 
 - Secrets: `OCI_DEPLOY_HOST`, `OCI_SSH_PRIVATE_KEY`, `OCI_SSH_KNOWN_HOSTS`,
-  `OCI_ENV_FILE`.
+  `OCI_ENV_FILE`. Add `OCI_SSH_PRIVATE_KEY_PASSPHRASE` when the deploy key is
+  encrypted; the workflow loads it into an ephemeral `ssh-agent`.
 - Optional secrets for private GHCR packages: `OCI_GHCR_USERNAME`,
   `OCI_GHCR_READ_TOKEN`.
 - Variables: `OCI_DEPLOY_USER` default `domarion`, `OCI_DEPLOY_PORT` default `22`.
