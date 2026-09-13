@@ -4,6 +4,10 @@ Domarion treats RCN/GUGiK records as transaction observations, not listing
 offers. They are stored in `transaction_observations` and are never written to
 `listing_snapshots` or `property_sources`.
 
+Property, transaction and VAT totals use 64-bit integer columns. National RCN
+rows can contain valid aggregate transaction totals above the 32-bit integer
+range even when the apartment-level price used for valuation is lower.
+
 ## Supported inputs
 
 - official RCN WFS GML response, normally `typeNames=ms:lokale`;

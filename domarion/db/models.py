@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     Float,
@@ -348,9 +349,9 @@ class TransactionObservation(Base):
     property_right: Mapped[str | None] = mapped_column(String(120))
     transaction_type: Mapped[str | None] = mapped_column(String(80))
     market_type: Mapped[str | None] = mapped_column(String(40), index=True)
-    property_price_gross: Mapped[int] = mapped_column(Integer)
-    transaction_price_gross: Mapped[int | None] = mapped_column(Integer)
-    vat_amount: Mapped[int | None] = mapped_column(Integer)
+    property_price_gross: Mapped[int] = mapped_column(BigInteger)
+    transaction_price_gross: Mapped[int | None] = mapped_column(BigInteger)
+    vat_amount: Mapped[int | None] = mapped_column(BigInteger)
     price_basis: Mapped[str] = mapped_column(String(30), default="property")
     currency: Mapped[str] = mapped_column(String(8), default="PLN")
     area_m2: Mapped[Decimal] = mapped_column(Numeric(8, 2))

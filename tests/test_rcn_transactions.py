@@ -4,6 +4,8 @@ from decimal import Decimal
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
+from sqlalchemy import BigInteger
+
 from domarion.db.models import DataQualityLog, TransactionObservation
 from domarion.ingestion import rcn_transactions
 from domarion.ingestion.district_boundaries import (
@@ -60,6 +62,32 @@ def test_normalize_rcn_feature_uses_apartment_price_and_preserves_crs_geometry()
     assert record.geometry_x == Decimal("365000.0")
     assert record.geometry_crs == "urn:ogc:def:crs:EPSG::2180"
     assert record.transaction_date == datetime(2026, 1, 8, 1, 0)
+
+
+def test_transaction_observation_money_columns_support_national_rcn_totals():
+    record = rcn_transactions.normalize_rcn_feature(
+        _feature(
+            lok_cena_brutto="2500000000",
+            tran_cena_brutto="3000000000",
+            lok_vat="2300000000",
+        ),
+        row_number=1,
+        source_name="RCN GUGiK",
+        source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+    )
+
+    assert record.property_price_gross == 2_500_000_000
+    assert record.transaction_price_gross == 3_000_000_000
+    assert record.vat_amount == 2_300_000_000
+    for column_name in (
+        "property_price_gross",
+        "transaction_price_gross",
+        "vat_amount",
+    ):
+        assert isinstance(
+            TransactionObservation.__table__.columns[column_name].type,
+            BigInteger,
+        )
 
 
 def test_normalize_rcn_feature_rejects_non_residential_rows():
