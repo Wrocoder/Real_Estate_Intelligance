@@ -484,6 +484,9 @@ jobs:
             'cd /srv/domarion/app && scripts/deploy_oracle_cloud.sh --pull-images'
 
           ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps worker domarion assign-transaction-districts'
+
+          ssh "${ssh_common[@]}" "$ssh_target" \
             'cd /srv/domarion/app && scripts/run_rcn_daily_oracle.sh'
 
           ssh "${ssh_common[@]}" "$ssh_target" \
@@ -614,6 +617,8 @@ jobs:
 
           ssh "${ssh_common[@]}" "$ssh_target" \
             'cd /srv/domarion/app && scripts/deploy_oracle_cloud.sh'
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'cd /srv/domarion/app && docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps worker domarion assign-transaction-districts'
           ssh "${ssh_common[@]}" "$ssh_target" \
             'cd /srv/domarion/app && scripts/run_rcn_daily_oracle.sh'
           ssh "${ssh_common[@]}" "$ssh_target" \

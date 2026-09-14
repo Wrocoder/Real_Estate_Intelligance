@@ -265,6 +265,7 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert "rcn-district-boundaries.verified.json" in workflow_text
     assert "scripts/fetch_district_boundaries.py" in workflow_text
     assert "lublin.zip" not in workflow_text
+    assert "domarion assign-transaction-districts" in workflow_text
     assert "scripts/run_rcn_daily_oracle.sh" in workflow_text
     assert "scripts/inspect_rcn_oracle.sh" in workflow_text
     assert "SSH_ASKPASS_REQUIRE=force" in workflow_text

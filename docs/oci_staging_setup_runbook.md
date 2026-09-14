@@ -325,7 +325,13 @@ cd /srv/domarion/app
 git pull --ff-only
 python3 scripts/oracle_cloud_preflight.py --env-file /srv/domarion/env/oracle.env --compose-file compose.oracle.yaml
 scripts/deploy_oracle_cloud.sh --pull-images
+docker compose --env-file /srv/domarion/env/oracle.env -f compose.oracle.yaml run --rm --no-deps worker \
+  domarion assign-transaction-districts
 ```
+
+The explicit district assignment applies newly provisioned boundary files to
+existing RCN observations even when the regional overlap contains no changed
+records for that city. It also refreshes only the affected area metrics.
 
 For emergency restart without changing code or images:
 
