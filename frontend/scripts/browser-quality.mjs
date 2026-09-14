@@ -236,9 +236,18 @@ async function runAvailableNegotiationScenario(browser, viewport) {
   await context.addCookies([{ name: "domarion_locale", value: "pl", url: baseUrl }]);
   const page = await context.newPage();
   const observation = await observe(page, `negotiation-available-${viewport.width}`);
+  const analysisResponse = await context.request.get(`${apiBaseUrl}/api/v1/listings/wr-001/analysis`);
+  if (!analysisResponse.ok()) {
+    throw new Error(
+      `${observation.label}: fixture analysis returned ${analysisResponse.status()} ${await analysisResponse.text()}`,
+    );
+  }
+  const analysisPayload = await analysisResponse.json();
+  if (!analysisPayload.buyer_decision?.verdict) {
+    throw new Error(`${observation.label}: fixture analysis has no buyer decision verdict`);
+  }
   await page.route("**/api/v1/listings/wr-001/analysis", async (route) => {
-    const response = await route.fetch();
-    const payload = await response.json();
+    const payload = structuredClone(analysisPayload);
     payload.buyer_decision.verdict.opening_offer_pln = 600000;
     payload.buyer_decision.verdict.recommended_offer_pln = 625000;
     payload.buyer_decision.verdict.realistic_deal_low_pln = 620000;
@@ -288,7 +297,7 @@ async function runAvailableNegotiationScenario(browser, viewport) {
       ],
       guardrail_codes: ["scenario_not_valuation", "verify_before_deposit"],
     };
-    await route.fulfill({ response, json: payload });
+    await route.fulfill({ status: 200, contentType: "application/json", json: payload });
   });
   try {
     await page.goto(`${baseUrl}/listings/wr-001`, { waitUntil: "domcontentloaded" });
