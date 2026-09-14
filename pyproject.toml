@@ -36,6 +36,9 @@ dev = [
 [tool.setuptools.packages.find]
 include = ["domarion*"]
 
+[tool.setuptools.package-data]
+domarion = ["data/teryt/*.zip", "data/teryt/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 

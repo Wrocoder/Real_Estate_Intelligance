@@ -162,6 +162,10 @@ export type AreaStatistics = {
   area_id: string;
   name: string;
   city: string;
+  location_id?: string | null;
+  teryt?: string | null;
+  county?: string | null;
+  voivodeship?: string | null;
   data_provenance: DataProvenance;
   median_price_per_m2: number;
   average_price_per_m2: number;

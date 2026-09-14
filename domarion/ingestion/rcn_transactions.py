@@ -37,6 +37,7 @@ from domarion.location_names import clean_locality
 from domarion.services.market_metrics import refresh_market_metrics
 from domarion.services.transaction_quality import price_exclusion_reason
 from domarion.services.transaction_versions import transaction_identity
+from domarion.teryt_registry import canonical_locality
 
 MAX_RCN_RESPONSE_BYTES = 25_000_000
 DEFAULT_RCN_TIMEOUT_SECONDS = 30.0
@@ -45,24 +46,6 @@ DEFAULT_RCN_PAGE_SIZE = 1_000
 DEFAULT_RCN_SORT_BY = "tran_lokalny_id_iip A,lok_id_lokalu A,tran_wersja_id A"
 EARLIEST_RCN_TRANSACTION_DATE = datetime(1900, 1, 1)
 MAX_RCN_AREA_M2 = Decimal("999999.99")
-CANONICAL_MAJOR_CITY_NAMES = {
-    "gdansk": "Gdańsk",
-    "krakow": "Kraków",
-    "lodz": "Łódź",
-    "lublin": "Lublin",
-    "poznan": "Poznań",
-    "warszawa": "Warszawa",
-    "wroclaw": "Wrocław",
-}
-MAJOR_CITY_NAMES_BY_TERYT = {
-    "0264": "Wrocław",
-    "0663": "Lublin",
-    "1061": "Łódź",
-    "1261": "Kraków",
-    "1465": "Warszawa",
-    "2261": "Gdańsk",
-    "3064": "Poznań",
-}
 ALLOWED_RCN_METHODS = {
     "rcn_wfs",
     "authorized_api",
@@ -1026,9 +1009,4 @@ def _city_from_rcn_address(address: str | None) -> str | None:
 
 def _canonical_city_name(city: str | None, *, teryt: str | None) -> str | None:
     city = clean_locality(city)
-    teryt_city = MAJOR_CITY_NAMES_BY_TERYT.get(teryt or "")
-    if city is None:
-        return teryt_city
-    if teryt_city is not None and slugify(city) == slugify(teryt_city):
-        return teryt_city
-    return CANONICAL_MAJOR_CITY_NAMES.get(slugify(city), city)
+    return canonical_locality(city, teryt=teryt)

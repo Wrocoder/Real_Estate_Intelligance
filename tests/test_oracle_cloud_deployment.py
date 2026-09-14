@@ -189,6 +189,9 @@ def test_oracle_verified_district_manifest_contains_only_validated_sources() -> 
     assert all(entry["location"] for entry in manifest)
     assert all(entry["source_url"].startswith("https://") for entry in manifest)
     assert all(isinstance(entry["source_crs"], int) for entry in manifest)
+    assert all(len(entry["sha256"]) == 64 for entry in manifest)
+    for entry in manifest:
+        assert (ROOT / "deploy" / "oracle" / "rcn-boundaries" / entry["location"]).is_file()
 
 
 def test_oracle_vm_bootstrap_script_sets_runtime_guardrails() -> None:
@@ -264,8 +267,9 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert "RCN_POLAND_REGION_CODES=all" in workflow_text
     assert "rcn-district-boundaries.verified.json" in workflow_text
     assert "scripts/fetch_district_boundaries.py" in workflow_text
-    assert workflow_text.count("Restore deployed district boundary fallback") == 2
-    assert workflow_text.count("--fallback-existing") == 2
+    assert "Restore deployed district boundary fallback" not in workflow_text
+    assert "--fallback-existing" not in workflow_text
+    assert workflow_text.count("--source-dir deploy/oracle/rcn-boundaries") == 2
     assert "expected_boundaries" in (
         ROOT / "deploy" / "oracle" / "rcn-district-boundaries.verified.json"
     ).read_text(encoding="utf-8")

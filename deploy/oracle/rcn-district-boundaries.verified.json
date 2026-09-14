@@ -5,7 +5,8 @@
     "source_name": "Wrocław Geoportal osiedle boundaries",
     "source_url": "https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip",
     "source_crs": 2177,
-    "expected_boundaries": 48
+    "expected_boundaries": 48,
+    "sha256": "b362fa03d5fb6fdd7ddf709f194919b7fbb61193873e0cfb84808c6263e2a47a"
   },
   {
     "city": "Kraków",
@@ -13,7 +14,8 @@
     "source_name": "MSIP Kraków administrative districts",
     "source_url": "https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip",
     "source_crs": 2178,
-    "expected_boundaries": 18
+    "expected_boundaries": 18,
+    "sha256": "686b1f496afa5ae27262286f01a5d36a09d5b9e90ce8936d8cf0aba21fdddf21"
   },
   {
     "city": "Lublin",
@@ -21,7 +23,8 @@
     "source_name": "Lublin Open Data district boundaries",
     "source_url": "https://gis.lublin.eu/otwartedane/administracja/wfs?SERVICE=WFS&REQUEST=GetFeature&VERSION=1.0.0&TYPENAME=administracja:dzielnice_granice&SRSNAME=EPSG:2179&OUTPUTFORMAT=application/json",
     "source_crs": 2179,
-    "expected_boundaries": 27
+    "expected_boundaries": 27,
+    "sha256": "35e07a713583e67ba7521a2a0d4cba0d14961bae8ba599e1ba06de337d43486b"
   },
   {
     "city": "Łódź",
@@ -29,7 +32,8 @@
     "source_name": "Łódź auxiliary unit boundaries",
     "source_url": "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson",
     "source_crs": 2180,
-    "expected_boundaries": 36
+    "expected_boundaries": 36,
+    "sha256": "44574c9c8cd44d8ffe6e047eb79e86c769b4bddeb8814af107d16f37751a9b85"
   },
   {
     "city": "Warszawa",
@@ -37,7 +41,8 @@
     "source_name": "Warszawa ZDM public administrative district layer",
     "source_url": "https://services7.arcgis.com/gpQ1tnydOYYnGpcS/ArcGIS/rest/services/dzielnice_wwa/FeatureServer/0/query?where=1%3D1&outFields=NAZWA_DZIELNICY,KODTERYT&returnGeometry=true&outSR=2180&f=geojson",
     "source_crs": 2180,
-    "expected_boundaries": 18
+    "expected_boundaries": 18,
+    "sha256": "ba5cbf2aa106ccf951ccd0649d4b1c21380815a1cebfe23b66f261028f5fa315"
   },
   {
     "city": "Gdańsk",
@@ -45,6 +50,7 @@
     "source_name": "Otwarty Gdańsk district boundaries (2024-11-06, CC BY)",
     "source_url": "https://ckan.multimediagdansk.pl/dataset/6a7eb20f-7b5a-478c-a5c6-385ff0c4247d/resource/9ebca2d2-7771-49c3-9321-2165cc61e3a3/download/dzielnice.zip",
     "source_crs": 2177,
-    "expected_boundaries": 36
+    "expected_boundaries": 36,
+    "sha256": "40dc1b41a31a0a86928b93c278aae90cc7b230b547de613a86134b951ed0773f"
   }
 ]

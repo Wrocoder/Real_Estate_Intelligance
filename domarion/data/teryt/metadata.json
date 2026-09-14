@@ -1,0 +1,11 @@
+{
+  "register": "Krajowy Rejestr Urzędowy Podziału Terytorialnego Kraju TERYT",
+  "publisher": "Główny Urząd Statystyczny",
+  "state_date": "2026-09-14",
+  "retrieved_at": "2026-09-14",
+  "source_url": "https://eteryt.stat.gov.pl/eTeryt/rejestr_teryt/udostepnianie_danych/formy_i_zasady_udostepniania/formy_i_zasady_udostepniania.aspx",
+  "files": {
+    "SIMC_Urzedowy_2026-09-14.zip": "f0f9dbd1e3bf227b50499f3f4def94397ef4d7ef804c795c5786078cd523a5a5",
+    "TERC_Urzedowy_2026-09-14.zip": "bfdbdc0c6686b7596bebe539f5bda94931f0ff06e777cded85aae81f5577ff3b"
+  }
+}

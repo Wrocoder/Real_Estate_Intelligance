@@ -1265,6 +1265,14 @@ class PostgresRealEstateRepository:
 
     @staticmethod
     def _area_to_schema(row: AreaStatistic) -> AreaStatistics:
+        from domarion.teryt_registry import location_metadata
+
+        location = location_metadata(row.area_id, row.city)
+        area_name = (
+            location.city
+            if row.name.strip().casefold() == row.city.strip().casefold()
+            else row.name
+        )
         transaction_count = row.transaction_observation_count or 0
         source_names = row.data_sources_json or []
         if row.price_basis == "transaction_observed":
@@ -1273,7 +1281,7 @@ class PostgresRealEstateRepository:
                 source_name=source_names[0] if source_names else "RCN transaction register",
                 calculation_type="calculated",
                 sample_size=transaction_count,
-                geographic_scope=row.name,
+                geographic_scope=area_name,
                 time_range=_date_range(
                     row.transaction_observed_from,
                     row.transaction_observed_to,
@@ -1285,13 +1293,17 @@ class PostgresRealEstateRepository:
                 source_type="listing_market_statistics",
                 calculation_type="calculated",
                 sample_size=row.active_listings,
-                geographic_scope=row.name,
+                geographic_scope=area_name,
                 updated_at=row.calculated_at,
             )
         return AreaStatistics(
             area_id=row.area_id,
-            name=row.name,
-            city=row.city,
+            name=area_name,
+            city=location.city,
+            location_id=location.location_id,
+            teryt=location.teryt,
+            county=location.county,
+            voivodeship=location.voivodeship,
             data_provenance=provenance,
             median_price_per_m2=row.median_price_per_m2,
             average_price_per_m2=row.average_price_per_m2,

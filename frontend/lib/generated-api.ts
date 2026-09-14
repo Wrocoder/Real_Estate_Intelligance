@@ -4068,6 +4068,14 @@ export interface components {
             name: string;
             /** City */
             city: string;
+            /** Location Id */
+            location_id?: string | null;
+            /** Teryt */
+            teryt?: string | null;
+            /** County */
+            county?: string | null;
+            /** Voivodeship */
+            voivodeship?: string | null;
             data_provenance?: components["schemas"]["DataProvenance"];
             /** Median Price Per M2 */
             median_price_per_m2: number;
@@ -4212,6 +4220,14 @@ export interface components {
             name: string;
             /** City */
             city: string;
+            /** Location Id */
+            location_id?: string | null;
+            /** Teryt */
+            teryt?: string | null;
+            /** County */
+            county?: string | null;
+            /** Voivodeship */
+            voivodeship?: string | null;
             data_provenance?: components["schemas"]["DataProvenance"];
             /** Median Price Per M2 */
             median_price_per_m2: number;
@@ -4318,6 +4334,14 @@ export interface components {
             name: string;
             /** City */
             city: string;
+            /** Location Id */
+            location_id?: string | null;
+            /** Teryt */
+            teryt?: string | null;
+            /** County */
+            county?: string | null;
+            /** Voivodeship */
+            voivodeship?: string | null;
             data_provenance?: components["schemas"]["DataProvenance"];
             /** Median Price Per M2 */
             median_price_per_m2: number;

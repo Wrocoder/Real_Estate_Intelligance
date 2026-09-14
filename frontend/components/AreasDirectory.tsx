@@ -36,6 +36,12 @@ type Copy = {
   resultCount: (visible: number, total: number) => string;
 };
 
+type LocationOption = {
+  id: string;
+  label: string;
+  city: string;
+};
+
 const DIRECTORY_COPY = {
   pl: { title: "Miasta i dzielnice", city: "Miejscowość", noCities: "Brak dostępnych miejscowości", more: "Pokaż więcej", note: "Mediana obejmuje ostatnie 12 miesięcy. Sprawdź liczbę transakcji i okres obserwacji dla wybranej lokalizacji." },
   en: { title: "Cities and neighborhoods", city: "Location", noCities: "No locations available", more: "Show more", note: "The median covers the last 12 months. Check the transaction count and observation period for your chosen location." },
@@ -147,10 +153,12 @@ export function AreasDirectory({ initialAreas }: { initialAreas: AreaStatistics[
   const copy = COPY[locale];
   const [areas, setAreas] = useState<AreaStatistics[]>(initialAreas ?? []);
   const [query, setQuery] = useState("");
-  const initialCity = initialAreas?.some((area) => area.city === "Wrocław")
-    ? "Wrocław"
-    : initialAreas?.[0]?.city ?? "";
-  const [city, setCity] = useState(initialCity);
+  const initialLocationId = initialAreas?.find((area) => area.city === "Wrocław")?.location_id
+    ?? initialAreas?.[0]?.location_id
+    ?? initialAreas?.[0]?.city
+    ?? "";
+  const [locationId, setLocationId] = useState(initialLocationId);
+  const [locationQuery, setLocationQuery] = useState("");
   const [limit, setLimit] = useState(48);
   const directoryCopy = DIRECTORY_COPY[locale];
   const [loading, setLoading] = useState(initialAreas === null);
@@ -172,22 +180,31 @@ export function AreasDirectory({ initialAreas }: { initialAreas: AreaStatistics[
     if (initialAreas === null) void load();
   }, [initialAreas, load]);
 
+  const locations = useMemo(() => buildLocationOptions(areas), [areas]);
+  const selectedLocation = locations.find((location) => location.id === locationId);
   const supportedAreas = useMemo(
     () => areas
-      .filter((area) => area.city === city)
+      .filter((area) => (area.location_id ?? area.city) === locationId)
       .sort((left, right) => left.name.localeCompare(right.name, "pl")),
-    [areas, city],
+    [areas, locationId],
   );
-  const cities = useMemo(() => [...new Set(areas.map((area) => area.city))].sort((a, b) => a.localeCompare(b, "pl")), [areas]);
 
   useEffect(() => {
-    if (!cities.length || cities.includes(city)) return;
-    const nextCity = cities.includes("Wrocław") ? "Wrocław" : cities[0];
-    setCity(nextCity);
-  }, [cities, city]);
+    if (!locations.length) return;
+    if (locations.some((location) => location.id === locationId)) return;
+    const nextLocation = locations.find((location) => location.city === "Wrocław") ?? locations[0];
+    setLocationId(nextLocation.id);
+  }, [locations, locationId]);
 
-  function selectCity(value: string) {
-    setCity(value);
+  useEffect(() => {
+    if (selectedLocation) setLocationQuery(selectedLocation.label);
+  }, [selectedLocation]);
+
+  function selectLocation(label: string) {
+    setLocationQuery(label);
+    const location = locations.find((option) => option.label === label);
+    if (!location) return;
+    setLocationId(location.id);
     setQuery("");
     setLimit(48);
   }
@@ -218,23 +235,28 @@ export function AreasDirectory({ initialAreas }: { initialAreas: AreaStatistics[
       <section className="areas-directory" aria-labelledby="areas-directory-title">
         <div className="areas-directory-heading">
           <div>
-            <h2 id="areas-directory-title">{city}</h2>
+            <h2 id="areas-directory-title">{selectedLocation?.label ?? directoryCopy.title}</h2>
             <p>{directoryCopy.note}</p>
           </div>
           <label className="field areas-directory-search">
             <span>{directoryCopy.city}</span>
             <span className="input-with-icon">
               <MapPinned aria-hidden="true" size={16} />
-              <select
+              <input
                 className="input"
-                disabled={!cities.length}
-                onChange={(event) => selectCity(event.target.value)}
-                value={city}
-              >
-                {cities.length
-                  ? cities.map((name) => <option key={name} value={name}>{name}</option>)
-                  : <option value="">{directoryCopy.noCities}</option>}
-              </select>
+                disabled={!locations.length}
+                list="areas-location-options"
+                onBlur={() => setLocationQuery(selectedLocation?.label ?? "")}
+                onChange={(event) => selectLocation(event.target.value)}
+                placeholder={directoryCopy.noCities}
+                type="search"
+                value={locationQuery}
+              />
+              <datalist id="areas-location-options">
+                {locations.map((location) => (
+                  <option key={location.id} value={location.label} />
+                ))}
+              </datalist>
             </span>
           </label>
           <label className="field areas-directory-search">
@@ -281,6 +303,32 @@ export function AreasDirectory({ initialAreas }: { initialAreas: AreaStatistics[
       </section>
     </>
   );
+}
+
+function buildLocationOptions(areas: AreaStatistics[]): LocationOption[] {
+  const byId = new Map<string, AreaStatistics>();
+  for (const area of areas) {
+    const id = area.location_id ?? area.city;
+    if (!byId.has(id)) byId.set(id, area);
+  }
+  const nameCounts = new Map<string, number>();
+  for (const area of byId.values()) {
+    const key = area.city.toLocaleLowerCase("pl-PL");
+    nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+  }
+  return [...byId.entries()]
+    .map(([id, area]) => {
+      const duplicate = (nameCounts.get(area.city.toLocaleLowerCase("pl-PL")) ?? 0) > 1;
+      const context = [area.county ? `powiat ${area.county}` : null, area.voivodeship]
+        .filter(Boolean)
+        .join(", ");
+      return {
+        id,
+        city: area.city,
+        label: duplicate && context ? `${area.city} (${context})` : area.city,
+      };
+    })
+    .sort((left, right) => left.label.localeCompare(right.label, "pl"));
 }
 
 function AreaCard({ area, copy, locale }: { area: AreaStatistics; copy: Copy; locale: Locale }) {

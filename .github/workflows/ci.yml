@@ -397,45 +397,13 @@ jobs:
             rm -f "$askpass_script"
           fi
 
-      - name: Restore deployed district boundary fallback
-        env:
-          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
-        run: |
-          set -euo pipefail
-
-          ssh_target="${OCI_DEPLOY_USER}@${OCI_DEPLOY_HOST}"
-          scp_common=(
-            -i "$HOME/.ssh/oci_deploy_key"
-            -P "$OCI_DEPLOY_PORT"
-            -o IdentitiesOnly=yes
-            -o ConnectTimeout=15
-          )
-          rm -rf .run/rcn-boundaries
-          mkdir -p .run/rcn-boundaries/districts
-          if scp "${scp_common[@]}" \
-              "$ssh_target:/srv/domarion/data/granice-osiedli.zip" \
-              .run/rcn-boundaries/granice-osiedli.zip && \
-            scp "${scp_common[@]}" \
-              "$ssh_target:/srv/domarion/data/districts/krakow.zip" \
-              "$ssh_target:/srv/domarion/data/districts/lublin.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/lodz.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/warszawa.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/gdansk.zip" \
-              .run/rcn-boundaries/districts/; then
-            echo "Restored the deployed boundary bundle for network fallback."
-          else
-            rm -rf .run/rcn-boundaries
-            mkdir -p .run/rcn-boundaries
-            echo "No deployed fallback bundle was available; official sources are required."
-          fi
-
       - name: Prepare validated district boundaries
         run: |
           python -m pip install -e .
           python scripts/fetch_district_boundaries.py \
             --manifest deploy/oracle/rcn-district-boundaries.verified.json \
             --data-dir .run/rcn-boundaries \
-            --fallback-existing
+            --source-dir deploy/oracle/rcn-boundaries
 
       - name: Deploy over SSH
         env:
@@ -581,48 +549,13 @@ jobs:
             rm -f "$askpass_script"
           fi
 
-      - name: Restore deployed district boundary fallback
-        env:
-          OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
-          OCI_DEPLOY_PORT: ${{ vars.OCI_DEPLOY_PORT || '22' }}
-          OCI_DEPLOY_USER: ${{ vars.OCI_DEPLOY_USER || 'domarion' }}
-        run: |
-          set -euo pipefail
-
-          test -n "$OCI_DEPLOY_HOST"
-          ssh_target="${OCI_DEPLOY_USER}@${OCI_DEPLOY_HOST}"
-          scp_common=(
-            -i "$HOME/.ssh/oci_deploy_key"
-            -P "$OCI_DEPLOY_PORT"
-            -o IdentitiesOnly=yes
-            -o ConnectTimeout=15
-          )
-          rm -rf .run/rcn-boundaries
-          mkdir -p .run/rcn-boundaries/districts
-          if scp "${scp_common[@]}" \
-              "$ssh_target:/srv/domarion/data/granice-osiedli.zip" \
-              .run/rcn-boundaries/granice-osiedli.zip && \
-            scp "${scp_common[@]}" \
-              "$ssh_target:/srv/domarion/data/districts/krakow.zip" \
-              "$ssh_target:/srv/domarion/data/districts/lublin.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/lodz.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/warszawa.geojson" \
-              "$ssh_target:/srv/domarion/data/districts/gdansk.zip" \
-              .run/rcn-boundaries/districts/; then
-            echo "Restored the deployed boundary bundle for network fallback."
-          else
-            rm -rf .run/rcn-boundaries
-            mkdir -p .run/rcn-boundaries
-            echo "No deployed fallback bundle was available; official sources are required."
-          fi
-
       - name: Prepare validated district boundaries
         run: |
           python -m pip install -e .
           python scripts/fetch_district_boundaries.py \
             --manifest deploy/oracle/rcn-district-boundaries.verified.json \
             --data-dir .run/rcn-boundaries \
-            --fallback-existing
+            --source-dir deploy/oracle/rcn-boundaries
 
       - name: Deploy, refresh national RCN and inspect
         env:

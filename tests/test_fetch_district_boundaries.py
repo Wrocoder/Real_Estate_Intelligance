@@ -108,3 +108,53 @@ def test_main_uses_valid_existing_file_after_download_timeout(
 
     assert target.read_text(encoding="utf-8") == '{"existing": true}'
     assert '"source": "existing-fallback"' in capsys.readouterr().out
+
+
+def test_main_copies_validated_pinned_file_without_network(
+    monkeypatch, tmp_path: Path, capsys
+) -> None:
+    manifest = tmp_path / "manifest.json"
+    source_dir = tmp_path / "source"
+    data_dir = tmp_path / "data"
+    source_dir.mkdir()
+    source = source_dir / "example.geojson"
+    source.write_text('{"pinned": true}', encoding="utf-8")
+    manifest.write_text(
+        """[
+          {
+            "city": "Example",
+            "location": "example.geojson",
+            "source_url": "https://example.test/districts",
+            "source_crs": 2180,
+            "expected_boundaries": 1
+          }
+        ]""",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        fetch_district_boundaries,
+        "load_district_boundaries",
+        lambda _path, *, source_crs: [SimpleNamespace(slug="one")],
+    )
+    monkeypatch.setattr(
+        fetch_district_boundaries,
+        "_download",
+        lambda _url: pytest.fail("pinned preparation must not use the network"),
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "fetch_district_boundaries.py",
+            "--manifest",
+            str(manifest),
+            "--data-dir",
+            str(data_dir),
+            "--source-dir",
+            str(source_dir),
+        ],
+    )
+
+    fetch_district_boundaries.main()
+
+    assert (data_dir / "example.geojson").read_bytes() == source.read_bytes()
+    assert '"source": "pinned"' in capsys.readouterr().out

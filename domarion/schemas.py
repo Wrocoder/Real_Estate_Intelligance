@@ -574,6 +574,10 @@ class AreaStatistics(BaseModel):
     area_id: str
     name: str
     city: str
+    location_id: str | None = None
+    teryt: str | None = None
+    county: str | None = None
+    voivodeship: str | None = None
     data_provenance: DataProvenance = Field(
         default_factory=lambda: DataProvenance(source_type="market_statistics")
     )

@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 import tempfile
+from hashlib import sha256
 from pathlib import Path
 from time import sleep
 from urllib.request import Request, urlopen
@@ -42,6 +43,14 @@ def _download(url: str, *, retry_delay_seconds: float = 1.0) -> bytes:
 
 
 def _validate_boundary_file(path: Path, entry: dict[str, object]) -> int:
+    expected_hash = entry.get("sha256")
+    if expected_hash is not None:
+        actual_hash = sha256(path.read_bytes()).hexdigest()
+        if actual_hash != str(expected_hash).lower():
+            raise ValueError(
+                f"Unexpected SHA-256 for {entry['city']}: "
+                f"expected {expected_hash}, received {actual_hash}"
+            )
     records = load_district_boundaries(path, source_crs=int(entry["source_crs"]))
     if not records or len({row.slug for row in records}) != len(records):
         raise ValueError(f"Empty or duplicate districts: {entry['city']}")
@@ -59,6 +68,11 @@ def main() -> None:
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--data-dir", required=True, type=Path)
     parser.add_argument(
+        "--source-dir",
+        type=Path,
+        help="Copy a pinned, validated boundary bundle instead of downloading during deployment.",
+    )
+    parser.add_argument(
         "--fallback-existing",
         action="store_true",
         help="Use an already validated target file when its source is temporarily unavailable.",
@@ -67,6 +81,7 @@ def main() -> None:
     root = args.data_dir.resolve()
     root.mkdir(parents=True, exist_ok=True)
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    source_root = args.source_dir.resolve() if args.source_dir else None
     staged = []
     with tempfile.TemporaryDirectory(dir=root, prefix="boundary-download-") as temp:
         for index, entry in enumerate(manifest):
@@ -74,7 +89,15 @@ def main() -> None:
             if not target.is_relative_to(root):
                 raise ValueError("Boundary target must remain inside data-dir")
             try:
-                payload = _download(entry["source_url"])
+                if source_root is not None:
+                    source = (source_root / entry["location"]).resolve()
+                    if not source.is_relative_to(source_root):
+                        raise ValueError("Boundary source must remain inside source-dir")
+                    payload = source.read_bytes()
+                    source_kind = "pinned"
+                else:
+                    payload = _download(entry["source_url"])
+                    source_kind = "download"
             except OSError as download_error:
                 if not args.fallback_existing:
                     raise
@@ -104,7 +127,7 @@ def main() -> None:
                     {
                         "city": entry["city"],
                         "boundaries": boundary_count,
-                        "source": "download",
+                        "source": source_kind,
                     }
                 )
             )

@@ -748,9 +748,11 @@ expectIncludes("source-backed guide areas", guideRelatedAreas, [
 
 expectIncludes("live area directory", areasPage + areasDirectory, [
   "api.listAreas()",
-  "<select",
-  "disabled={!cities.length}",
-  "cities.map((name)",
+  'list="areas-location-options"',
+  "disabled={!locations.length}",
+  "buildLocationOptions(areas)",
+  "area.location_id ?? area.city",
+  "powiat ${area.county}",
   "visibleAreas.slice(0, limit)",
   "area.transaction_observation_count",
   "area.transaction_yearly_history.map",
