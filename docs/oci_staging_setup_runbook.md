@@ -208,8 +208,12 @@ ALERT_TELEGRAM_BOT_TOKEN=<bot-token>
 RCN_TRANSACTIONS_TELEGRAM_CHAT_ID=<chat-id>
 ```
 
-The GitHub OCI deployment jobs download and validate all boundary sources before
-copying them to the VM. For a manual deployment, prepare the same verified bundle
+The GitHub OCI deployment jobs first restore the currently deployed boundary
+bundle as a fallback, then try to download and validate every official source
+before copying the result to the VM. A transient municipal source timeout uses
+the existing file only after it passes the production parser, unique-slug check
+and the manifest's expected district count. A missing or invalid fallback still
+stops the deployment. For a manual deployment, prepare the same verified bundle
 from the application checkout:
 
 ```bash
@@ -219,7 +223,8 @@ python3 -m venv .venv-boundaries
 sudo install -d -o domarion -g domarion /srv/domarion/data
 sudo .venv-boundaries/bin/python scripts/fetch_district_boundaries.py \
   --manifest deploy/oracle/rcn-district-boundaries.verified.json \
-  --data-dir /srv/domarion/data
+  --data-dir /srv/domarion/data \
+  --fallback-existing
 sudo cp deploy/oracle/rcn-district-boundaries.verified.json \
   /srv/domarion/data/district-boundaries.json
 sudo chown -R domarion:domarion /srv/domarion/data
@@ -229,9 +234,9 @@ sudo chmod 644 /srv/domarion/data/granice-osiedli.zip \
   /srv/domarion/data/district-boundaries.json
 ```
 
-The fetch command stages every download, parses it with the production boundary
-loader and checks for empty or duplicate district slugs before replacing active
-files. The worker intentionally refuses an incomplete manifest.
+The fetch command stages every successful download, parses it with the production
+boundary loader and checks the expected count and duplicate district slugs before
+replacing active files. The worker intentionally refuses an incomplete manifest.
 
 Install the daily Oracle staging schedule as an administrator. Use `sudoedit`
 to create `/etc/cron.d/domarion-rcn-daily` with exactly:

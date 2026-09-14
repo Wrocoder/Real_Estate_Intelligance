@@ -264,6 +264,11 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert "RCN_POLAND_REGION_CODES=all" in workflow_text
     assert "rcn-district-boundaries.verified.json" in workflow_text
     assert "scripts/fetch_district_boundaries.py" in workflow_text
+    assert workflow_text.count("Restore deployed district boundary fallback") == 2
+    assert workflow_text.count("--fallback-existing") == 2
+    assert "expected_boundaries" in (
+        ROOT / "deploy" / "oracle" / "rcn-district-boundaries.verified.json"
+    ).read_text(encoding="utf-8")
     assert "lublin.zip" not in workflow_text
     assert "domarion assign-transaction-districts" in workflow_text
     assert "scripts/run_rcn_daily_oracle.sh" in workflow_text
