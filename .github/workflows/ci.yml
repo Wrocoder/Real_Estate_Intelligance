@@ -425,6 +425,8 @@ jobs:
             -i "$HOME/.ssh/oci_deploy_key"
             -p "$OCI_DEPLOY_PORT"
             -o IdentitiesOnly=yes
+            -o ConnectTimeout=30
+            -o ConnectionAttempts=5
             -o ServerAliveInterval=30
             -o ServerAliveCountMax=20
           )
@@ -432,6 +434,10 @@ jobs:
             -i "$HOME/.ssh/oci_deploy_key"
             -P "$OCI_DEPLOY_PORT"
             -o IdentitiesOnly=yes
+            -o ConnectTimeout=30
+            -o ConnectionAttempts=5
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
           )
 
           ssh "${ssh_common[@]}" "$ssh_target" \
@@ -571,6 +577,8 @@ jobs:
             -i "$HOME/.ssh/oci_deploy_key"
             -p "$OCI_DEPLOY_PORT"
             -o IdentitiesOnly=yes
+            -o ConnectTimeout=30
+            -o ConnectionAttempts=5
             -o ServerAliveInterval=30
             -o ServerAliveCountMax=20
           )
@@ -578,6 +586,10 @@ jobs:
             -i "$HOME/.ssh/oci_deploy_key"
             -P "$OCI_DEPLOY_PORT"
             -o IdentitiesOnly=yes
+            -o ConnectTimeout=30
+            -o ConnectionAttempts=5
+            -o ServerAliveInterval=30
+            -o ServerAliveCountMax=20
           )
 
           ssh "${ssh_common[@]}" "$ssh_target" \

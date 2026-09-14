@@ -278,6 +278,8 @@ def test_ci_workflow_defines_protected_oci_deploy_job() -> None:
     assert "scripts/run_rcn_daily_oracle.sh" in workflow_text
     assert "scripts/inspect_rcn_oracle.sh" in workflow_text
     assert "SSH_ASKPASS_REQUIRE=force" in workflow_text
+    assert workflow_text.count("ConnectionAttempts=5") == 4
+    assert workflow_text.count("ConnectTimeout=30") == 4
 
     direct_deploy_job = workflow["jobs"]["deploy-oci-direct"]
     assert direct_deploy_job["needs"] == [
