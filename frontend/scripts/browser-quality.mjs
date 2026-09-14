@@ -18,6 +18,10 @@ const failures = [];
 await fs.rm(artifactDir, { recursive: true, force: true });
 await fs.mkdir(artifactDir, { recursive: true });
 
+function githubCommandValue(value) {
+  return String(value).replaceAll("%", "%25").replaceAll("\r", "%0D").replaceAll("\n", "%0A");
+}
+
 async function observe(page, label) {
   const consoleErrors = [];
   const pageErrors = [];
@@ -1989,6 +1993,9 @@ try {
 }
 
 if (failures.length) {
+  for (const failure of failures) {
+    console.error(`::error title=Browser quality gate::${githubCommandValue(failure)}`);
+  }
   console.error(`Browser quality failed (${failures.length}):\n- ${failures.join("\n- ")}`);
   process.exit(1);
 }
