@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPinned } from "lucide-react";
+import Link from "next/link";
+import { ArrowRight, MapPinned } from "lucide-react";
 
 import { api, type CoverageMetadata } from "@/lib/api";
 import { dateValue } from "@/lib/format";
@@ -12,11 +13,11 @@ const COPY = {
     title: "Current geographic coverage",
     loading: "Checking supported locations...",
     unavailable: "Coverage details are temporarily unavailable. We will not rate a location until its market data is available.",
-    cities: "Cities",
-    districts: "Districts",
+    cities: "Locations with data",
+    browse: "Browse locations",
     checked: "Coverage checked",
     source: "Coverage source",
-    areas: (count: number) => `${count} supported neighborhoods`,
+    areas: "Neighborhoods with data",
     freshness: "The date is the latest area-statistics calculation, not today's market observation.",
     note: "An unsupported city or district gets no confident market estimate. Start with a supported area or check the listing details manually.",
   },
@@ -24,11 +25,11 @@ const COPY = {
     title: "Aktualny zakres geograficzny",
     loading: "Sprawdzamy obsługiwane lokalizacje...",
     unavailable: "Szczegóły zasięgu są chwilowo niedostępne. Nie ocenimy lokalizacji, dopóki nie będzie dla niej danych rynkowych.",
-    cities: "Miasta",
-    districts: "Dzielnice",
+    cities: "Miejscowości z danymi",
+    browse: "Przeglądaj lokalizacje",
     checked: "Sprawdzono zakres",
     source: "Źródło zakresu",
-    areas: (count: number) => `${count} obsługiwanych osiedli`,
+    areas: "Osiedla z danymi",
     freshness: "Data oznacza ostatnie obliczenie statystyk obszaru, a nie dzisiejszą obserwację rynku.",
     note: "Dla nieobsługiwanego miasta lub rejonu nie pokazujemy pewnej wyceny rynkowej. Wybierz obsługiwany obszar albo sprawdź dane ogłoszenia ręcznie.",
   },
@@ -36,11 +37,11 @@ const COPY = {
     title: "Текущее географическое покрытие",
     loading: "Проверяем поддерживаемые локации...",
     unavailable: "Данные о покрытии временно недоступны. Мы не будем уверенно оценивать локацию без рыночных данных.",
-    cities: "Города",
-    districts: "Районы",
+    cities: "Населённые пункты с данными",
+    browse: "Посмотреть локации",
     checked: "Покрытие проверено",
     source: "Источник покрытия",
-    areas: (count: number) => `${count} районов с данными`,
+    areas: "Районы с данными",
     freshness: "Дата означает последний расчёт районной статистики, а не сегодняшнее наблюдение рынка.",
     note: "Для неподдерживаемого города или района мы не показываем уверенную рыночную оценку. Выберите поддерживаемый район или проверьте данные объявления вручную.",
   },
@@ -48,11 +49,11 @@ const COPY = {
     title: "Поточне географічне покриття",
     loading: "Перевіряємо підтримувані локації...",
     unavailable: "Дані про покриття тимчасово недоступні. Ми не будемо впевнено оцінювати локацію без ринкових даних.",
-    cities: "Міста",
-    districts: "Райони",
+    cities: "Населені пункти з даними",
+    browse: "Переглянути локації",
     checked: "Покриття перевірено",
     source: "Джерело покриття",
-    areas: (count: number) => `${count} районів із даними`,
+    areas: "Райони з даними",
     freshness: "Дата означає останній розрахунок районної статистики, а не сьогоднішнє спостереження ринку.",
     note: "Для непідтримуваного міста або району ми не показуємо впевнену ринкову оцінку. Виберіть підтримуваний район або перевірте дані оголошення вручну.",
   },
@@ -83,11 +84,14 @@ export function CoverageNotice() {
       {coverage ? (
         <>
           <div className="coverage-summary">
-            <span><b>{copy.cities}</b> {coverage.supported_cities.join(", ") || "—"}</span>
-            <span><b>{copy.districts}</b> {copy.areas(coverage.supported_districts.length)}</span>
+            <span><b>{copy.cities}</b> {coverage.supported_cities.length.toLocaleString(locale)}</span>
+            <span><b>{copy.areas}</b> {coverage.supported_districts.length.toLocaleString(locale)}</span>
             <span><b>{copy.checked}</b> {dateValue(coverage.checked_at, locale)}</span>
             <span><b>{copy.source}</b> {coverage.source_name}</span>
           </div>
+          <Link className="coverage-notice-link" href="/areas">
+            {copy.browse} <ArrowRight aria-hidden="true" size={15} />
+          </Link>
           <p>{copy.note}</p>
           <small>{copy.freshness}</small>
         </>

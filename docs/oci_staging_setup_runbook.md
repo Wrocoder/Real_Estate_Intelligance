@@ -182,9 +182,9 @@ RCN_TRANSACTIONS_MAX_PAGES=500
 RCN_TRANSACTIONS_TIMEOUT_SECONDS=30
 RCN_TRANSACTIONS_INTERVAL_SECONDS=86400
 
-# Optional authoritative district detail for major cities. Start from
-# deploy/oracle/rcn-district-boundaries.example.json and place every referenced
-# local boundary file under /srv/domarion/data.
+# Verified authoritative district detail for supported major cities. Place every
+# file referenced by deploy/oracle/rcn-district-boundaries.verified.json under
+# /srv/domarion/data before enabling the manifest.
 RCN_DISTRICT_BOUNDARIES_MANIFEST=/srv/domarion/data/district-boundaries.json
 
 # Legacy Wrocław-only osiedle enrichment inside the national RCN import.
@@ -208,26 +208,29 @@ ALERT_TELEGRAM_BOT_TOKEN=<bot-token>
 RCN_TRANSACTIONS_TELEGRAM_CHAT_ID=<chat-id>
 ```
 
-Prepare the multi-city manifest and the directly downloadable official files:
+The GitHub OCI deployment jobs download and validate all boundary sources before
+copying them to the VM. For a manual deployment, prepare the same verified bundle
+from the application checkout:
 
 ```bash
-sudo install -d -o domarion -g domarion /srv/domarion/data/districts
-sudo cp deploy/oracle/rcn-district-boundaries.example.json \
+cd /srv/domarion/app
+python3 -m venv .venv-boundaries
+.venv-boundaries/bin/python -m pip install -e .
+sudo install -d -o domarion -g domarion /srv/domarion/data
+sudo .venv-boundaries/bin/python scripts/fetch_district_boundaries.py \
+  --manifest deploy/oracle/rcn-district-boundaries.verified.json \
+  --data-dir /srv/domarion/data
+sudo cp deploy/oracle/rcn-district-boundaries.verified.json \
   /srv/domarion/data/district-boundaries.json
-sudo curl -fL https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip \
-  -o /srv/domarion/data/districts/krakow.zip
-sudo curl -fL https://gis.lublin.eu/api/shp/administracja/dzielnice_granice \
-  -o /srv/domarion/data/districts/lublin.zip
-sudo curl -fL 'https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson' \
-  -o /srv/domarion/data/districts/lodz.geojson
 sudo chown -R domarion:domarion /srv/domarion/data
+sudo find /srv/domarion/data/districts -type f -exec chmod 644 {} +
+sudo chmod 644 /srv/domarion/data/granice-osiedli.zip \
+  /srv/domarion/data/district-boundaries.json
 ```
 
-Export the current official Warszawa, Gdańsk and Poznań polygons from the
-municipal sources recorded in the example manifest to the remaining GeoJSON
-paths. Remove a city entry until its file, usage terms, CRS and district-name
-field have been verified; the worker intentionally refuses an incomplete
-manifest.
+The fetch command stages every download, parses it with the production boundary
+loader and checks for empty or duplicate district slugs before replacing active
+files. The worker intentionally refuses an incomplete manifest.
 
 Install the daily Oracle staging schedule as an administrator. Use `sudoedit`
 to create `/etc/cron.d/domarion-rcn-daily` with exactly:

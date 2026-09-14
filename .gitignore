@@ -47,6 +47,8 @@ logs/
 .domarion/
 data/raw/
 data/exports/
+artifacts/*-boundaries.zip
+artifacts/*-source-validation.zip
 
 # OS
 .DS_Store

@@ -33,7 +33,9 @@ from domarion.db.models import (
 from domarion.ingestion.district_boundaries import assign_transaction_districts
 from domarion.ingestion.partner_csv import slugify
 from domarion.ingestion.rcn_poland import POLISH_VOIVODESHIPS, voivodeship_for_teryt
+from domarion.location_names import clean_locality
 from domarion.services.market_metrics import refresh_market_metrics
+from domarion.services.transaction_quality import price_exclusion_reason
 from domarion.services.transaction_versions import transaction_identity
 
 MAX_RCN_RESPONSE_BYTES = 25_000_000
@@ -332,6 +334,9 @@ def normalize_rcn_feature(
         quality -= 5
     if lat is None and geometry_x is None:
         quality -= 10
+    exclusion = price_exclusion_reason(Decimal(property_price) / area_m2, transaction_date)
+    if exclusion:
+        quality = 0
 
     payload = {
         "source_name": source_name,
@@ -367,6 +372,8 @@ def normalize_rcn_feature(
         "geometry_crs": geometry_crs,
         "observed_at": captured_at.isoformat(),
     }
+    if exclusion:
+        payload["analytics_exclusion_reason"] = exclusion
     return RcnTransactionRecord(
         source_observation_id=source_id,
         logical_transaction_id=transaction_identity(source_id, version),
@@ -979,7 +986,8 @@ def _decimal_or_none(value: object | None) -> Decimal | None:
         return None
     text = text.replace(" ", "").replace("\u00a0", "").replace(",", ".")
     try:
-        return Decimal(text)
+        value = Decimal(text)
+        return value if value.is_finite() else None
     except InvalidOperation:
         return None
 
@@ -1017,6 +1025,7 @@ def _city_from_rcn_address(address: str | None) -> str | None:
 
 
 def _canonical_city_name(city: str | None, *, teryt: str | None) -> str | None:
+    city = clean_locality(city)
     teryt_city = MAJOR_CITY_NAMES_BY_TERYT.get(teryt or "")
     if city is None:
         return teryt_city

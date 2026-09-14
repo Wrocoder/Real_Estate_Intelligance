@@ -459,7 +459,13 @@ def _read_dbf(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         offset = 1
         values: dict[str, str] = {}
         for name, width in fields:
-            values[name] = raw_record[offset : offset + width].decode(encoding, "ignore").strip()
+            try:
+                values[name] = raw_record[offset : offset + width].decode(encoding).strip()
+            except (UnicodeDecodeError, LookupError) as exc:
+                raise DistrictBoundaryError(
+                    f"Cannot decode district DBF using {encoding}; "
+                    "supply a CPG file or UTF-8 GeoJSON."
+                ) from exc
             offset += width
         rows.append(values)
     return [name for name, _ in fields], rows
@@ -536,6 +542,8 @@ def _boundary_name(properties: dict[str, Any]) -> str | None:
         properties,
         "NAZWAOSIED",
         "NAZWA_DZ",
+        "NAZWA_DZIELNICY",
+        "DZIELNICY",
         "NAZWA",
         "DZIELNICA",
         "OSIEDLE",

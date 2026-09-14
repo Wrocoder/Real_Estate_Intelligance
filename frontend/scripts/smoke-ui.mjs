@@ -140,6 +140,8 @@ const seoGuides = read("lib/seoGuides.ts");
 const layout = read("app/layout.tsx");
 const localizedNavigation = read("components/LocalizedNavigation.tsx");
 const languageSwitcher = read("components/LanguageSwitcher.tsx");
+const coverageNotice = read("components/CoverageNotice.tsx");
+const sidebarNavigation = read("components/SidebarNavigation.tsx");
 const i18n = read("lib/i18n.ts");
 const scoreLabels = read("lib/scoreLabels.ts");
 const formatters = read("lib/format.ts");
@@ -172,8 +174,8 @@ expectIncludes("responsive guardrails", globalStyles, [
 expectIncludes("mobile composition", globalStyles, [
   ".mobile-nav-disclosure",
   ".mobile-nav-summary",
-  ".mobile-nav-disclosure:not([open]) > .mobile-nav-content",
-  ".mobile-nav-disclosure[open] > .mobile-nav-content",
+  '.mobile-nav-disclosure[data-open="false"] > .mobile-nav-content',
+  '.mobile-nav-disclosure[data-open="true"] > .mobile-nav-content',
   ".report-summary-grid",
   "grid-template-columns: repeat(2, minmax(0, 1fr));",
 ]);
@@ -746,7 +748,10 @@ expectIncludes("source-backed guide areas", guideRelatedAreas, [
 
 expectIncludes("live area directory", areasPage + areasDirectory, [
   "api.listAreas()",
-  'area.area_id !== "wroclaw-city"',
+  "<select",
+  "disabled={!cities.length}",
+  "cities.map((name)",
+  "visibleAreas.slice(0, limit)",
   "area.transaction_observation_count",
   "area.transaction_yearly_history.map",
   "Mediana - ostatnie 12 miesięcy",
@@ -1126,8 +1131,21 @@ expectIncludes("primary navigation", layout, [
   "<DemoModeBanner",
   "<AuthSessionNotice",
   "MOBILE_MENU_LABEL",
-  '<details className="mobile-nav-disclosure">',
-  '<summary className="mobile-nav-summary">',
+  '<SidebarNavigation',
+]);
+expectIncludes("responsive sidebar navigation", sidebarNavigation + globalStyles, [
+  'data-open={open}',
+  'aria-expanded={open}',
+  'event.key === "Escape"',
+  '.mobile-nav-disclosure[data-open="false"] > .mobile-nav-content',
+]);
+expectIncludes("compact coverage notice", coverageNotice, [
+  "coverage.supported_cities.length.toLocaleString(locale)",
+  "coverage.supported_districts.length.toLocaleString(locale)",
+  'className="coverage-notice-link"',
+]);
+expectNotIncludes("coverage notice does not print every location", coverageNotice, [
+  'coverage.supported_cities.join(", ")',
 ]);
 expectIncludes("document outline and keyboard entry", layout, [
   'id="main-content"',

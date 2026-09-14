@@ -18,6 +18,7 @@ from domarion.db.models import (
 )
 from domarion.ingestion.partner_csv import slugify
 from domarion.repositories.postgres import PostgresRealEstateRepository
+from domarion.services.transaction_quality import price_exclusion_reason
 from domarion.services.transaction_versions import latest_transaction_versions
 
 TRANSACTION_DECISION_WINDOW_DAYS = 365
@@ -164,12 +165,10 @@ def refresh_market_metrics(
             if baseline_supply
             else 0.0
         )
-        if area_id == city_area_id:
-            area_name = city
-        else:
-            names = [item.district for item in area_listings if item.district]
-            names.extend(item.district for item in area_transactions if item.district)
-            area_name = names[0] if names else area_id
+        names = [item.district for item in area_listings if item.district]
+        names.extend(item.district for item in area_transactions if item.district)
+        is_city_aggregate = area_id == city_area_id and transaction_area_id is None
+        area_name = city if is_city_aggregate or not names else names[0]
         existing = session.get(AreaStatistic, area_id)
         if existing is None:
             existing = AreaStatistic(area_id=area_id)
@@ -268,6 +267,7 @@ def _load_transactions(
         and row.data_quality_score >= minimum_quality
         and getattr(row, "price_per_m2", None) is not None
         and float(row.price_per_m2) > 0
+        and price_exclusion_reason(row.price_per_m2, row.transaction_date) is None
     ]
 
 

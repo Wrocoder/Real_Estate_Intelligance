@@ -237,7 +237,7 @@ summary:focus-visible {
   display: none;
 }
 
-.mobile-nav-disclosure:not([open]) > .mobile-nav-content {
+.mobile-nav-disclosure[data-open="false"] > .mobile-nav-content {
   display: contents;
 }
 
@@ -4024,7 +4024,22 @@ summary:focus-visible {
 }
 
 .coverage-summary b {
-  color: var(--text);
+  color: var(--ink);
+}
+
+.coverage-notice-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.coverage-notice-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .coverage-notice p,
@@ -4311,11 +4326,11 @@ summary:focus-visible {
     outline-color: #ffffff;
   }
 
-  .mobile-nav-disclosure:not([open]) > .mobile-nav-content {
+  .mobile-nav-disclosure[data-open="false"] > .mobile-nav-content {
     display: none;
   }
 
-  .mobile-nav-disclosure[open] > .mobile-nav-content {
+  .mobile-nav-disclosure[data-open="true"] > .mobile-nav-content {
     position: absolute;
     top: 46px;
     right: 0;
@@ -4492,7 +4507,7 @@ summary:focus-visible {
   .sidebar {
     padding: 10px 14px;
     min-width: 0;
-    overflow: hidden;
+    overflow: visible;
     max-width: 100vw;
     width: 100%;
   }
@@ -4502,7 +4517,7 @@ summary:focus-visible {
     right: 14px;
   }
 
-  .mobile-nav-disclosure[open] > .mobile-nav-content {
+  .mobile-nav-disclosure[data-open="true"] > .mobile-nav-content {
     top: 44px;
     width: min(340px, calc(100vw - 28px));
   }

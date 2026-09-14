@@ -277,7 +277,17 @@ def test_load_transactions_filters_after_selecting_latest_source_version():
         data_quality_score=95,
         price_per_m2=12000,
     )
-    session = SimpleNamespace(scalars=lambda statement: _ScalarResult([older, latest]))
+    outlier = SimpleNamespace(
+        id=3,
+        source_id=7,
+        source_observation_id="PL.RCN:transaction-2:2026-02-01T10:00:00",
+        source_version="2026-02-01T10:00:00",
+        observed_at=datetime(2026, 2, 2),
+        transaction_date=datetime(2026, 2, 1),
+        data_quality_score=95,
+        price_per_m2=150000,
+    )
+    session = SimpleNamespace(scalars=lambda statement: _ScalarResult([older, latest, outlier]))
 
     selected = market_metrics._load_transactions(
         session,

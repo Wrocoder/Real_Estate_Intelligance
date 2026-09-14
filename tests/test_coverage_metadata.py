@@ -5,11 +5,17 @@ from domarion.api.routes import get_coverage
 from domarion.schemas import AreaStatistics, DataProvenance
 
 
-def _area(area_id: str, name: str, *, updated_at: datetime) -> AreaStatistics:
+def _area(
+    area_id: str,
+    name: str,
+    *,
+    updated_at: datetime,
+    city: str = "Wrocław",
+) -> AreaStatistics:
     return AreaStatistics(
         area_id=area_id,
         name=name,
-        city="Wrocław",
+        city=city,
         data_provenance=DataProvenance(
             source_type="transaction_register",
             source_name="RCN GUGiK",
@@ -49,3 +55,19 @@ def test_coverage_uses_persisted_source_refresh_and_excludes_city_aggregate() ->
     assert coverage.checked_at == updated_at
     assert coverage.supported_cities == ["Wrocław"]
     assert coverage.supported_districts == ["Wrocław: Borek"]
+
+
+def test_coverage_normalizes_cities_and_excludes_missing_markers() -> None:
+    updated_at = datetime(2026, 9, 5, 12, 30, tzinfo=UTC)
+    repository = SimpleNamespace(
+        list_area_statistics=lambda: [
+            _area("krakow-city", "Kraków", updated_at=updated_at, city=" Kraków "),
+            _area("krakow-krowodrza", " Krowodrza ", updated_at=updated_at, city=" Kraków "),
+            _area("missing-city", "Unknown", updated_at=updated_at, city="<brak miejscowości>"),
+        ]
+    )
+
+    coverage = get_coverage(repository)
+
+    assert coverage.supported_cities == ["Kraków"]
+    assert coverage.supported_districts == ["Kraków: Krowodrza"]

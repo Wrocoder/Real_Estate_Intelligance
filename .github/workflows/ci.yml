@@ -334,6 +334,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Prepare validated district boundaries
+        run: |
+          python -m pip install -e .
+          python scripts/fetch_district_boundaries.py \
+            --manifest deploy/oracle/rcn-district-boundaries.verified.json \
+            --data-dir .run/rcn-boundaries
+
       - name: Prepare OCI deploy settings
         env:
           OCI_DEPLOY_HOST: ${{ secrets.OCI_DEPLOY_HOST }}
@@ -421,17 +434,15 @@ jobs:
           )
 
           ssh "${ssh_common[@]}" "$ssh_target" \
-            'set -eu;
-             install -d /srv/domarion/data/districts;
-             curl -fL --retry 3 https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip -o /srv/domarion/data/granice-osiedli.zip.tmp;
-             mv /srv/domarion/data/granice-osiedli.zip.tmp /srv/domarion/data/granice-osiedli.zip;
-             curl -fL --retry 3 https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip -o /srv/domarion/data/districts/krakow.zip.tmp;
-             mv /srv/domarion/data/districts/krakow.zip.tmp /srv/domarion/data/districts/krakow.zip;
-             curl -fL --retry 3 https://gis.lublin.eu/api/shp/administracja/dzielnice_granice -o /srv/domarion/data/districts/lublin.zip.tmp;
-             mv /srv/domarion/data/districts/lublin.zip.tmp /srv/domarion/data/districts/lublin.zip;
-             curl -fL --retry 3 "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson" -o /srv/domarion/data/districts/lodz.geojson.tmp;
-             mv /srv/domarion/data/districts/lodz.geojson.tmp /srv/domarion/data/districts/lodz.geojson;
-             chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
+            'set -eu; install -d /srv/domarion/data/districts'
+          scp "${scp_common[@]}" \
+            .run/rcn-boundaries/granice-osiedli.zip \
+            "$ssh_target:/srv/domarion/data/granice-osiedli.zip"
+          scp "${scp_common[@]}" -r \
+            .run/rcn-boundaries/districts \
+            "$ssh_target:/srv/domarion/data/"
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
 
           scp "${scp_common[@]}" \
             deploy/oracle/rcn-district-boundaries.verified.json \
@@ -496,6 +507,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Prepare validated district boundaries
+        run: |
+          python -m pip install -e .
+          python scripts/fetch_district_boundaries.py \
+            --manifest deploy/oracle/rcn-district-boundaries.verified.json \
+            --data-dir .run/rcn-boundaries
+
       - name: Configure SSH
         env:
           OCI_SSH_PRIVATE_KEY: ${{ secrets.OCI_SSH_PRIVATE_KEY }}
@@ -553,16 +577,15 @@ jobs:
           ssh "${ssh_common[@]}" "$ssh_target" \
             'set -eu;
              install -d /srv/domarion/data/districts /srv/domarion/env/snapshots;
-             cp /srv/domarion/env/oracle.env "/srv/domarion/env/snapshots/oracle.env.$(date -u +%Y%m%dT%H%M%SZ)";
-             curl -fL --retry 3 https://geoportal.wroclaw.pl/www/pliki/osiedla/granice-osiedli.zip -o /srv/domarion/data/granice-osiedli.zip.tmp;
-             mv /srv/domarion/data/granice-osiedli.zip.tmp /srv/domarion/data/granice-osiedli.zip;
-             curl -fL --retry 3 https://msip.um.krakow.pl/Dane/Dzielnice_SHP.zip -o /srv/domarion/data/districts/krakow.zip.tmp;
-             mv /srv/domarion/data/districts/krakow.zip.tmp /srv/domarion/data/districts/krakow.zip;
-             curl -fL --retry 3 https://gis.lublin.eu/api/shp/administracja/dzielnice_granice -o /srv/domarion/data/districts/lublin.zip.tmp;
-             mv /srv/domarion/data/districts/lublin.zip.tmp /srv/domarion/data/districts/lublin.zip;
-             curl -fL --retry 3 "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson" -o /srv/domarion/data/districts/lodz.geojson.tmp;
-             mv /srv/domarion/data/districts/lodz.geojson.tmp /srv/domarion/data/districts/lodz.geojson;
-             chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
+             cp /srv/domarion/env/oracle.env "/srv/domarion/env/snapshots/oracle.env.$(date -u +%Y%m%dT%H%M%SZ)"'
+          scp "${scp_common[@]}" \
+            .run/rcn-boundaries/granice-osiedli.zip \
+            "$ssh_target:/srv/domarion/data/granice-osiedli.zip"
+          scp "${scp_common[@]}" -r \
+            .run/rcn-boundaries/districts \
+            "$ssh_target:/srv/domarion/data/"
+          ssh "${ssh_common[@]}" "$ssh_target" \
+            'chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
 
           scp "${scp_common[@]}" \
             deploy/oracle/rcn-district-boundaries.verified.json \

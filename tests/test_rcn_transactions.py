@@ -78,6 +78,11 @@ def test_transaction_observation_money_columns_support_national_rcn_totals():
 
     assert record.property_price_gross == 2_500_000_000
     assert record.transaction_price_gross == 3_000_000_000
+    assert record.data_quality_score == 0
+    assert (
+        record.normalized_payload["analytics_exclusion_reason"]
+        == "price_per_m2_requires_source_review"
+    )
     assert record.vat_amount == 2_300_000_000
     for column_name in (
         "property_price_gross",
@@ -170,6 +175,19 @@ def test_normalize_rcn_feature_uses_major_city_teryt_when_address_is_missing():
     assert record.city == "Poznań"
     assert record.area_id == "rcn-3064-poznan-city"
     assert record.normalized_payload["voivodeship"] == "wielkopolskie"
+
+
+def test_normalize_rcn_feature_uses_teryt_for_missing_locality_marker():
+    record = rcn_transactions.normalize_rcn_feature(
+        _feature(teryt="3064", lok_adres="MSC:<brak miejscowości>"),
+        row_number=1,
+        source_name="RCN GUGiK",
+        source_url="https://mapy.geoportal.gov.pl/wss/service/rcn",
+        expected_teryt_prefix="30",
+    )
+
+    assert record.city == "Poznań"
+    assert record.area_id == "rcn-3064-poznan-city"
 
 
 def test_parse_gml_epsg_2180_converts_axis_order_to_easting_northing():

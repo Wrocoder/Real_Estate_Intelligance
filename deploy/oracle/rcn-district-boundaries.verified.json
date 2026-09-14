@@ -15,9 +15,9 @@
   },
   {
     "city": "Lublin",
-    "location": "districts/lublin.zip",
+    "location": "districts/lublin.geojson",
     "source_name": "Lublin Open Data district boundaries",
-    "source_url": "https://gis.lublin.eu/api/shp/administracja/dzielnice_granice",
+    "source_url": "https://gis.lublin.eu/otwartedane/administracja/wfs?SERVICE=WFS&REQUEST=GetFeature&VERSION=1.0.0&TYPENAME=administracja:dzielnice_granice&SRSNAME=EPSG:2179&OUTPUTFORMAT=application/json",
     "source_crs": 2179
   },
   {
@@ -26,5 +26,19 @@
     "source_name": "Łódź auxiliary unit boundaries",
     "source_url": "https://www.mapa.lodz.pl/3/rest/services/OGC/Lodz/MapServer/14/query?where=1%3D1&outFields=*&returnGeometry=true&outSR=2180&f=geojson",
     "source_crs": 2180
+  },
+  {
+    "city": "Warszawa",
+    "location": "districts/warszawa.geojson",
+    "source_name": "Warszawa ZDM public administrative district layer",
+    "source_url": "https://services7.arcgis.com/gpQ1tnydOYYnGpcS/ArcGIS/rest/services/dzielnice_wwa/FeatureServer/0/query?where=1%3D1&outFields=NAZWA_DZIELNICY,KODTERYT&returnGeometry=true&outSR=2180&f=geojson",
+    "source_crs": 2180
+  },
+  {
+    "city": "Gdańsk",
+    "location": "districts/gdansk.zip",
+    "source_name": "Otwarty Gdańsk district boundaries (2024-11-06, CC BY)",
+    "source_url": "https://ckan.multimediagdansk.pl/dataset/6a7eb20f-7b5a-478c-a5c6-385ff0c4247d/resource/9ebca2d2-7771-49c3-9321-2165cc61e3a3/download/dzielnice.zip",
+    "source_crs": 2177
   }
 ]

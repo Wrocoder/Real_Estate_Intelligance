@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
-import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -9,6 +8,7 @@ import { DemoModeBanner } from "@/components/DemoModeBanner";
 import { AuthSessionNotice } from "@/components/AuthSessionNotice";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LocalizedNavigation } from "@/components/LocalizedNavigation";
+import { SidebarNavigation } from "@/components/SidebarNavigation";
 import { LOCALE_COOKIE_NAME, normalizeLocale } from "@/lib/i18n";
 
 import "./globals.css";
@@ -60,16 +60,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                 <small>{BRAND_TAGLINE[initialLocale]}</small>
               </span>
             </Link>
-            <details className="mobile-nav-disclosure">
-              <summary className="mobile-nav-summary">
-                <Menu aria-hidden="true" size={18} />
-                <span>{MOBILE_MENU_LABEL[initialLocale]}</span>
-              </summary>
-              <div className="mobile-nav-content">
+            <SidebarNavigation label={MOBILE_MENU_LABEL[initialLocale]}>
                 <LocalizedNavigation initialLocale={initialLocale} />
                 <LanguageSwitcher initialLocale={initialLocale} />
-              </div>
-            </details>
+            </SidebarNavigation>
           </aside>
           <a className="skip-link" href="#main-content">
             {SKIP_TO_CONTENT[initialLocale]}

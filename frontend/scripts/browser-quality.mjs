@@ -942,8 +942,9 @@ async function runMobileComposition(browser, viewport) {
     await page.goto(`${baseUrl}/areas`, { waitUntil: "domcontentloaded" });
     const disclosure = page.locator(".mobile-nav-disclosure");
     const summary = page.locator(".mobile-nav-summary");
+    const navigationIsOpen = async () => (await disclosure.getAttribute("data-open")) === "true";
     await summary.waitFor({ state: "visible" });
-    if (await disclosure.evaluate((element) => element.open)) {
+    if (await navigationIsOpen()) {
       throw new Error(`${label}: navigation should be collapsed initially`);
     }
     const sidebarPosition = await page.locator(".sidebar").evaluate(
@@ -954,12 +955,12 @@ async function runMobileComposition(browser, viewport) {
     }
     await summary.focus();
     await page.keyboard.press("Enter");
-    if (!(await disclosure.evaluate((element) => element.open))) {
+    if (!(await navigationIsOpen())) {
       throw new Error(`${label}: keyboard did not open navigation`);
     }
     await page.locator(".mobile-nav-content .nav-list").waitFor({ state: "visible" });
     await summary.click();
-    if (await disclosure.evaluate((element) => element.open)) {
+    if (await navigationIsOpen()) {
       throw new Error(`${label}: navigation did not close`);
     }
     const areasHeading = await page.getByRole("heading", { level: 1 }).boundingBox();
@@ -1013,6 +1014,113 @@ async function runMobileComposition(browser, viewport) {
         fullPage: true,
       });
     }
+    await assertHealthy(page, observation);
+  } finally {
+    await context.close();
+  }
+}
+
+async function runNavigationCoverage(viewport) {
+  const context = await browser.newContext({ viewport, locale: "en-US" });
+  await context.addCookies([{ name: "domarion_locale", value: "en", url: baseUrl }]);
+  const page = await context.newPage();
+  const label = `navigation-coverage/${viewport.width}`;
+  const observation = await observe(page, label);
+  try {
+    await page.route("**/runtime-context", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data_mode: "live" }),
+    }));
+    await page.route("**/api/v1/auth/session", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        user: {
+          id: "browser-quality-user",
+          email: null,
+          display_name: null,
+          role: "buyer",
+          created_at: "2026-09-14T08:00:00Z",
+          updated_at: "2026-09-14T08:00:00Z",
+        },
+        expires_at: "2026-09-14T09:00:00Z",
+        demo_mode: false,
+      }),
+    }));
+    await page.route("**/api/v1/coverage", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        supported_cities: Array.from({ length: 1_200 }, (_, index) => `Location ${index + 1}`),
+        supported_districts: ["Wrocław: Borek", "Wrocław: Ołbin"],
+        source_name: "RCN GUGiK",
+        checked_at: "2026-09-14T08:00:00Z",
+      }),
+    }));
+    await page.route("**/api/v1/areas", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "[]",
+    }));
+    await page.route("**/api/v1/listings**", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ items: [], total: 0, page: 1, page_size: 20, total_pages: 0 }),
+    }));
+    await page.route("**/api/v1/map/features**", (route) => route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ type: "FeatureCollection", features: [], bbox: null, metadata: {} }),
+    }));
+    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+    await page.locator(".coverage-summary").waitFor({ state: "visible", timeout: 15000 });
+
+    const disclosure = page.locator(".mobile-nav-disclosure");
+    const menuButton = page.locator(".mobile-nav-summary");
+    const navigation = page.locator(".mobile-nav-content .nav-list");
+    if (viewport.width > 980) {
+      await navigation.waitFor({ state: "visible" });
+      if (await menuButton.isVisible()) {
+        throw new Error(`${label}: desktop menu button should be hidden`);
+      }
+      const sidebarText = await page.locator(".sidebar").innerText();
+      if (!sidebarText.includes("My apartments") || !sidebarText.includes("Account")) {
+        throw new Error(`${label}: desktop navigation is missing buyer or account links`);
+      }
+    } else {
+      await menuButton.waitFor({ state: "visible" });
+      if ((await disclosure.getAttribute("data-open")) !== "false") {
+        throw new Error(`${label}: mobile navigation should start closed`);
+      }
+      await menuButton.click();
+      await navigation.waitFor({ state: "visible" });
+      const menuIsExposed = await page.locator(".mobile-nav-content").evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        const point = document.elementFromPoint(rect.left + 8, rect.top + 8);
+        return point !== null && element.contains(point);
+      });
+      if (!menuIsExposed) {
+        throw new Error(`${label}: open navigation is clipped or covered`);
+      }
+      await page.keyboard.press("Escape");
+      if ((await disclosure.getAttribute("data-open")) !== "false") {
+        throw new Error(`${label}: Escape did not close mobile navigation`);
+      }
+    }
+
+    const coverageText = await page.locator(".coverage-notice").innerText();
+    if (!coverageText.includes("Locations with data") || coverageText.length > 900) {
+      throw new Error(`${label}: geographic coverage is not presented as a compact summary`);
+    }
+    if (!(await page.locator(".coverage-notice-link").isVisible())) {
+      throw new Error(`${label}: coverage directory link is missing`);
+    }
+
+    await page.screenshot({
+      path: path.join(artifactDir, `navigation-coverage-${viewport.width}.png`),
+      fullPage: false,
+    });
     await assertHealthy(page, observation);
   } finally {
     await context.close();
@@ -1543,6 +1651,26 @@ if (process.env.BROWSER_QUALITY_SCENARIO === "mobile-composition") {
     ]) {
       await runMobileComposition(browser, viewport);
       console.log(`browser quality passed: mobile-composition/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "navigation-coverage") {
+  try {
+    for (const viewport of [
+      { width: 390, height: 844 },
+      { width: 1440, height: 900 },
+    ]) {
+      await runNavigationCoverage(viewport);
+      console.log(`browser quality passed: navigation-coverage/${viewport.width}`);
     }
   } catch (error) {
     failures.push(error.message);

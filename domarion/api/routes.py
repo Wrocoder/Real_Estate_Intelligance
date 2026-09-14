@@ -72,6 +72,7 @@ from domarion.ingestion_admin_store.system_sources import (
     USER_SUBMITTED_REFERENCE_SOURCE_NAME,
     USER_SUBMITTED_REFERENCE_SOURCE_TYPE,
 )
+from domarion.location_names import clean_locality
 from domarion.news_store.base import NewsStore
 from domarion.news_store.factory import get_news_store
 from domarion.partner_referral_store.base import PartnerReferralStore
@@ -655,29 +656,33 @@ def list_areas(repository: RepositoryDep) -> list[AreaStatistics]:
 
 @router.get("/coverage", response_model=CoverageMetadata)
 def get_coverage(repository: RepositoryDep) -> CoverageMetadata:
-    areas = repository.list_area_statistics()
+    areas = [
+        (area, city)
+        for area in repository.list_area_statistics()
+        if (city := clean_locality(area.city)) is not None
+    ]
     district_areas = [
-        area for area in areas if area.name.strip().casefold() != area.city.strip().casefold()
+        (area, city) for area, city in areas if area.name.strip().casefold() != city.casefold()
     ]
     source_names = sorted(
         {
             area.data_provenance.source_name
-            for area in areas
+            for area, _city in areas
             if area.data_provenance.source_name
         }
     )
     update_times = [
         area.data_provenance.updated_at
-        for area in areas
+        for area, _city in areas
         if area.data_provenance.updated_at is not None
     ]
     checked_at = max(update_times) if update_times else datetime.now(UTC)
     if checked_at.tzinfo is None:
         checked_at = checked_at.replace(tzinfo=UTC)
     return CoverageMetadata(
-        supported_cities=sorted({area.city for area in areas}),
+        supported_cities=sorted({city for _area, city in areas}),
         supported_districts=sorted(
-            {f"{area.city}: {area.name}" for area in district_areas}
+            {f"{city}: {area.name.strip()}" for area, city in district_areas}
         ),
         source_name=", ".join(source_names) or "WartoMetr structured market dataset",
         checked_at=checked_at,
