@@ -442,7 +442,8 @@ jobs:
             .run/rcn-boundaries/districts \
             "$ssh_target:/srv/domarion/data/"
           ssh "${ssh_common[@]}" "$ssh_target" \
-            'chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
+            'chmod 755 /srv/domarion/data/districts &&
+             chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
 
           scp "${scp_common[@]}" \
             deploy/oracle/rcn-district-boundaries.verified.json \
@@ -585,7 +586,8 @@ jobs:
             .run/rcn-boundaries/districts \
             "$ssh_target:/srv/domarion/data/"
           ssh "${ssh_common[@]}" "$ssh_target" \
-            'chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
+            'chmod 755 /srv/domarion/data/districts &&
+             chmod 644 /srv/domarion/data/granice-osiedli.zip /srv/domarion/data/districts/*'
 
           scp "${scp_common[@]}" \
             deploy/oracle/rcn-district-boundaries.verified.json \

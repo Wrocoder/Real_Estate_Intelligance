@@ -223,6 +223,7 @@ sudo .venv-boundaries/bin/python scripts/fetch_district_boundaries.py \
 sudo cp deploy/oracle/rcn-district-boundaries.verified.json \
   /srv/domarion/data/district-boundaries.json
 sudo chown -R domarion:domarion /srv/domarion/data
+sudo chmod 755 /srv/domarion/data/districts
 sudo find /srv/domarion/data/districts -type f -exec chmod 644 {} +
 sudo chmod 644 /srv/domarion/data/granice-osiedli.zip \
   /srv/domarion/data/district-boundaries.json
