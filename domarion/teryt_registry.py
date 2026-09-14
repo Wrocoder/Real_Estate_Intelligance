@@ -56,7 +56,7 @@ class LocationMetadata:
 
 @dataclass(frozen=True)
 class TerytRegistry:
-    locality_names: dict[tuple[str, str], frozenset[str]]
+    localities: dict[tuple[str, str], frozenset[tuple[str, str]]]
     county_names: dict[str, str]
     voivodeship_names: dict[str, str]
 
@@ -68,10 +68,18 @@ class TerytRegistry:
         if alias is not None:
             return alias
         prefix = (teryt or "")[:4]
-        candidates = self.locality_names.get((prefix, _lookup_key(raw)), frozenset())
-        if len(candidates) == 1:
-            return next(iter(candidates))
+        candidates = self.localities.get((prefix, _lookup_key(raw)), frozenset())
+        names = {name for name, _ in candidates}
+        if len(names) == 1:
+            return next(iter(names))
         return _humanize_case(raw)
+
+    def simc_for_locality(self, value: str, *, teryt: str | None) -> str | None:
+        candidates = self.localities.get(((teryt or "")[:4], _lookup_key(value)), frozenset())
+        codes = {code for _, code in candidates if code}
+        if len(codes) == 1:
+            return next(iter(codes))
+        return None
 
     def county_for_teryt(self, teryt: str | None) -> str | None:
         return self.county_names.get((teryt or "")[:4])
@@ -88,7 +96,13 @@ def location_metadata(area_id: str, city: str) -> LocationMetadata:
     teryt = _teryt_from_area_id(area_id)
     registry = get_teryt_registry()
     canonical_city = registry.canonical_locality(city, teryt=teryt) or city
-    location_id = f"teryt:{teryt}" if teryt else f"city:{_lookup_key(canonical_city)}"
+    simc = registry.simc_for_locality(canonical_city, teryt=teryt)
+    if simc:
+        location_id = f"simc:{simc}"
+    elif teryt:
+        location_id = f"teryt-area:{teryt}:{_lookup_key(canonical_city)}"
+    else:
+        location_id = f"city:{_lookup_key(canonical_city)}"
     return LocationMetadata(
         location_id=location_id,
         teryt=teryt,
@@ -100,12 +114,13 @@ def location_metadata(area_id: str, city: str) -> LocationMetadata:
 
 @lru_cache(maxsize=1)
 def get_teryt_registry() -> TerytRegistry:
-    locality_names: dict[tuple[str, str], set[str]] = {}
+    localities: dict[tuple[str, str], set[tuple[str, str]]] = {}
     for row in _read_csv_archive(SIMC_ARCHIVE):
         name = row.get("NAZWA", "").strip()
+        code = row.get("SYM", "").strip()
         prefix = f"{row.get('WOJ', '')}{row.get('POW', '')}"
-        if name and len(prefix) == 4:
-            locality_names.setdefault((prefix, _lookup_key(name)), set()).add(name)
+        if name and code and len(prefix) == 4:
+            localities.setdefault((prefix, _lookup_key(name)), set()).add((name, code))
 
     county_names: dict[str, str] = {}
     voivodeship_names: dict[str, str] = {}
@@ -120,7 +135,7 @@ def get_teryt_registry() -> TerytRegistry:
             county_names[f"{woj}{powiat}"] = name
 
     return TerytRegistry(
-        locality_names={key: frozenset(values) for key, values in locality_names.items()},
+        localities={key: frozenset(values) for key, values in localities.items()},
         county_names=county_names,
         voivodeship_names=voivodeship_names,
     )
