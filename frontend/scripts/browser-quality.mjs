@@ -980,7 +980,7 @@ async function runMobileComposition(browser, viewport) {
     if (!areasHeading || areasHeading.y > 240) {
       throw new Error(`${label}: compact navigation still delays primary area content`);
     }
-    await page.locator(".areas-directory-search input").waitFor({ state: "visible" });
+    await page.getByRole("combobox", { name: "Miejscowość" }).waitFor({ state: "visible" });
     if (viewport.width === 390) {
       await page.screenshot({
         path: path.join(artifactDir, "mobile-composition-areas-390.png"),
