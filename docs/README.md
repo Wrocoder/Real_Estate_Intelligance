@@ -27,9 +27,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 5](WartoMetr_Phase_5_Implementation.md): temporal transaction holdout backtesting.
 - [Phase 6](WartoMetr_Phase_6_Implementation.md): public methodology and trust page.
 - [Phase 7](WartoMetr_Phase_7_Implementation.md): commercial Buyer Report.
+- [Phase 8](WartoMetr_Phase_8_Implementation.md): real payment validation.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 8 and
+reports supersede earlier descriptions of the affected workflows. Phase 9 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations
@@ -74,8 +75,8 @@ availability, current pricing or approval to change the implementation order.
 - [OCI RCN verification, 2026-09-13](operations/ORACLE_RCN_VERIFICATION_2026-09-13.md)
 
 Keep unresolved gates until newer evidence closes them: real payment-provider
-checkout/webhook/refund and fulfillment, offsite backup and restore, private
-artifact recovery, real notification delivery and worker cadence, monitoring,
+sandbox/live checkout execution, offsite backup and restore, private artifact
+recovery, real notification delivery and worker cadence, monitoring,
 source/legal approval and manual paid-report QA. Local tests do not close these
 gates. The dated audits do not establish today's deployment state.
 

@@ -11,6 +11,7 @@ from domarion.core.config import get_settings
 from domarion.main import app
 from domarion.report_order_store.factory import memory_report_order_store
 from domarion.report_store.factory import memory_report_store
+from domarion.services import payments
 from domarion.user_store.factory import memory_user_store
 from domarion.user_submitted_listing_store.factory import memory_user_submitted_listing_store
 
@@ -77,6 +78,155 @@ def test_stripe_paid_webhook_fulfills_order_once(monkeypatch) -> None:
         "payment_webhook_processed",
         "report_fulfilled",
     }
+
+
+def test_stripe_paid_webhook_rejects_amount_mismatch(monkeypatch) -> None:
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "stripe-mismatch-buyer"}
+    order = _create_stripe_checkout_order(monkeypatch, headers, session_id="cs_expected_amount")
+    body = _json_bytes(
+        {
+            "id": "evt_stripe_amount_mismatch",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_expected_amount",
+                    "payment_status": "paid",
+                    "amount_total": order["amount_grosz"] - 100,
+                    "currency": order["currency"].lower(),
+                    "metadata": {"order_id": order["id"]},
+                }
+            },
+        }
+    )
+
+    response = client.post(
+        "/api/v1/payment-webhooks/stripe",
+        content=body,
+        headers={"Stripe-Signature": _stripe_signature(body, "whsec_test")},
+    )
+    payload = response.json()
+    updated = client.get(f"/api/v1/report-orders/{order['id']}", headers=headers).json()
+    events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "rejected"
+    assert payload["order"]["status"] == "unpaid"
+    assert payload["webhook_event"]["metadata"]["reason"] == "amount_mismatch"
+    assert updated["status"] == "unpaid"
+    assert updated["generated_report_id"] is None
+    assert "payment_webhook_rejected" in {event["event_type"] for event in events}
+
+
+def test_stripe_paid_webhook_rejects_checkout_reference_mismatch(monkeypatch) -> None:
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "stripe-reference-buyer"}
+    order = _create_stripe_checkout_order(monkeypatch, headers, session_id="cs_expected_reference")
+    body = _json_bytes(
+        {
+            "id": "evt_stripe_reference_mismatch",
+            "type": "checkout.session.completed",
+            "data": {
+                "object": {
+                    "id": "cs_wrong_reference",
+                    "payment_status": "paid",
+                    "amount_total": order["amount_grosz"],
+                    "currency": order["currency"].lower(),
+                    "metadata": {"order_id": order["id"]},
+                }
+            },
+        }
+    )
+
+    response = client.post(
+        "/api/v1/payment-webhooks/stripe",
+        content=body,
+        headers={"Stripe-Signature": _stripe_signature(body, "whsec_test")},
+    )
+    payload = response.json()
+    reports = client.get("/api/v1/reports", headers=headers).json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "rejected"
+    assert payload["order"]["status"] == "unpaid"
+    assert payload["webhook_event"]["metadata"]["reason"] == "checkout_reference_mismatch"
+    assert reports == []
+
+
+def test_stripe_failed_webhook_marks_order_failed_without_report(monkeypatch) -> None:
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "stripe-failed-buyer"}
+    order = _create_order(headers)
+    body = _json_bytes(
+        {
+            "id": "evt_stripe_failed_1",
+            "type": "payment_intent.payment_failed",
+            "data": {
+                "object": {
+                    "id": "pi_failed_1",
+                    "status": "failed",
+                    "metadata": {"order_id": order["id"]},
+                }
+            },
+        }
+    )
+
+    response = client.post(
+        "/api/v1/payment-webhooks/stripe",
+        content=body,
+        headers={"Stripe-Signature": _stripe_signature(body, "whsec_test")},
+    )
+    payload = response.json()
+    reports = client.get("/api/v1/reports", headers=headers).json()
+    events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "processed"
+    assert payload["order"]["status"] == "failed"
+    assert payload["generated_report_id"] is None
+    assert reports == []
+    assert "payment_failed" in {event["event_type"] for event in events}
+
+
+def test_stripe_refund_webhook_marks_fulfilled_order_refunded(monkeypatch) -> None:
+    monkeypatch.setenv("STRIPE_WEBHOOK_SECRET", "whsec_test")
+    get_settings.cache_clear()
+    headers = {"X-Domarion-User-Id": "stripe-refund-buyer"}
+    order = _create_order(headers)
+    client.post(f"/api/v1/report-orders/{order['id']}/mock-pay", headers=headers)
+    fulfilled = client.post(f"/api/v1/report-orders/{order['id']}/fulfill", headers=headers).json()
+    body = _json_bytes(
+        {
+            "id": "evt_stripe_refund_1",
+            "type": "charge.refunded",
+            "data": {
+                "object": {
+                    "id": "ch_refunded_1",
+                    "status": "refunded",
+                    "amount": order["amount_grosz"],
+                    "currency": order["currency"].lower(),
+                    "metadata": {"order_id": order["id"]},
+                }
+            },
+        }
+    )
+
+    response = client.post(
+        "/api/v1/payment-webhooks/stripe",
+        content=body,
+        headers={"Stripe-Signature": _stripe_signature(body, "whsec_test")},
+    )
+    payload = response.json()
+    events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
+
+    assert response.status_code == 200
+    assert payload["status"] == "processed"
+    assert payload["order"]["status"] == "refunded"
+    assert payload["generated_report_id"] == fulfilled["generated_report_id"]
+    assert "payment_refunded" in {event["event_type"] for event in events}
 
 
 def test_stripe_webhook_rejects_invalid_signature(monkeypatch) -> None:
@@ -170,6 +320,26 @@ def _create_order(headers: dict[str, str], listing_id: str = "wr-001") -> dict:
         headers=headers,
         json={"listing_id": listing_id, "product_code": "object_report"},
     ).json()["order"]
+
+
+def _create_stripe_checkout_order(monkeypatch, headers: dict[str, str], session_id: str) -> dict:
+    monkeypatch.setenv("PAYMENT_PROVIDER", "stripe")
+    monkeypatch.setenv("STRIPE_SECRET_KEY", "sk_test_domarion")
+    monkeypatch.setenv("PAYMENT_CHECKOUT_BASE_URL", "https://app.example")
+    get_settings.cache_clear()
+
+    def fake_post_form(url, payload, *, headers, timeout):
+        return payments.HttpJsonResponse(
+            status_code=200,
+            headers={},
+            payload={
+                "id": session_id,
+                "url": f"https://checkout.stripe.com/c/pay/{session_id}",
+            },
+        )
+
+    monkeypatch.setattr(payments, "_post_form", fake_post_form)
+    return _create_order(headers)
 
 
 def _create_user_submitted_draft(headers: dict[str, str], source_url: str) -> dict:

@@ -69,10 +69,30 @@ class InMemoryReportOrderStore:
         order = self.get_order(owner_id, order_id)
         if order is None:
             return None
-        if order.status in {"fulfilled", "canceled"}:
+        if order.status in {"fulfilled", "canceled", "failed", "refunded"}:
             return order
         now = _now()
         updated = order.model_copy(update={"status": "paid", "paid_at": now, "updated_at": now})
+        self._orders[order_id] = updated
+        return updated
+
+    def mark_failed(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        order = self.get_order(owner_id, order_id)
+        if order is None:
+            return None
+        if order.status in {"fulfilled", "canceled", "refunded"}:
+            return order
+        updated = order.model_copy(update={"status": "failed", "updated_at": _now()})
+        self._orders[order_id] = updated
+        return updated
+
+    def mark_refunded(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        order = self.get_order(owner_id, order_id)
+        if order is None:
+            return None
+        if order.status == "canceled":
+            return order
+        updated = order.model_copy(update={"status": "refunded", "updated_at": _now()})
         self._orders[order_id] = updated
         return updated
 

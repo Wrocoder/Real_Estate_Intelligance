@@ -46,7 +46,7 @@ ReportProductCode = Literal[
     "area_report",
     "report_bundle_5",
 ]
-ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled"]
+ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled", "failed", "refunded"]
 BillingCustomerType = Literal["individual", "company"]
 ReportEmailStatus = Literal["dry_run", "sent", "skipped", "failed"]
 PaymentProviderName = Literal["mock", "stripe", "payu"]
@@ -115,6 +115,9 @@ ReportOrderEventType = Literal[
     "payment_marked_paid",
     "payment_webhook_processed",
     "payment_webhook_ignored",
+    "payment_webhook_rejected",
+    "payment_failed",
+    "payment_refunded",
     "report_fulfilled",
     "fulfillment_skipped",
     "payment_provider_error",

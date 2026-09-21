@@ -58,6 +58,32 @@ def test_buyer_report_price_is_configurable(monkeypatch) -> None:
     assert buyer_report["amount_grosz"] == 5900
 
 
+def test_mock_checkout_is_disabled_outside_demo_environments(monkeypatch) -> None:
+    headers = {"X-Domarion-User-Id": "production-mock-buyer"}
+    checkout = client.post(
+        "/api/v1/report-orders",
+        headers=headers,
+        json={"listing_id": "wr-001", "product_code": "object_report"},
+    )
+    order_id = checkout.json()["order"]["id"]
+
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("PAYMENT_PROVIDER", "mock")
+    get_settings.cache_clear()
+
+    response = client.post(
+        "/api/v1/report-orders",
+        json={"listing_id": "wr-001", "product_code": "object_report"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"]["code"] == "service_unavailable"
+
+    direct_mock_pay = client.post(f"/api/v1/report-orders/{order_id}/mock-pay", headers=headers)
+    assert direct_mock_pay.status_code == 503
+    assert direct_mock_pay.json()["detail"]["code"] == "service_unavailable"
+
+
 def test_report_order_mock_payment_and_fulfillment() -> None:
     headers = {"X-Domarion-User-Id": "paid-buyer"}
 

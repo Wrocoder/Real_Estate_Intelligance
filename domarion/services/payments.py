@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from domarion.core import get_settings
+from domarion.core.config import DEMO_IDENTITY_ENVIRONMENTS
 from domarion.schemas import PaymentProviderName, ReportOrder
 from domarion.services.report_products import get_report_product
 
@@ -37,7 +38,11 @@ class VerifiedPaymentWebhook:
     event_type: str
     order_id: str | None
     payment_status: str
+    lifecycle_action: str
     should_mark_paid: bool
+    amount_grosz: int | None
+    currency: str | None
+    external_reference: str | None
     payload: dict[str, Any]
     metadata: dict[str, Any]
 
@@ -60,6 +65,11 @@ class MockPaymentProvider:
     mode = "mock"
 
     def create_checkout_session(self, order: ReportOrder) -> PaymentSession:
+        settings = get_settings()
+        if settings.environment.strip().casefold() not in DEMO_IDENTITY_ENVIRONMENTS:
+            raise PaymentConfigurationError(
+                "Mock checkout is available only in local, development and test environments."
+            )
         return PaymentSession(
             provider=self.provider,
             mode=self.mode,
@@ -478,11 +488,7 @@ def _verify_stripe_webhook(
     provider_event_id = str(payload.get("id") or payment_payload_hash(body))
     data_object = _as_dict(_as_dict(payload.get("data")).get("object"))
     metadata = _as_dict(data_object.get("metadata"))
-    order_id = _first_string(
-        metadata.get("order_id"),
-        data_object.get("client_reference_id"),
-        data_object.get("id"),
-    )
+    order_id = _first_string(metadata.get("order_id"), data_object.get("client_reference_id"))
     payment_status = str(
         data_object.get("payment_status")
         or data_object.get("status")
@@ -490,17 +496,36 @@ def _verify_stripe_webhook(
         or "unknown"
     ).lower()
 
+    amount_grosz = _first_int(
+        data_object.get("amount_total"),
+        data_object.get("amount_received"),
+        data_object.get("amount"),
+    )
+    currency = _first_string(data_object.get("currency"))
+    if currency:
+        currency = currency.upper()
+    external_reference = None
+    if event_type.lower().startswith("checkout.session."):
+        external_reference = _first_string(data_object.get("id"))
+    lifecycle_action = _payment_lifecycle_action(event_type, payment_status)
+
     return VerifiedPaymentWebhook(
         provider="stripe",
         provider_event_id=provider_event_id,
         event_type=event_type,
         order_id=order_id,
         payment_status=payment_status,
-        should_mark_paid=_is_paid_webhook_status(event_type, payment_status),
+        lifecycle_action=lifecycle_action,
+        should_mark_paid=lifecycle_action == "paid",
+        amount_grosz=amount_grosz,
+        currency=currency,
+        external_reference=external_reference,
         payload=payload,
         metadata={
             "stripe_object_id": data_object.get("id"),
             "payment_status": payment_status,
+            "amount_grosz": amount_grosz,
+            "currency": currency,
         },
     )
 
@@ -548,6 +573,11 @@ def _verify_payu_webhook(
         or payload.get("event_id")
         or f"{provider_order_id or order_id or payment_payload_hash(body)}:{payment_status}"
     )
+    amount_grosz = _first_int(order.get("totalAmount"), order.get("total_amount"))
+    currency = _first_string(order.get("currencyCode"), order.get("currency_code"))
+    if currency:
+        currency = currency.upper()
+    lifecycle_action = _payment_lifecycle_action(event_type, payment_status)
 
     return VerifiedPaymentWebhook(
         provider="payu",
@@ -555,11 +585,17 @@ def _verify_payu_webhook(
         event_type=event_type,
         order_id=order_id,
         payment_status=payment_status,
-        should_mark_paid=_is_paid_webhook_status(event_type, payment_status),
+        lifecycle_action=lifecycle_action,
+        should_mark_paid=lifecycle_action == "paid",
+        amount_grosz=amount_grosz,
+        currency=currency,
+        external_reference=provider_order_id,
         payload=payload,
         metadata={
             "payu_order_id": provider_order_id,
             "payment_status": payment_status,
+            "amount_grosz": amount_grosz,
+            "currency": currency,
             "signature_algorithm": algorithm,
         },
     )
@@ -575,6 +611,12 @@ def _verify_mock_webhook(body: bytes) -> VerifiedPaymentWebhook:
     payment_status = str(payload.get("status") or payload.get("payment_status") or "paid").lower()
     provider_event_id = str(payload.get("event_id") or payment_payload_hash(body))
     order_id = _first_string(payload.get("order_id"))
+    amount_grosz = _first_int(payload.get("amount_grosz"), payload.get("amount_total"))
+    currency = _first_string(payload.get("currency"))
+    if currency:
+        currency = currency.upper()
+    external_reference = _first_string(payload.get("external_reference"))
+    lifecycle_action = _payment_lifecycle_action(event_type, payment_status)
 
     return VerifiedPaymentWebhook(
         provider="mock",
@@ -582,9 +624,17 @@ def _verify_mock_webhook(body: bytes) -> VerifiedPaymentWebhook:
         event_type=event_type,
         order_id=order_id,
         payment_status=payment_status,
-        should_mark_paid=_is_paid_webhook_status(event_type, payment_status),
+        lifecycle_action=lifecycle_action,
+        should_mark_paid=lifecycle_action == "paid",
+        amount_grosz=amount_grosz,
+        currency=currency,
+        external_reference=external_reference,
         payload=payload,
-        metadata={"payment_status": payment_status},
+        metadata={
+            "payment_status": payment_status,
+            "amount_grosz": amount_grosz,
+            "currency": currency,
+        },
     )
 
 
@@ -649,7 +699,18 @@ def _first_string(*values: Any) -> str | None:
     return None
 
 
-def _is_paid_webhook_status(event_type: str, payment_status: str) -> bool:
+def _first_int(*values: Any) -> int | None:
+    for value in values:
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int):
+            return value
+        if isinstance(value, str) and value.strip().isdigit():
+            return int(value.strip())
+    return None
+
+
+def _payment_lifecycle_action(event_type: str, payment_status: str) -> str:
     normalized_event = event_type.lower()
     normalized_status = payment_status.lower()
     paid_statuses = {"paid", "succeeded", "success", "completed", "complete"}
@@ -660,4 +721,26 @@ def _is_paid_webhook_status(event_type: str, payment_status: str) -> bool:
         "payment.succeeded",
         "mock.payment_succeeded",
     }
-    return normalized_status in paid_statuses or normalized_event in paid_events
+    refunded_statuses = {"refunded", "refund", "refunded_partial", "partial_refund"}
+    refunded_events = {
+        "charge.refunded",
+        "refund.created",
+        "refund.updated",
+        "payment.refunded",
+        "mock.payment_refunded",
+    }
+    failed_statuses = {"failed", "canceled", "cancelled", "expired", "rejected", "declined"}
+    failed_events = {
+        "checkout.session.expired",
+        "payment_intent.payment_failed",
+        "charge.failed",
+        "payment.failed",
+        "mock.payment_failed",
+    }
+    if normalized_status in refunded_statuses or normalized_event in refunded_events:
+        return "refunded"
+    if normalized_status in failed_statuses or normalized_event in failed_events:
+        return "failed"
+    if normalized_status in paid_statuses or normalized_event in paid_events:
+        return "paid"
+    return "ignored"

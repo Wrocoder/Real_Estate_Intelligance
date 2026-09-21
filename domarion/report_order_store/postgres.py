@@ -89,11 +89,33 @@ class PostgresReportOrderStore:
         row = self.session.get(ReportOrderModel, order_id)
         if row is None or row.owner_id != owner_id:
             return None
-        if row.status not in {"fulfilled", "canceled"}:
+        if row.status not in {"fulfilled", "canceled", "failed", "refunded"}:
             now = datetime.utcnow()
             row.status = "paid"
             row.paid_at = now
             row.updated_at = now
+            self.session.commit()
+            self.session.refresh(row)
+        return self._order_from_row(row)
+
+    def mark_failed(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        row = self.session.get(ReportOrderModel, order_id)
+        if row is None or row.owner_id != owner_id:
+            return None
+        if row.status not in {"fulfilled", "canceled", "refunded"}:
+            row.status = "failed"
+            row.updated_at = datetime.utcnow()
+            self.session.commit()
+            self.session.refresh(row)
+        return self._order_from_row(row)
+
+    def mark_refunded(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        row = self.session.get(ReportOrderModel, order_id)
+        if row is None or row.owner_id != owner_id:
+            return None
+        if row.status != "canceled":
+            row.status = "refunded"
+            row.updated_at = datetime.utcnow()
             self.session.commit()
             self.session.refresh(row)
         return self._order_from_row(row)

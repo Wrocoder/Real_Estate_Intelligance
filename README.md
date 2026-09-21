@@ -1208,10 +1208,10 @@ Invoke-RestMethod "http://127.0.0.1:8000/api/v1/report-orders/$($checkout.order.
   -Method Post
 ```
 
-Paid fulfillment не расходует подписочный monthly report limit. Это MVP-модель для
-разовых покупок. `PAYMENT_PROVIDER=mock` работает по умолчанию. Для hosted checkout
-можно включить Stripe или PayU через env, при этом order lifecycle и webhook fulfillment
-остаются теми же.
+Paid fulfillment не расходует подписочный monthly report limit. Это модель для
+разовых покупок Buyer Report. `PAYMENT_PROVIDER=mock` работает по умолчанию только
+для `local`, `development` и `test`. В production нужно включить Stripe или PayU
+через env; mock checkout там возвращает `503` и не создает production success state.
 
 Stripe Checkout:
 
@@ -1295,7 +1295,12 @@ Webhook endpoints:
 - `POST /api/v1/payment-webhooks/stripe` проверяет `Stripe-Signature` через `STRIPE_WEBHOOK_SECRET`.
 - `POST /api/v1/payment-webhooks/payu` проверяет `OpenPayU-Signature` через `PAYU_SECOND_KEY`.
 - Повторный `provider_event_id` возвращает `duplicate` и не генерирует второй отчет.
-- Paid webhook автоматически переводит order в `fulfilled` и создает saved report.
+- Paid webhook автоматически переводит order в `fulfilled` и создает saved report
+  только после проверки order id, amount, currency и сохраненного checkout reference
+  там, где провайдер передает эти значения.
+- Failed webhook переводит order в `failed` без генерации отчета.
+- Refund webhook переводит order в `refunded` и сохраняет `generated_report_id` для
+  audit trail; уже выданный report access отдельно не отзывается.
 
 ## Partner referrals MVP
 

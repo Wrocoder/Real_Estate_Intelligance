@@ -36,6 +36,7 @@ from domarion.auth import CurrentAccount, CurrentAccountDep
 from domarion.auth_store.base import AuthStore
 from domarion.auth_store.factory import get_auth_store
 from domarion.core import get_settings
+from domarion.core.config import DEMO_IDENTITY_ENVIRONMENTS
 from domarion.crm_store.base import CrmStore
 from domarion.crm_store.factory import get_crm_store
 from domarion.custom_dashboard_store.base import CustomDashboardStore
@@ -336,6 +337,7 @@ from domarion.services.paid_beta_tracking import (
 from domarion.services.payments import (
     PaymentConfigurationError,
     PaymentWebhookVerificationError,
+    VerifiedPaymentWebhook,
     get_payment_provider,
     payment_payload_hash,
     verify_payment_webhook,
@@ -3869,6 +3871,11 @@ def mock_pay_report_order(
     order_store: ReportOrderStoreDep,
     account: CurrentAccountDep,
 ) -> ReportOrder:
+    if get_settings().environment.strip().casefold() not in DEMO_IDENTITY_ENVIRONMENTS:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Mock payment is available only in local, development and test environments.",
+        )
     order = order_store.mark_paid(account.user.id, order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Report order not found")
@@ -4018,6 +4025,130 @@ async def receive_payment_webhook(
             provider_event_id=verified.provider_event_id,
             status="ignored",
             message="Webhook ignored because order was not found.",
+            webhook_event=webhook_event,
+        )
+
+    rejection_reason = _payment_webhook_rejection_reason(order_store, order, verified)
+    if rejection_reason is not None:
+        _record_order_event_for_owner(
+            order_store,
+            order.owner_id,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="payment_webhook_rejected",
+                actor_id=f"webhook:{verified.provider}",
+                message="Payment webhook rejected because it did not match the order.",
+                metadata={
+                    "provider": verified.provider,
+                    "provider_event_id": verified.provider_event_id,
+                    "event_type": verified.event_type,
+                    "payment_status": verified.payment_status,
+                    "reason": rejection_reason,
+                    "webhook_amount_grosz": verified.amount_grosz,
+                    "order_amount_grosz": order.amount_grosz,
+                    "webhook_currency": verified.currency,
+                    "order_currency": order.currency,
+                    "external_reference": verified.external_reference,
+                },
+            ),
+        )
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=order.id,
+                event_type=verified.event_type,
+                status="rejected",
+                payload_hash=payload_hash,
+                metadata={**verified.metadata, "reason": rejection_reason},
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="rejected",
+            message="Webhook rejected because provider payment details did not match the order.",
+            order=order,
+            generated_report_id=order.generated_report_id,
+            webhook_event=webhook_event,
+        )
+
+    if verified.lifecycle_action == "failed":
+        failed_order = order_store.mark_failed(order.owner_id, order.id) or order
+        _record_order_event_for_owner(
+            order_store,
+            order.owner_id,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="payment_failed",
+                actor_id=f"webhook:{verified.provider}",
+                message="Payment provider reported a failed payment.",
+                metadata={
+                    "provider": verified.provider,
+                    "provider_event_id": verified.provider_event_id,
+                    "event_type": verified.event_type,
+                    "payment_status": verified.payment_status,
+                },
+            ),
+        )
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=failed_order.id,
+                event_type=verified.event_type,
+                status="processed",
+                payload_hash=payload_hash,
+                metadata={**verified.metadata, "order_status": failed_order.status},
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="processed",
+            message="Payment failure webhook processed.",
+            order=failed_order,
+            generated_report_id=failed_order.generated_report_id,
+            webhook_event=webhook_event,
+        )
+
+    if verified.lifecycle_action == "refunded":
+        refunded_order = order_store.mark_refunded(order.owner_id, order.id) or order
+        _record_order_event_for_owner(
+            order_store,
+            order.owner_id,
+            order.id,
+            ReportOrderEventCreate(
+                event_type="payment_refunded",
+                actor_id=f"webhook:{verified.provider}",
+                message="Payment provider reported a refund.",
+                metadata={
+                    "provider": verified.provider,
+                    "provider_event_id": verified.provider_event_id,
+                    "event_type": verified.event_type,
+                    "payment_status": verified.payment_status,
+                    "generated_report_id": refunded_order.generated_report_id,
+                },
+            ),
+        )
+        webhook_event = order_store.record_payment_webhook_event(
+            PaymentWebhookEventCreate(
+                provider=verified.provider,
+                provider_event_id=verified.provider_event_id,
+                order_id=refunded_order.id,
+                event_type=verified.event_type,
+                status="processed",
+                payload_hash=payload_hash,
+                metadata={**verified.metadata, "order_status": refunded_order.status},
+            )
+        )
+        return PaymentWebhookResult(
+            provider=verified.provider,
+            provider_event_id=verified.provider_event_id,
+            status="processed",
+            message="Refund webhook processed.",
+            order=refunded_order,
+            generated_report_id=refunded_order.generated_report_id,
             webhook_event=webhook_event,
         )
 
@@ -6224,6 +6355,43 @@ def _record_order_event_for_owner(
         return order_store.record_event(owner_id, order_id, payload)
     except KeyError:
         return None
+
+
+def _payment_webhook_rejection_reason(
+    order_store: ReportOrderStore,
+    order: ReportOrder,
+    verified: VerifiedPaymentWebhook,
+) -> str | None:
+    if verified.amount_grosz is not None and verified.amount_grosz != order.amount_grosz:
+        return "amount_mismatch"
+    if verified.currency is not None and verified.currency.upper() != order.currency.upper():
+        return "currency_mismatch"
+    if verified.external_reference and verified.provider != "mock":
+        events = order_store.list_events(order.owner_id, order.id, limit=200)
+        provider_checkout_events = [
+            event
+            for event in events
+            if event.event_type == "checkout_created"
+            and event.metadata.get("provider") == verified.provider
+        ]
+        checkout_references = {
+            str(event.metadata.get("external_reference"))
+            for event in provider_checkout_events
+            if event.metadata.get("external_reference")
+        }
+        checkout_references.update(
+            str(event.metadata.get("stripe_session_id"))
+            for event in provider_checkout_events
+            if event.metadata.get("stripe_session_id")
+        )
+        checkout_references.update(
+            str(event.metadata.get("payu_order_id"))
+            for event in provider_checkout_events
+            if event.metadata.get("payu_order_id")
+        )
+        if checkout_references and verified.external_reference not in checkout_references:
+            return "checkout_reference_mismatch"
+    return None
 
 
 def _with_default_alert_delivery_target(

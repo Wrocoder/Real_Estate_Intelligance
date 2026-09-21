@@ -36,6 +36,12 @@ class ReportOrderStore(Protocol):
     def mark_paid(self, owner_id: str, order_id: str) -> ReportOrder | None:
         raise NotImplementedError
 
+    def mark_failed(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        raise NotImplementedError
+
+    def mark_refunded(self, owner_id: str, order_id: str) -> ReportOrder | None:
+        raise NotImplementedError
+
     def mark_fulfilled(
         self,
         owner_id: str,
