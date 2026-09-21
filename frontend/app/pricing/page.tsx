@@ -48,21 +48,21 @@ const PRICING_PRODUCT_COPY: Record<
 > = {
   en: {
     object_report: {
-      title: "Full Property Report",
-      description: "A decision report for one apartment: fair price, risks, negotiation and total purchase cost.",
+      title: "Buyer Report",
+      description: "One paid decision file for a specific apartment: price, risk, evidence, negotiation and next checks.",
       features: [
-        "Buyer verdict and fair-price range",
-        "Main risks, unknowns and viewing questions",
-        "Negotiation range and evidence",
-        "Printable report for your purchase file",
+        "BUY / NEGOTIATE / SKIP verdict with explanation",
+        "Detailed fair-price range and comparable evidence",
+        "Opening offer, walk-away price and negotiation arguments",
+        "Total purchase cost, due-diligence checklist and downloadable report",
       ],
-      cta: "Buy property report",
+      cta: "Buy Buyer Report",
     },
     full_object_analysis: {
       title: "Complete Due Diligence",
       description: "A deeper apartment check before reservation or deposit.",
       features: [
-        "Everything from Full Property Report",
+        "Everything from Buyer Report",
         "Detailed due-diligence checklist",
         "Comparable alternatives and negotiation script",
         "Total cost with renovation context",
@@ -72,15 +72,15 @@ const PRICING_PRODUCT_COPY: Record<
   },
   pl: {
     object_report: {
-      title: "Pełny raport mieszkania",
-      description: "Raport decyzyjny dla jednego mieszkania: uczciwa cena, ryzyka, negocjacje i całkowity koszt zakupu.",
+      title: "Buyer Report",
+      description: "Jeden płatny plik decyzyjny dla konkretnego mieszkania: cena, ryzyko, dowody, negocjacje i następne sprawdzenia.",
       features: [
-        "Werdykt kupującego i zakres uczciwej ceny",
-        "Główne ryzyka, niewiadome i pytania na oglądanie",
-        "Zakres negocjacji i uzasadnienie",
-        "Raport do zapisania przed decyzją zakupową",
+        "Werdykt BUY / NEGOTIATE / SKIP z wyjaśnieniem",
+        "Szczegółowy zakres fair price i dowody porównawcze",
+        "Pierwsza oferta, cena graniczna i argumenty negocjacyjne",
+        "Całkowity koszt zakupu, checklist due diligence i raport do pobrania",
       ],
-      cta: "Kup raport mieszkania",
+      cta: "Kup Buyer Report",
     },
     full_object_analysis: {
       title: "Pełna analiza przed zakupem",
@@ -96,15 +96,15 @@ const PRICING_PRODUCT_COPY: Record<
   },
   ru: {
     object_report: {
-      title: "Полный отчет по квартире",
-      description: "Отчет для решения по одной квартире: справедливая цена, риски, торг и полная стоимость покупки.",
+      title: "Buyer Report",
+      description: "Один платный файл решения по конкретной квартире: цена, риски, доказательства, торг и следующие проверки.",
       features: [
-        "Вывод для покупателя и диапазон справедливой цены",
-        "Главные риски, неизвестные факты и вопросы для просмотра",
-        "Диапазон торга и обоснование",
-        "Отчет, который можно сохранить перед решением о покупке",
+        "Вердикт BUY / NEGOTIATE / SKIP с объяснением",
+        "Подробный диапазон fair price и сравнимые объекты",
+        "Первое предложение, предельная цена и аргументы для торга",
+        "Полная стоимость покупки, due diligence checklist и скачиваемый отчет",
       ],
-      cta: "Купить отчет по квартире",
+      cta: "Купить Buyer Report",
     },
     full_object_analysis: {
       title: "Полная проверка перед покупкой",
@@ -120,15 +120,15 @@ const PRICING_PRODUCT_COPY: Record<
   },
   uk: {
     object_report: {
-      title: "Повний звіт по квартирі",
-      description: "Звіт для рішення по одній квартирі: справедлива ціна, ризики, торг і повна вартість купівлі.",
+      title: "Buyer Report",
+      description: "Один платний файл рішення по конкретній квартирі: ціна, ризики, докази, торг і наступні перевірки.",
       features: [
-        "Висновок для покупця і діапазон справедливої ціни",
-        "Головні ризики, невідомі факти і питання для перегляду",
-        "Діапазон торгу й обґрунтування",
-        "Звіт, який можна зберегти перед рішенням про купівлю",
+        "Вердикт BUY / NEGOTIATE / SKIP з поясненням",
+        "Детальний діапазон fair price і порівнювані об'єкти",
+        "Перша пропозиція, гранична ціна і аргументи для торгу",
+        "Повна вартість купівлі, due diligence checklist і звіт для завантаження",
       ],
-      cta: "Купити звіт по квартирі",
+      cta: "Купити Buyer Report",
     },
     full_object_analysis: {
       title: "Повна перевірка перед купівлею",
@@ -373,7 +373,7 @@ export default function PricingPage() {
     setBillingForm((current) => ({ ...current, [field]: value }));
   }
 
-  const buyerProducts = products.filter((product) => product.audience === "buyer");
+  const buyerProducts = products.filter((product) => product.code === "object_report");
   const buyerPlans = plans.filter((plan) => BUYER_PLAN_CODES.includes(plan.plan));
   const buyerProPlan = plans.find((plan) => plan.plan === "buyer_pro");
 

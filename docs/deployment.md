@@ -223,6 +223,7 @@ Payments:
 | `PAYMENT_SUCCESS_URL` | success redirect URL/template | пусто |
 | `PAYMENT_CANCEL_URL` | cancel redirect URL/template | пусто |
 | `PAYMENT_CHECKOUT_TIMEOUT_SECONDS` | timeout для hosted checkout calls | `10` |
+| `BUYER_REPORT_AMOUNT_GROSZ` | Цена core paid Buyer Report в grosz | `4900` |
 | `STRIPE_SECRET_KEY` | Stripe API secret | пусто |
 | `STRIPE_API_BASE_URL` | Stripe API base URL | `https://api.stripe.com` |
 | `PAYMENT_WEBHOOK_TOLERANCE_SECONDS` | Допуск Stripe timestamp для webhook signature | `300` |
@@ -342,11 +343,9 @@ deployment. The deployment is live and working as of 2026-09-01; keep real
 domains, IPs, SSH keys and secrets outside git.
 
 OCI setup and operations are documented in `docs/oci_staging_setup_runbook.md`.
-The original planning checklist is in `docs/oracle_cloud_deployment_plan.md`.
-
-The previous Render MVP hosting decision is retained in
-`docs/mvp_hosting_decision.md` as a fallback/reference path. `render.yaml`
-remains in the repo, but it is not the active hosted environment.
+The original OCI planning checklist and Render hosting decision have been
+superseded by that runbook. `render.yaml` remains as a fallback configuration,
+but it is not the active hosted environment.
 
 `render.yaml` описывает:
 

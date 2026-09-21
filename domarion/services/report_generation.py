@@ -91,6 +91,11 @@ def generate_and_store_object_report(
             "risk_label": analysis.scores.risk_label,
             "negotiation_label": analysis.scores.negotiation_label,
             "fair_price_confidence_score": analysis.scores.fair_price_confidence_score,
+            "fair_price_confidence_level": (
+                analysis.scores.fair_price_confidence.display_level
+                if analysis.scores.fair_price_confidence
+                else None
+            ),
             "buyer_verdict_status": (
                 analysis.buyer_decision.verdict.status if analysis.buyer_decision else None
             ),
@@ -212,6 +217,11 @@ def generate_and_store_user_submitted_draft_report(
             "risk_label": analysis.scores.risk_label,
             "negotiation_label": analysis.scores.negotiation_label,
             "fair_price_confidence_score": analysis.scores.fair_price_confidence_score,
+            "fair_price_confidence_level": (
+                analysis.scores.fair_price_confidence.display_level
+                if analysis.scores.fair_price_confidence
+                else None
+            ),
             "buyer_verdict_status": (
                 analysis.buyer_decision.verdict.status if analysis.buyer_decision else None
             ),
@@ -500,6 +510,23 @@ def _apply_paid_object_report_variant(
     analysis: ListingAnalysis,
     product_code: ReportProductCode,
 ) -> ObjectReport:
+    if product_code == "object_report":
+        sections = [
+            _buyer_report_paid_value_section(analysis),
+            *report.sections,
+            _full_analysis_due_diligence_section(analysis),
+            _full_analysis_offer_strategy_section(analysis),
+            _full_analysis_scenarios_section(analysis),
+        ]
+        return report.model_copy(
+            update={
+                "template_code": "buyer_report_v1",
+                "template_name": "Buyer Report v1",
+                "summary": f"Buyer Report: {report.summary}",
+                "sections": sections,
+            }
+        )
+
     if product_code != "full_object_analysis":
         return report
 
@@ -521,11 +548,56 @@ def _apply_paid_object_report_variant(
 
 
 def _object_report_title(listing_title: str, product_code: ReportProductCode) -> str:
+    if product_code == "object_report":
+        return f"Buyer Report - {listing_title}"
     if product_code == "full_object_analysis":
         return f"Full Object Analysis - {listing_title}"
     if product_code == "investor_report":
         return f"Investor Report - {listing_title}"
     return listing_title
+
+
+def _buyer_report_paid_value_section(analysis: ListingAnalysis) -> ReportSection:
+    decision = analysis.buyer_decision
+    scores = analysis.scores
+    items = [
+        (
+            "Paid Buyer Report package: decision verdict, fair-price evidence, "
+            "risks, negotiation plan, total purchase cost and downloadable evidence file."
+        ),
+        f"Fair price range: {_money_range(scores.fair_price_low, scores.fair_price_high)}.",
+        f"Fair price confidence: {scores.fair_price_confidence_label}.",
+    ]
+    if decision is not None:
+        items.extend(
+            [
+                f"Suggested opening offer: {_money(decision.verdict.opening_offer_pln)}.",
+                (
+                    "Maximum reasonable price before new evidence: "
+                    f"{_money(decision.verdict.max_reasonable_offer_pln)}."
+                ),
+                (
+                    "Estimated total move-in cost: "
+                    f"{_money(decision.total_acquisition.total_move_in_cost_pln)}."
+                ),
+            ]
+        )
+    if analysis.comparable_evidence:
+        items.append(
+            "Comparable evidence included: "
+            f"{len(analysis.comparable_evidence)} observations with distance, "
+            "freshness and similarity."
+        )
+    else:
+        items.append(
+            "Comparable evidence is limited; the report keeps this visible instead "
+            "of implying stronger certainty."
+        )
+    items.append(
+        "Severe known risks remain visible in free analysis; this report adds "
+        "depth, evidence and action planning."
+    )
+    return ReportSection(title="Buyer Report value summary", items=items)
 
 
 def _full_analysis_summary_section(analysis: ListingAnalysis) -> ReportSection:
@@ -537,7 +609,7 @@ def _full_analysis_summary_section(analysis: ListingAnalysis) -> ReportSection:
             f"Listing: {listing.address}, {listing.district}, {listing.city}.",
             f"Fair price range: {_money_range(scores.fair_price_low, scores.fair_price_high)}.",
             f"Price delta to fair mid: {scores.price_delta_to_fair_mid_pct:+.1f}%.",
-            f"Fair price confidence: {scores.fair_price_confidence_score}/100.",
+            f"Fair price confidence: {scores.fair_price_confidence_label}.",
             (
                 "Decision posture: "
                 f"{_decision_posture(scores.risk_score, scores.negotiation_score)}."
@@ -632,7 +704,7 @@ def _full_analysis_scenarios_section(analysis: ListingAnalysis) -> ReportSection
             (
                 f"Base case: fair range {_money(scores.fair_price_low)}-"
                 f"{_money(scores.fair_price_high)} with "
-                f"{scores.fair_price_confidence_score}/100 confidence."
+                f"{scores.fair_price_confidence_label} confidence."
             ),
             (
                 "Upside case: paying toward "

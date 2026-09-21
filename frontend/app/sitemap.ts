@@ -16,6 +16,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const publicDiscoveryRoutes = [
     "",
     "/check",
+    "/search",
+    "/methodology",
     "/guides",
     "/areas",
   ];

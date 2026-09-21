@@ -1,5 +1,6 @@
 import json
 from dataclasses import asdict, dataclass, field, replace
+from datetime import UTC, date, datetime
 from functools import lru_cache
 from hashlib import sha256
 from math import ceil, floor
@@ -11,6 +12,7 @@ from domarion.schemas import (
     AreaStatistics,
     FairPriceConfidence,
     FairPriceConfidenceFactor,
+    FairPriceEvidence,
     Listing,
     ListingAnalysis,
     PropertyScores,
@@ -22,6 +24,7 @@ from domarion.schemas import (
 )
 from domarion.services.buyer_decision import build_buyer_decision
 from domarion.services.comparables import (
+    MINIMUM_COMPARABLE_SAMPLE,
     ComparableSelection,
     build_comparable_evidence,
     select_comparables,
@@ -46,7 +49,7 @@ def _legacy_comparable_selection(repository, listing: Listing) -> ComparableSele
     return ComparableSelection(items, 0, "legacy alert matching", 0, [])
 
 
-SCORING_FORMULA_VERSION = "domarion-scoring-v1"
+SCORING_FORMULA_VERSION = "domarion-scoring-v2"
 DEFAULT_SCORING_WEIGHTS_PROFILE = "default-v1"
 SCORE_EXPLANATION_VERSION = "score-explanation-v2"
 SCORING_DISCLAIMER = (
@@ -168,6 +171,7 @@ def calculate_scores(
     weights: ScoringWeights | None = None,
     comparable_selection: ComparableSelection | None = None,
     rental_selection: RentalComparableSelection | None = None,
+    evaluation_date: date | None = None,
 ) -> PropertyScores:
     weights = weights or get_scoring_weights()
     median_price = area_statistics.median_price_per_m2
@@ -191,6 +195,7 @@ def calculate_scores(
         area_statistics,
         comparables,
         comparable_selection,
+        evaluation_date or datetime.now(UTC).date(),
     )
     if missing_inputs:
         fair_price_confidence = _cap_fair_price_confidence(
@@ -199,7 +204,8 @@ def calculate_scores(
             "property_context_incomplete",
         )
     comparable_prices = [item.price_per_m2 for item in comparables]
-    if len(comparable_prices) >= 3:
+    comparable_median = None
+    if len(comparable_prices) >= MINIMUM_COMPARABLE_SAMPLE:
         comparable_median = int(median(comparable_prices))
         fair_price_per_m2 = (
             median_price * weights.fair_price.area_median
@@ -425,6 +431,22 @@ def calculate_scores(
         fair_price_high=fair_price_high,
         fair_price_confidence_score=fair_price_confidence_score,
         fair_price_confidence=fair_price_confidence,
+        fair_price_evidence=FairPriceEvidence(
+            method="area_and_listing_medians" if comparable_median is not None else "area_median",
+            area_price_basis=area_statistics.price_basis,
+            area_median_per_m2=median_price,
+            area_weight=weights.fair_price.area_median if comparable_median is not None else 1,
+            listing_median_per_m2=comparable_median,
+            listing_weight=(
+                weights.fair_price.comparable_median if comparable_median is not None else 0
+            ),
+            listings_used_count=len(comparables) if comparable_median is not None else 0,
+            minimum_listing_sample=MINIMUM_COMPARABLE_SAMPLE,
+            subject_area_m2=listing.area_m2,
+            range_half_width_pct=round(range_width * 100, 2),
+            rounding_step_pln=5_000,
+            selection_reference_date=listing.last_seen_at,
+        ),
         price_delta_to_fair_mid_pct=round(price_delta_to_fair_mid_pct, 1),
         breakdown=ScoreBreakdown(
             price_position=price_position,
@@ -467,9 +489,7 @@ def _build_score_explainability(
     risk_score: int,
     negotiation_score: int,
 ) -> ScoreExplainability:
-    market_evidence_available = bool(
-        comparables or area_statistics.transaction_observation_count
-    )
+    market_evidence_available = bool(comparables or area_statistics.transaction_observation_count)
     investment_missing = _missing_codes(
         ("nearest_stop_m", transport is not None),
         ("planned_investments_within_2km", future_infrastructure is not None),
@@ -649,9 +669,7 @@ def _build_score_explainability(
             liquidity_drivers.append(_driver("short_area_market_exposure", "positive"))
         elif area_statistics.average_days_on_market >= 90:
             liquidity_drivers.append(_driver("long_area_market_exposure", "negative"))
-        supply_balance = (
-            area_statistics.removed_listings_30d - area_statistics.new_listings_30d
-        )
+        supply_balance = area_statistics.removed_listings_30d - area_statistics.new_listings_30d
         if supply_balance >= 5:
             liquidity_drivers.append(_driver("demand_exceeds_new_supply", "positive"))
         elif supply_balance <= -5:
@@ -673,8 +691,7 @@ def _build_score_explainability(
         else:
             rental_drivers.append(_driver("rental_evidence_limited", "unknown"))
         monthly_rent = (
-            median(item.rent_per_m2_pln for item in rental_selection.items)
-            * listing.area_m2
+            median(item.rent_per_m2_pln for item in rental_selection.items) * listing.area_m2
         )
         gross_yield = monthly_rent * 12 / listing.price * 100
         if gross_yield >= 5:
@@ -804,11 +821,7 @@ def _score_detail(
     confidence_level: str | None = None,
 ) -> ScoreDimensionExplainability:
     status = (
-        "insufficient_data"
-        if value is None
-        else "available"
-        if coverage_score >= 90
-        else "partial"
+        "insufficient_data" if value is None else "available" if coverage_score >= 90 else "partial"
     )
     return ScoreDimensionExplainability(
         score_code=score_code,
@@ -1062,11 +1075,17 @@ def _fair_price_confidence(
     area_statistics: AreaStatistics,
     comparables: list[Listing],
     selection: ComparableSelection | None,
+    evaluated_at: date,
 ) -> FairPriceConfidence:
-    similarities = [
-        item.similarity_score for item in build_comparable_evidence(listing, comparables)
-    ]
+    evidence = build_comparable_evidence(listing, comparables)
+    similarities = [item.similarity_score for item in evidence]
     median_similarity = round(median(similarities)) if similarities else None
+    distances = [item.distance_m for item in evidence if item.distance_m is not None]
+    median_distance = round(median(distances)) if distances else None
+    ages = [(evaluated_at - item.last_seen_at).days for item in comparables]
+    valid_ages = [age for age in ages if age >= 0]
+    median_age = round(median(valid_ages)) if valid_ages else None
+    oldest_age = max(valid_ages) if valid_ages else None
     prices = [item.price_per_m2 for item in comparables]
     dispersion = (
         round((max(prices) - min(prices)) / median(prices) * 100, 1)
@@ -1074,77 +1093,159 @@ def _fair_price_confidence(
         else None
     )
     transaction_count = area_statistics.transaction_observation_count
+    transaction_baseline = area_statistics.price_basis == "transaction_observed"
+    baseline_date = (
+        area_statistics.transaction_observed_to
+        if transaction_baseline
+        else area_statistics.data_provenance.updated_at
+    )
+    baseline_age = (evaluated_at - baseline_date.date()).days if baseline_date else None
+    baseline_count = (
+        transaction_count if transaction_baseline else area_statistics.data_provenance.sample_size
+    )
+    baseline_available = bool(
+        baseline_count is not None
+        and baseline_count >= 10
+        and baseline_age is not None
+        and 0 <= baseline_age <= 365
+    )
+    sufficient = len(comparables) >= MINIMUM_COMPARABLE_SAMPLE or baseline_available
     sample_score = (
         100
         if len(comparables) >= 5
         else 78
         if len(comparables) >= 3
         else 62
-        if transaction_count >= 30
-        else 48
-        if transaction_count >= 10
+        if baseline_available
         else 30
         if comparables
-        else 15
+        else None
     )
-    relevance_score = median_similarity if median_similarity is not None else 35
-    level = selection.level if selection is not None else 0
-    geography_score = {0: 100, 1: 88, 2: 68, 3: 52}.get(level, 25)
-    freshness_score = _freshness_score(listing, selection, area_statistics)
-    consistency_score = (
-        90
-        if dispersion is not None and dispersion <= 12
-        else 70
-        if dispersion is not None and dispersion <= 22
-        else 35
-        if dispersion is not None
-        else 55
+    geography_score = (
+        100
+        if median_distance is not None and median_distance <= 1_000
+        else 75
+        if median_distance is not None and median_distance <= 3_000
+        else 40
+        if median_distance is not None
+        else None
     )
-    source_quality_score = (
-        90
-        if transaction_count >= 30
-        else 78
-        if transaction_count >= 10
-        else 65
-        if comparables
+    freshness_age = oldest_age if comparables else baseline_age
+    freshness_score = (
+        None
+        if freshness_age is None or freshness_age < 0
+        else 95
+        if freshness_age <= 30
+        else 80
+        if freshness_age <= 90
+        else 60
+        if freshness_age <= 180
         else 25
     )
-    completeness_score = listing.data_quality_score
+    consistency_score = (
+        None if dispersion is None else 90 if dispersion <= 12 else 70 if dispersion <= 22 else 35
+    )
+    source_provenances = [area_statistics.data_provenance]
+    if len(comparables) >= MINIMUM_COMPARABLE_SAMPLE:
+        source_provenances.extend(item.data_provenance for item in comparables)
+    known_sources = all(
+        item.source_type not in {"unknown", "market_statistics"} for item in source_provenances
+    )
+    demo_sources = any(item.mode == "demo" for item in source_provenances)
+    source_score = 30 if demo_sources else 80 if known_sources else None
+    property_fields = {
+        "building_year": listing.building_year,
+        "floor": listing.floor,
+        "condition": listing.renovation_state,
+        "building_type": listing.building_type,
+        "latitude": listing.lat,
+        "longitude": listing.lon,
+    }
+    missing_fields = [key for key, value in property_fields.items() if value is None]
+    completeness_score = round(
+        100 * (len(property_fields) - len(missing_fields)) / len(property_fields)
+    )
     weighted = [
         ("sample_size", sample_score, 20),
-        ("relevance", relevance_score, 20),
+        ("relevance", median_similarity, 20),
         ("freshness", freshness_score, 15),
         ("geographic_scope", geography_score, 15),
         ("price_consistency", consistency_score, 15),
-        ("source_quality", source_quality_score, 10),
+        ("source_quality", source_score, 10),
         ("property_completeness", completeness_score, 5),
     ]
-    score = round(sum(value * weight for _, value, weight in weighted) / 100)
+    # Missing dimensions contribute no support; never renormalize away their weight.
+    score = round(sum(value * weight for _, value, weight in weighted if value is not None) / 100)
     limitations = []
-    if len(comparables) < 3:
+    if len(comparables) < MINIMUM_COMPARABLE_SAMPLE:
         limitations.append("comparable_sample_insufficient")
-        score = min(score, 74 if transaction_count >= 10 else 49)
+        score = min(score, 74 if baseline_available else 49)
+    elif len(comparables) < 5:
+        limitations.append("comparable_sample_limited")
+        score = min(score, 74)
     if dispersion is not None and dispersion > 22:
         limitations.append("comparable_prices_inconsistent")
         score = min(score, 49)
-    if level >= 2:
+    if selection is not None and selection.level >= 2:
         limitations.append("geographic_scope_widened")
         score = min(score, 69)
-    if transaction_count == 0:
+    if len(distances) < len(comparables):
+        limitations.append("comparable_distance_incomplete")
+        score = min(score, 69)
+    if freshness_age is None:
+        limitations.append("evidence_recency_unknown")
+        score = min(score, 49)
+    elif freshness_age > 180:
+        limitations.append("evidence_stale")
+        score = min(score, 49)
+    if any(age < 0 for age in ages) or (baseline_age is not None and baseline_age < 0):
+        limitations.append("evidence_date_in_future")
+        sufficient = False
+    if not known_sources:
+        limitations.append("source_quality_unknown")
+        score = min(score, 69)
+    if demo_sources:
+        limitations.append("demo_evidence")
+        score = min(score, 49)
+    if baseline_age is None:
+        limitations.append("baseline_recency_unknown")
+        score = min(score, 69)
+    elif baseline_age > 365:
+        limitations.append("baseline_stale")
+        score = min(score, 49)
+    if missing_fields:
+        limitations.append("property_attributes_incomplete")
+        score = min(score, 69)
+    if not transaction_baseline or transaction_count == 0:
         limitations.append("transaction_baseline_unavailable")
-    if not comparables and transaction_count == 0:
+    if not sufficient:
         limitations.append("market_evidence_insufficient")
-        score = min(score, 35)
+        score = 0
     factors = [
         FairPriceConfidenceFactor(
             code=code,
             score=value,
             weight=weight,
-            status="supporting" if value >= 70 else "neutral" if value >= 50 else "limiting",
+            status="unknown"
+            if value is None
+            else "supporting"
+            if value >= 70
+            else "neutral"
+            if value >= 50
+            else "limiting",
         )
         for code, value, weight in weighted
     ]
     return FairPriceConfidence(
+        model_version="fair-price-confidence-v2",
+        evidence_status="sufficient" if sufficient else "insufficient",
+        evaluated_at=evaluated_at,
+        median_distance_m=median_distance,
+        distance_observation_count=len(distances),
+        median_age_days=median_age,
+        oldest_age_days=oldest_age,
+        baseline_age_days=baseline_age if baseline_age is not None and baseline_age >= 0 else None,
+        missing_property_fields=missing_fields,
         level=_confidence_level(score),
         score=score,
         comparable_count=len(comparables),
@@ -1156,27 +1257,9 @@ def _fair_price_confidence(
     )
 
 
-def _freshness_score(
-    listing: Listing,
-    selection: ComparableSelection | None,
-    area_statistics: AreaStatistics,
-) -> int:
-    if selection is not None and selection.items:
-        age = max(
-            0,
-            (listing.last_seen_at - min(item.last_seen_at for item in selection.items)).days,
-        )
-        return 95 if age <= 30 else 80 if age <= 90 else 60
-    if area_statistics.transaction_observed_to is not None:
-        transaction_age = max(
-            0,
-            (listing.last_seen_at - area_statistics.transaction_observed_to.date()).days,
-        )
-        return 95 if transaction_age <= 30 else 80 if transaction_age <= 90 else 60
-    return 30
-
-
 def _fair_price_range_width(confidence: FairPriceConfidence) -> float:
+    if confidence.evidence_status == "insufficient":
+        return 0.20
     base = {"high": 0.06, "medium": 0.10, "low": 0.15}[confidence.level]
     if confidence.price_dispersion_pct is None:
         return base

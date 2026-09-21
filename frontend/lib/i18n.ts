@@ -17,6 +17,7 @@ export type NavigationLabelKey =
   | "beta"
   | "realtors"
   | "guides"
+  | "methodology"
   | "explorer"
   | "check"
   | "reports"
@@ -1438,6 +1439,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     beta: "Beta",
     realtors: "Realtors",
     guides: "Guides",
+    methodology: "Methodology",
     explorer: "Search",
     check: "Check apartment",
     reports: "Reports",
@@ -1458,6 +1460,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     beta: "Beta",
     realtors: "Pośrednicy",
     guides: "Poradniki",
+    methodology: "Metodologia",
     explorer: "Wyszukiwarka",
     check: "Sprawdź mieszkanie",
     reports: "Raporty",
@@ -1478,6 +1481,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     beta: "Beta",
     realtors: "Риелторы",
     guides: "Гайды",
+    methodology: "Методология",
     explorer: "Подбор",
     check: "Проверка",
     reports: "Отчеты",
@@ -1498,6 +1502,7 @@ export const NAVIGATION_LABELS: Record<Locale, Record<NavigationLabelKey, string
     beta: "Beta",
     realtors: "Рієлтори",
     guides: "Гайди",
+    methodology: "Методологія",
     explorer: "Підбір",
     check: "Перевірка",
     reports: "Звіти",

@@ -1,13 +1,13 @@
-# WartoMetr Analytics / Real Estate Intelligence Poland
+# WartoMetr
 
-SaaS-платформа аналитики недвижимости в Польше. Первый технический фокус:
-FastAPI backend для поиска объектов, сравнения, скоринга и подготовки отчетов.
+Продукт поддержки решения о покупке квартиры в Польше:
+стоит ли покупать конкретную квартиру по указанной цене?
 
 ## Текущее состояние проекта
 
 Проект сейчас состоит из FastAPI backend, Next.js frontend и набора ingestion,
 scoring/reporting и ops-инструментов вокруг legal-first данных недвижимости.
-Локально все критичные функции работают в `memory`-режиме без PostgreSQL; для
+Локальные демонстрационные сценарии доступны в `memory`-режиме; для
 staging/production предусмотрены PostgreSQL/PostGIS-backed stores, Redis,
 S3-compatible report artifacts и worker-процессы.
 
@@ -45,8 +45,8 @@ selling at scale.
 - `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
 - `docs/oci_staging_setup_runbook.md` - active Oracle Cloud runbook: GitHub
   Environment, VM bootstrap, deploy, checks, operations and rollback.
-- `docs/production_readiness_audit_2026-09-01.md` - paid-beta readiness audit
-  for the active Oracle Cloud deployment.
+- `docs/production_readiness_audit_2026-09-01.md` - исторический аудит и незакрытые
+  production-гейты; не подтверждает текущее состояние deployment.
 - `docs/production_ops_runbook.md` - production preflight, managed services,
   backups, S3 artifacts and worker deployment.
 - `docs/source_compliance_policy.md` - legal/data guardrails для источников,
@@ -58,123 +58,12 @@ selling at scale.
 - `docs/developer_reputation_plan.md` - developer ranking/reputation model,
   importer, citations and moderation.
 - `docs/paid_beta_playbook.md` - paid beta offers and operational workflow.
-- `docs/product_validation_strategy.md` - validation metrics, risks and roadmap.
-- `docs/buyer_decision_product_direction.md` - текущий product reset:
-  verdict-first buyer assistant, PMF gate, pricing ladder and prioritized backlog.
+- `docs/README.md` - актуальная навигация по документации и статус документов.
+- `docs/WartoMetr_Product_Transformation_Master_Prompt.md` - текущая дорожная карта.
+- `docs/product_validation_strategy.md` - исторические гипотезы коммерческой валидации.
 - `docs/document_upload_due_diligence_plan.md` - future due-diligence document
   upload/metadata flow with minimal retention, redaction and legal guardrails.
-- `docs/development_plan.md` - detailed implementation checklist.
-
-## Что уже подготовлено
-
-- `.idea/` удалена из git и добавлена в `.gitignore`.
-- Добавлены `.gitignore`, `.gitattributes`, `.editorconfig`, `.env.example`.
-- Добавлен FastAPI-каркас с in-memory данными по объектам во Вроцлаве.
-- Добавлены первые формулы `Investment Score`, `Risk Score`, `Negotiation Score`.
-- Добавлены человекочитаемые score labels: verdict, price/risk/negotiation/liquidity/rental labels в API, UI и report metadata.
-- Добавлены API endpoints, Dockerfile, `compose.yaml` с PostGIS и Redis.
-- Подготовлены тесты для API и скоринга.
-- Добавлен Next.js frontend MVP: поиск, карточки объектов, детальная аналитика, отчеты и alerts.
-- Добавлен frontend i18n foundation: EN/PL/RU/UK dictionaries, language switcher,
-  cookie/localStorage persistence и localized sidebar navigation.
-- Локализована главная страница подбора: header, метрики, фильтры, статусы,
-  pagination, карточки объектов, score labels и форматирование чисел/валют.
-- Локализован flow проверки квартиры `/check`: URL-import, форма параметров,
-  статусы private draft/report, AI controls, comparables и форматирование дат/валют.
-- Локализована история private drafts `/check/drafts`: таблица сохраненных проверок,
-  retention, actions, платежный mock-flow и форматирование дат/валют.
-- Локализована детальная страница объекта `/listings/{id}`: метрики, AI assistant,
-  история цены, похожие объекты, скоринг, районные блоки и developer summary.
-- Локализована страница сравнения `/compare`: выбор объектов, decision metrics,
-  AI verdict, client shortlist, матрица сравнения и форматирование чисел/валют.
-- Локализована страница отчетов `/reports`: генерация/history, export gating,
-  white-label controls, AI insight labels и форматирование дат.
-- Локализована страница оплаты `/pricing`: payment/report shell, checkout statuses,
-  invoice form, order history, subscription summary и форматирование цен.
-- Локализована страница уведомлений `/alerts`: форма saved-search, preference
-  controls, preview metrics, realtor digest shell, delivery history и filter labels.
-- Локализована страница сравнения районов `/areas/compare`: dashboard shell, AI area
-  summary controls, table labels и locale-aware metrics.
-- Локализована страница новостей `/news`: фильтры, article/detail shell, AI news
-  summary controls, category/impact labels и даты по выбранной локали.
-- Локализованы страницы застройщиков `/developers` и `/developers/[developerId]`:
-  фильтры, ranking/detail shell, factor labels, statuses и date/number formatting.
-- Добавлен MapLibre map MVP: GeoJSON endpoint, price markers, radius filter, planned investments и risk/growth overlays.
-- Добавлены административные map layers: районы, гмины и воеводство как переключаемые GeoJSON Polygon слои с metadata counts.
-- Добавлены MPZP/Studium planning screening layers: plan/policy zones с `review_required` legal flags и UI toggles.
-- Добавлены future transport corridor layers: future tram lines, bus routes и road corridors с confidence styling и UI toggles.
-- Добавлены GIS risk proxy layers: industrial buffers, major-road noise, rail/airport/flood/pollution review zones с отдельными UI toggles.
-- Добавлены transport route LineString layers: активные/планируемые tram/bus routes из stop_ids/source shapes с отдельным UI toggle.
-- Добавлен auth/subscriptions MVP: users, roles, plan limits, `/me`, `/plans`, account page.
-- Добавлены agency workspaces: owner/admin/agent роли, members API, Postgres migration и управление командой на account page.
-- Добавлен CRM-light для агентств: API и account UI для clients, notes, enriched shortlists и safe public share preview без portal source links.
-- Добавлен paid report MVP: report products, report orders, mock checkout, fulfillment и pricing page.
-- Добавлены white-label report controls: logo URL, brand colors, footer и agency disclaimer для HTML/PDF отчетов.
-- Добавлен lead capture: paid beta buyer/realtor заявки, mortgage/legal/renovation referrals,
-  admin review queue и Postgres store.
-- Добавлен lead scoring для partner referrals: admin API считает priority, partner fit,
-  estimated deal value, routing tags и next actions для mortgage/broker handoff.
-- Добавлены hosted checkout API adapters для Stripe и PayU поверх `mock`-режима.
-- Добавлены B2B invoice/VAT details для checkout: company/NIP/address/email хранятся на order и попадают в payment metadata.
-- Добавлен audit trail для paid reports: события заказа, checkout, оплаты и fulfillment.
-- Добавлена alerts delivery отправка: email SMTP, Telegram Bot API, dry-run, skip/fail reasons и delivery jobs.
-- Добавлен daily email alert batch runner: admin API и CLI для cron/background worker.
-- Добавлены payment webhook endpoints для Stripe/PayU: signature verification, idempotency и auto-fulfillment.
-- Добавлен CI/deployment foundation: GitHub Actions, Docker build checks, staging compose и smoke script.
-- Проверены Alembic migrations на живой PostgreSQL/PostGIS БД через staging verifier.
-- Добавлен production ops runbook: managed Postgres/PostGIS, Redis, S3 artifact bucket,
-  backup/restore helper и worker deployment для фоновых задач.
-- Добавлены PostGIS `geometry(Point, 4326)` columns и GiST spatial indexes для объектов и planned investments.
-- Добавлены PostGIS distance calculations для radius/bbox фильтров карты, поиска и private draft scoring.
-- Добавлен `listing_events` pipeline из snapshots: first seen, price moves, parameter/status/description hash changes, removed/republished и relist events.
-- Добавлен `property_deduplication_matches` review queue: match score, reasons, payload comparison, dedup v2 evidence по этажу/title/source/description hash и admin UI.
-- Добавлены reference tables/API для `municipalities`, `districts`, `location_references`.
-- Добавлены infrastructure reference tables/API: transport stops/routes, schools, kindergartens, amenities и industrial zones.
-- Добавлен infrastructure enrichment pipeline: PostGIS пересчитывает расстояния до центра, остановок, школ, industrial zones и counts для парков/школ/planned investments.
-- Добавлены AI insights: generated reports сохраняют owner-scoped summaries, area summaries и object explanations через `/api/v1/ai-insights`.
-- Добавлен S3-compatible report artifact storage abstraction: HTML/JSON отчеты можно дублировать в local/S3 backend без изменения report API.
-- Добавлен search/compare MVP: pagination, sorting, score-фильтры и страница сравнения объектов.
-- Compare API/UI расширен до decision matrix: rank, ипотечный baseline, cash needed, liquidity и rental potential по каждому объекту.
-- Добавлен hidden gems search mode: `/api/v1/listings/hidden-gems`, ranked signals и frontend режим с investor-фильтрами.
-- Добавлены proximity-фильтры поиска и hidden gems: distance to center, stop, school, major road и industrial zone.
-- Добавлен text/address search для listings, hidden gems и saved-search alerts: title/address/district/city/source metadata, accent-insensitive matching.
-- Добавлен рейтинг застройщиков: API, frontend page, developer блоки в listing/check/compare reports и due-diligence citations.
-- Добавлен ingestion admin MVP: ingestion jobs, data-quality logs, raw listings preview и `/admin`.
-- Добавлена ручная correction-панель normalized listings: admin PATCH обновляет report-facing поля и пересчитывает `price_per_m2`.
-- Добавлен internal admin CSV upload endpoint для partner listings: dry-run в memory mode и запись в Postgres mode.
-- Добавлен admin JSON import для developer reputation feed: profiles, aliases, projects и quality signals с dry-run/apply.
-- Добавлен admin manual editor для developer profiles, projects, aliases и quality signals с audit log.
-- Добавлен legal-first developer feed import: JSON-фид профилей, aliases, проектов, registry checks, UOKiK events, directories, partner inspections и quality signals с dry-run и Postgres upsert.
-- Listings и private drafts хранят normalized developer/project metadata: `developer_id`, `developer_name`, `investment_name`, `primary_market_project_id`.
-- Добавлен source health monitoring для ingestion sources: latest job, warning/error counts и last error.
-- Добавлен source registry для legal-first источников: owner, legal status, refresh cadence, allowed use и notes.
-- Добавлена source compliance policy: Terms/robots/rate limits gate, запрет фото/контактов/full descriptions и guardrails для user-submitted URL.
-- Добавлен product validation strategy: commercial scorecard, competitor analysis, risk register, moat, roadmap, launch team и complexity assessment.
-- Добавлен API-lite для agency/enterprise consumers: `X-Domarion-API-Key`, quotas, usage logs и sanitized listing/area endpoints.
-- Добавлен export datasets для investor/realtor plans: sanitized listing analytics CSV/JSON без source URLs/raw payload.
-- Добавлен market intelligence report API для banks/developers/funds на основе market dashboard и area comparison.
-- Добавлен scoring-as-a-service endpoint для agency/enterprise: оценка caller-submitted объекта без draft persistence.
-- Добавлен enterprise custom dashboard API: owner-scoped configs, widget selection и live preview.
-- Добавлен official open-data roadmap API: GUS BDL, GUGiK/Geoportal, RCN, SIP/OpenData Wrocław и OSM.
-- Добавлен infrastructure references import: JSON/CSV dry-run и Postgres upsert для transport, education, amenities, healthcare, parks и industrial zones.
-- Добавлены source check jobs/source errors: legal/source checks, sanitized URL import failures, retry queue и admin resolve actions.
-- Добавлен price history update pipeline: first/last seen, days on market и price moves пересчитываются по snapshots.
-- Добавлен scoring backtest v1 по historical price snapshots.
-- Добавлена аналитика сравнения районов: city baseline, value/growth индексы, buyer/seller market и public `/areas/compare`.
-- Добавлен hybrid flow “Проверить квартиру”: пользователь вводит адрес/URL/параметры, получает score, private draft и buyer report без live scraping порталов.
-- Добавлен URL-assisted private check: Otodom/OLX reference preview без scraping и быстрый report flow.
-- Доработан link-to-report flow: пользовательская Otodom/OLX ссылка автозаполняет параметры, строит buyer report, не хранит фото/контакты/raw HTML и явно маркирует proxy-market fallback вне текущего coverage.
-- Добавлен первый suburban coverage seed для Mędłów: local area statistics, comparables и geocoding для Otodom link-to-report без Wrocław proxy.
-- Добавлен suburban coverage pack для Kobierzyce, Wysoka, Bielany Wrocławskie и Oława: local baselines, comparable seeds, aliases и offline geocoding.
-- Добавлены stronger URL extraction fixtures: Otodom/OLX embedded-state variants, assignment scripts, JSON.parse state, nested location и portal parameter dictionaries.
-- Suburban coverage переведен в sample data sources: `partner_listings_suburban.csv` для comparables и `area_statistics_suburban.csv` для local market baselines.
-- Добавлен planned investments CRUD: admin API, создание/редактирование/удаление GIS-слоев.
-- Добавлен import planned investments из legal JSON/CSV open-data файлов с dry-run и idempotent upsert.
-- Добавлены SEO area pages: `/areas`, районные страницы, `sitemap.xml`, `robots.txt`.
-- Добавлены SEO guide pages: `/guides`, price-per-m2, district comparison, mortgage, purchase checklist и total cost.
-- Полный продуктовый план: `docs/domarion_analytics_plan.md`.
-- Экспертный обзор текущего состояния продукта и рисков: `docs/expert_review_brief_ru.md`.
-- Актуальная карта backend API surface: `docs/api_surface.md`.
+- `docs/WartoMetr_Phase_7_Implementation.md` - последний отчёт реализации и проверок.
 
 ## Backend локально
 
@@ -344,6 +233,7 @@ demo-профиль и legacy identity headers. В production задай уни�
 - http://127.0.0.1:3000/check — проверка квартиры по адресу/параметрам, private URL reference и one-off автозаполнение из Otodom/OLX.
 - http://127.0.0.1:3000/check/drafts — история private drafts, удаление и генерация saved reports.
 - http://127.0.0.1:3000/guides — SEO-гайды: цена за m2, районы, ипотека, checklist и total cost.
+- http://127.0.0.1:3000/methodology — публичная методология: fair price, confidence, limits and backtesting.
 - http://127.0.0.1:3000/guides/wroclaw-price-per-m2 — пример guide page по цене за m2 во Вроцлаве.
 - http://127.0.0.1:3000/areas — SEO-страницы районов Вроцлава.
 - http://127.0.0.1:3000/areas/compare — сравнение районов по city baseline, value/growth и market pressure.
@@ -1545,24 +1435,8 @@ python scripts/postgres_backup.py restore .domarion/backups/postgres/domarion-po
 Full production operations checklist: `docs/production_ops_runbook.md`.
 Active Oracle Cloud operations runbook: `docs/oci_staging_setup_runbook.md`.
 Paid-beta readiness audit: `docs/production_readiness_audit_2026-09-01.md`.
-MVP hosting decision and Render Blueprint notes: `docs/mvp_hosting_decision.md`.
+Inactive Render fallback and Blueprint notes: `docs/deployment.md`.
 Poland city expansion readiness checklist: `docs/poland_city_expansion_checklist.md`.
-
-## Закрыто по product review 2026-08-27
-
-- `WartoMetr Verdict` стал частью analysis/report contract: buy / negotiate /
-  avoid / verify first, score 0-10, fair range, recommended offer, realistic
-  deal range, max reasonable offer, top reasons and critical unknowns.
-- `/check`, `/listings/[id]` and buyer HTML report теперь начинаются с
-  decision-first панели, а score cards остаются supporting evidence.
-- Добавлены `Property Due Diligence`, `Negotiation Assistant`,
-  `What we know / estimate / could not verify`, source confidence,
-  check completeness, Total Acquisition Cost, pre/post-viewing checklist v1
-  and post-viewing verdict recalculation.
-- `/check` принимает выбранную цель покупки (`self`, `family`, `rental`,
-  `investment`, `unsure`) и показывает personalized `For you: X/10`.
-- Compare учитывает renovation, furniture, transaction costs, total move-in cost,
-  ready-to-move proxy, offer strategy, critical unknowns and source confidence.
 
 ## Git workflow
 
@@ -1583,22 +1457,10 @@ git commit -m "Build initial API foundation"
 git push -u origin feature/mvp-api-foundation
 ```
 
-## Открытые технические задачи
+## Дальнейшая работа
 
-1. До новых крупных модулей пройти validation gate: 20 платных buyer reports
-   незнакомым людям по 49-149 PLN или 3 paid realtor bundle pilots.
-2. Реализовать document metadata/upload first slice по
-   `docs/document_upload_due_diligence_plan.md` только после validation/legal gate.
-3. Сделать настоящий Object Watch action поверх alerts: price change, cheaper
-   comparable, DOM thresholds, planned investment status, developer signal and
-   negotiation opportunity.
-4. Провести source-specific legal review и зафиксировать approved/blocked matrix
-   перед любым scheduled ingestion за пределами partner/open-data/manual flows.
-5. Заполнить `render.yaml` secrets/domains, включить monitoring/cost alerts и
-   пройти restore drill перед paid traffic.
-6. Проверить live Stripe или PayU checkout end-to-end с webhook fulfillment.
-7. Пополнять URL-import fixture corpus новыми Otodom/OLX edge cases только для
-   user-submitted one-off анализа.
-8. Заморозить expansion/enterprise/news/investor tooling до выполнения
-   validation gate; расширять partner/open-data coverage на новые города только
-   по checklist из `docs/poland_city_expansion_checklist.md`.
+Порядок реализации: `docs/WartoMetr_Product_Transformation_Master_Prompt.md`.
+Результаты фаз 0–7 и ограничения проверок перечислены в `docs/README.md`.
+Перед платным production нужны отдельные подтверждения live checkout/webhook,
+доставки уведомлений, backup/restore, monitoring и source/legal approval.
+Локальные тесты и старые аудитные отчёты не заменяют эти подтверждения.

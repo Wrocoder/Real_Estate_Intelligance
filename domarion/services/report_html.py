@@ -327,7 +327,7 @@ def render_object_report_html(report: ObjectReport, analysis: ListingAnalysis) -
           "Fair price range",
           f"{_money(scores.fair_price_low)}-{_money(scores.fair_price_high)}",
       )}
-      {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
+      {_metric("Fair price confidence", _fair_confidence_label(scores))}
       {_metric("Отклонение", f"{scores.price_delta_to_fair_mid_pct:+.1f}%")}
     </section>
     {fair_price_confidence_html}
@@ -650,7 +650,7 @@ def _render_buyer_verdict(buyer_decision, scores) -> str:
       </div>
       <div class="money-grid decision-primary-grid">
         {_metric("Цена продавца", _money(verdict.seller_price_pln))}
-        {_metric("Fair price confidence", f"{scores.fair_price_confidence_score}/100")}
+        {_metric("Fair price confidence", _fair_confidence_label(scores))}
         {fair_price_metric}
         {primary_negotiation_metrics}
       </div>
@@ -776,19 +776,26 @@ def _render_fair_price_confidence(scores: PropertyScores) -> str:
     factors = "".join(
         "<li>"
         f"<span>{escape(factor_labels.get(item.code, item.code))}</span>"
-        f"<strong>{item.score}/100</strong>"
+        f"<strong>{escape(item.status.replace('_', ' '))}</strong>"
         "</li>"
         for item in confidence.factors
     )
     return (
         '<section class="confidence-evidence">'
         "<h2>Fair price evidence quality</h2>"
-        f"<p><strong>{escape(confidence.level.upper())}: {confidence.score}/100</strong> · "
+        f"<p><strong>{escape(confidence.display_level.upper())}</strong> · "
         f"{confidence.comparable_count} comparable listings · "
         f"{confidence.transaction_observation_count} transaction observations</p>"
+        "<p>Evidence quality, not a calibrated probability of price accuracy.</p>"
         f"<ul>{factors}</ul>"
         "</section>"
     )
+
+
+def _fair_confidence_label(scores: PropertyScores) -> str:
+    if scores.fair_price_confidence is not None:
+        return scores.fair_price_confidence.display_level.replace("_", " ").upper()
+    return "NOT AVAILABLE"
 
 
 def _attribute_label(value: str | None) -> str:

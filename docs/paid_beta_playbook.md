@@ -1,5 +1,9 @@
 # Paid Beta Playbook
 
+Commercial validation proposal, not proof of live payments, current prices or
+completed validation. For implementation priorities and verified results use
+[the documentation index](README.md).
+
 Цель: проверить, платят ли покупатели, риелторы и малые агентства за помощь в
 решении "покупать / торговаться / отказаться / сначала проверить", а не просто
 за аналитический отчет.
@@ -33,8 +37,8 @@
 | Offer | Audience | Price hypothesis | Delivery |
 | --- | --- | --- | --- |
 | Free Check | Buyer | 0 PLN | teaser verdict, price position, 3 risks |
-| Buyer Check | Buyer | 49 PLN | verdict, fair price, comparables, risks, negotiation |
-| Full Due Diligence | Buyer/investor | 149 PLN | Buyer Check + documents/building/future/total cost checklist |
+| Buyer Report | Buyer | configurable, default 49 PLN | verdict, fair price, comparables, risks, negotiation, total purchase cost, due-diligence checklist, downloadable report |
+| Extended Buyer Report | Compatibility beta product | 149 PLN | deeper legacy due-diligence variant; do not promote as the primary buyer offer |
 | Expert Review | Buyer/investor | 299-499 PLN | automatic report + analyst QA before zadatek |
 | Realtor Pro | Realtor | 199-399 PLN/month | branded reports, compare, shortlist, workspace |
 | 5-report beta bundle | Realtor/agency | 299-499 PLN | 5 credits, feedback required |

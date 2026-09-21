@@ -234,7 +234,18 @@ PreViewingRecommendation = Literal["view", "skip", "verify_first"]
 PostViewingIssueLevel = Literal["unknown", "good", "minor_issue", "major_issue"]
 PostViewingRenovationNeed = Literal["unknown", "none", "refresh", "light", "full"]
 ScoringBacktestSeverity = Literal["healthy", "watch", "drift", "critical"]
-ScoringBacktestSegmentType = Literal["area", "period"]
+ScoringBacktestSegmentType = Literal[
+    "area",
+    "period",
+    "city",
+    "district",
+    "market_type",
+    "size_band",
+    "rooms",
+    "building_age_band",
+    "confidence_band",
+    "comparable_count",
+]
 GrowthFactorCode = Literal[
     "transport",
     "education",
@@ -407,6 +418,33 @@ class PriceHistoryPoint(BaseModel):
     observed_at: date
     price: int
     price_per_m2: int
+
+
+class TransactionBacktestObservation(BaseModel):
+    """Read-only transaction fact used by temporal fair-price backtests."""
+
+    id: str
+    logical_transaction_id: str
+    source_name: str
+    source_type: str
+    transaction_date: datetime
+    observed_at: datetime
+    city: str
+    district: str | None = None
+    area_id: str
+    municipality: str | None = None
+    address: str | None = None
+    market_type: MarketType
+    property_price_gross: int = Field(ge=0)
+    currency: str = "PLN"
+    area_m2: float = Field(gt=0)
+    price_per_m2: float = Field(gt=0)
+    rooms: int | None = Field(default=None, ge=0)
+    floor: int | None = None
+    building_year: int | None = None
+    lat: float | None = None
+    lon: float | None = None
+    data_quality_score: int = Field(default=50, ge=0, le=100)
 
 
 class ListingEvent(BaseModel):
@@ -1629,12 +1667,21 @@ class ScoreExplainability(BaseModel):
 
 class FairPriceConfidenceFactor(BaseModel):
     code: str
-    score: int = Field(ge=0, le=100)
+    score: int | None = Field(default=None, ge=0, le=100)
     weight: int = Field(ge=0, le=100)
-    status: Literal["supporting", "neutral", "limiting"]
+    status: Literal["supporting", "neutral", "limiting", "unknown"]
 
 
 class FairPriceConfidence(BaseModel):
+    model_version: str = "fair-price-confidence-v1"
+    evidence_status: Literal["sufficient", "insufficient"] | None = None
+    evaluated_at: date | None = None
+    median_distance_m: int | None = Field(default=None, ge=0)
+    distance_observation_count: int = Field(default=0, ge=0)
+    median_age_days: int | None = Field(default=None, ge=0)
+    oldest_age_days: int | None = Field(default=None, ge=0)
+    baseline_age_days: int | None = Field(default=None, ge=0)
+    missing_property_fields: list[str] = Field(default_factory=list)
     level: Literal["high", "medium", "low"]
     score: int = Field(ge=0, le=100)
     comparable_count: int = Field(ge=0)
@@ -1643,6 +1690,27 @@ class FairPriceConfidence(BaseModel):
     price_dispersion_pct: float | None = Field(default=None, ge=0)
     factors: list[FairPriceConfidenceFactor] = Field(default_factory=list)
     limitation_codes: list[str] = Field(default_factory=list)
+
+    @property
+    def display_level(self) -> str:
+        return "insufficient" if self.evidence_status == "insufficient" else self.level
+
+
+class FairPriceEvidence(BaseModel):
+    calculation_type: Literal["model_estimate"] = "model_estimate"
+    method: Literal["area_median", "area_and_listing_medians"]
+    area_price_basis: str
+    area_median_per_m2: int
+    area_weight: float
+    listing_median_per_m2: int | None = None
+    listing_weight: float
+    listings_used_count: int = Field(ge=0)
+    minimum_listing_sample: int = Field(ge=1)
+    subject_area_m2: float = Field(gt=0)
+    range_half_width_pct: float = Field(ge=0)
+    rounding_step_pln: int = Field(gt=0)
+    selection_reference_date: date
+    property_adjustments_applied: bool = False
 
 
 class PropertyScores(BaseModel):
@@ -1664,11 +1732,20 @@ class PropertyScores(BaseModel):
     fair_price_high: int
     fair_price_confidence_score: int = Field(ge=0, le=100)
     fair_price_confidence: FairPriceConfidence | None = None
+    fair_price_evidence: FairPriceEvidence | None = None
     price_delta_to_fair_mid_pct: float
     breakdown: ScoreBreakdown
     reasons: list[str]
     warnings: list[str]
     explainability: ScoreExplainability = Field(default_factory=ScoreExplainability)
+
+    @property
+    def fair_price_confidence_label(self) -> str:
+        return (
+            self.fair_price_confidence.display_level
+            if self.fair_price_confidence
+            else "not available"
+        )
 
     @model_validator(mode="before")
     @classmethod
@@ -2081,11 +2158,26 @@ class ScoringBacktestItem(BaseModel):
     listing_id: str
     title: str
     area_id: str
+    city: str | None = None
+    district: str | None = None
+    market_type: MarketType | None = None
+    size_band: str | None = None
+    rooms: int | None = Field(default=None, ge=0)
+    building_age_band: str | None = None
+    confidence_band: Literal["high", "medium", "low", "insufficient"] | None = None
+    comparable_count: int = Field(default=0, ge=0)
     observed_at: date
     target_observed_at: date
     predicted_fair_price_mid: int
+    predicted_fair_price_low: int | None = Field(default=None, ge=0)
+    predicted_fair_price_high: int | None = Field(default=None, ge=0)
     actual_price: int
+    absolute_error_pln: int = Field(default=0, ge=0)
     absolute_error_pct: float = Field(ge=0)
+    interval_hit: bool | None = None
+    leakage_cutoff: date | None = None
+    evidence_observed_to: date | None = None
+    backtest_method: str = "listing_next_snapshot"
     formula_version: str
     weights_profile: str
 
@@ -2093,11 +2185,20 @@ class ScoringBacktestItem(BaseModel):
 class ScoringBacktestResult(BaseModel):
     formula_version: str
     weights_profile: str
+    backtest_version: str = "listing-next-snapshot-v1"
+    methodology: str = "listing_next_snapshot"
     listings_seen: int = Field(ge=0)
     listings_evaluated: int = Field(ge=0)
+    transactions_seen: int = Field(default=0, ge=0)
+    transactions_evaluated: int = Field(default=0, ge=0)
+    skipped_insufficient_history: int = Field(default=0, ge=0)
     evaluated_points: int = Field(ge=0)
+    mean_absolute_error_pln: float | None = Field(default=None, ge=0)
     mean_absolute_error_pct: float | None = Field(default=None, ge=0)
     median_absolute_error_pct: float | None = Field(default=None, ge=0)
+    rmse_pln: float | None = Field(default=None, ge=0)
+    median_absolute_percentage_error: float | None = Field(default=None, ge=0)
+    prediction_interval_coverage_pct: float | None = Field(default=None, ge=0, le=100)
     within_5_pct: float | None = Field(default=None, ge=0, le=100)
     within_10_pct: float | None = Field(default=None, ge=0, le=100)
     items: list[ScoringBacktestItem] = Field(default_factory=list)
@@ -2137,6 +2238,7 @@ class ScoringBacktestReport(BaseModel):
     error_buckets: list[ScoringBacktestErrorBucket] = Field(default_factory=list)
     area_drift: list[ScoringBacktestDriftSegment] = Field(default_factory=list)
     period_drift: list[ScoringBacktestDriftSegment] = Field(default_factory=list)
+    segments: list[ScoringBacktestDriftSegment] = Field(default_factory=list)
     high_error_examples: list[ScoringBacktestItem] = Field(default_factory=list)
     findings: list[str] = Field(default_factory=list)
     recommendations: list[str] = Field(default_factory=list)
@@ -3440,6 +3542,7 @@ class GeneratedReportCreate(BaseModel):
 
 
 class GeneratedReportDecisionSummary(BaseModel):
+    confidence_level: Literal["high", "medium", "low", "insufficient"] | None = None
     status: BuyerVerdictStatus | None = None
     score: float | None = Field(default=None, ge=0, le=10)
     headline: str | None = None

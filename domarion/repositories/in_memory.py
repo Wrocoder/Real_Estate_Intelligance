@@ -36,6 +36,7 @@ from domarion.schemas import (
     PriceHistoryPoint,
     RentalObservation,
     SchoolReference,
+    TransactionBacktestObservation,
     TransportRouteReference,
     TransportStopReference,
 )
@@ -64,6 +65,7 @@ class InMemoryRealEstateRepository:
             self._amenities: list[AmenityReference] = []
             self._industrial_zones: list[IndustrialZoneReference] = []
             self._history: dict[str, list[PriceHistoryPoint]] = {}
+            self._transaction_observations: list[TransactionBacktestObservation] = []
             self._rental_observations: list[RentalObservation] = []
             return
 
@@ -796,6 +798,7 @@ class InMemoryRealEstateRepository:
                 PriceHistoryPoint(observed_at=date(2026, 6, 29), price=760000, price_per_m2=10483),
             ],
         }
+        self._transaction_observations: list[TransactionBacktestObservation] = []
 
         demo_provenance = DataProvenance(
             mode="demo",
@@ -1454,6 +1457,39 @@ class InMemoryRealEstateRepository:
                 abs(candidate.price_per_m2 - listing.price_per_m2),
             ),
         )[:limit]
+
+    def list_transaction_observations(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+        area_id: str | None = None,
+        minimum_quality: int = 60,
+    ) -> list[TransactionBacktestObservation]:
+        transactions = [
+            item
+            for item in self._transaction_observations
+            if item.data_quality_score >= minimum_quality
+        ]
+        if city:
+            transactions = [
+                item for item in transactions if item.city.casefold() == city.casefold()
+            ]
+        if district:
+            transactions = [
+                item
+                for item in transactions
+                if item.district is not None and item.district.casefold() == district.casefold()
+            ]
+        if area_id:
+            transactions = [item for item in transactions if item.area_id == area_id]
+        return sorted(
+            transactions,
+            key=lambda item: (
+                item.transaction_date,
+                item.logical_transaction_id,
+                item.id,
+            ),
+        )
 
     def find_rental_observations(
         self,

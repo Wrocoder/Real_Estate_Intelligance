@@ -648,7 +648,7 @@ def test_listing_analysis() -> None:
     }
     assert payload["scores"]["explainability"]["version"] == "score-explanation-v2"
     assert all(
-        detail["calculation_version"] == "domarion-scoring-v1"
+        detail["calculation_version"] == "domarion-scoring-v2"
         for detail in score_details
     )
     assert all(0 <= detail["coverage_score"] <= 100 for detail in score_details)

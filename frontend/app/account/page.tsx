@@ -1022,7 +1022,7 @@ export default function AccountPage() {
             <small>{buyerCopy.descriptions.trackChanges}</small>
           </span>
         </Link>
-        <Link className="account-action-card" href="/">
+        <Link className="account-action-card" href="/search">
           <Search size={18} />
           <span>
             <strong>{buyerCopy.actions.findApartments}</strong>

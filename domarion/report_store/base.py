@@ -27,6 +27,13 @@ def report_decision_summary_from_metadata(
     selected_intent = metadata.get("buyer_selected_intent")
     selected_intent = selected_intent if selected_intent in PURCHASE_INTENTS else None
     values = {
+        "confidence_level": (
+            metadata.get("fair_price_confidence_level")
+            if isinstance(metadata.get("fair_price_confidence_level"), str)
+            and metadata.get("fair_price_confidence_level")
+            in {"high", "medium", "low", "insufficient"}
+            else None
+        ),
         "status": status,
         "score": _metadata_number(metadata.get("buyer_verdict_score"), minimum=0, maximum=10),
         "headline": _metadata_text(metadata.get("buyer_verdict_headline")),
@@ -45,9 +52,7 @@ def report_decision_summary_from_metadata(
         "max_reasonable_offer_pln": _metadata_int(
             metadata.get("max_reasonable_offer_pln"), minimum=0
         ),
-        "total_move_in_cost_pln": _metadata_int(
-            metadata.get("total_move_in_cost_pln"), minimum=0
-        ),
+        "total_move_in_cost_pln": _metadata_int(metadata.get("total_move_in_cost_pln"), minimum=0),
         "selected_intent": selected_intent,
         "selected_intent_score": _metadata_int(
             metadata.get("buyer_selected_intent_score"), minimum=0, maximum=100

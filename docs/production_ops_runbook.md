@@ -4,11 +4,11 @@ WartoMetr has a working Oracle Cloud deployment as of 2026-09-01. This runbook
 defines the remaining paid-production operational baseline: Postgres/PostGIS,
 Redis, offsite backups, report artifact bucket and background workers.
 
-The active OCI runbook is `docs/oci_staging_setup_runbook.md`. The previous
-Render decision is retained in `docs/mvp_hosting_decision.md` as a fallback path.
-The Render infrastructure-as-code artifact is `render.yaml`.
+The active OCI runbook is `docs/oci_staging_setup_runbook.md`. The inactive
+Render fallback is described in `docs/deployment.md`; its configuration is
+`render.yaml`.
 
-Current paid-beta readiness audit:
+Historical paid-beta readiness audit (not current deployment verification):
 `docs/production_readiness_audit_2026-09-01.md`.
 
 ## Service Topology

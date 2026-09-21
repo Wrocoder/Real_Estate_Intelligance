@@ -116,12 +116,12 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     priceBelow: (percent) => `Cena ofertowa jest o ${percent}% poniżej środka szacowanego zakresu.`,
     priceNear: "Cena ofertowa jest blisko szacowanego zakresu wartości.",
     priceAbove: (percent, amount) => `Cena ofertowa jest o ${percent}% (${amount}) powyżej środka szacowanego zakresu.`,
-    intentFit: (score) => `Wybrany cel zakupu ma dopasowanie ${score}/10.`,
-    negotiationRoom: (score) => `Dane wskazują przestrzeń do negocjacji (${score}/100).`,
-    dueDiligenceRisk: (score) => `Przed ofertą trzeba uzupełnić istotne sprawdzenia (${score}/100).`,
+    intentFit: () => "Dostępne cechy przemawiają za wybranym celem zakupu.",
+    negotiationRoom: () => "Dostępne dowody wspierają rozmowę o obniżeniu ceny.",
+    dueDiligenceRisk: () => "Przed ofertą trzeba uzupełnić istotne sprawdzenia.",
     unknownChecks: (count) => `Nie potwierdzono jeszcze ${count} istotnych kwestii.`,
     renovationGap: (amount) => `Koszt po remoncie może być wyższy od gotowej alternatywy o ${amount}.`,
-    lowConfidence: (score) => `Pewność wyceny jest ograniczona (${score}/100).`,
+    lowConfidence: () => "Pewność wyceny jest ograniczona; zweryfikuj dane przed ofertą.",
     noMajorRisk: "W danych strukturalnych nie wykryto obecnie istotnego sygnału ostrzegawczego.",
     postureStrong: "Mocna pozycja kupującego",
     postureModerate: "Umiarkowana przestrzeń do negocjacji",
@@ -274,12 +274,12 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     priceBelow: (percent) => `The asking price is ${percent}% below the estimated midpoint.`,
     priceNear: "The asking price is close to the estimated fair-value range.",
     priceAbove: (percent, amount) => `The asking price is ${percent}% (${amount}) above the estimated midpoint.`,
-    intentFit: (score) => `The selected buying goal has a ${score}/10 fit.`,
-    negotiationRoom: (score) => `The evidence indicates room to negotiate (${score}/100).`,
-    dueDiligenceRisk: (score) => `Material checks remain before an offer (${score}/100).`,
+    intentFit: () => "Available attributes support your selected buying goal.",
+    negotiationRoom: () => "Available evidence supports discussing a lower price.",
+    dueDiligenceRisk: () => "Material checks remain before an offer.",
     unknownChecks: (count) => `${count} material checks are still unconfirmed.`,
     renovationGap: (amount) => `The post-renovation cost may exceed a ready alternative by ${amount}.`,
-    lowConfidence: (score) => `Valuation confidence is limited (${score}/100).`,
+    lowConfidence: () => "Valuation confidence is limited; verify the evidence before offering.",
     noMajorRisk: "No material warning is currently present in the structured data.",
     postureStrong: "Strong buyer leverage",
     postureModerate: "Moderate room to negotiate",
@@ -431,12 +431,12 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     priceBelow: (percent) => `Цена предложения на ${percent}% ниже середины оценочного диапазона.`,
     priceNear: "Цена предложения близка к оценочному диапазону стоимости.",
     priceAbove: (percent, amount) => `Цена предложения на ${percent}% (${amount}) выше середины оценочного диапазона.`,
-    intentFit: (score) => `Соответствие выбранной цели покупки: ${score}/10.`,
-    negotiationRoom: (score) => `Данные указывают на возможность торга (${score}/100).`,
-    dueDiligenceRisk: (score) => `До предложения нужно завершить важные проверки (${score}/100).`,
+    intentFit: () => "Известные характеристики соответствуют выбранной цели покупки.",
+    negotiationRoom: () => "Доступные подтверждения дают основание обсуждать снижение цены.",
+    dueDiligenceRisk: () => "До предложения нужно завершить важные проверки.",
     unknownChecks: (count) => `Ещё не подтверждено важных пунктов: ${count}.`,
     renovationGap: (amount) => `Стоимость после ремонта может быть выше готовой альтернативы на ${amount}.`,
-    lowConfidence: (score) => `Надёжность оценки ограничена (${score}/100).`,
+    lowConfidence: () => "Уверенность в оценке ограничена; проверьте данные до предложения.",
     noMajorRisk: "В структурированных данных сейчас нет существенного предупреждения.",
     postureStrong: "Сильная позиция покупателя",
     postureModerate: "Умеренная возможность торга",
@@ -588,12 +588,12 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     priceNear: "Ціна пропозиції близька до оціночного діапазону вартості.",
     priceAbove: (percent, amount) =>
       `Ціна пропозиції на ${percent}% (${amount}) вища за середину оціночного діапазону.`,
-    intentFit: (score) => `Відповідність обраній меті купівлі: ${score}/10.`,
-    negotiationRoom: (score) => `Дані вказують на можливість торгу (${score}/100).`,
-    dueDiligenceRisk: (score) => `До пропозиції потрібно завершити важливі перевірки (${score}/100).`,
+    intentFit: () => "Відомі характеристики відповідають обраній меті купівлі.",
+    negotiationRoom: () => "Доступні підтвердження дають підстави обговорювати зниження ціни.",
+    dueDiligenceRisk: () => "До пропозиції потрібно завершити важливі перевірки.",
     unknownChecks: (count) => `Ще не підтверджено важливих пунктів: ${count}.`,
     renovationGap: (amount) => `Вартість після ремонту може перевищити готову альтернативу на ${amount}.`,
-    lowConfidence: (score) => `Надійність оцінки обмежена (${score}/100).`,
+    lowConfidence: () => "Впевненість в оцінці обмежена; перевірте дані до пропозиції.",
     noMajorRisk: "У структурованих даних зараз немає суттєвого попередження.",
     postureStrong: "Сильна позиція покупця",
     postureModerate: "Помірна можливість торгу",
@@ -891,12 +891,17 @@ export function localizeBuyerDecision(
   const delta = verdict.price_delta_to_fair_mid_pct;
   const unknownItems = decision.due_diligence.checklist.filter(
     (item) => item.status === "unknown" || item.status === "verify_required",
-  );
+  ).sort((a, b) => {
+    const priority = { critical: 0, high: 1, medium: 2, low: 3 };
+    return priority[a.priority] - priority[b.priority];
+  });
   const unknowns = unknownItems.slice(0, 6).map((item) => checklistLabel(c, item));
-  const reasons = [delta <= -2 ? c.priceBelow(Math.abs(delta).toFixed(1)) : c.priceNear];
+  const reasons = delta <= -2 ? [c.priceBelow(Math.abs(delta).toFixed(1))]
+    : verdict.seller_price_pln >= verdict.fair_price_low_pln && verdict.seller_price_pln <= verdict.fair_price_high_pln
+      ? [c.priceNear] : [];
   if ((decision.selected_intent_fit?.score ?? 0) >= 65)
     reasons.push(c.intentFit(Math.round((decision.selected_intent_fit?.score ?? 0) / 10)));
-  if (decision.negotiation.negotiation_score >= 60)
+  if (decision.negotiation.scenario_status === "available" && decision.negotiation.negotiation_score >= 60)
     reasons.push(c.negotiationRoom(decision.negotiation.negotiation_score));
   const risks: string[] = [];
   if (delta >= 5) risks.push(c.priceAbove(delta.toFixed(1), money(Math.max(verdict.overpricing_pln, 0), locale)));

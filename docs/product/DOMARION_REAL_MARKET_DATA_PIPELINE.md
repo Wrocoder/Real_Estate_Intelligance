@@ -1,5 +1,9 @@
 # WartoMetr: Real Market Data Pipeline Audit and Delivery Plan
 
+Historical audit and delivery notes. Statuses below describe their recorded
+dates, not today's deployment. Current ingestion contracts and later operational
+verification are linked from [the documentation index](../README.md).
+
 Status: implementation in progress; release gate is still open.
 Date: 2026-09-05
 Scope: Poland-wide RCN apartment transactions, Wrocław listing data,

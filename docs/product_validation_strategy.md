@@ -1,5 +1,9 @@
 # Product Validation Strategy
 
+Historical commercial proposal (August 2026), not a current readiness or pricing
+assessment. Implementation order is governed by the current transformation
+roadmap linked from [the documentation index](README.md).
+
 Дата обновления: 2026-08-27
 Статус: product validation plan поверх реализованного MVP. Это не заменяет
 юридический review, интервью с рынком и список реальных paid beta candidates.
@@ -26,8 +30,8 @@ developer reputation, alerts, карты и score explanations. Главный �
 - Enterprise/API: использовать как existing technical surface, но не расширять
   до доказанного B2C/B2Pro demand and stable data.
 
-Product reset зафиксирован отдельно в
-`docs/buyer_decision_product_direction.md`. Новый главный вопрос продукта:
+Текущий порядок реализации задан в
+`docs/WartoMetr_Product_Transformation_Master_Prompt.md`. Главный вопрос продукта:
 
 > Стоит ли мне покупать именно эту квартиру за эти деньги?
 

@@ -70,7 +70,7 @@ async function runCase(browser, viewport, locale) {
   const page = await context.newPage();
   const observation = await observe(page, `${locale}/${viewport.name}`);
   try {
-    await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/search`, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(250);
     if ((await page.locator("html").getAttribute("lang")) !== locale)
       throw new Error(`${locale}/${viewport.name}: locale was not applied`);
@@ -391,6 +391,8 @@ async function runCriticalFlow(browser) {
     await page.getByText("Wpisz dane mieszkania ręcznie", { exact: true }).click();
     await page.getByLabel("Adres").fill("ul. Testowa 1");
     await page.getByLabel("Miasto").fill("Wrocław");
+    await page.getByLabel("Dzielnica", { exact: true }).fill("Fabryczna");
+    await page.getByLabel("Rynek", { exact: true }).selectOption("secondary");
     await page.getByLabel("Cena").fill("650000");
     await page.getByLabel("Powierzchnia m2").fill("55");
     await page.getByLabel("Pokoje").fill("3");
@@ -402,6 +404,7 @@ async function runCriticalFlow(browser) {
     if (submitButtonCount < 2) throw new Error("manual check submit button is missing");
     await submitButtons.nth(submitButtonCount - 1).click();
     await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    await page.locator(".decision-support-panel > summary").click();
     const dataGap = page.locator(".score-data-gap");
     await dataGap.waitFor({ state: "visible", timeout: 5000 });
     const dataGapText = await dataGap.innerText();

@@ -533,12 +533,13 @@ def test_admin_can_run_scoring_backtest() -> None:
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["formula_version"] == "domarion-scoring-v1"
+    assert payload["formula_version"] == "domarion-scoring-v2"
     assert payload["weights_profile"] == "default-v1"
-    assert payload["listings_seen"] == 3
-    assert payload["evaluated_points"] == 6
-    assert len(payload["items"]) == 2
-    assert payload["items"][0]["absolute_error_pct"] >= 0
+    assert payload["backtest_version"] == "fair-price-temporal-backtest-v1"
+    assert payload["methodology"] == "temporal_transaction_holdout"
+    assert payload["transactions_seen"] == 0
+    assert payload["evaluated_points"] == 0
+    assert payload["items"] == []
 
 
 def test_admin_can_get_scoring_backtest_report() -> None:
@@ -550,17 +551,19 @@ def test_admin_can_get_scoring_backtest_report() -> None:
     payload = response.json()
 
     assert response.status_code == 200
-    assert payload["backtest"]["formula_version"] == "domarion-scoring-v1"
-    assert payload["backtest"]["evaluated_points"] == 6
+    assert payload["backtest"]["formula_version"] == "domarion-scoring-v2"
+    assert payload["backtest"]["backtest_version"] == "fair-price-temporal-backtest-v1"
+    assert payload["backtest"]["evaluated_points"] == 0
     assert payload["overall_severity"] in {"healthy", "watch", "drift", "critical"}
     assert payload["quality_label"]
     assert payload["error_buckets"]
-    assert payload["area_drift"]
-    assert payload["period_drift"]
-    assert payload["high_error_examples"]
+    assert payload["area_drift"] == []
+    assert payload["period_drift"] == []
+    assert payload["segments"] == []
+    assert payload["high_error_examples"] == []
     assert payload["findings"]
     assert payload["recommendations"]
-    assert "model monitoring" in payload["methodology_note"]
+    assert "Temporal fair-price backtesting" in payload["methodology_note"]
 
 
 def test_admin_can_dry_run_area_market_snapshot_job() -> None:

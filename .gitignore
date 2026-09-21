@@ -47,8 +47,9 @@ logs/
 .domarion/
 data/raw/
 data/exports/
-artifacts/*-boundaries.zip
-artifacts/*-source-validation.zip
+# Generated local verification output; source fixtures live in data/samples/ and tests/.
+/artifacts/
+/frontend/artifacts/
 
 # OS
 .DS_Store

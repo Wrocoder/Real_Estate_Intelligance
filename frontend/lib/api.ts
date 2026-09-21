@@ -142,12 +142,21 @@ export type ComparableExclusionSummary = {
 
 export type FairPriceConfidenceFactor = {
   code: string;
-  score: number;
+  score: number | null;
   weight: number;
-  status: "supporting" | "neutral" | "limiting";
+  status: "supporting" | "neutral" | "limiting" | "unknown";
 };
 
 export type FairPriceConfidence = {
+  model_version?: string;
+  evidence_status?: "sufficient" | "insufficient" | null;
+  evaluated_at?: string | null;
+  median_distance_m?: number | null;
+  distance_observation_count?: number;
+  median_age_days?: number | null;
+  oldest_age_days?: number | null;
+  baseline_age_days?: number | null;
+  missing_property_fields?: string[];
   level: "high" | "medium" | "low";
   score: number;
   comparable_count: number;
@@ -157,6 +166,8 @@ export type FairPriceConfidence = {
   factors: FairPriceConfidenceFactor[];
   limitation_codes: string[];
 };
+
+export type FairPriceEvidence = ApiSchema<"FairPriceEvidence">;
 
 export type AreaStatistics = {
   area_id: string;
@@ -1113,11 +1124,26 @@ export type ScoringBacktestItem = {
   listing_id: string;
   title: string;
   area_id: string;
+  city?: string | null;
+  district?: string | null;
+  market_type?: "primary" | "secondary" | null;
+  size_band?: string | null;
+  rooms?: number | null;
+  building_age_band?: string | null;
+  confidence_band?: "high" | "medium" | "low" | "insufficient" | null;
+  comparable_count: number;
   observed_at: string;
   target_observed_at: string;
   predicted_fair_price_mid: number;
+  predicted_fair_price_low?: number | null;
+  predicted_fair_price_high?: number | null;
   actual_price: number;
+  absolute_error_pln: number;
   absolute_error_pct: number;
+  interval_hit?: boolean | null;
+  leakage_cutoff?: string | null;
+  evidence_observed_to?: string | null;
+  backtest_method: string;
   formula_version: string;
   weights_profile: string;
 };
@@ -1125,11 +1151,20 @@ export type ScoringBacktestItem = {
 export type ScoringBacktestResult = {
   formula_version: string;
   weights_profile: string;
+  backtest_version: string;
+  methodology: string;
   listings_seen: number;
   listings_evaluated: number;
+  transactions_seen: number;
+  transactions_evaluated: number;
+  skipped_insufficient_history: number;
   evaluated_points: number;
+  mean_absolute_error_pln: number | null;
   mean_absolute_error_pct: number | null;
   median_absolute_error_pct: number | null;
+  rmse_pln: number | null;
+  median_absolute_percentage_error: number | null;
+  prediction_interval_coverage_pct: number | null;
   within_5_pct: number | null;
   within_10_pct: number | null;
   items: ScoringBacktestItem[];
@@ -1150,7 +1185,17 @@ export type ScoringBacktestErrorBucket = {
 };
 
 export type ScoringBacktestDriftSegment = {
-  segment_type: "area" | "period";
+  segment_type:
+    | "area"
+    | "period"
+    | "city"
+    | "district"
+    | "market_type"
+    | "size_band"
+    | "rooms"
+    | "building_age_band"
+    | "confidence_band"
+    | "comparable_count";
   key: string;
   label: string;
   evaluated_points: number;
@@ -1171,6 +1216,7 @@ export type ScoringBacktestReport = {
   error_buckets: ScoringBacktestErrorBucket[];
   area_drift: ScoringBacktestDriftSegment[];
   period_drift: ScoringBacktestDriftSegment[];
+  segments: ScoringBacktestDriftSegment[];
   high_error_examples: ScoringBacktestItem[];
   findings: string[];
   recommendations: string[];
@@ -1244,6 +1290,7 @@ export type PropertyScores = {
   fair_price_high: number;
   fair_price_confidence_score: number;
   fair_price_confidence: FairPriceConfidence | null;
+  fair_price_evidence?: FairPriceEvidence | null;
   price_delta_to_fair_mid_pct: number;
   reasons: string[];
   warnings: string[];
@@ -1813,6 +1860,7 @@ export type GeneratedReport = {
 };
 
 export type GeneratedReportDecisionSummary = {
+  confidence_level?: "high" | "medium" | "low" | "insufficient" | null;
   status: BuyerVerdictStatus | null;
   score: number | null;
   headline: string | null;

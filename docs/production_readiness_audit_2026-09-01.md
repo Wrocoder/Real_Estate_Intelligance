@@ -1,5 +1,9 @@
 # Production Readiness Audit - 2026-09-01
 
+Historical audit retained for unresolved operational gates. Do not interpret
+its statuses as a fresh deployment check. Consult [the documentation index](README.md)
+for later verification records and active runbooks.
+
 Status: Oracle Cloud deployment is live and working, but paid production is not
 ready until the blockers below are closed.
 

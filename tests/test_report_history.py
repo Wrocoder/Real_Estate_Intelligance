@@ -56,7 +56,8 @@ def test_generate_and_list_saved_html_report() -> None:
     assert payload["report_metadata"]["buyer_selected_intent"] == "unsure"
     assert 0 <= payload["report_metadata"]["buyer_selected_intent_score"] <= 100
     assert payload["report_metadata"]["report_template_code"] == "buyer_object_report_v1"
-    assert payload["report_metadata"]["scoring_formula_version"] == "domarion-scoring-v1"
+    assert payload["report_metadata"]["scoring_formula_version"] == "domarion-scoring-v2"
+    assert payload["report_metadata"]["fair_price_confidence_level"] in {"low", "insufficient"}
     assert '<section class="scores">' in payload["content"]
 
     list_response = client.get("/api/v1/reports")
@@ -65,6 +66,10 @@ def test_generate_and_list_saved_html_report() -> None:
     assert list_response.status_code == 200
     assert len(reports) == 1
     assert reports[0]["id"] == payload["id"]
+    assert (
+        reports[0]["decision_summary"]["confidence_level"]
+        == payload["report_metadata"]["fair_price_confidence_level"]
+    )
     assert "content" not in reports[0]
     assert reports[0]["decision_summary"]["status"] == payload["report_metadata"][
         "buyer_verdict_status"

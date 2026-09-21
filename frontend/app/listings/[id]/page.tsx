@@ -19,6 +19,8 @@ import {
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
+import { DecisionSummary, decisionSummaryFromScores } from "@/components/DecisionSummary";
+import { DECISION_OVERVIEW_COPY } from "@/lib/decisionOverviewMessages";
 import { ComparableEvidencePanel } from "@/components/ComparableEvidencePanel";
 import { ListingProvenance } from "@/components/ListingProvenance";
 import { LineChart } from "@/components/Charts";
@@ -220,24 +222,22 @@ export default function ListingDetailPage() {
 
   return (
     <>
-      <header className="page-header">
+      <header className="page-header listing-result-header">
         <div>
-          <Link href="/" className="button">
+          <Link href="/search" className="button">
             <ArrowLeft size={16} /> {copy.actions.back}
           </Link>
-          <h1 style={{ marginTop: 14 }}>{listing.title}</h1>
+          <h1 style={{ marginTop: 14 }}>{listing.address}</h1>
           {listing.data_provenance.mode === "demo" ? (
             <span className="data-provenance-badge">{copy.demoData}</span>
           ) : null}
           <p>
-            {listing.address}, {listing.district}, {listing.municipality} ·{" "}
-            {listing.market_type}
+            {listing.district} · {listing.area_m2} {copy.values.m2} · {DECISION_OVERVIEW_COPY[locale].rooms}: {listing.rooms}
           </p>
-          <ListingProvenance listing={listing} locale={locale} />
         </div>
         <div className="toolbar">
-          <button className="button" type="button" onClick={() => void load()}>
-            <RefreshCw size={16} /> {copy.actions.refresh}
+          <button className="button" type="button" aria-label={copy.actions.refresh} title={copy.actions.refresh} onClick={() => void load()}>
+            <RefreshCw size={16} />
           </button>
         </div>
       </header>
@@ -245,10 +245,17 @@ export default function ListingDetailPage() {
       {displayedDecision ? (
         <BuyerDecisionPanel
           confidenceScore={analysis.scores.fair_price_confidence_score}
+          comparableCount={analysis.comparables.length}
+          valuationConfidence={analysis.scores.fair_price_confidence}
           decision={displayedDecision}
           locale={locale}
         />
-      ) : null}
+      ) : (
+        <section className="buyer-decision">
+          <DecisionSummary primary fallback={decisionSummaryFromScores(scores, listing.price)}
+            fallbackLabel={DECISION_OVERVIEW_COPY[locale].noVerdict} locale={locale} />
+        </section>
+      )}
 
       <details
         className="listing-section-disclosure listing-evidence-disclosure"
@@ -263,6 +270,8 @@ export default function ListingDetailPage() {
       >
         <summary>{copy.sections.marketEvidence}</summary>
         <div className="listing-section-disclosure-body">
+          <ListingProvenance listing={listing} locale={locale} />
+          <p>{listing.title}</p>
           <ComparableEvidencePanel analysis={analysis} locale={locale} />
           <RentalEvidencePanel estimate={analysis.rental_estimate} locale={locale} />
         </div>

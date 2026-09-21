@@ -25,6 +25,7 @@ from domarion.schemas import (
     PriceHistoryPoint,
     RentalObservation,
     SchoolReference,
+    TransactionBacktestObservation,
     TransportRouteReference,
     TransportStopReference,
 )
@@ -230,6 +231,15 @@ class RealEstateRepository(Protocol):
         raise NotImplementedError
 
     def find_comparables(self, listing: Listing, limit: int = 5) -> list[Listing]:
+        raise NotImplementedError
+
+    def list_transaction_observations(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+        area_id: str | None = None,
+        minimum_quality: int = 60,
+    ) -> list[TransactionBacktestObservation]:
         raise NotImplementedError
 
     def find_rental_observations(

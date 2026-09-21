@@ -79,8 +79,8 @@ const provenanceDetails = read("components/ProvenanceDetails.tsx");
 const comparableEvidence = read("components/ComparableEvidencePanel.tsx");
 const rentalEvidence = read("components/RentalEvidencePanel.tsx");
 const stateBlocks = read("components/StateBlocks.tsx");
-const explorerPage = read("app/page.tsx");
-const checkPage = read("app/check/page.tsx");
+const explorerPage = read("components/ExplorerExperience.tsx");
+const checkPage = read("components/CheckListingExperience.tsx");
 const savedPage = read("app/saved/page.tsx");
 const savedApartmentsPage = read("components/SavedApartmentsPage.tsx");
 const legacySavedPage = read("app/check/drafts/page.tsx");
@@ -398,8 +398,7 @@ expectIncludes("check page i18n", checkPage, [
   "copy.statuses.importExtracted",
   "missingFieldLabels(missingFields, copy)",
   "scoreLabel(analysis.scores.decision_label, locale)",
-  "money(analysis.listing.price, locale)",
-  "confidenceLabel(result.confidence_score, locale)",
+  "confidenceLabel(analysis.scores.fair_price_confidence_score, locale)",
 ]);
 expectIncludes("check recovery states", checkPage + stateBlocks, [
   "activeOperation",
@@ -440,7 +439,7 @@ expectIncludes("listing disclaimer translations", i18n, [
 ]);
 expectIncludes("check decision summary", checkPage, [
   "<BuyerDecisionPanel",
-  "confidenceScore={result?.confidence_score",
+  "confidenceScore={analysis?.scores.fair_price_confidence_score",
   "<DecisionSummary",
   "reportResult.report.buyer_decision",
   "decisionSummaryFromScores(",
@@ -1084,7 +1083,7 @@ expectNotIncludes("consumer components do not expose raw exception messages", co
   "caught instanceof Error ? caught.message",
 ]);
 expectIncludes("API error metadata", apiTransport, ["errorCode", "correlationId", "public readonly code"]);
-expectIncludes("actionable check error recovery", read("app/check/page.tsx"), [
+expectIncludes("actionable check error recovery", checkPage, [
   "shouldOpenManualEntry",
   "manualEntryRequested",
   "open={manualEntryOpen}",
@@ -1117,7 +1116,7 @@ expectNotIncludes(
     read("components/Charts.tsx"),
     read("app/compare/page.tsx"),
     read("components/compare/ComparePresentation.tsx"),
-    read("app/check/page.tsx"),
+    checkPage,
     read("app/listings/[id]/page.tsx"),
     read("app/news/page.tsx"),
     read("app/areas/compare/page.tsx"),
@@ -1206,7 +1205,7 @@ expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}
 expectNotIncludes("homepage does not duplicate h1", explorerPage, ["<h1>{onboarding.title}</h1>"]);
 expectIncludes("localized navigation", localizedNavigation, [
   'href: "/check"',
-  'href: "/"',
+  'href: "/search"',
   'href: "/saved"',
   'href: "/areas"',
   'href="/account?mode=login"',

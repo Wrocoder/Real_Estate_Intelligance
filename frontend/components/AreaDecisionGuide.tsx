@@ -339,7 +339,7 @@ export function AreaDecisionGuide({
       </div>
 
       <div className="toolbar area-decision-actions">
-        <Link className="button primary" href={`/?district=${encodeURIComponent(area.name)}`}>
+        <Link className="button primary" href={`/search?district=${encodeURIComponent(area.name)}`}>
           {copy.searchArea} <ArrowRight size={16} />
         </Link>
         <Link className="button" href={`/areas/compare?area=${encodeURIComponent(area.area_id)}`}>

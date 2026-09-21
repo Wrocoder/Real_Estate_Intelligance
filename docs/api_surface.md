@@ -94,6 +94,23 @@ from the subject, deterministic technical similarity score and factor codes.
 The `Dlaczego taka cena?` UI localizes those factors and states that they are
 reference points, not transaction valuations or guarantees.
 
+`scores.fair_price_confidence` v2 adds evidence status, evaluation date, measured
+distance/age summaries, distance coverage and missing property fields. Factor
+scores may be null and their status may be `unknown`. Display `insufficient`
+when evidence status says so, even though the legacy level remains `low`.
+New report metadata and list decision summaries carry the explicit confidence
+level. Numeric compatibility scores are not probabilities. See
+[Phase 4 methodology and compatibility](WartoMetr_Phase_4_Implementation.md).
+
+`scores.fair_price_evidence` optionally exposes the actual valuation inputs:
+area price basis/median, listing median, configured weights, listings used,
+minimum sample, subject area, range half-width, rounding step and freshness
+reference date. It is populated by the calculation, not reconstructed by the UI.
+Missing/null means an older analysis without this trace; consumers must not
+assume default weights. This additive field does not change valuation formulas.
+Area transaction counts describe aggregate statistics, not individually matched
+transaction comparables. See `WartoMetr_Phase_3_Implementation.md` for limitations.
+
 ## Reports, Payments And Exports
 
 | Method | Path |
@@ -260,3 +277,10 @@ fixtures and are never a production authentication mechanism.
 | `POST` | `/api/v1/admin/area-market-snapshots` |
 | `POST` | `/api/v1/admin/price-history/rebuild` |
 | `POST` | `/api/v1/admin/alerts/deliver-daily-email` |
+
+`/admin/scoring/backtest` and `/admin/scoring/backtest-report` now use
+`temporal_transaction_holdout` with `backtest_version =
+fair-price-temporal-backtest-v1`: each historical transaction is evaluated only
+against transaction evidence dated before that transaction. Empty local memory
+results are expected unless explicit transaction fixtures or approved Postgres
+RCN transaction data are present.

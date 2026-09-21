@@ -2,10 +2,13 @@
 
 import {
   Building2,
+  BookOpen,
+  Columns2,
   ClipboardCheck,
   LogIn,
   MapPinned,
   Search,
+  ShieldCheck,
   UserCircle,
   UserPlus,
   type LucideIcon,
@@ -27,12 +30,15 @@ type NavigationItem = {
 
 const PRIMARY_NAVIGATION_ITEMS: NavigationItem[] = [
   { href: "/check", labelKey: "check", icon: ClipboardCheck },
+  { href: "/saved", labelKey: "myApartments", icon: Building2 },
+  { href: "/compare", labelKey: "compare", icon: Columns2 },
+  { href: "/areas", labelKey: "areas", icon: MapPinned },
+  { href: "/guides", labelKey: "guides", icon: BookOpen },
 ];
 
 const DISCOVERY_NAVIGATION_ITEMS: NavigationItem[] = [
-  { href: "/", labelKey: "explorer", icon: Search },
-  { href: "/saved", labelKey: "myApartments", icon: Building2 },
-  { href: "/areas", labelKey: "areas", icon: MapPinned },
+  { href: "/search", labelKey: "explorer", icon: Search },
+  { href: "/methodology", labelKey: "methodology", icon: ShieldCheck },
 ];
 
 const NAV_COPY: Record<Locale, { navigation: string; primary: string; discovery: string; account: string; signIn: string; register: string }> = {
@@ -71,11 +77,11 @@ export function LocalizedNavigation({ initialLocale }: { initialLocale: Locale }
     };
   }, []);
 
-  function renderItems(items: NavigationItem[], group: "primary" | "discovery") {
+  function renderItems(items: NavigationItem[]) {
     return items.map(({ href, labelKey, icon: Icon, external }) => {
         const label = labels[labelKey];
         const active = isNavigationItemActive(pathname, href);
-        const className = `${group === "primary" ? "nav-primary-link" : ""}${active ? " active" : ""}`.trim();
+        const className = `${href === "/check" ? "nav-primary-link" : ""}${active ? " active" : ""}`.trim();
         if (external) {
           return (
             <a className={className} href={href} key={href} target="_blank" rel="noreferrer">
@@ -97,11 +103,11 @@ export function LocalizedNavigation({ initialLocale }: { initialLocale: Locale }
     <nav className="nav-list" aria-label={navCopy.navigation}>
       <div className="nav-group nav-primary">
         <span className="nav-group-label">{navCopy.primary}</span>
-        {renderItems(PRIMARY_NAVIGATION_ITEMS, "primary")}
+        {renderItems(PRIMARY_NAVIGATION_ITEMS)}
       </div>
       <div className="nav-group nav-discovery">
         <span className="nav-group-label">{navCopy.discovery}</span>
-        {renderItems(DISCOVERY_NAVIGATION_ITEMS, "discovery")}
+        {renderItems(DISCOVERY_NAVIGATION_ITEMS)}
       </div>
       {session === null ? (
         <div className="nav-auth-actions" aria-label={navCopy.account}>
@@ -129,6 +135,7 @@ export function LocalizedNavigation({ initialLocale }: { initialLocale: Locale }
 
 function isNavigationItemActive(pathname: string | null, href: string) {
   if (!pathname) return false;
-  if (href === "/") return pathname === "/" || pathname.startsWith("/listings/");
+  if (href === "/check") return pathname === "/" || pathname === "/check";
+  if (href === "/search") return pathname === "/search" || pathname.startsWith("/listings/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }

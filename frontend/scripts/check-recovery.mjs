@@ -40,6 +40,8 @@ async function fillManualForm(page) {
   await page.getByText("Wpisz dane mieszkania ręcznie", { exact: true }).click();
   await page.getByLabel("Adres").fill("ul. Testowa 1");
   await page.getByLabel("Miasto").fill("Wrocław");
+  await page.getByLabel("Dzielnica", { exact: true }).fill("Fabryczna");
+  await page.getByLabel("Rynek", { exact: true }).selectOption("secondary");
   await page.getByLabel("Cena").fill("650000");
   await page.getByLabel("Powierzchnia m2").fill("55");
   await page.getByLabel("Pokoje").fill("3");
@@ -90,6 +92,14 @@ async function runCoreRecovery(browser) {
     await submit.click();
     await page.locator('.state-block[role="status"]').waitFor({ state: "visible", timeout: 1000 });
     await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+
+    const evidence = page.locator(".fair-price-evidence");
+    const evidenceDisclosure = page.locator("details").filter({ has: evidence }).last();
+    await evidenceDisclosure.locator(":scope > summary").click();
+    await evidence.waitFor({ state: "visible" });
+    assert((await evidence.innerText()).includes("Jak powstał szacowany zakres?"), "check result lacks valuation explanation");
+    assert((await evidence.locator("dl").count()) > 0, "check result lacks backend calculation details");
+    await evidenceDisclosure.locator(":scope > summary").click();
 
     await page.getByRole("button", { name: "Pełny raport mieszkania" }).click();
     await page.getByRole("alert").filter({ hasText: "Błąd" }).waitFor({ state: "visible", timeout: 5000 });
@@ -327,6 +337,9 @@ async function runActionableReportError(browser) {
     await page.getByLabel("Link Otodom lub OLX").fill("https://www.otodom.pl/pl/oferta/demo-IDunsupported-area");
     await page.getByRole("checkbox").check();
     await page.getByRole("button", { name: "Sprawdź mieszkanie" }).click();
+    await page.getByRole("button", { name: "Potwierdź dane i analizuj" }).click();
+    await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
+    await page.getByRole("button", { name: "Pełny raport mieszkania" }).click();
     await page
       .getByText("Nie mamy jeszcze wystarczających danych dla tego miasta lub dzielnicy.", { exact: false })
       .waitFor({

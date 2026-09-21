@@ -3549,7 +3549,7 @@ export default function AdminPage() {
             </div>
             <div className="panel-body">
               {scoringBacktest === null || scoringBacktest.evaluated_points === 0 ? (
-                <EmptyBlock label="Нет historical snapshots для backtest." />
+                <EmptyBlock label="Нет historical transactions для temporal backtest." />
               ) : (
                 <>
                   <div className="metric-grid compact">
@@ -3558,19 +3558,44 @@ export default function AdminPage() {
                       <strong>{numberValue(scoringBacktest.evaluated_points)}</strong>
                     </div>
                     <div className="metric">
-                      <span>Listings</span>
+                      <span>Transactions</span>
                       <strong>
-                        {numberValue(scoringBacktest.listings_evaluated)} /{" "}
-                        {numberValue(scoringBacktest.listings_seen)}
+                        {numberValue(scoringBacktest.transactions_evaluated)} /{" "}
+                        {numberValue(scoringBacktest.transactions_seen)}
                       </strong>
+                    </div>
+                    <div className="metric">
+                      <span>MAPE</span>
+                      <strong>
+                        {pct(
+                          scoringBacktest.median_absolute_percentage_error ??
+                            scoringBacktest.median_absolute_error_pct,
+                        )}
+                      </strong>
+                    </div>
+                    <div className="metric">
+                      <span>Coverage</span>
+                      <strong>{pct(scoringBacktest.prediction_interval_coverage_pct)}</strong>
                     </div>
                     <div className="metric">
                       <span>Mean error</span>
                       <strong>{pct(scoringBacktest.mean_absolute_error_pct)}</strong>
                     </div>
                     <div className="metric">
+                      <span>RMSE</span>
+                      <strong>
+                        {scoringBacktest.rmse_pln === null
+                          ? "-"
+                          : `${numberValue(scoringBacktest.rmse_pln)} PLN`}
+                      </strong>
+                    </div>
+                    <div className="metric">
                       <span>Within 10%</span>
                       <strong>{pct(scoringBacktest.within_10_pct)}</strong>
+                    </div>
+                    <div className="metric">
+                      <span>Skipped</span>
+                      <strong>{numberValue(scoringBacktest.skipped_insufficient_history)}</strong>
                     </div>
                   </div>
                   {scoringBacktestReport ? (

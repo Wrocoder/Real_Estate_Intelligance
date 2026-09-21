@@ -10,6 +10,9 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: "*",
       allow: "/",
       disallow: [
+        "/check/drafts",
+        "/check?draft=",
+        "/?draft=",
         "/account",
         "/admin",
         "/alerts",

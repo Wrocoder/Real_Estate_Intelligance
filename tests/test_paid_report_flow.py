@@ -30,6 +30,7 @@ def teardown_function() -> None:
 def test_report_products_are_available() -> None:
     response = client.get("/api/v1/report-products")
     payload = response.json()
+    buyer_report = next(item for item in payload if item["code"] == "object_report")
 
     assert response.status_code == 200
     assert {item["code"] for item in payload} == {
@@ -39,7 +40,22 @@ def test_report_products_are_available() -> None:
         "investor_report",
         "report_bundle_5",
     }
-    assert payload[0]["amount_grosz"] > 0
+    assert buyer_report["title"] == "Buyer Report"
+    assert buyer_report["amount_grosz"] == 4900
+    assert "Detailed fair-price range" in buyer_report["features"][1]
+
+
+def test_buyer_report_price_is_configurable(monkeypatch) -> None:
+    monkeypatch.setenv("BUYER_REPORT_AMOUNT_GROSZ", "5900")
+    get_settings.cache_clear()
+
+    response = client.get("/api/v1/report-products")
+    payload = response.json()
+    buyer_report = next(item for item in payload if item["code"] == "object_report")
+
+    assert response.status_code == 200
+    assert buyer_report["title"] == "Buyer Report"
+    assert buyer_report["amount_grosz"] == 5900
 
 
 def test_report_order_mock_payment_and_fulfillment() -> None:
@@ -71,8 +87,18 @@ def test_report_order_mock_payment_and_fulfillment() -> None:
     assert fulfilled["generated_report_id"] is not None
 
     reports = client.get("/api/v1/reports", headers=headers).json()
+    report = client.get(
+        f"/api/v1/reports/{fulfilled['generated_report_id']}",
+        headers=headers,
+    ).json()
     assert len(reports) == 1
     assert reports[0]["id"] == fulfilled["generated_report_id"]
+    assert report["title"].startswith("Buyer Report - ")
+    assert report["report_metadata"]["report_template_code"] == "buyer_report_v1"
+    assert "Buyer Report value summary" in report["content"]
+    assert "Due diligence deep dive" in report["content"]
+    assert "Offer and negotiation plan" in report["content"]
+    assert "Scenario matrix" in report["content"]
 
     events = client.get(f"/api/v1/report-orders/{order['id']}/events", headers=headers).json()
     event_types = {event["event_type"] for event in events}
@@ -297,7 +323,7 @@ def test_payu_report_order_uses_oauth_and_hosted_order_api(monkeypatch) -> None:
     )
     assert order_payload["products"] == [
         {
-            "name": "Buyer Check",
+            "name": "Buyer Report",
             "unitPrice": "4900",
             "quantity": "1",
             "virtual": True,

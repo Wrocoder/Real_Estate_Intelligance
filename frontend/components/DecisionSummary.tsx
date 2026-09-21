@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type {
   BuyerDecisionPackage,
   BuyerVerdictStatus,
@@ -6,6 +7,7 @@ import type {
 } from "@/lib/api";
 import { money, percent } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import { confidenceMessages, valuationConfidenceLevel, type ConfidenceLevel } from "@/lib/confidenceMessages";
 
 export type DecisionSummaryData = {
   status?: BuyerVerdictStatus | null;
@@ -18,6 +20,7 @@ export type DecisionSummaryData = {
   fair_price_high_pln?: number | null;
   price_delta_to_fair_mid_pct?: number | null;
   confidence_score?: number | null;
+  confidence_level?: ConfidenceLevel | null;
   recommended_offer_pln?: number | null;
   max_reasonable_offer_pln?: number | null;
   total_move_in_cost_pln?: number | null;
@@ -32,8 +35,11 @@ type Props = {
   fallbackLabel?: string | null;
   fallbackSummary?: string | null;
   confidenceScore?: number | null;
+  confidenceLevel?: ConfidenceLevel;
   locale: Locale;
   compact?: boolean;
+  primary?: boolean;
+  children?: ReactNode;
 };
 
 type DecisionSummaryCopy = {
@@ -55,6 +61,7 @@ type DecisionSummaryCopy = {
   confidenceMedium: string;
   confidenceLow: string;
   nextStep: string;
+  unavailable: string;
 };
 
 const COPY: Record<Locale, DecisionSummaryCopy> = {
@@ -70,13 +77,14 @@ const COPY: Record<Locale, DecisionSummaryCopy> = {
     maxOffer: "Do not exceed",
     totalCost: "Estimated total",
     confidence: "Confidence",
-    aboveFair: (value) => `${value} above the estimated fair value`,
-    belowFair: (value) => `${value} below the estimated fair value`,
+    aboveFair: (value) => `${value} above the midpoint of the estimated range`,
+    belowFair: (value) => `${value} below the midpoint of the estimated range`,
     withinFair: "Within the estimated fair range",
     confidenceHigh: "High",
     confidenceMedium: "Medium",
     confidenceLow: "Low",
     nextStep: "Next step",
+    unavailable: "Not available",
   },
   pl: {
     eyebrow: "Werdykt WartoMetr",
@@ -90,13 +98,14 @@ const COPY: Record<Locale, DecisionSummaryCopy> = {
     maxOffer: "Nie przekraczać",
     totalCost: "Szacowany koszt całkowity",
     confidence: "Pewność",
-    aboveFair: (value) => `${value} powyżej szacowanej ceny rynkowej`,
-    belowFair: (value) => `${value} poniżej szacowanej ceny rynkowej`,
+    aboveFair: (value) => `${value} powyżej środka szacowanego zakresu`,
+    belowFair: (value) => `${value} poniżej środka szacowanego zakresu`,
     withinFair: "W szacowanym zakresie rynkowym",
     confidenceHigh: "Wysoka",
     confidenceMedium: "Średnia",
     confidenceLow: "Niska",
     nextStep: "Kolejny krok",
+    unavailable: "Brak danych",
   },
   ru: {
     eyebrow: "Вердикт WartoMetr",
@@ -110,13 +119,14 @@ const COPY: Record<Locale, DecisionSummaryCopy> = {
     maxOffer: "Не превышать",
     totalCost: "Оценочная полная стоимость",
     confidence: "Уверенность",
-    aboveFair: (value) => `${value} выше оценочной рыночной цены`,
-    belowFair: (value) => `${value} ниже оценочной рыночной цены`,
+    aboveFair: (value) => `${value} выше середины оценочного диапазона`,
+    belowFair: (value) => `${value} ниже середины оценочного диапазона`,
     withinFair: "В оценочном рыночном диапазоне",
     confidenceHigh: "Высокая",
     confidenceMedium: "Средняя",
     confidenceLow: "Низкая",
     nextStep: "Следующий шаг",
+    unavailable: "Нет данных",
   },
   uk: {
     eyebrow: "Вердикт WartoMetr",
@@ -130,21 +140,22 @@ const COPY: Record<Locale, DecisionSummaryCopy> = {
     maxOffer: "Не перевищувати",
     totalCost: "Оціночна повна вартість",
     confidence: "Впевненість",
-    aboveFair: (value) => `${value} вище оціночної ринкової ціни`,
-    belowFair: (value) => `${value} нижче оціночної ринкової ціни`,
+    aboveFair: (value) => `${value} вище середини оціночного діапазону`,
+    belowFair: (value) => `${value} нижче середини оціночного діапазону`,
     withinFair: "У межах оціночного ринкового діапазону",
     confidenceHigh: "Висока",
     confidenceMedium: "Середня",
     confidenceLow: "Низька",
     nextStep: "Наступний крок",
+    unavailable: "Немає даних",
   },
 };
 
 const VERDICT_LABELS: Record<Locale, Record<BuyerVerdictStatus, string>> = {
   en: { buy: "WORTH CONSIDERING", negotiate: "NEGOTIATE", avoid: "AVOID", verify_first: "VERIFY FIRST" },
   pl: { buy: "WARTO ROZWAŻYĆ", negotiate: "NEGOCJUJ", avoid: "ODPUŚĆ", verify_first: "NAJPIERW SPRAWDŹ" },
-  ru: { buy: "ПОКУПАТЬ", negotiate: "ТОРГОВАТЬСЯ", avoid: "ИЗБЕГАТЬ", verify_first: "СНАЧАЛА ПРОВЕРИТЬ" },
-  uk: { buy: "КУПУВАТИ", negotiate: "ТОРГУВАТИСЯ", avoid: "УНИКАТИ", verify_first: "СПОЧАТКУ ПЕРЕВІРИТИ" },
+  ru: { buy: "СТОИТ РАССМОТРЕТЬ", negotiate: "ТОРГОВАТЬСЯ", avoid: "ИЗБЕГАТЬ", verify_first: "СНАЧАЛА ПРОВЕРИТЬ" },
+  uk: { buy: "ВАРТО РОЗГЛЯНУТИ", negotiate: "ТОРГУВАТИСЯ", avoid: "УНИКАТИ", verify_first: "СПОЧАТКУ ПЕРЕВІРИТИ" },
 };
 
 const VERDICT_SUMMARIES: Record<Locale, Record<BuyerVerdictStatus, string>> = {
@@ -208,19 +219,22 @@ export function DecisionSummary({
   fallbackLabel,
   fallbackSummary,
   confidenceScore,
+  confidenceLevel,
   locale,
   compact = false,
+  primary = false,
+  children,
 }: Props) {
   const copy = COPY[locale];
   const data = decision
-    ? { ...decisionSummaryFromDecision(decision), confidence_score: confidenceScore ?? null }
+    ? { ...decisionSummaryFromDecision(decision), confidence_score: confidenceScore ?? null, confidence_level: confidenceLevel }
     : snapshot ?? fallback ?? (fallbackSummary ? { summary: fallbackSummary } : null);
 
   if (!data) return null;
 
   const status = data.status ?? null;
   const headline =
-    (status && locale !== "en" ? VERDICT_LABELS[locale][status] : null) ??
+    (status && (primary || locale !== "en") ? VERDICT_LABELS[locale][status] : null) ??
     data.headline ??
     fallbackLabel ??
     (status ? VERDICT_LABELS[locale][status] : copy.reportSummary);
@@ -234,10 +248,11 @@ export function DecisionSummary({
   const selectedIntent = data.selected_intent_score !== null && data.selected_intent_score !== undefined
     ? `${Math.round(data.selected_intent_score / 10)}/10`
     : null;
-  const fairPrice = fairPriceValue(data, locale);
+  const fairPrice = primary && (!numberValue(data.fair_price_low_pln) || !numberValue(data.fair_price_high_pln))
+    ? null : fairPriceValue(data, locale);
 
   return (
-    <div className={`decision-summary${compact ? " decision-summary-compact" : ""}`}>
+    <div className={`decision-summary${compact ? " decision-summary-compact" : ""}${primary ? " decision-summary-primary" : ""}`}>
       <div className="buyer-decision-hero decision-summary-hero">
         <div>
           <div className="meta-row">
@@ -246,36 +261,44 @@ export function DecisionSummary({
             </span>
           </div>
           <h2>{headline}</h2>
-          <p>{summary}</p>
-          {relation ? <p className="buyer-price-relation">{relation}</p> : null}
+          {!primary ? <p>{summary}</p> : null}
+          {!primary && relation ? <p className="buyer-price-relation">{relation}</p> : null}
         </div>
-        {score ? <strong className="buyer-decision-score">{score}</strong> : null}
+        {!primary && score ? <strong className="buyer-decision-score">{score}</strong> : null}
       </div>
 
       <div className="buyer-decision-metrics decision-summary-metrics">
-        {selectedIntent ? (
+        {!primary && selectedIntent ? (
           <SummaryMetric className="summary-metric-personalized" label={copy.forYou} value={selectedIntent} />
         ) : null}
-        {numberValue(data.seller_price_pln) ? (
-          <SummaryMetric className="summary-metric-asking" label={copy.askingPrice} value={money(data.seller_price_pln!, locale)} />
+        {numberValue(data.seller_price_pln) || primary ? (
+          <SummaryMetric className="summary-metric-asking" label={copy.askingPrice} value={numberValue(data.seller_price_pln) ? money(data.seller_price_pln!, locale) : copy.unavailable} />
         ) : null}
-        {fairPrice ? <SummaryMetric className="summary-metric-fair-price" label={copy.fairPrice} value={fairPrice} /> : null}
-        {numberValue(data.recommended_offer_pln) ? (
+        {fairPrice || primary ? <SummaryMetric className="summary-metric-fair-price" label={copy.fairPrice} value={fairPrice ?? copy.unavailable} /> : null}
+        {!primary && numberValue(data.recommended_offer_pln) ? (
           <SummaryMetric label={copy.recommendedOffer} value={money(data.recommended_offer_pln!, locale)} />
         ) : null}
-        {numberValue(data.max_reasonable_offer_pln) ? (
+        {!primary && numberValue(data.max_reasonable_offer_pln) ? (
           <SummaryMetric label={copy.maxOffer} value={money(data.max_reasonable_offer_pln!, locale)} />
         ) : null}
-        {numberValue(data.total_move_in_cost_pln) ? (
+        {!primary && numberValue(data.total_move_in_cost_pln) ? (
           <SummaryMetric className="summary-metric-secondary" label={copy.totalCost} value={money(data.total_move_in_cost_pln!, locale)} />
         ) : null}
-        {numberValue(data.confidence_score) ? (
-          <SummaryMetric label={copy.confidence} value={confidenceLabel(data.confidence_score!, copy)} />
+        {!primary && numberValue(data.confidence_score) ? (
+          <SummaryMetric label={copy.confidence} value={data.confidence_level ? confidenceMessages[locale].levels[data.confidence_level] : confidenceLabel(data.confidence_score!, copy)} />
         ) : null}
       </div>
+      {primary && fairPrice && relation ? <p className="buyer-price-relation">{relation}</p> : null}
+      {primary ? (
+        <p className="decision-confidence" data-confidence={data.confidence_score ?? "unknown"}>
+          <strong>{copy.confidence}: </strong>
+          {data.confidence_level ? confidenceMessages[locale].levels[data.confidence_level] : numberValue(data.confidence_score) ? confidenceLabel(data.confidence_score!, copy) : copy.unavailable}
+        </p>
+      ) : null}
+      {children}
       {status ? (
         <p className="decision-summary-next-step">
-          <strong>{copy.nextStep}:</strong> {NEXT_STEPS[locale][status]}
+          <strong>{copy.nextStep}:</strong> {NEXT_STEPS[locale][status === "negotiate" && decision?.negotiation.scenario_status === "insufficient_data" ? "verify_first" : status]}
         </p>
       ) : null}
     </div>
@@ -315,6 +338,7 @@ export function decisionSummaryFromScores(
     fair_price_high_pln: scores.fair_price_high,
     price_delta_to_fair_mid_pct: scores.price_delta_to_fair_mid_pct,
     confidence_score: scores.fair_price_confidence_score,
+    confidence_level: valuationConfidenceLevel(scores.fair_price_confidence),
   };
 }
 
@@ -328,7 +352,7 @@ function SummaryMetric({ className, label, value }: { className?: string; label:
 }
 
 function numberValue(value: number | null | undefined) {
-  return value !== null && value !== undefined;
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function fairPriceValue(data: DecisionSummaryData, locale: Locale) {
@@ -345,8 +369,8 @@ function priceRelation(
   copy: DecisionSummaryCopy,
 ) {
   if (!numberValue(value)) return null;
-  if (value! > 0) return copy.aboveFair(percent(value!, locale));
-  if (value! < 0) return copy.belowFair(percent(Math.abs(value!), locale));
+  if (value! > 0) return copy.aboveFair(percent(value!, locale).replace(/^\+/, ""));
+  if (value! < 0) return copy.belowFair(percent(Math.abs(value!), locale).replace(/^\+/, ""));
   return copy.withinFair;
 }
 

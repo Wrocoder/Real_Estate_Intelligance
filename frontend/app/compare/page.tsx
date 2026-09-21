@@ -337,7 +337,7 @@ export default function ComparePage() {
           <p>{copy.subtitle}</p>
         </div>
         <div className="toolbar">
-          <Link className="button" href="/">
+          <Link className="button" href="/search">
             <BarChart3 size={16} /> {copy.actions.search}
           </Link>
           <button

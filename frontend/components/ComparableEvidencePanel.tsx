@@ -3,9 +3,12 @@
 import Link from "next/link";
 
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
+import { FairPriceEvidencePanel } from "@/components/FairPriceEvidencePanel";
+import { ConfidenceEvidence } from "@/components/ConfidenceEvidence";
 import type { ComparableEvidence, ListingAnalysis } from "@/lib/api";
 import { dateValue, money, numberValue, percent } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import { fairPriceEvidenceMessages } from "@/lib/fairPriceEvidenceMessages";
 
 type Props = {
   analysis: ListingAnalysis;
@@ -60,7 +63,7 @@ const COPY: Record<Locale, ComparableCopy> = {
     title: "Why this price?",
     description:
       "These properties are reference points for the estimate. They are not a transaction valuation or a guarantee of the achievable price.",
-    sample: (count) => `${count} comparable ${count === 1 ? "property" : "properties"}`,
+    sample: (count) => `Comparable listings: ${count}`,
     selectionQuality: "Evidence quality",
     selectionStatuses: { strong: "Strong sample", limited: "Widened sample", insufficient: "Insufficient sample" },
     stage: (current, total) => `selection stage ${current} of ${total}`,
@@ -143,7 +146,7 @@ const COPY: Record<Locale, ComparableCopy> = {
     title: "Dlaczego taka cena?",
     description:
       "Te nieruchomości są punktami odniesienia dla szacunku. Nie są wyceną transakcyjną ani gwarancją ceny, którą można uzyskać.",
-    sample: (count) => `${count} ${count === 1 ? "porównywana nieruchomość" : "porównywane nieruchomości"}`,
+    sample: (count) => `Podobne ogłoszenia: ${count}`,
     selectionQuality: "Jakość dowodów",
     selectionStatuses: { strong: "Mocna próba", limited: "Rozszerzona próba", insufficient: "Niewystarczająca próba" },
     stage: (current, total) => `etap wyboru ${current} z ${total}`,
@@ -226,7 +229,7 @@ const COPY: Record<Locale, ComparableCopy> = {
     title: "Почему такая цена?",
     description:
       "Эти объекты служат ориентиром для оценки. Это не оценка сделки и не гарантия достижимой цены.",
-    sample: (count) => `${count} ${count === 1 ? "сравнимый объект" : "сравнимых объекта"}`,
+    sample: (count) => `Похожие объявления: ${count}`,
     selectionQuality: "Качество доказательств",
     selectionStatuses: { strong: "Сильная выборка", limited: "Расширенная выборка", insufficient: "Недостаточная выборка" },
     stage: (current, total) => `этап отбора ${current} из ${total}`,
@@ -309,7 +312,7 @@ const COPY: Record<Locale, ComparableCopy> = {
     title: "Чому така ціна?",
     description:
       "Ці об'єкти є орієнтирами для оцінки. Це не оцінка угоди й не гарантія досяжної ціни.",
-    sample: (count) => `${count} ${count === 1 ? "порівнянний об'єкт" : "порівнянних об'єкти"}`,
+    sample: (count) => `Схожі оголошення: ${count}`,
     selectionQuality: "Якість доказів",
     selectionStatuses: { strong: "Сильна вибірка", limited: "Розширена вибірка", insufficient: "Недостатня вибірка" },
     stage: (current, total) => `етап відбору ${current} з ${total}`,
@@ -447,9 +450,11 @@ export function ComparableEvidencePanel({ analysis, locale }: Props) {
 
   return (
     <section className="comparable-evidence-section" aria-labelledby="comparable-evidence-title">
+      <FairPriceEvidencePanel analysis={analysis} locale={locale} />
       <div className="comparable-evidence-heading">
         <div>
           <h2 id="comparable-evidence-title">{copy.title}</h2>
+          <p>{fairPriceEvidenceMessages[locale].source}: {fairPriceEvidenceMessages[locale].asking}</p>
           <p className="muted-text">{copy.description}</p>
         </div>
         <span className="status-pill info">{copy.sample(evidence.length)}</span>
@@ -472,29 +477,7 @@ export function ComparableEvidencePanel({ analysis, locale }: Props) {
         </span>
         <span>{copy.limitations}</span>
       </div>
-      {confidence ? (
-        <div className="comparable-confidence" aria-label={copy.confidence}>
-          <div>
-            <strong>
-              {copy.confidence}: {copy.confidenceLevels[confidence.level]} ({confidence.score}/100)
-            </strong>
-            <span>
-              {copy.sample(confidence.comparable_count)}
-              {confidence.transaction_observation_count > 0
-                ? ` · RCN: ${numberValue(confidence.transaction_observation_count, locale)}`
-                : ""}
-            </span>
-          </div>
-          <ul>
-            {confidence.factors.map((factor) => (
-              <li key={factor.code} data-status={factor.status}>
-                <span>{copy.confidenceFactors[factor.code] ?? copy.unknown}</span>
-                <strong>{factor.score}/100</strong>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      {confidence ? <ConfidenceEvidence confidence={confidence} locale={locale} factorLabels={copy.confidenceFactors} /> : null}
       {exclusions.length > 0 ? (
         <p className="comparable-exclusions">
           <strong>{copy.exclusions}:</strong>{" "}

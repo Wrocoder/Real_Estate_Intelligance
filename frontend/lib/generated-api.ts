@@ -6208,6 +6208,30 @@ export interface components {
         /** FairPriceConfidence */
         FairPriceConfidence: {
             /**
+             * Model Version
+             * @default fair-price-confidence-v1
+             */
+            model_version: string;
+            /** Evidence Status */
+            evidence_status?: ("sufficient" | "insufficient") | null;
+            /** Evaluated At */
+            evaluated_at?: string | null;
+            /** Median Distance M */
+            median_distance_m?: number | null;
+            /**
+             * Distance Observation Count
+             * @default 0
+             */
+            distance_observation_count: number;
+            /** Median Age Days */
+            median_age_days?: number | null;
+            /** Oldest Age Days */
+            oldest_age_days?: number | null;
+            /** Baseline Age Days */
+            baseline_age_days?: number | null;
+            /** Missing Property Fields */
+            missing_property_fields?: string[];
+            /**
              * Level
              * @enum {string}
              */
@@ -6232,14 +6256,58 @@ export interface components {
             /** Code */
             code: string;
             /** Score */
-            score: number;
+            score?: number | null;
             /** Weight */
             weight: number;
             /**
              * Status
              * @enum {string}
              */
-            status: "supporting" | "neutral" | "limiting";
+            status: "supporting" | "neutral" | "limiting" | "unknown";
+        };
+        /** FairPriceEvidence */
+        FairPriceEvidence: {
+            /**
+             * Calculation Type
+             * @default model_estimate
+             * @constant
+             */
+            calculation_type: "model_estimate";
+            /**
+             * Method
+             * @enum {string}
+             */
+            method: "area_median" | "area_and_listing_medians";
+            /** Area Price Basis */
+            area_price_basis: string;
+            /** Area Median Per M2 */
+            area_median_per_m2: number;
+            /** Area Weight */
+            area_weight: number;
+            /** Listing Median Per M2 */
+            listing_median_per_m2?: number | null;
+            /** Listing Weight */
+            listing_weight: number;
+            /** Listings Used Count */
+            listings_used_count: number;
+            /** Minimum Listing Sample */
+            minimum_listing_sample: number;
+            /** Subject Area M2 */
+            subject_area_m2: number;
+            /** Range Half Width Pct */
+            range_half_width_pct: number;
+            /** Rounding Step Pln */
+            rounding_step_pln: number;
+            /**
+             * Selection Reference Date
+             * Format: date
+             */
+            selection_reference_date: string;
+            /**
+             * Property Adjustments Applied
+             * @default false
+             */
+            property_adjustments_applied: boolean;
         };
         /** Favorite */
         Favorite: {
@@ -6392,6 +6460,8 @@ export interface components {
         };
         /** GeneratedReportDecisionSummary */
         GeneratedReportDecisionSummary: {
+            /** Confidence Level */
+            confidence_level?: ("high" | "medium" | "low" | "insufficient") | null;
             /** Status */
             status?: ("buy" | "negotiate" | "avoid" | "verify_first") | null;
             /** Score */
@@ -8973,6 +9043,7 @@ export interface components {
             /** Fair Price Confidence Score */
             fair_price_confidence_score: number;
             fair_price_confidence?: components["schemas"]["FairPriceConfidence"] | null;
+            fair_price_evidence?: components["schemas"]["FairPriceEvidence"] | null;
             /** Price Delta To Fair Mid Pct */
             price_delta_to_fair_mid_pct: number;
             breakdown: components["schemas"]["ScoreBreakdown"];
@@ -9667,7 +9738,7 @@ export interface components {
              * Segment Type
              * @enum {string}
              */
-            segment_type: "area" | "period";
+            segment_type: "area" | "period" | "city" | "district" | "market_type" | "size_band" | "rooms" | "building_age_band" | "confidence_band" | "comparable_count";
             /** Key */
             key: string;
             /** Label */
@@ -9717,6 +9788,25 @@ export interface components {
             title: string;
             /** Area Id */
             area_id: string;
+            /** City */
+            city?: string | null;
+            /** District */
+            district?: string | null;
+            /** Market Type */
+            market_type?: ("primary" | "secondary") | null;
+            /** Size Band */
+            size_band?: string | null;
+            /** Rooms */
+            rooms?: number | null;
+            /** Building Age Band */
+            building_age_band?: string | null;
+            /** Confidence Band */
+            confidence_band?: ("high" | "medium" | "low" | "insufficient") | null;
+            /**
+             * Comparable Count
+             * @default 0
+             */
+            comparable_count: number;
             /**
              * Observed At
              * Format: date
@@ -9729,10 +9819,30 @@ export interface components {
             target_observed_at: string;
             /** Predicted Fair Price Mid */
             predicted_fair_price_mid: number;
+            /** Predicted Fair Price Low */
+            predicted_fair_price_low?: number | null;
+            /** Predicted Fair Price High */
+            predicted_fair_price_high?: number | null;
             /** Actual Price */
             actual_price: number;
+            /**
+             * Absolute Error Pln
+             * @default 0
+             */
+            absolute_error_pln: number;
             /** Absolute Error Pct */
             absolute_error_pct: number;
+            /** Interval Hit */
+            interval_hit?: boolean | null;
+            /** Leakage Cutoff */
+            leakage_cutoff?: string | null;
+            /** Evidence Observed To */
+            evidence_observed_to?: string | null;
+            /**
+             * Backtest Method
+             * @default listing_next_snapshot
+             */
+            backtest_method: string;
             /** Formula Version */
             formula_version: string;
             /** Weights Profile */
@@ -9763,6 +9873,8 @@ export interface components {
             area_drift?: components["schemas"]["ScoringBacktestDriftSegment"][];
             /** Period Drift */
             period_drift?: components["schemas"]["ScoringBacktestDriftSegment"][];
+            /** Segments */
+            segments?: components["schemas"]["ScoringBacktestDriftSegment"][];
             /** High Error Examples */
             high_error_examples?: components["schemas"]["ScoringBacktestItem"][];
             /** Findings */
@@ -9778,16 +9890,49 @@ export interface components {
             formula_version: string;
             /** Weights Profile */
             weights_profile: string;
+            /**
+             * Backtest Version
+             * @default listing-next-snapshot-v1
+             */
+            backtest_version: string;
+            /**
+             * Methodology
+             * @default listing_next_snapshot
+             */
+            methodology: string;
             /** Listings Seen */
             listings_seen: number;
             /** Listings Evaluated */
             listings_evaluated: number;
+            /**
+             * Transactions Seen
+             * @default 0
+             */
+            transactions_seen: number;
+            /**
+             * Transactions Evaluated
+             * @default 0
+             */
+            transactions_evaluated: number;
+            /**
+             * Skipped Insufficient History
+             * @default 0
+             */
+            skipped_insufficient_history: number;
             /** Evaluated Points */
             evaluated_points: number;
+            /** Mean Absolute Error Pln */
+            mean_absolute_error_pln?: number | null;
             /** Mean Absolute Error Pct */
             mean_absolute_error_pct?: number | null;
             /** Median Absolute Error Pct */
             median_absolute_error_pct?: number | null;
+            /** Rmse Pln */
+            rmse_pln?: number | null;
+            /** Median Absolute Percentage Error */
+            median_absolute_percentage_error?: number | null;
+            /** Prediction Interval Coverage Pct */
+            prediction_interval_coverage_pct?: number | null;
             /** Within 5 Pct */
             within_5_pct?: number | null;
             /** Within 10 Pct */

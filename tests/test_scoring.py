@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from domarion.repositories.in_memory import InMemoryRealEstateRepository
 from domarion.schemas import PropertyScores, ScoreBreakdown
 from domarion.services.comparables import select_comparables
@@ -79,6 +81,31 @@ def test_fair_price_confidence_is_high_for_consistent_relevant_sample() -> None:
     area = source.get_area_statistics("wroclaw-fabryczna")
     assert listing is not None
     assert area is not None
+    listing = listing.model_copy(
+        update={
+            "building_year": 2010,
+            "floor": 2,
+            "building_type": "apartment",
+            "renovation_state": "move_in_ready",
+            "data_provenance": listing.data_provenance.model_copy(
+                update={
+                    "mode": "live",
+                    "source_type": "partner_feed",
+                }
+            ),
+        }
+    )
+    area = area.model_copy(
+        update={
+            "data_provenance": area.data_provenance.model_copy(
+                update={
+                    "mode": "live",
+                    "source_type": "listing_market_statistics",
+                    "updated_at": datetime.combine(listing.last_seen_at, time()),
+                }
+            )
+        }
+    )
     repository._listings = {listing.id: listing}
     for index, price in enumerate((690_000, 700_000, 705_000, 710_000, 715_000), start=1):
         comparable = listing.model_copy(update={"id": f"strong-{index}", "price": price})
@@ -90,6 +117,7 @@ def test_fair_price_confidence_is_high_for_consistent_relevant_sample() -> None:
         area,
         selection.items,
         comparable_selection=selection,
+        evaluation_date=listing.last_seen_at,
     )
 
     assert scores.fair_price_confidence is not None

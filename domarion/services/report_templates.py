@@ -473,7 +473,7 @@ def _buyer_decision_section(analysis: ListingAnalysis | None) -> ReportSection:
     listing = analysis.listing
     scores = analysis.scores
     items = [
-        f"Fair price confidence: {scores.fair_price_confidence_score}/100.",
+        f"Fair price confidence: {scores.fair_price_confidence_label}.",
         (
             f"Объект на рынке {listing.days_on_market} дней, "
             f"снижений цены: {listing.price_reductions}."
@@ -633,7 +633,7 @@ def _price_market_section(analysis: ListingAnalysis | None) -> ReportSection:
             (f"Fair price range: {scores.fair_price_low:,}-{scores.fair_price_high:,} PLN").replace(
                 ",", " "
             ),
-            f"Fair price confidence: {scores.fair_price_confidence_score}/100",
+            f"Fair price confidence: {scores.fair_price_confidence_label}",
             f"Медиана района: {analysis.area_statistics.median_price_per_m2:,} PLN/m2".replace(
                 ",", " "
             ),
@@ -980,7 +980,7 @@ def _realtor_price_arguments_section(analysis: ListingAnalysis | None) -> Report
 
     items = [
         f"Позиционирование для клиента: {position} ({delta:+.1f}% к fair price mid).",
-        f"Fair price confidence: {scores.fair_price_confidence_score}/100.",
+        f"Fair price confidence: {scores.fair_price_confidence_label}.",
         (f"Цена объекта: {_money(listing.price)}, {_money(listing.price_per_m2)}/m2."),
         (
             f"Медиана района: {_money(analysis.area_statistics.median_price_per_m2)}/m2, "

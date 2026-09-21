@@ -4,16 +4,20 @@ import { useRef, useState, type ReactNode } from "react";
 import { BuyerActionPlanPanel, BuyerActionPlanUnavailable } from "@/components/BuyerActionPlanPanel";
 import { DecisionSummary } from "@/components/DecisionSummary";
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
-import type { BuyerDecisionPackage, BuyerSourceEvidence, BuyerVerdictStatus } from "@/lib/api";
+import type { BuyerDecisionPackage, BuyerSourceEvidence, BuyerVerdictStatus, FairPriceConfidence } from "@/lib/api";
+import { DECISION_OVERVIEW_COPY } from "@/lib/decisionOverviewMessages";
 import { localizeBuyerDecision, localizedSourceEvidence } from "@/lib/buyerDecisionMessages";
 import { money } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
+import { confidenceReasons, valuationConfidenceLevel } from "@/lib/confidenceMessages";
 
 type Props = {
   decision: BuyerDecisionPackage | null;
   confidenceScore?: number | null;
   locale: Locale;
   onNegotiationOpened?: () => void;
+  comparableCount?: number;
+  valuationConfidence?: FairPriceConfidence | null;
 };
 
 type BuyerDecisionCopy = {
@@ -439,7 +443,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
 };
 
-export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegotiationOpened }: Props) {
+export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegotiationOpened, comparableCount, valuationConfidence }: Props) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
   if (!decision) return null;
@@ -450,45 +454,76 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
   const knowledge = decision.knowledge;
   const total = decision.total_acquisition;
   const localized = localizeBuyerDecision(decision, locale, confidenceScore);
+  const overview = DECISION_OVERVIEW_COPY[locale];
+  const canNegotiate = decision.verdict.status === "negotiate" && localized.negotiationAvailable;
+  const limitingFactors = valuationConfidence?.factors.filter((factor) => factor.status === "limiting" || factor.status === "unknown") ?? [];
   return (
     <section className={`buyer-decision buyer-decision-${decision.verdict.status}`}>
-      <DecisionSummary confidenceScore={confidenceScore} decision={decision} locale={locale} />
+      <DecisionSummary primary confidenceScore={confidenceScore} confidenceLevel={valuationConfidenceLevel(valuationConfidence)} decision={decision} locale={locale}>
+        <div className="buyer-evidence-summary">
+          <p><strong>{overview.evidence}: </strong>{comparableCount === undefined
+            ? overview.missingEvidence
+            : comparableCount > 0 ? overview.listings(comparableCount) : overview.noListings}</p>
+          {comparableCount !== undefined && comparableCount > 0 ? <p>{overview.listingBasis}</p> : null}
+          {valuationConfidence?.model_version === "fair-price-confidence-v2" ? <p className="confidence-reasons">{confidenceReasons(valuationConfidence, locale).slice(0, 2).join(" ")}</p> : limitingFactors.length ? <p><strong>{overview.limitations}: </strong>{limitingFactors.slice(0, 2).map((factor) =>
+            overview.factors[factor.code as keyof typeof overview.factors] ?? overview.noFactors,
+          ).join("; ")}</p> : !valuationConfidence ? <p>{overview.noFactors}</p> : null}
+        </div>
 
       <div className="buyer-decision-key-factors">
         <DecisionList
           icon={<CheckCircle2 size={16} />}
           title={copy.sections.reasons}
           items={localized.reasons}
-          emptyLabel={copy.labels.empty}
+          emptyLabel={overview.noPositives}
+          limit={1}
         />
         <DecisionList
           icon={<ShieldAlert size={16} />}
           title={copy.sections.risks}
           items={localized.risks}
           emptyLabel={copy.labels.empty}
+          limit={1}
+        />
+        <DecisionList
+          icon={<HelpCircle size={16} />}
+          title={copy.sections.unknowns}
+          items={localized.unknowns}
+          emptyLabel={overview.noUnknowns}
+          limit={1}
         />
       </div>
+      </DecisionSummary>
 
+      <div className="buyer-overview-actions">
       <button
         className="button primary buyer-decision-cta"
         type="button"
         onClick={() => {
-          onNegotiationOpened?.();
-          revealDecisionSection(detailsRef.current, "buyer-negotiation");
+          if (canNegotiate) onNegotiationOpened?.();
+          revealDecisionSection(detailsRef.current, canNegotiate ? "buyer-negotiation" : "buyer-action-plan");
         }}
       >
-        <ClipboardCheck size={16} /> {copy.cta}
+        <ClipboardCheck size={16} /> {canNegotiate ? overview.negotiate : overview.action}
       </button>
+      <button className="button" type="button" onClick={() => revealDecisionSection(detailsRef.current, "buyer-decision-sources")}>
+        {overview.evidenceAction}
+      </button>
+      </div>
 
       <details className="buyer-decision-details" id="buyer-decision-details" ref={detailsRef}>
         <summary>{copy.sections.decisionDetails}</summary>
         <div className="buyer-decision-details-body">
+          <div className="buyer-decision-detail-grid">
+          <DecisionList icon={<CheckCircle2 size={16} />} title={copy.sections.reasons} items={localized.reasons} emptyLabel={overview.noPositives} />
+          <DecisionList icon={<ShieldAlert size={16} />} title={copy.sections.risks} items={localized.risks} emptyLabel={copy.labels.empty} />
           <DecisionList
             icon={<HelpCircle size={16} />}
             title={copy.sections.unknowns}
             items={localized.unknowns}
             emptyLabel={copy.labels.empty}
           />
+          </div>
 
           <div className="buyer-decision-detail-grid">
             <section id="buyer-negotiation" className="buyer-decision-block">
@@ -673,8 +708,11 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
             </section>
           </div>
 
-          <section className="buyer-decision-block buyer-decision-sources">
+          <section id="buyer-decision-sources" className="buyer-decision-block buyer-decision-sources" tabIndex={-1}>
             <h3>{copy.sections.sources}</h3>
+            {valuationConfidence && valuationConfidence.transaction_observation_count > 0 ? (
+              <p>{overview.records(valuationConfidence.transaction_observation_count)}</p>
+            ) : null}
             <div className="buyer-source-grid">
               {knowledge.source_evidence.map((source) => (
                 <SourceEvidenceItem
@@ -727,11 +765,13 @@ function DecisionList({
   title,
   items,
   emptyLabel,
+  limit = 6,
 }: {
   icon: ReactNode;
   title: string;
   items: string[];
   emptyLabel: string;
+  limit?: number;
 }) {
   return (
     <section className="buyer-decision-block">
@@ -740,7 +780,7 @@ function DecisionList({
       </h3>
       {items.length > 0 ? (
         <ul className="section-list compact">
-          {items.slice(0, 6).map((item) => (
+          {items.slice(0, limit).map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -816,6 +856,9 @@ function revealDecisionSection(details: HTMLDetailsElement | null, sectionId: st
   if (!details) return;
   details.open = true;
   window.requestAnimationFrame(() => {
-    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const section = document.getElementById(sectionId);
+    section?.setAttribute("tabindex", "-1");
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }

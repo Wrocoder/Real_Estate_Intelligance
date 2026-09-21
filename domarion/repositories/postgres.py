@@ -23,6 +23,7 @@ from domarion.db.models import (
     Property,
     PropertySource,
     School,
+    TransactionObservation,
     TransportRoute,
     TransportStop,
 )
@@ -66,6 +67,7 @@ from domarion.schemas import (
     PriceHistoryPoint,
     RentalObservation,
     SchoolReference,
+    TransactionBacktestObservation,
     TransportRouteReference,
     TransportStopReference,
 )
@@ -73,6 +75,8 @@ from domarion.services.developer_reputation import build_developer_reputation
 from domarion.services.listing_events import REMOVED_STATUSES
 from domarion.services.listing_text_search import normalize_search_tokens
 from domarion.services.price_history import listing_with_price_history_metrics
+from domarion.services.transaction_quality import price_exclusion_reason
+from domarion.services.transaction_versions import latest_transaction_versions
 
 _SEARCH_TRANSLATE_FROM = (
     "\u0105\u0107\u0119\u0142\u0144\u00f3\u015b\u017a\u017c"
@@ -965,6 +969,79 @@ class PostgresRealEstateRepository:
                 abs(candidate.price_per_m2 - listing.price_per_m2),
             ),
         )[:limit]
+
+    def list_transaction_observations(
+        self,
+        city: str | None = None,
+        district: str | None = None,
+        area_id: str | None = None,
+        minimum_quality: int = 60,
+    ) -> list[TransactionBacktestObservation]:
+        rows = self.session.scalars(
+            select(TransactionObservation)
+            .join(ListingSource, ListingSource.id == TransactionObservation.source_id)
+            .where(
+                *((TransactionObservation.city.ilike(city),) if city is not None else ()),
+                *(
+                    (TransactionObservation.district.ilike(district),)
+                    if district is not None
+                    else ()
+                ),
+                *((TransactionObservation.area_id == area_id,) if area_id is not None else ()),
+                TransactionObservation.data_quality_score >= minimum_quality,
+                TransactionObservation.price_per_m2.is_not(None),
+                TransactionObservation.price_per_m2 > 0,
+                TransactionObservation.property_price_gross > 0,
+                TransactionObservation.area_m2 > 0,
+                TransactionObservation.market_type.in_(("primary", "secondary")),
+                ListingSource.is_demo.is_(self.include_demo_data),
+                *(
+                    ()
+                    if self.include_demo_data
+                    else (
+                        ListingSource.is_active.is_(True),
+                        ListingSource.legal_status == "approved",
+                    )
+                ),
+            )
+            .order_by(
+                TransactionObservation.transaction_date,
+                TransactionObservation.logical_transaction_id,
+                TransactionObservation.id,
+            )
+        ).all()
+        current_versions = latest_transaction_versions(rows)
+        observations = []
+        for row in current_versions:
+            if price_exclusion_reason(row.price_per_m2, row.transaction_date) is not None:
+                continue
+            source = row.source
+            observations.append(
+                TransactionBacktestObservation(
+                    id=f"transaction-{row.id}",
+                    logical_transaction_id=row.logical_transaction_id,
+                    source_name=source.name,
+                    source_type=source.source_type,
+                    transaction_date=row.transaction_date,
+                    observed_at=row.observed_at,
+                    city=row.city,
+                    district=row.district,
+                    area_id=row.area_id or f"{row.city.casefold()}-city",
+                    municipality=row.municipality,
+                    address=row.address,
+                    market_type=row.market_type,  # type: ignore[arg-type]
+                    property_price_gross=row.property_price_gross,
+                    currency=row.currency,
+                    area_m2=float(row.area_m2),
+                    price_per_m2=float(row.price_per_m2),
+                    rooms=row.rooms,
+                    floor=row.floor,
+                    lat=float(row.lat) if row.lat is not None else None,
+                    lon=float(row.lon) if row.lon is not None else None,
+                    data_quality_score=row.data_quality_score,
+                )
+            )
+        return observations
 
     def find_rental_observations(
         self,
