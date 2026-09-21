@@ -240,7 +240,7 @@ demo-профиль и legacy identity headers. В production задай уни�
 - http://127.0.0.1:3000/areas/wroclaw-fabryczna — пример районной SEO-страницы.
 - http://127.0.0.1:3000/listings/wr-001 — детальная аналитика объекта.
 - http://127.0.0.1:3000/developers — рейтинг застройщиков.
-- http://127.0.0.1:3000/compare — сравнение 2-5 объектов.
+- http://127.0.0.1:3000/compare — сравнение 2-4 объектов.
 - http://127.0.0.1:3000/reports — история и генерация отчетов.
 - http://127.0.0.1:3000/pricing — разовые paid reports, checkout и audit trail.
 - http://127.0.0.1:3000/mortgage — ипотечный расчет и заявка mortgage/legal/renovation партнеру.

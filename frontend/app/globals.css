@@ -4544,6 +4544,71 @@ summary:focus-visible {
   margin-bottom: 16px;
 }
 
+.compare-primary {
+  display: grid;
+  gap: 12px;
+}
+
+.compare-evidence {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 14px;
+}
+
+.compare-evidence-header {
+  display: grid;
+  gap: 8px;
+}
+
+.compare-evidence-header p {
+  margin: 0;
+  max-width: 860px;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.compare-evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.compare-evidence-tile {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border-right: 1px solid var(--line);
+  background: #fbfcfd;
+  padding: 12px;
+}
+
+.compare-evidence-tile:last-child {
+  border-right: 0;
+}
+
+.compare-evidence-tile span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compare-evidence-tile strong {
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.compare-evidence-tile small {
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .compare-highlight-strip {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -4996,6 +5061,19 @@ summary:focus-visible {
 
   .compare-highlight-strip {
     grid-template-columns: 1fr;
+  }
+
+  .compare-evidence-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-evidence-tile,
+  .compare-evidence-tile:last-child {
+    border-right: 0;
+  }
+
+  .compare-evidence-tile + .compare-evidence-tile {
+    border-top: 1px solid var(--line);
   }
 
   .compare-highlight-strip .metric {

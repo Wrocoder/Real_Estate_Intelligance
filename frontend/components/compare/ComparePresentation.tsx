@@ -42,6 +42,19 @@ type CompareProductCopy = {
   bestOverall: string;
   why: string;
   tradeoffs: string;
+  evidence: string;
+  suggestedAction: string;
+  askingVsFair: string;
+  acquisitionCost: string;
+  riskAndConfidence: string;
+  confidence: string;
+  negotiationPlan: string;
+  openingOffer: string;
+  walkAway: string;
+  monthly: string;
+  cash: string;
+  verifyUnknowns: string;
+  noOfferRange: string;
   fallbackSummary: string;
   noMaterialTradeoffs: string;
 };
@@ -135,6 +148,92 @@ export function RecommendationSummary({
         </div>
       </div>
     </article>
+  );
+}
+
+export function CompareEvidenceSummary({
+  copy,
+  item,
+  metric,
+  locale,
+}: {
+  copy: CompareProductCopy;
+  item: ListingAnalysis | undefined;
+  metric: CompareItemMetrics | undefined;
+  locale: Locale;
+}) {
+  if (!item || !metric) return null;
+
+  const fairRange = `${money(item.scores.fair_price_low, locale)} - ${money(
+    item.scores.fair_price_high,
+    locale,
+  )}`;
+  const risk = `${item.scores.risk_score}/100 · ${scoreLabel(item.scores.risk_label, locale)}`;
+  const confidence = `${item.scores.fair_price_confidence_score}/100`;
+  const offerRange =
+    metric.opening_offer_pln !== null && metric.max_reasonable_offer_pln !== null
+      ? `${money(metric.opening_offer_pln, locale)} -> ${money(
+          metric.max_reasonable_offer_pln,
+          locale,
+        )}`
+      : copy.noOfferRange;
+  const action =
+    metric.opening_offer_pln !== null && metric.max_reasonable_offer_pln !== null
+      ? `${copy.openingOffer}: ${money(metric.opening_offer_pln, locale)}. ${
+          copy.walkAway
+        }: ${money(metric.max_reasonable_offer_pln, locale)}.`
+      : copy.verifyUnknowns;
+
+  return (
+    <section className="compare-evidence" aria-label={copy.evidence}>
+      <div className="compare-evidence-header">
+        <span className="status-pill info">{copy.evidence}</span>
+        <p>{copy.suggestedAction}: {action}</p>
+      </div>
+      <div className="compare-evidence-grid">
+        <EvidenceTile
+          label={copy.askingVsFair}
+          value={money(item.listing.price, locale)}
+          detail={`${fairRange} · ${percent(metric.price_delta_to_fair_mid_pct, locale)}`}
+        />
+        <EvidenceTile
+          label={copy.acquisitionCost}
+          value={money(metric.total_move_in_cost_pln, locale)}
+          detail={`${money(metric.estimated_monthly_payment_pln, locale)}/${copy.monthly} · ${money(
+            metric.upfront_cash_needed_pln,
+            locale,
+          )} ${copy.cash}`}
+        />
+        <EvidenceTile
+          label={copy.riskAndConfidence}
+          value={risk}
+          detail={`${copy.confidence}: ${confidence}`}
+        />
+        <EvidenceTile
+          label={copy.negotiationPlan}
+          value={offerRange}
+          detail={copy.verifyUnknowns}
+        />
+      </div>
+    </section>
+  );
+}
+
+function EvidenceTile({
+  label,
+  value,
+  detail,
+}: {
+  label: string;
+  value: string;
+  detail?: string;
+}) {
+  return (
+    <div className="compare-evidence-tile">
+      <span>{label}</span>
+      <strong>{value}</strong>
+      {detail ? <small>{detail}</small> : null}
+    </div>
   );
 }
 

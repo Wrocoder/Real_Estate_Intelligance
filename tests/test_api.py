@@ -988,6 +988,16 @@ def test_compare_rejects_duplicate_listing_ids() -> None:
     assert response.status_code == 422
 
 
+def test_compare_rejects_more_than_four_listing_ids() -> None:
+    response = client.post(
+        "/api/v1/compare",
+        headers={"X-Domarion-Plan": "buyer_pro"},
+        json={"listing_ids": ["wr-001", "wr-002", "wr-003", "wr-004", "wr-005"]},
+    )
+
+    assert response.status_code == 422
+
+
 def test_compare_returns_decision_metrics_and_mortgage_baseline() -> None:
     response = client.post(
         "/api/v1/compare",

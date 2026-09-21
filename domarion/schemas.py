@@ -2673,7 +2673,7 @@ class HiddenGemsResponse(BaseModel):
 
 
 class CompareRequest(BaseModel):
-    listing_ids: list[str] = Field(min_length=2, max_length=5)
+    listing_ids: list[str] = Field(min_length=2, max_length=4)
     purchase_intent: PurchaseIntent = "unsure"
 
     @model_validator(mode="after")

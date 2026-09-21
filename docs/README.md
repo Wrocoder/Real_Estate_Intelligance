@@ -28,9 +28,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 6](WartoMetr_Phase_6_Implementation.md): public methodology and trust page.
 - [Phase 7](WartoMetr_Phase_7_Implementation.md): commercial Buyer Report.
 - [Phase 8](WartoMetr_Phase_8_Implementation.md): real payment validation.
+- [Phase 9](WartoMetr_Phase_9_Implementation.md): apartment comparison workflow.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 9 and
+reports supersede earlier descriptions of the affected workflows. Phase 10 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations

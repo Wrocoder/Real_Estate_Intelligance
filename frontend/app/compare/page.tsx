@@ -23,6 +23,7 @@ import { scoreLabel } from "@/lib/scoreLabels";
 import { productIntent, trackProductEvent } from "@/lib/productAnalytics";
 import { useLocalePreference } from "@/lib/useLocalePreference";
 import {
+  CompareEvidenceSummary,
   InsightColumn,
   Metric,
   RecommendationSummary,
@@ -42,11 +43,26 @@ import {
   type ShortlistStatusState,
 } from "@/components/compare/ComparePresentation";
 
+const MAX_COMPARE_ITEMS = 4;
+
 const COMPARE_PRODUCT_COPY = {
   en: {
     bestOverall: "Best overall option",
     why: "Why",
     tradeoffs: "Trade-offs",
+    evidence: "Evidence",
+    suggestedAction: "Suggested next action",
+    askingVsFair: "Asking vs fair range",
+    acquisitionCost: "Total purchase cost",
+    riskAndConfidence: "Risk and confidence",
+    confidence: "Confidence",
+    negotiationPlan: "Negotiation plan",
+    openingOffer: "Suggested first offer",
+    walkAway: "Walk-away price",
+    monthly: "mo.",
+    cash: "cash",
+    verifyUnknowns: "Verify the main unknowns before making an offer.",
+    noOfferRange: "Offer range is not reliable enough yet.",
     fairPrice: "fair price",
     lowerRisk: "lower risk",
     liquidity: "strong liquidity",
@@ -58,7 +74,7 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Personalized recommendation from your buyer profile",
     noBudgetFit: "None of the selected apartments fits your saved maximum price; the general recommendation is shown.",
     editProfile: "Edit buyer profile",
-    selectionHelp: "Choose 2 to 5 apartments. Only the selected IDs are compared and kept in the page link.",
+    selectionHelp: "Choose 2 to 4 apartments. Only the selected IDs are compared and kept in the page link.",
     unavailableRemoved: (count: number) => `${count} unavailable apartment${count === 1 ? " was" : "s were"} removed. The remaining selection is still being compared.`,
     noMaterialTradeoffs: "No material trade-off was detected in the available comparison data.",
     fallbackSummary: "This option best matches the selected purpose and the available comparison evidence.",
@@ -67,6 +83,19 @@ const COMPARE_PRODUCT_COPY = {
     bestOverall: "Najlepsza opcja ogólnie",
     why: "Dlaczego",
     tradeoffs: "Kompromisy",
+    evidence: "Dowody",
+    suggestedAction: "Sugerowany kolejny krok",
+    askingVsFair: "Cena ofertowa i zakres rynkowy",
+    acquisitionCost: "Całkowity koszt zakupu",
+    riskAndConfidence: "Ryzyko i pewność",
+    confidence: "Pewność",
+    negotiationPlan: "Plan negocjacji",
+    openingOffer: "Sugerowana pierwsza oferta",
+    walkAway: "Cena graniczna",
+    monthly: "mies.",
+    cash: "gotówka",
+    verifyUnknowns: "Sprawdź główne niewiadome przed złożeniem oferty.",
+    noOfferRange: "Zakres oferty nie jest jeszcze wystarczająco wiarygodny.",
     fairPrice: "względem ceny rynkowej",
     lowerRisk: "niższe ryzyko",
     liquidity: "dobra płynność",
@@ -78,7 +107,7 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Rekomendacja dopasowana do Twojego profilu kupującego",
     noBudgetFit: "Żadne z wybranych mieszkań nie mieści się w zapisanej cenie maksymalnej; pokazujemy rekomendację ogólną.",
     editProfile: "Edytuj profil kupującego",
-    selectionHelp: "Wybierz od 2 do 5 mieszkań. Porównujemy wyłącznie wskazane ID i zachowujemy je w linku strony.",
+    selectionHelp: "Wybierz od 2 do 4 mieszkań. Porównujemy wyłącznie wskazane ID i zachowujemy je w linku strony.",
     unavailableRemoved: (count: number) => `Usunięto ${count} niedostępne ${count === 1 ? "mieszkanie" : "mieszkania"}. Pozostałe wybrane oferty nadal są porównywane.`,
     noMaterialTradeoffs: "W dostępnych danych porównawczych nie wykryto istotnego kompromisu.",
     fallbackSummary: "Ta opcja najlepiej pasuje do wybranego celu i dostępnych danych porównawczych.",
@@ -87,6 +116,19 @@ const COMPARE_PRODUCT_COPY = {
     bestOverall: "Лучший вариант в целом",
     why: "Почему",
     tradeoffs: "Компромиссы",
+    evidence: "Подтверждения",
+    suggestedAction: "Следующий шаг",
+    askingVsFair: "Цена vs оценочный диапазон",
+    acquisitionCost: "Полная стоимость покупки",
+    riskAndConfidence: "Риск и уверенность",
+    confidence: "Уверенность",
+    negotiationPlan: "План торга",
+    openingOffer: "Первое предложение",
+    walkAway: "Предельная цена",
+    monthly: "мес.",
+    cash: "наличные",
+    verifyUnknowns: "Проверьте главные неизвестные перед предложением цены.",
+    noOfferRange: "Диапазон предложения пока недостаточно надежен.",
     fairPrice: "относительно рыночной цены",
     lowerRisk: "ниже риск",
     liquidity: "хорошая ликвидность",
@@ -98,7 +140,7 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Персональная рекомендация по вашему профилю покупателя",
     noBudgetFit: "Ни одна выбранная квартира не укладывается в сохраненную максимальную цену; показана общая рекомендация.",
     editProfile: "Изменить профиль покупателя",
-    selectionHelp: "Выберите от 2 до 5 квартир. Сравниваются только выбранные ID, и они сохраняются в ссылке страницы.",
+    selectionHelp: "Выберите от 2 до 4 квартир. Сравниваются только выбранные ID, и они сохраняются в ссылке страницы.",
     unavailableRemoved: (count: number) => `Недоступные объекты удалены: ${count}. Остальные выбранные квартиры продолжают сравниваться.`,
     noMaterialTradeoffs: "По доступным данным существенный компромисс не выявлен.",
     fallbackSummary: "Этот вариант лучше соответствует выбранной цели и доступным данным сравнения.",
@@ -107,6 +149,19 @@ const COMPARE_PRODUCT_COPY = {
     bestOverall: "Найкращий варіант загалом",
     why: "Чому",
     tradeoffs: "Компроміси",
+    evidence: "Підтвердження",
+    suggestedAction: "Наступний крок",
+    askingVsFair: "Ціна vs оціночний діапазон",
+    acquisitionCost: "Повна вартість купівлі",
+    riskAndConfidence: "Ризик і впевненість",
+    confidence: "Впевненість",
+    negotiationPlan: "План торгу",
+    openingOffer: "Перша пропозиція",
+    walkAway: "Гранична ціна",
+    monthly: "міс.",
+    cash: "готівка",
+    verifyUnknowns: "Перевірте головні невідомі перед пропозицією ціни.",
+    noOfferRange: "Діапазон пропозиції поки недостатньо надійний.",
     fairPrice: "відносно ринкової ціни",
     lowerRisk: "нижчий ризик",
     liquidity: "добра ліквідність",
@@ -118,7 +173,7 @@ const COMPARE_PRODUCT_COPY = {
     personalized: "Персональна рекомендація за вашим профілем покупця",
     noBudgetFit: "Жодна вибрана квартира не вкладається у збережену максимальну ціну; показано загальну рекомендацію.",
     editProfile: "Змінити профіль покупця",
-    selectionHelp: "Виберіть від 2 до 5 квартир. Порівнюються лише вибрані ID, і вони зберігаються в посиланні сторінки.",
+    selectionHelp: "Виберіть від 2 до 4 квартир. Порівнюються лише вибрані ID, і вони зберігаються в посиланні сторінки.",
     unavailableRemoved: (count: number) => `Недоступні об'єкти видалено: ${count}. Решта вибраних квартир продовжує порівнюватися.`,
     noMaterialTradeoffs: "За доступними даними суттєвого компромісу не виявлено.",
     fallbackSummary: "Цей варіант найкраще відповідає вибраній меті та доступним даним порівняння.",
@@ -164,7 +219,7 @@ export default function ComparePage() {
           .map((item) => item.trim())
           .filter(Boolean),
       ),
-    ].slice(0, 5);
+    ].slice(0, MAX_COMPARE_ITEMS);
     const initialIntent = params.get("intent") as PurchaseIntent | null;
     const hasInitialIntent = ["self", "family", "rental", "investment"].includes(initialIntent ?? "");
     if (hasInitialIntent) setIntent(initialIntent as PurchaseIntent);
@@ -211,7 +266,7 @@ export default function ComparePage() {
       trackProductEvent("comparison_started", locale, {
         surface: "compare",
         intent: productIntent(intent),
-        comparison_size: Math.min(selectedIds.length, 4),
+        comparison_size: Math.min(selectedIds.length, MAX_COMPARE_ITEMS),
       });
       try {
         const response = await api.compareListings(selectedIds, intent);
@@ -220,7 +275,7 @@ export default function ComparePage() {
         trackProductEvent("comparison_completed", locale, {
           surface: "compare",
           intent: productIntent(intent),
-          comparison_size: Math.min(selectedIds.length, 4),
+          comparison_size: Math.min(selectedIds.length, MAX_COMPARE_ITEMS),
           result_state: response.unavailable_listing_ids.length ? "partial" : "success",
         });
         if (response.unavailable_listing_ids.length > 0) {
@@ -268,7 +323,7 @@ export default function ComparePage() {
         syncCompareUrl(next, intent);
         return next;
       }
-      if (current.length >= 5) {
+      if (current.length >= MAX_COMPARE_ITEMS) {
         setStatus({ key: "compareLimit" });
         return current;
       }
@@ -429,6 +484,12 @@ export default function ComparePage() {
               metrics={comparison.metrics}
               recommendation={comparison.recommendation}
               badgeLabel={comparison.recommendation.personalized ? COMPARE_PRODUCT_COPY[locale].personalized : undefined}
+              locale={locale}
+            />
+            <CompareEvidenceSummary
+              copy={COMPARE_PRODUCT_COPY[locale]}
+              item={items.find((analysis) => analysis.listing.id === comparison.recommendation.listing_id) ?? items[0]}
+              metric={metricById.get(comparison.recommendation.listing_id)}
               locale={locale}
             />
           </section>
