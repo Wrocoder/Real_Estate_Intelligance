@@ -3132,7 +3132,7 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     },
     hints: {
       reportContext: "Reports are attached to a checked apartment or selected area.",
-      contextMissing: "Open this page from an apartment analysis or area page to buy a report for that property.",
+      contextMissing: "Open this page from an apartment analysis for a single report, or buy the 3 Apartment Pack for three future checks.",
       apartmentContext: "This report will be prepared for the selected apartment.",
       areaContext: "This report will be prepared for the selected area.",
       bundleContext: "Use report bundles after you save apartments to My apartments.",
@@ -3209,7 +3209,7 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     },
     hints: {
       reportContext: "Raport jest przypięty do sprawdzonego mieszkania albo wybranej dzielnicy.",
-      contextMissing: "Otwórz tę stronę z analizy mieszkania albo strony dzielnicy, aby kupić właściwy raport.",
+      contextMissing: "Otwórz tę stronę z analizy mieszkania dla jednego raportu albo kup pakiet 3 mieszkań na przyszłe sprawdzenia.",
       apartmentContext: "Raport zostanie przygotowany dla wybranego mieszkania.",
       areaContext: "Raport zostanie przygotowany dla wybranej dzielnicy.",
       bundleContext: "Pakiet raportów wykorzystasz po zapisaniu mieszkań w Moich mieszkaniach.",
@@ -3286,7 +3286,7 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     },
     hints: {
       reportContext: "Отчет привязан к проверенной квартире или выбранному району.",
-      contextMissing: "Откройте эту страницу из анализа квартиры или страницы района, чтобы купить нужный отчет.",
+      contextMissing: "Откройте эту страницу из анализа квартиры для одного отчета или купите пакет на 3 квартиры для будущих проверок.",
       apartmentContext: "Отчет будет подготовлен для выбранной квартиры.",
       areaContext: "Отчет будет подготовлен для выбранного района.",
       bundleContext: "Пакет отчетов удобно использовать после сохранения квартир в Моих квартирах.",
@@ -3363,7 +3363,7 @@ export const PRICING_PAGE_COPY: Record<Locale, PricingPageCopy> = {
     },
     hints: {
       reportContext: "Звіт прив'язаний до перевіреної квартири або вибраного району.",
-      contextMissing: "Відкрийте цю сторінку з аналізу квартири або сторінки району, щоб купити потрібний звіт.",
+      contextMissing: "Відкрийте цю сторінку з аналізу квартири для одного звіту або купіть пакет на 3 квартири для майбутніх перевірок.",
       apartmentContext: "Звіт буде підготовлено для вибраної квартири.",
       areaContext: "Звіт буде підготовлено для вибраного району.",
       bundleContext: "Пакет звітів зручно використати після збереження квартир у Моїх квартирах.",

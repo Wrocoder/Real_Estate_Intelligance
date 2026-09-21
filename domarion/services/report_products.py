@@ -90,6 +90,23 @@ def _report_products() -> dict[ReportProductCode, ReportProduct]:
                 "Feedback required after each beta report",
             ],
         ),
+        "apartment_pack_3": ReportProduct(
+            code="apartment_pack_3",
+            title="3 Apartment Pack",
+            audience="buyer",
+            amount_grosz=settings.apartment_pack_3_amount_grosz,
+            currency="PLN",
+            description=(
+                "Three Buyer Report credits for comparing apartment A, B and C before "
+                "making a purchase decision."
+            ),
+            features=[
+                "3 buyer-decision report credits",
+                "Analyze three shortlisted apartments",
+                "Compare the saved reports side by side",
+                "Configurable one-time price before checkout",
+            ],
+        ),
     }
 
 

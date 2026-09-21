@@ -29,9 +29,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 7](WartoMetr_Phase_7_Implementation.md): commercial Buyer Report.
 - [Phase 8](WartoMetr_Phase_8_Implementation.md): real payment validation.
 - [Phase 9](WartoMetr_Phase_9_Implementation.md): apartment comparison workflow.
+- [Phase 10](WartoMetr_Phase_10_Implementation.md): 3 Apartment Pack commercial support.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 10 and
+reports supersede earlier descriptions of the affected workflows. Phase 11 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations

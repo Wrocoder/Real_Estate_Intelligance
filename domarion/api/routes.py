@@ -6043,6 +6043,20 @@ def _ensure_report_limit(
 
 REPORT_BUNDLE_5_REFERENCE = "bundle:reports-5"
 REPORT_BUNDLE_5_CREDITS = 5
+APARTMENT_PACK_3_REFERENCE = "bundle:apartment-pack-3"
+APARTMENT_PACK_3_CREDITS = 3
+REPORT_BUNDLE_CONFIGS = {
+    "report_bundle_5": {
+        "reference": REPORT_BUNDLE_5_REFERENCE,
+        "bundle_code": "reports-5",
+        "credits": REPORT_BUNDLE_5_CREDITS,
+    },
+    "apartment_pack_3": {
+        "reference": APARTMENT_PACK_3_REFERENCE,
+        "bundle_code": "apartment-pack-3",
+        "credits": APARTMENT_PACK_3_CREDITS,
+    },
+}
 REPORT_CREDIT_CONSUMED_KEY = "report_credit_source_order_id"
 
 
@@ -6097,12 +6111,13 @@ def _available_credits_by_order(
     report_store: ReportStore,
     order_store: ReportOrderStore,
 ) -> dict[str, int]:
-    bundle_orders = [
-        order
+    credits_by_order = {
+        order.id: int(bundle_config["credits"])
         for order in order_store.list_orders(owner_id, limit=10_000)
-        if order.product_code == "report_bundle_5" and order.status == "fulfilled"
-    ]
-    credits_by_order = {order.id: REPORT_BUNDLE_5_CREDITS for order in bundle_orders}
+        if order.status == "fulfilled"
+        for bundle_config in [_report_bundle_config(order.product_code)]
+        if bundle_config is not None
+    }
     if not credits_by_order:
         return {}
 
@@ -6126,18 +6141,19 @@ def _validate_report_order_listing_reference(
     draft_store: UserSubmittedListingStore,
     owner_id: str,
 ) -> dict[str, str | int | None]:
-    if product_code == "report_bundle_5":
-        _bundle_reference_from_report_listing_id(listing_id)
+    bundle_config = _report_bundle_config(product_code)
+    if bundle_config is not None:
+        bundle_code = _bundle_reference_from_report_listing_id(listing_id, product_code)
         return {
             "listing_reference_type": "report_bundle",
-            "bundle_code": "reports-5",
-            "report_credits": REPORT_BUNDLE_5_CREDITS,
+            "bundle_code": bundle_code,
+            "report_credits": int(bundle_config["credits"]),
         }
 
     if _is_bundle_report_listing_id(listing_id):
         raise HTTPException(
             status_code=400,
-            detail="Bundle references require report_bundle_5 product",
+            detail="Bundle references require a report bundle product",
         )
 
     if product_code == "area_report":
@@ -6182,13 +6198,16 @@ def _generate_paid_report_for_order(
     ai_insight_store: AIInsightStore,
     order: ReportOrder,
 ) -> GeneratedReport:
-    if order.product_code == "report_bundle_5":
-        _bundle_reference_from_report_listing_id(order.listing_id)
+    bundle_config = _report_bundle_config(order.product_code)
+    if bundle_config is not None:
+        _bundle_reference_from_report_listing_id(order.listing_id, order.product_code)
         report = generate_and_store_report_bundle_receipt(
             report_store=report_store,
             owner_id=order.owner_id,
             order_id=order.id,
-            credits=REPORT_BUNDLE_5_CREDITS,
+            credits=int(bundle_config["credits"]),
+            product_code=order.product_code,
+            listing_id=str(bundle_config["reference"]),
             report_format=order.report_format,
             report_metadata_extra=_paid_report_metadata(order),
         )
@@ -6197,7 +6216,7 @@ def _generate_paid_report_for_order(
     if _is_bundle_report_listing_id(order.listing_id):
         raise HTTPException(
             status_code=400,
-            detail="Bundle references require report_bundle_5 product",
+            detail="Bundle references require a report bundle product",
         )
 
     if order.product_code == "area_report":
@@ -6327,13 +6346,28 @@ def _is_bundle_report_listing_id(listing_id: str) -> bool:
     return listing_id.startswith(BUNDLE_REPORT_LISTING_PREFIX)
 
 
-def _bundle_reference_from_report_listing_id(listing_id: str) -> str:
-    if listing_id != REPORT_BUNDLE_5_REFERENCE:
+def _report_bundle_config(product_code: str) -> dict[str, str | int] | None:
+    return REPORT_BUNDLE_CONFIGS.get(product_code)
+
+
+def _bundle_reference_from_report_listing_id(
+    listing_id: str,
+    product_code: ReportProductCode,
+) -> str:
+    bundle_config = _report_bundle_config(product_code)
+    if bundle_config is None:
         raise HTTPException(
             status_code=400,
-            detail="Report bundle orders require listing_id bundle:reports-5",
+            detail="Bundle references require a report bundle product",
         )
-    return "reports-5"
+
+    expected_reference = str(bundle_config["reference"])
+    if listing_id != expected_reference:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Report bundle orders require listing_id {expected_reference}",
+        )
+    return str(bundle_config["bundle_code"])
 
 
 def _record_order_event(

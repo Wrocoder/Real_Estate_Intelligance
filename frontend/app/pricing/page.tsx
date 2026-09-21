@@ -58,6 +58,17 @@ const PRICING_PRODUCT_COPY: Record<
       ],
       cta: "Buy Buyer Report",
     },
+    apartment_pack_3: {
+      title: "3 Apartment Pack",
+      description: "Three Buyer Report credits for apartment A, B and C before you choose the safest option.",
+      features: [
+        "3 paid Buyer Report credits",
+        "Analyze three shortlisted apartments",
+        "Compare the saved reports side by side",
+        "One configurable price before checkout",
+      ],
+      cta: "Buy 3 Apartment Pack",
+    },
     full_object_analysis: {
       title: "Complete Due Diligence",
       description: "A deeper apartment check before reservation or deposit.",
@@ -81,6 +92,17 @@ const PRICING_PRODUCT_COPY: Record<
         "Całkowity koszt zakupu, checklist due diligence i raport do pobrania",
       ],
       cta: "Kup Buyer Report",
+    },
+    apartment_pack_3: {
+      title: "Pakiet 3 mieszkań",
+      description: "Trzy kredyty Buyer Report dla mieszkań A, B i C przed wyborem najbezpieczniejszej opcji.",
+      features: [
+        "3 płatne kredyty Buyer Report",
+        "Analiza trzech mieszkań z krótkiej listy",
+        "Porównanie zapisanych raportów obok siebie",
+        "Jedna konfigurowalna cena przed płatnością",
+      ],
+      cta: "Kup pakiet 3 mieszkań",
     },
     full_object_analysis: {
       title: "Pełna analiza przed zakupem",
@@ -106,6 +128,17 @@ const PRICING_PRODUCT_COPY: Record<
       ],
       cta: "Купить Buyer Report",
     },
+    apartment_pack_3: {
+      title: "Пакет на 3 квартиры",
+      description: "Три кредита Buyer Report для квартир A, B и C, чтобы сравнить варианты перед решением.",
+      features: [
+        "3 платных кредита Buyer Report",
+        "Проверка трех квартир из короткого списка",
+        "Сравнение сохраненных отчетов рядом",
+        "Одна настраиваемая цена перед оплатой",
+      ],
+      cta: "Купить пакет на 3 квартиры",
+    },
     full_object_analysis: {
       title: "Полная проверка перед покупкой",
       description: "Более глубокая проверка квартиры перед резервированием или задатком.",
@@ -129,6 +162,17 @@ const PRICING_PRODUCT_COPY: Record<
         "Повна вартість купівлі, due diligence checklist і звіт для завантаження",
       ],
       cta: "Купити Buyer Report",
+    },
+    apartment_pack_3: {
+      title: "Пакет на 3 квартири",
+      description: "Три кредити Buyer Report для квартир A, B і C, щоб порівняти варіанти перед рішенням.",
+      features: [
+        "3 платні кредити Buyer Report",
+        "Перевірка трьох квартир із короткого списку",
+        "Порівняння збережених звітів поруч",
+        "Одна налаштовувана ціна перед оплатою",
+      ],
+      cta: "Купити пакет на 3 квартири",
     },
     full_object_analysis: {
       title: "Повна перевірка перед купівлею",
@@ -373,7 +417,9 @@ export default function PricingPage() {
     setBillingForm((current) => ({ ...current, [field]: value }));
   }
 
-  const buyerProducts = products.filter((product) => product.code === "object_report");
+  const buyerProducts = products.filter((product) =>
+    ["object_report", "apartment_pack_3"].includes(product.code),
+  );
   const buyerPlans = plans.filter((plan) => BUYER_PLAN_CODES.includes(plan.plan));
   const buyerProPlan = plans.find((plan) => plan.plan === "buyer_pro");
 
@@ -714,6 +760,7 @@ function reportOrderReference(product: ReportProduct, context: ReportContext) {
     return context.areaReference ? `area:${context.areaReference}` : null;
   }
   if (product.code === "report_bundle_5") return "bundle:reports-5";
+  if (product.code === "apartment_pack_3") return "bundle:apartment-pack-3";
   return context.listingReference || null;
 }
 
@@ -742,10 +789,10 @@ function orderSubject(reference: string, locale: Locale) {
   }
   if (reference.startsWith("bundle:")) {
     return {
-      en: "Report bundle",
-      pl: "Pakiet raportów",
-      ru: "Пакет отчетов",
-      uk: "Пакет звітів",
+      en: reference === "bundle:apartment-pack-3" ? "3 Apartment Pack" : "Report bundle",
+      pl: reference === "bundle:apartment-pack-3" ? "Pakiet 3 mieszkań" : "Pakiet raportów",
+      ru: reference === "bundle:apartment-pack-3" ? "Пакет на 3 квартиры" : "Пакет отчетов",
+      uk: reference === "bundle:apartment-pack-3" ? "Пакет на 3 квартири" : "Пакет звітів",
     }[locale];
   }
   return {

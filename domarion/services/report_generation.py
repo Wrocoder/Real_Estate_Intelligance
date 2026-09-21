@@ -364,13 +364,15 @@ def generate_and_store_report_bundle_receipt(
     owner_id: str,
     order_id: str,
     credits: int,
+    product_code: ReportProductCode = "report_bundle_5",
+    listing_id: str = "bundle:reports-5",
     report_format: ReportFormat = "html",
     report_metadata_extra: dict | None = None,
 ) -> GeneratedReport:
     title = f"{credits} Report Credits Bundle"
     summary = f"Paid bundle fulfilled: {credits} report credits granted to this account."
     metadata = {
-        "report_product_code": "report_bundle_5",
+        "report_product_code": product_code,
         "report_bundle_receipt": True,
         "report_credits_granted": credits,
         "report_credit_bundle_order_id": order_id,
@@ -394,7 +396,7 @@ def generate_and_store_report_bundle_receipt(
 
     payload = GeneratedReportCreate(
         owner_id=owner_id,
-        listing_id="bundle:reports-5",
+        listing_id=listing_id,
         audience="buyer",
         report_format=report_format,
         content_type=content_type,

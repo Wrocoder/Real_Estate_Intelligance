@@ -180,6 +180,32 @@ def test_paid_area_json_and_bundle_receipt_metadata_contract() -> None:
     }
     _assert_generated_report_list_contract(headers, receipt["id"])
 
+    pack_checkout = _create_order(
+        headers,
+        listing_id="bundle:apartment-pack-3",
+        product_code="apartment_pack_3",
+        report_format="json",
+    )
+    pack_order = pack_checkout["order"]
+    _, pack_receipt = _pay_fulfill_and_get_report(headers, pack_order)
+    pack_metadata = pack_receipt["report_metadata"]
+    pack_content = json.loads(pack_receipt["content"])
+
+    assert pack_receipt["listing_id"] == "bundle:apartment-pack-3"
+    assert pack_receipt["content_type"] == "application/json"
+    assert pack_metadata["paid_order_id"] == pack_order["id"]
+    assert pack_metadata["report_product_code"] == "apartment_pack_3"
+    assert pack_metadata["report_bundle_receipt"] is True
+    assert pack_metadata["report_credits_granted"] == 3
+    assert pack_metadata["report_credit_bundle_order_id"] == pack_order["id"]
+    assert pack_content == {
+        "template_code": "report_bundle_receipt_v1",
+        "order_id": pack_order["id"],
+        "credits_granted": 3,
+        "summary": pack_receipt["summary"],
+    }
+    _assert_generated_report_list_contract(headers, pack_receipt["id"])
+
 
 def _create_order(
     headers: dict[str, str],

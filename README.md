@@ -1184,9 +1184,19 @@ $checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
   -Body '{"listing_id":"area:wroclaw-fabryczna","product_code":"area_report","report_format":"html"}'
 ```
 
-Пакет 5 report credits покупается как отдельный order. После fulfillment credits видны в
+Пакеты report credits покупаются как отдельные order. После fulfillment credits видны в
 `/api/v1/me` как `usage.report_credits_available` и списываются, когда monthly report limit уже
-исчерпан:
+исчерпан. Consumer-facing 3 Apartment Pack стоит по умолчанию 99 PLN и настраивается через
+`APARTMENT_PACK_3_AMOUNT_GROSZ`:
+
+```powershell
+$checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `
+  -Method Post `
+  -ContentType "application/json" `
+  -Body '{"listing_id":"bundle:apartment-pack-3","product_code":"apartment_pack_3","report_format":"html"}'
+```
+
+Старый beta bundle на 5 report credits остается доступен отдельно:
 
 ```powershell
 $checkout = Invoke-RestMethod http://127.0.0.1:8000/api/v1/report-orders `

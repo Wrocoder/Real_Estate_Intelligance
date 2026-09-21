@@ -2089,21 +2089,25 @@ function reportProductLabel(productCode: string, locale: Locale) {
       object_report: "Property report",
       area_report: "Area report",
       report_bundle_5: "Report bundle",
+      apartment_pack_3: "3 Apartment Pack",
     },
     pl: {
       object_report: "Raport mieszkania",
       area_report: "Raport dzielnicy",
       report_bundle_5: "Pakiet raportów",
+      apartment_pack_3: "Pakiet 3 mieszkań",
     },
     ru: {
       object_report: "Отчет по квартире",
       area_report: "Отчет по району",
       report_bundle_5: "Пакет отчетов",
+      apartment_pack_3: "Пакет на 3 квартиры",
     },
     uk: {
       object_report: "Звіт по квартирі",
       area_report: "Звіт по району",
       report_bundle_5: "Пакет звітів",
+      apartment_pack_3: "Пакет на 3 квартири",
     },
   };
   return labels[locale][productCode] ?? productCode;

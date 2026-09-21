@@ -1928,7 +1928,8 @@ export type ReportProductCode =
   | "full_object_analysis"
   | "investor_report"
   | "area_report"
-  | "report_bundle_5";
+  | "report_bundle_5"
+  | "apartment_pack_3";
 export type ReportOrderStatus = "unpaid" | "paid" | "fulfilled" | "canceled";
 export type IngestionJobStatus = "queued" | "running" | "succeeded" | "failed";
 export type DataQualitySeverity = "info" | "warning" | "error";

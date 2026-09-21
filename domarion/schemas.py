@@ -45,6 +45,7 @@ ReportProductCode = Literal[
     "investor_report",
     "area_report",
     "report_bundle_5",
+    "apartment_pack_3",
 ]
 ReportOrderStatus = Literal["unpaid", "paid", "fulfilled", "canceled", "failed", "refunded"]
 BillingCustomerType = Literal["individual", "company"]

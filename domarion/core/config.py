@@ -40,6 +40,7 @@ class Settings(BaseSettings):
     payment_cancel_url: str | None = None
     payment_checkout_timeout_seconds: float = 10.0
     buyer_report_amount_grosz: int = Field(default=4900, ge=0)
+    apartment_pack_3_amount_grosz: int = Field(default=9900, ge=0)
     stripe_secret_key: str | None = None
     stripe_api_base_url: str = "https://api.stripe.com"
     payment_webhook_tolerance_seconds: int = 300

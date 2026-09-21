@@ -9435,7 +9435,7 @@ export interface components {
              * Product Code
              * @enum {string}
              */
-            product_code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5";
+            product_code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5" | "apartment_pack_3";
             /**
              * Audience
              * @enum {string}
@@ -9518,7 +9518,7 @@ export interface components {
              * @default object_report
              * @enum {string}
              */
-            product_code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5";
+            product_code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5" | "apartment_pack_3";
             /** Audience */
             audience?: ("buyer" | "realtor" | "investor") | null;
             /**
@@ -9562,7 +9562,7 @@ export interface components {
              * Code
              * @enum {string}
              */
-            code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5";
+            code: "object_report" | "full_object_analysis" | "investor_report" | "area_report" | "report_bundle_5" | "apartment_pack_3";
             /** Title */
             title: string;
             /**
