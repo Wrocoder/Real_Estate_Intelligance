@@ -14,10 +14,10 @@ const browser = await chromium.launch();
 const failures = [];
 let passed = 0;
 const locales = {
-  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", plan: "Otwórz plan sprawdzenia", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska" },
-  en: { unknown: "Not verified", next: "Next step", plan: "Open verification plan", evidence: "Review evidence and sources", missing: "Not available", low: "Low" },
-  ru: { unknown: "Не проверено", next: "Следующий шаг", plan: "Открыть план проверки", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая" },
-  uk: { unknown: "Не перевірено", next: "Наступний крок", plan: "Відкрити план перевірки", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька" },
+  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska" },
+  en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low" },
+  ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая" },
+  uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька" },
 };
 
 async function run(name, locale, width, mutate = () => {}, verify = async () => {}) {
@@ -44,6 +44,8 @@ async function run(name, locale, width, mutate = () => {}, verify = async () => 
       assert.equal(await page.locator("#buyer-decision-details").getAttribute("open"), null);
       assert.equal(await summary.getByRole("heading", { name: locales[locale].unknown, exact: true }).isVisible(), true);
       assert.match(await summary.locator(".decision-summary-next-step").innerText(), new RegExp(locales[locale].next));
+      assert.equal(await page.locator("#buyer-before-viewing").isVisible(), true);
+      assert.match(await page.locator("#buyer-before-viewing").innerText(), new RegExp(locales[locale].why));
     }
     await verify(page, payload);
     await page.screenshot({ path: path.join(artifacts, `${name}-${locale}-${width}.png`), fullPage: true });
@@ -60,9 +62,9 @@ try {
   for (const locale of Object.keys(locales)) {
     for (const width of [1440, 768, 390]) {
       await run("overview", locale, width, () => {}, async (page) => {
-        await page.getByRole("button", { name: locales[locale].plan, exact: true }).click();
-        assert.equal(await page.locator("#buyer-action-plan").isVisible(), true);
-        assert.equal(await page.evaluate(() => document.activeElement?.id), "buyer-action-plan");
+        await page.getByRole("button", { name: locales[locale].prepare, exact: true }).click();
+        assert.equal(await page.locator("#buyer-before-viewing").isVisible(), true);
+        await page.waitForFunction(() => document.activeElement?.id === "buyer-before-viewing");
         await page.locator("#buyer-decision-details > summary").click();
         await page.getByRole("button", { name: locales[locale].evidence, exact: true }).click();
         assert.equal(await page.locator("#buyer-decision-sources").isVisible(), true);
@@ -77,8 +79,8 @@ try {
       data.buyer_decision.negotiation.scenario_status = status === "negotiate" ? "available" : "insufficient_data";
     }, async (page) => {
       await page.locator(".buyer-decision-cta").click();
-      const target = status === "negotiate" ? "buyer-negotiation" : "buyer-action-plan";
-      assert.equal(await page.locator(`#${target}`).isVisible(), true);
+      assert.equal(await page.locator("#buyer-before-viewing").isVisible(), true);
+      await page.waitForFunction(() => document.activeElement?.id === "buyer-before-viewing");
     });
   }
   await run("overpriced", "pl", 390, (data) => {

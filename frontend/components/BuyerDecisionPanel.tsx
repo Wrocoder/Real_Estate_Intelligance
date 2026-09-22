@@ -1,7 +1,11 @@
 import { Bell, Check, CheckCircle2, ClipboardCheck, Copy, HelpCircle, ShieldAlert, Target, WalletCards } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
-import { BuyerActionPlanPanel, BuyerActionPlanUnavailable } from "@/components/BuyerActionPlanPanel";
+import {
+  BeforeViewingAssistantPanel,
+  BuyerActionPlanPanel,
+  BuyerActionPlanUnavailable,
+} from "@/components/BuyerActionPlanPanel";
 import { DecisionSummary } from "@/components/DecisionSummary";
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
 import type { BuyerDecisionPackage, BuyerSourceEvidence, BuyerVerdictStatus, FairPriceConfidence } from "@/lib/api";
@@ -99,7 +103,7 @@ type BuyerDecisionCopy = {
 const COPY: Record<Locale, BuyerDecisionCopy> = {
   en: {
     eyebrow: "WartoMetr verdict",
-    cta: "Prepare viewing and negotiation",
+    cta: "Prepare for the viewing",
     metrics: {
       forYou: "For you",
       sellerPrice: "Seller price",
@@ -185,7 +189,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
   pl: {
     eyebrow: "Werdykt WartoMetr",
-    cta: "Przygotuj oględziny i negocjacje",
+    cta: "Przygotuj mnie do oglądania",
     metrics: {
       forYou: "Dla Ciebie",
       sellerPrice: "Cena sprzedającego",
@@ -271,7 +275,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
   ru: {
     eyebrow: "Вердикт WartoMetr",
-    cta: "Подготовиться к просмотру и торгу",
+    cta: "Подготовиться к просмотру",
     metrics: {
       forYou: "Для вас",
       sellerPrice: "Цена продавца",
@@ -357,7 +361,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
   },
   uk: {
     eyebrow: "Вердикт WartoMetr",
-    cta: "Підготувати перегляд і торг",
+    cta: "Підготуватися до огляду",
     metrics: {
       forYou: "Для вас",
       sellerPrice: "Ціна продавця",
@@ -500,16 +504,33 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
         className="button primary buyer-decision-cta"
         type="button"
         onClick={() => {
-          if (canNegotiate) onNegotiationOpened?.();
-          revealDecisionSection(detailsRef.current, canNegotiate ? "buyer-negotiation" : "buyer-action-plan");
+          revealStandaloneSection("buyer-before-viewing");
         }}
       >
-        <ClipboardCheck size={16} /> {canNegotiate ? overview.negotiate : overview.action}
+        <ClipboardCheck size={16} /> {copy.cta}
       </button>
+      {canNegotiate ? (
+        <button
+          className="button"
+          type="button"
+          onClick={() => {
+            onNegotiationOpened?.();
+            revealDecisionSection(detailsRef.current, "buyer-negotiation");
+          }}
+        >
+          <Target size={16} /> {overview.negotiate}
+        </button>
+      ) : null}
       <button className="button" type="button" onClick={() => revealDecisionSection(detailsRef.current, "buyer-decision-sources")}>
         {overview.evidenceAction}
       </button>
       </div>
+
+      <BeforeViewingAssistantPanel
+        assistant={decision.pre_viewing}
+        locale={locale}
+        plan={decision.action_plan}
+      />
 
       <details className="buyer-decision-details" id="buyer-decision-details" ref={detailsRef}>
         <summary>{copy.sections.decisionDetails}</summary>
@@ -855,6 +876,15 @@ function confidenceLabel(score: number, copy: BuyerDecisionCopy) {
 function revealDecisionSection(details: HTMLDetailsElement | null, sectionId: string) {
   if (!details) return;
   details.open = true;
+  window.requestAnimationFrame(() => {
+    const section = document.getElementById(sectionId);
+    section?.setAttribute("tabindex", "-1");
+    section?.focus({ preventScroll: true });
+    section?.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function revealStandaloneSection(sectionId: string) {
   window.requestAnimationFrame(() => {
     const section = document.getElementById(sectionId);
     section?.setAttribute("tabindex", "-1");

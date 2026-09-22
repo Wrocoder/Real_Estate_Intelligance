@@ -1193,6 +1193,100 @@ summary:focus-visible {
   margin-top: 14px;
 }
 
+.before-viewing-assistant {
+  scroll-margin-top: 18px;
+}
+
+.before-viewing-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.before-viewing-heading p {
+  max-width: 760px;
+  margin: 0;
+}
+
+.before-viewing-status {
+  flex: 0 0 auto;
+  max-width: 240px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.before-viewing-status.recommendation-skip {
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--line));
+  color: var(--danger);
+}
+
+.before-viewing-status.recommendation-verify_first {
+  border-color: color-mix(in srgb, var(--warning-text) 40%, var(--line));
+  color: var(--warning-text);
+}
+
+.before-viewing-items {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.before-viewing-item {
+  min-width: 0;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.before-viewing-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.before-viewing-item-header strong {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.before-viewing-item dl {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) minmax(0, 1fr);
+  gap: 8px 10px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.before-viewing-item dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.before-viewing-item dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.before-viewing-documents {
+  margin-top: 14px;
+}
+
+.before-viewing-documents summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .buyer-intent-strip {
   display: flex;
   flex-wrap: wrap;
@@ -4788,6 +4882,10 @@ summary:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .before-viewing-items {
+    grid-template-columns: 1fr;
+  }
+
   .area-compare-table-desktop {
     display: none;
   }
@@ -5096,6 +5194,25 @@ summary:focus-visible {
 
   .compare-ranking-item + .compare-ranking-item {
     border-top: 1px solid var(--line);
+  }
+
+  .before-viewing-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .before-viewing-status {
+    max-width: none;
+    text-align: left;
+  }
+
+  .before-viewing-item dl {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .before-viewing-item dd {
+    margin-bottom: 8px;
   }
 
   .buyer-priority-grid {
