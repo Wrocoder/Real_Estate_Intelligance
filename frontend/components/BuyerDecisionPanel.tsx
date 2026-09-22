@@ -52,7 +52,7 @@ type BuyerDecisionCopy = {
   };
   labels: {
     openingOffer: string;
-    realisticDeal: string;
+    targetRange: string;
     walkAway: string;
     posture: string;
     score: string;
@@ -93,7 +93,10 @@ type BuyerDecisionCopy = {
     limitations: string;
     guardrails: string;
     copyBrief: string;
+    sellerMessage: string;
+    copySellerMessage: string;
     copied: string;
+    messageCopied: string;
     copyFailed: string;
   };
   statuses: Record<BuyerVerdictStatus, string>;
@@ -129,7 +132,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
     labels: {
       openingOffer: "Opening offer",
-      realisticDeal: "Realistic deal",
+      targetRange: "Target range",
       walkAway: "Do not exceed",
       posture: "Posture",
       score: "WartoMetr Score",
@@ -170,7 +173,10 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       limitations: "Why no price scenario",
       guardrails: "Boundaries",
       copyBrief: "Copy negotiation brief",
+      sellerMessage: "Message to seller/agent",
+      copySellerMessage: "Copy message",
       copied: "Brief copied",
+      messageCopied: "Message copied",
       copyFailed: "Could not copy the brief",
     },
     statuses: {
@@ -215,7 +221,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
     labels: {
       openingOffer: "Oferta startowa",
-      realisticDeal: "Realna transakcja",
+      targetRange: "Zakres docelowy",
       walkAway: "Nie przekraczać",
       posture: "Pozycja",
       score: "Ocena WartoMetr",
@@ -256,7 +262,10 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       limitations: "Dlaczego nie ma scenariusza ceny",
       guardrails: "Granice scenariusza",
       copyBrief: "Kopiuj krótkie uzasadnienie",
+      sellerMessage: "Wiadomość do sprzedającego lub agenta",
+      copySellerMessage: "Kopiuj wiadomość",
       copied: "Uzasadnienie skopiowane",
+      messageCopied: "Wiadomość skopiowana",
       copyFailed: "Nie udało się skopiować uzasadnienia",
     },
     statuses: {
@@ -301,7 +310,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
     labels: {
       openingOffer: "Стартовое предложение",
-      realisticDeal: "Реальная сделка",
+      targetRange: "Целевой диапазон",
       walkAway: "Не превышать",
       posture: "Позиция",
       score: "Оценка WartoMetr",
@@ -342,7 +351,10 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       limitations: "Почему нет ценового сценария",
       guardrails: "Ограничения сценария",
       copyBrief: "Скопировать обоснование торга",
+      sellerMessage: "Сообщение продавцу или агенту",
+      copySellerMessage: "Скопировать сообщение",
       copied: "Обоснование скопировано",
+      messageCopied: "Сообщение скопировано",
       copyFailed: "Не удалось скопировать обоснование",
     },
     statuses: {
@@ -387,7 +399,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
     },
     labels: {
       openingOffer: "Стартова пропозиція",
-      realisticDeal: "Реальна угода",
+      targetRange: "Цільовий діапазон",
       walkAway: "Не перевищувати",
       posture: "Позиція",
       score: "Оцінка WartoMetr",
@@ -428,7 +440,10 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
       limitations: "Чому немає цінового сценарію",
       guardrails: "Межі сценарію",
       copyBrief: "Скопіювати обґрунтування торгу",
+      sellerMessage: "Повідомлення продавцю або агенту",
+      copySellerMessage: "Скопіювати повідомлення",
       copied: "Обґрунтування скопійовано",
+      messageCopied: "Повідомлення скопійовано",
       copyFailed: "Не вдалося скопіювати обґрунтування",
     },
     statuses: {
@@ -449,7 +464,7 @@ const COPY: Record<Locale, BuyerDecisionCopy> = {
 
 export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegotiationOpened, comparableCount, valuationConfidence }: Props) {
   const detailsRef = useRef<HTMLDetailsElement>(null);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "brief-copied" | "message-copied" | "failed">("idle");
   if (!decision) return null;
 
   const copy = COPY[locale];
@@ -562,7 +577,7 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
                 <dl className="buyer-decision-facts">
                   <Fact label={copy.labels.openingOffer} value={money(negotiation.opening_offer_pln, locale)} />
                   <Fact
-                    label={copy.labels.realisticDeal}
+                    label={copy.labels.targetRange}
                     value={`${money(negotiation.realistic_deal_low_pln, locale)}-${money(
                       negotiation.realistic_deal_high_pln,
                       locale,
@@ -581,6 +596,27 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
                     ))}
                   </ul>
                 </div>
+              ) : null}
+              {localized.negotiationSellerMessage ? (
+                <article className="negotiation-message-box">
+                  <h4>{copy.labels.sellerMessage}</h4>
+                  <p>{localized.negotiationSellerMessage}</p>
+                  <button
+                    className="button secondary"
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await copyToClipboard(localized.negotiationSellerMessage ?? "");
+                        setCopyStatus("message-copied");
+                      } catch {
+                        setCopyStatus("failed");
+                      }
+                    }}
+                  >
+                    {copyStatus === "message-copied" ? <Check size={16} /> : <Copy size={16} />}
+                    {copy.labels.copySellerMessage}
+                  </button>
+                </article>
               ) : null}
               <ul className="section-list compact">
                 {localized.negotiationArguments.slice(0, 4).map((item) => {
@@ -630,17 +666,23 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
                 onClick={async () => {
                   try {
                     await copyToClipboard(localized.negotiationBrief);
-                    setCopyStatus("copied");
+                    setCopyStatus("brief-copied");
                   } catch {
                     setCopyStatus("failed");
                   }
                 }}
               >
-                {copyStatus === "copied" ? <Check size={16} /> : <Copy size={16} />}
+                {copyStatus === "brief-copied" ? <Check size={16} /> : <Copy size={16} />}
                 {copy.labels.copyBrief}
               </button>
               <span className="muted" role="status" aria-live="polite">
-                {copyStatus === "copied" ? copy.labels.copied : copyStatus === "failed" ? copy.labels.copyFailed : ""}
+                {copyStatus === "brief-copied"
+                  ? copy.labels.copied
+                  : copyStatus === "message-copied"
+                    ? copy.labels.messageCopied
+                    : copyStatus === "failed"
+                      ? copy.labels.copyFailed
+                      : ""}
               </span>
             </section>
 

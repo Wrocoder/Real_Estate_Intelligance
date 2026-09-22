@@ -80,6 +80,7 @@ type MessageCatalog = {
   openingScript: (price: string) => string;
   rangeScript: (low: string, high: string) => string;
   ceilingScript: (price: string) => string;
+  sellerMessage: (opening: string, low: string, high: string, ceiling: string, reasons: string[]) => string;
   diligenceStrong: string;
   diligenceMixed: string;
   diligenceWeak: string;
@@ -173,6 +174,13 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     rangeScript: (low, high) => `Prowadź rozmowę wokół zakresu ${low}-${high}, a nie tylko ceny ofertowej.`,
     ceilingScript: (price) =>
       `Nie przekraczaj ${price}, dopóki dokumenty i stan techniczny nie poprawią obrazu ryzyka.`,
+    sellerMessage: (opening, low, high, ceiling, reasons) =>
+      [
+        `Dzień dobry, po analizie ceny i dostępnych danych mogę złożyć warunkową ofertę ${opening}.`,
+        `Mój docelowy zakres rozmowy to ${low}-${high}; bez nowych dowodów nie chcę przekraczać ${ceiling}.`,
+        reasons.length ? `Uzasadnienie: ${reasons.slice(0, 2).join(" ")}` : "",
+        "Oferta zależy od potwierdzenia dokumentów, stanu technicznego i kosztów, które wyjdą podczas weryfikacji.",
+      ].filter(Boolean).join(" "),
     diligenceStrong: "Większość kluczowych kwestii nadal wymaga potwierdzenia",
     diligenceMixed: "Część kluczowych kwestii wymaga potwierdzenia",
     diligenceWeak: "Zakres podstawowych sprawdzeń jest stosunkowo kompletny",
@@ -330,6 +338,13 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     rangeScript: (low, high) => `Anchor the discussion around ${low}-${high}, not only the asking price.`,
     ceilingScript: (price) =>
       `Do not exceed ${price} unless documents and technical checks materially improve the risk picture.`,
+    sellerMessage: (opening, low, high, ceiling, reasons) =>
+      [
+        `Hello, after reviewing the asking price and available evidence, I can make a conditional opening offer of ${opening}.`,
+        `My target discussion range is ${low}-${high}; without new evidence I do not want to exceed ${ceiling}.`,
+        reasons.length ? `My reasoning: ${reasons.slice(0, 2).join(" ")}` : "",
+        "The offer depends on confirming the documents, technical condition and costs during verification.",
+      ].filter(Boolean).join(" "),
     diligenceStrong: "Most key matters still require confirmation",
     diligenceMixed: "Some key matters require confirmation",
     diligenceWeak: "The basic verification scope is relatively complete",
@@ -486,6 +501,13 @@ const CATALOG: Record<Locale, MessageCatalog> = {
       `Начните с ${price} и объясните, что предложение основано на диапазоне стоимости и необходимых проверках.`,
     rangeScript: (low, high) => `Обсуждайте диапазон ${low}-${high}, а не только цену продавца.`,
     ceilingScript: (price) => `Не превышайте ${price}, пока документы и техническая проверка не улучшат картину риска.`,
+    sellerMessage: (opening, low, high, ceiling, reasons) =>
+      [
+        `Здравствуйте. После анализа цены и доступных данных я могу сделать условное стартовое предложение ${opening}.`,
+        `Мой целевой диапазон обсуждения: ${low}-${high}; без новых подтверждений я не хочу превышать ${ceiling}.`,
+        reasons.length ? `Обоснование: ${reasons.slice(0, 2).join(" ")}` : "",
+        "Предложение зависит от проверки документов, технического состояния и фактических расходов.",
+      ].filter(Boolean).join(" "),
     diligenceStrong: "Большинство ключевых вопросов ещё нужно подтвердить",
     diligenceMixed: "Часть ключевых вопросов нужно подтвердить",
     diligenceWeak: "Базовый объём проверки относительно полный",
@@ -644,6 +666,13 @@ const CATALOG: Record<Locale, MessageCatalog> = {
     rangeScript: (low, high) => `Обговорюйте діапазон ${low}-${high}, а не лише ціну продавця.`,
     ceilingScript: (price) =>
       `Не перевищуйте ${price}, доки документи й технічна перевірка не поліпшать картину ризику.`,
+    sellerMessage: (opening, low, high, ceiling, reasons) =>
+      [
+        `Добрий день. Після аналізу ціни та доступних даних я можу зробити умовну стартову пропозицію ${opening}.`,
+        `Мій цільовий діапазон обговорення: ${low}-${high}; без нових підтверджень я не хочу перевищувати ${ceiling}.`,
+        reasons.length ? `Обґрунтування: ${reasons.slice(0, 2).join(" ")}` : "",
+        "Пропозиція залежить від перевірки документів, технічного стану та фактичних витрат.",
+      ].filter(Boolean).join(" "),
     diligenceStrong: "Більшість ключових питань ще треба підтвердити",
     diligenceMixed: "Частину ключових питань треба підтвердити",
     diligenceWeak: "Базовий обсяг перевірки відносно повний",
@@ -864,6 +893,7 @@ export type LocalizedBuyerDecision = {
   negotiationActions: string[];
   negotiationGuardrails: string[];
   negotiationBrief: string;
+  negotiationSellerMessage: string | null;
   diligenceLabel: string;
   documents: string[];
   sellerQuestions: string[];
@@ -950,6 +980,7 @@ export function localizeBuyerDecision(
     "",
     ...negotiationGuardrails.map((item) => `- ${item}`),
   ].join("\n");
+  const negotiationSellerMessage = buildNegotiationSellerMessage(c, decision, negotiationArguments, locale);
   const sourceRows = decision.knowledge.source_evidence.map((source) => {
     const topic = sourceTopic(c, source.topic);
     return source.calculation_type === "observed"
@@ -982,6 +1013,7 @@ export function localizeBuyerDecision(
     negotiationActions,
     negotiationGuardrails,
     negotiationBrief,
+    negotiationSellerMessage,
     diligenceLabel:
       decision.due_diligence.score < 45
         ? c.diligenceStrong
@@ -1100,6 +1132,31 @@ function negotiationGuardrail(c: MessageCatalog, code: string) {
   if (code === "no_price_advice_insufficient_data") return c.guardrailNoAdvice;
   if (code === "collect_evidence_before_offer") return c.guardrailCollectEvidence;
   return c.guardrailScenario;
+}
+
+function buildNegotiationSellerMessage(
+  c: MessageCatalog,
+  decision: BuyerDecisionPackage,
+  argumentsForBuyer: LocalizedBuyerDecision["negotiationArguments"],
+  locale: Locale,
+) {
+  const negotiation = decision.negotiation;
+  if (
+    negotiation.scenario_status !== "available" ||
+    negotiation.opening_offer_pln === null ||
+    negotiation.realistic_deal_low_pln === null ||
+    negotiation.realistic_deal_high_pln === null ||
+    negotiation.max_reasonable_offer_pln === null
+  ) {
+    return null;
+  }
+  return c.sellerMessage(
+    money(negotiation.opening_offer_pln, locale),
+    money(negotiation.realistic_deal_low_pln, locale),
+    money(negotiation.realistic_deal_high_pln, locale),
+    money(negotiation.max_reasonable_offer_pln, locale),
+    argumentsForBuyer.map((item) => item.text),
+  );
 }
 
 function numberParam(value: string | number | undefined) {

@@ -14,14 +14,17 @@ const browser = await chromium.launch();
 const failures = [];
 let passed = 0;
 const locales = {
-  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska", additional: "Dodatkowa analiza mieszkania", recalculate: "Przelicz werdykt", changed: "Co się zmieniło", updated: "NAJPIERW SPRAWDŹ" },
-  en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low", additional: "Additional apartment analysis", recalculate: "Recalculate verdict", changed: "What changed", updated: "VERIFY FIRST" },
-  ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая", additional: "Дополнительный анализ квартиры", recalculate: "Пересчитать вердикт", changed: "Что изменилось", updated: "СНАЧАЛА ПРОВЕРИТЬ" },
-  uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька", additional: "Додатковий аналіз квартири", recalculate: "Перерахувати вердикт", changed: "Що змінилося", updated: "СПОЧАТКУ ПЕРЕВІРИТИ" },
+  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska", additional: "Dodatkowa analiza mieszkania", recalculate: "Przelicz werdykt", changed: "Co się zmieniło", updated: "NAJPIERW SPRAWDŹ", negotiate: "Przygotuj negocjacje", targetRange: "Zakres docelowy", sellerMessage: "Wiadomość do sprzedającego lub agenta", copyMessage: "Kopiuj wiadomość" },
+  en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low", additional: "Additional apartment analysis", recalculate: "Recalculate verdict", changed: "What changed", updated: "VERIFY FIRST", negotiate: "Prepare negotiation", targetRange: "Target range", sellerMessage: "Message to seller/agent", copyMessage: "Copy message" },
+  ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая", additional: "Дополнительный анализ квартиры", recalculate: "Пересчитать вердикт", changed: "Что изменилось", updated: "СНАЧАЛА ПРОВЕРИТЬ", negotiate: "Подготовить переговоры", targetRange: "Целевой диапазон", sellerMessage: "Сообщение продавцу или агенту", copyMessage: "Скопировать сообщение" },
+  uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька", additional: "Додатковий аналіз квартири", recalculate: "Перерахувати вердикт", changed: "Що змінилося", updated: "СПОЧАТКУ ПЕРЕВІРИТИ", negotiate: "Підготувати переговори", targetRange: "Цільовий діапазон", sellerMessage: "Повідомлення продавцю або агенту", copyMessage: "Скопіювати повідомлення" },
 };
 
 async function run(name, locale, width, mutate = () => {}, verify = async () => {}) {
-  const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 900 } });
+  const context = await browser.newContext({
+    permissions: ["clipboard-read", "clipboard-write"],
+    viewport: { width, height: width === 390 ? 844 : 900 },
+  });
   await context.addCookies([{ name: "domarion_locale", value: locale, url: baseUrl }]);
   await context.addInitScript((value) => localStorage.setItem("domarion-locale", value), locale);
   const page = await context.newPage();
@@ -90,6 +93,50 @@ try {
   }, async (page) => {
     assert.doesNotMatch(await page.locator(".decision-summary-primary").innerText(), /blisko szacowanego zakresu/);
     assert.match(await page.locator(".buyer-price-relation").innerText(), /powyżej środka/);
+  });
+  await run("negotiation-assistant", "pl", 390, (data) => {
+    data.buyer_decision.verdict.status = "negotiate";
+    data.buyer_decision.verdict.opening_offer_pln = 620000;
+    data.buyer_decision.verdict.realistic_deal_low_pln = 635000;
+    data.buyer_decision.verdict.realistic_deal_high_pln = 660000;
+    data.buyer_decision.verdict.max_reasonable_offer_pln = 670000;
+    data.buyer_decision.negotiation.scenario_status = "available";
+    data.buyer_decision.negotiation.scenario_confidence_score = 78;
+    data.buyer_decision.negotiation.posture = "moderate";
+    data.buyer_decision.negotiation.opening_offer_pln = 620000;
+    data.buyer_decision.negotiation.realistic_deal_low_pln = 635000;
+    data.buyer_decision.negotiation.realistic_deal_high_pln = 660000;
+    data.buyer_decision.negotiation.max_reasonable_offer_pln = 670000;
+    data.buyer_decision.negotiation.argument_evidence = [{
+      id: "fair-price",
+      topic: "fair_price",
+      source_name: "WartoMetr fair price",
+      source_type: "model",
+      updated_at: null,
+      sample_size: 12,
+      geographic_scope: "Wrocław: Fabryczna",
+      time_range: "180 days",
+      calculation_type: "model_estimate",
+      confidence_score: 78,
+      note: null,
+    }];
+    data.buyer_decision.negotiation.arguments = [{
+      code: "fair_value_range",
+      params: { low_pln: 635000, high_pln: 670000, confidence_score: 78 },
+      strength: "primary",
+      evidence_refs: ["fair-price"],
+    }];
+  }, async (page) => {
+    await page.getByRole("button", { name: locales.pl.negotiate, exact: true }).click();
+    const negotiation = page.locator("#buyer-negotiation");
+    await negotiation.waitFor();
+    const text = await negotiation.innerText();
+    assert.match(text, new RegExp(locales.pl.targetRange));
+    assert.match(text, new RegExp(locales.pl.sellerMessage));
+    assert.match(text, /warunkow|warunkową/);
+    assert.doesNotMatch(text, /Realna transakcja|zaakceptowana cena|sprzedający zaakceptuje/);
+    await negotiation.getByRole("button", { name: locales.pl.copyMessage, exact: true }).click();
+    assert.match(await negotiation.innerText(), /Wiadomość skopiowana/);
   });
   for (const score of [0, null]) {
     await run(`confidence-${score}`, "pl", 390, (data) => {
