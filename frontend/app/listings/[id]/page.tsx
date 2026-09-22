@@ -323,7 +323,9 @@ export default function ListingDetailPage() {
         <PostViewingVerdictRecalculator
           locale={locale}
           onRecalculate={recalculatePostViewing}
+          onRestore={setPostViewingResult}
           result={postViewingResult}
+          storageKey={`wartometr-post-viewing-listing-${listingId}-${analysis.buyer_decision.decision_model_version}`}
         />
       ) : null}
 

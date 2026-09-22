@@ -724,6 +724,7 @@ def test_listing_post_viewing_verdict_recalculation() -> None:
         json={
             "noise": "major_issue",
             "humidity": "major_issue",
+            "layout": "minor_issue",
             "renovation_need": "full",
         },
     )

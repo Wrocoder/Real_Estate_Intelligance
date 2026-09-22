@@ -3476,6 +3476,32 @@ summary:focus-visible {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.post-viewing-recalculator .panel-header {
+  align-items: flex-start;
+}
+
+.post-viewing-form {
+  align-items: end;
+}
+
+.post-viewing-notes {
+  grid-column: span 2;
+}
+
+.post-viewing-submit {
+  min-height: 42px;
+}
+
+.post-viewing-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.post-viewing-change-summary {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 0;
+}
+
 .field {
   display: grid;
   gap: 5px;
@@ -4870,6 +4896,10 @@ summary:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .post-viewing-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .ai-verdict-controls {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -5158,6 +5188,15 @@ summary:focus-visible {
   }
 
   .compare-highlight-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .post-viewing-notes,
+  .post-viewing-submit {
+    grid-column: 1 / -1;
+  }
+
+  .post-viewing-metrics {
     grid-template-columns: 1fr;
   }
 

@@ -8746,6 +8746,12 @@ export interface components {
              */
             kitchen_bathroom: "unknown" | "good" | "minor_issue" | "major_issue";
             /**
+             * Layout
+             * @default unknown
+             * @enum {string}
+             */
+            layout: "unknown" | "good" | "minor_issue" | "major_issue";
+            /**
              * Renovation Need
              * @default unknown
              * @enum {string}

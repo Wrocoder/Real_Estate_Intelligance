@@ -157,6 +157,7 @@ def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
             "condition": "minor_issue",
             "noise": "major_issue",
             "humidity": "major_issue",
+            "layout": "minor_issue",
             "renovation_need": "light",
         },
     )
@@ -171,6 +172,7 @@ def test_user_submitted_draft_post_viewing_verdict_recalculation() -> None:
         < payload["original_decision"]["verdict"]["score"]
     )
     assert any("noise" in item for item in payload["applied_findings"])
+    assert any("layout" in item for item in payload["applied_findings"])
 
 
 def test_user_submitted_draft_object_watch_uses_alerts_without_url_leak() -> None:

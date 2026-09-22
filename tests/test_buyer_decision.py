@@ -450,6 +450,7 @@ def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
             humidity="major_issue",
             noise="major_issue",
             kitchen_bathroom="minor_issue",
+            layout="minor_issue",
             renovation_need="full",
             notes="Visible stains under the window and strong traffic noise.",
         ),
@@ -465,6 +466,7 @@ def test_post_viewing_answers_recalculate_verdict_and_offer_ceiling() -> None:
     assert result.risk_adjustment_points > 0
     assert result.offer_adjustment_pln > 0
     assert any("humidity" in item for item in result.applied_findings)
+    assert any("layout" in item for item in result.applied_findings)
     assert any("written renovation estimate" in item for item in result.recommended_actions)
 
 

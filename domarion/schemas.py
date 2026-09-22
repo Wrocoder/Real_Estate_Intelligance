@@ -2062,6 +2062,7 @@ class PostViewingChecklistAnswers(BaseModel):
     staircase: PostViewingIssueLevel = "unknown"
     orientation: PostViewingIssueLevel = "unknown"
     kitchen_bathroom: PostViewingIssueLevel = "unknown"
+    layout: PostViewingIssueLevel = "unknown"
     renovation_need: PostViewingRenovationNeed = "unknown"
     notes: str | None = Field(default=None, max_length=1000)
 

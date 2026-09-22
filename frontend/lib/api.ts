@@ -1523,6 +1523,7 @@ export type PostViewingChecklistAnswers = {
   staircase?: PostViewingIssueLevel;
   orientation?: PostViewingIssueLevel;
   kitchen_bathroom?: PostViewingIssueLevel;
+  layout?: PostViewingIssueLevel;
   renovation_need?: PostViewingRenovationNeed;
   notes?: string | null;
 };

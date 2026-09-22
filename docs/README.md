@@ -31,9 +31,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 9](WartoMetr_Phase_9_Implementation.md): apartment comparison workflow.
 - [Phase 10](WartoMetr_Phase_10_Implementation.md): 3 Apartment Pack commercial support.
 - [Phase 11](WartoMetr_Phase_11_Implementation.md): before-viewing assistant.
+- [Phase 12](WartoMetr_Phase_12_Implementation.md): after-viewing workflow.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 12 and
+reports supersede earlier descriptions of the affected workflows. Phase 13 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations

@@ -14,10 +14,10 @@ const browser = await chromium.launch();
 const failures = [];
 let passed = 0;
 const locales = {
-  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska" },
-  en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low" },
-  ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая" },
-  uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька" },
+  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska", additional: "Dodatkowa analiza mieszkania", recalculate: "Przelicz werdykt", changed: "Co się zmieniło", updated: "NAJPIERW SPRAWDŹ" },
+  en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low", additional: "Additional apartment analysis", recalculate: "Recalculate verdict", changed: "What changed", updated: "VERIFY FIRST" },
+  ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая", additional: "Дополнительный анализ квартиры", recalculate: "Пересчитать вердикт", changed: "Что изменилось", updated: "СНАЧАЛА ПРОВЕРИТЬ" },
+  uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька", additional: "Додатковий аналіз квартири", recalculate: "Перерахувати вердикт", changed: "Що змінилося", updated: "СПОЧАТКУ ПЕРЕВІРИТИ" },
 };
 
 async function run(name, locale, width, mutate = () => {}, verify = async () => {}) {
@@ -125,6 +125,66 @@ try {
   }, async (page) => {
     assert.match(await page.locator(".summary-metric-fair-price").innerText(), /Brak danych/);
     assert.equal(await page.locator(".buyer-price-relation").count(), 0);
+  });
+  await run("post-viewing", "pl", 390, () => {}, async (page, payload) => {
+    const recalculated = structuredClone(payload.buyer_decision);
+    recalculated.verdict.status = "verify_first";
+    recalculated.verdict.score = Math.max(1, recalculated.verdict.score - 2.4);
+    recalculated.verdict.top_risks = [
+      "Wilgoć zauważona podczas oględzin.",
+      ...recalculated.verdict.top_risks,
+    ];
+    recalculated.verdict.max_reasonable_offer_pln = Math.max(
+      1,
+      (recalculated.verdict.max_reasonable_offer_pln ?? recalculated.verdict.fair_price_mid_pln) - 190000,
+    );
+    await page.route("**/api/v1/listings/wr-001/post-viewing-verdict", async (route) => {
+      const answers = route.request().postDataJSON();
+      await route.fulfill({
+        json: {
+          original_decision: payload.buyer_decision,
+          updated_decision: recalculated,
+          checklist_answers: {
+            condition: "unknown",
+            windows: "unknown",
+            noise: "unknown",
+            smell: "unknown",
+            humidity: answers.humidity,
+            staircase: "unknown",
+            orientation: "unknown",
+            kitchen_bathroom: "unknown",
+            layout: answers.layout,
+            renovation_need: answers.renovation_need,
+            notes: answers.notes,
+          },
+          risk_adjustment_points: 42,
+          offer_adjustment_pln: 190000,
+          applied_findings: [
+            "humidity or moisture: major issue observed at viewing.",
+            "layout and functional problems: minor issue observed at viewing.",
+            "renovation need: Full renovation scope should be priced in.",
+          ],
+          recommended_actions: [
+            "Pause before zadatek until humidity or moisture is inspected or fully priced in.",
+            "Get a written renovation estimate before raising the offer.",
+          ],
+          disclaimer: "Post-viewing recalculation is a screening adjustment from buyer-entered observations.",
+        },
+      });
+    });
+    await page.getByText(locales.pl.additional, { exact: true }).click();
+    const panel = page.locator(".post-viewing-recalculator");
+    await panel.getByLabel("Wilgoć").selectOption("major_issue");
+    await panel.getByLabel("Układ").selectOption("minor_issue");
+    await panel.getByLabel("Remont").selectOption("full");
+    await panel.getByRole("button", { name: locales.pl.recalculate }).click();
+    await panel.getByText(locales.pl.changed, { exact: true }).waitFor();
+    assert.match(await panel.innerText(), /layout and functional problems|Wilgoć|190/);
+    assert.match(await page.locator(".decision-summary-primary").innerText(), new RegExp(locales.pl.updated));
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await page.getByText(locales.pl.additional, { exact: true }).click();
+    await page.locator(".post-viewing-change-summary").waitFor();
+    assert.match(await page.locator(".post-viewing-recalculator").innerText(), /layout and functional problems|190/);
   });
 } finally { await browser.close(); }
 console.log(`Buyer result: ${passed} passed, ${failures.length} failed`);

@@ -1,5 +1,5 @@
 import { ClipboardCheck, RefreshCw, ShieldAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type {
   BuyerVerdictStatus,
@@ -8,8 +8,8 @@ import type {
   PostViewingRenovationNeed,
   PostViewingVerdictRecalculation,
 } from "@/lib/api";
-import { money } from "@/lib/format";
 import { localizedError } from "@/lib/errorMessages";
+import { money } from "@/lib/format";
 import type { Locale } from "@/lib/i18n";
 
 type Props = {
@@ -18,7 +18,9 @@ type Props = {
   onRecalculate: (
     answers: PostViewingChecklistAnswers,
   ) => Promise<PostViewingVerdictRecalculation>;
+  onRestore?: (result: PostViewingVerdictRecalculation) => void;
   result: PostViewingVerdictRecalculation | null;
+  storageKey?: string;
 };
 
 type IssueField = Exclude<
@@ -33,9 +35,8 @@ type AnswersState = Record<IssueField, PostViewingIssueLevel> & {
 
 type Copy = {
   title: string;
-  actions: {
-    recalculate: string;
-  };
+  subtitle: string;
+  actions: { recalculate: string };
   fields: Record<IssueField, string> & {
     renovation_need: string;
     notes: string;
@@ -48,17 +49,27 @@ type Copy = {
     offer: string;
   };
   sections: {
+    changed: string;
     findings: string;
     actions: string;
   };
   statuses: {
     idle: string;
     calculating: string;
+    restored: string;
     ready: (status: string, score: number) => string;
     error: string;
   };
   verdicts: Record<BuyerVerdictStatus, string>;
+  changed: {
+    same: string;
+    status: (before: string, after: string) => string;
+    score: (delta: string) => string;
+    offer: (value: string) => string;
+    risk: (value: number) => string;
+  };
   empty: string;
+  saved: string;
 };
 
 const ISSUE_FIELDS: IssueField[] = [
@@ -70,6 +81,7 @@ const ISSUE_FIELDS: IssueField[] = [
   "staircase",
   "orientation",
   "kitchen_bathroom",
+  "layout",
 ];
 
 const ISSUE_OPTIONS: PostViewingIssueLevel[] = [
@@ -96,23 +108,33 @@ const DEFAULT_ANSWERS: AnswersState = {
   staircase: "unknown",
   orientation: "unknown",
   kitchen_bathroom: "unknown",
+  layout: "unknown",
   renovation_need: "unknown",
   notes: "",
+};
+
+type StoredPostViewingState = {
+  answers: AnswersState;
+  result: PostViewingVerdictRecalculation;
+  savedAt: number;
+  version: 1;
 };
 
 const COPY: Record<Locale, Copy> = {
   en: {
     title: "Post-viewing verdict recalculation",
+    subtitle: "Record what you saw at the viewing and keep the original verdict beside the updated one.",
     actions: { recalculate: "Recalculate verdict" },
     fields: {
       condition: "Condition",
       windows: "Windows",
       noise: "Noise",
       smell: "Smell",
-      humidity: "Humidity",
-      staircase: "Staircase",
-      orientation: "Orientation",
+      humidity: "Moisture",
+      staircase: "Common areas",
+      orientation: "Sunlight",
       kitchen_bathroom: "Kitchen/bathroom",
+      layout: "Layout",
       renovation_need: "Renovation need",
       notes: "Viewing notes",
     },
@@ -130,15 +152,17 @@ const COPY: Record<Locale, Copy> = {
       original: "Original verdict",
       updated: "Updated verdict",
       risk: "Risk adjustment",
-      offer: "Offer reserve",
+      offer: "Lower offer ceiling by",
     },
     sections: {
+      changed: "What changed",
       findings: "Applied findings",
       actions: "Next actions",
     },
     statuses: {
       idle: "Add viewing answers after the visit",
       calculating: "Recalculating...",
+      restored: "Restored your last post-viewing update",
       ready: (status, score) => `Updated: ${status}, ${score.toFixed(1)}/10`,
       error: "Post-viewing recalculation failed",
     },
@@ -148,10 +172,19 @@ const COPY: Record<Locale, Copy> = {
       avoid: "AVOID",
       verify_first: "VERIFY FIRST",
     },
+    changed: {
+      same: "Verdict label stayed the same; use the updated risks and offer ceiling.",
+      status: (before, after) => `Verdict changed from ${before} to ${after}.`,
+      score: (delta) => `Decision score changed by ${delta} points.`,
+      offer: (value) => `Suggested offer ceiling reduced by ${value}.`,
+      risk: (value) => `Risk adjustment: +${value} points.`,
+    },
     empty: "No recalculation yet.",
+    saved: "Saved on this device for your return to this apartment.",
   },
   pl: {
     title: "Przeliczenie werdyktu po oględzinach",
+    subtitle: "Zapisz, co było widać na miejscu, i porównaj pierwotny werdykt z nowym.",
     actions: { recalculate: "Przelicz werdykt" },
     fields: {
       condition: "Stan",
@@ -159,9 +192,10 @@ const COPY: Record<Locale, Copy> = {
       noise: "Hałas",
       smell: "Zapach",
       humidity: "Wilgoć",
-      staircase: "Klatka",
-      orientation: "Ekspozycja",
+      staircase: "Części wspólne",
+      orientation: "Nasłonecznienie",
       kitchen_bathroom: "Kuchnia/łazienka",
+      layout: "Układ",
       renovation_need: "Remont",
       notes: "Notatki z oględzin",
     },
@@ -179,15 +213,17 @@ const COPY: Record<Locale, Copy> = {
       original: "Pierwotny werdykt",
       updated: "Nowy werdykt",
       risk: "Korekta ryzyka",
-      offer: "Rezerwa oferty",
+      offer: "Obniż limit oferty o",
     },
     sections: {
+      changed: "Co się zmieniło",
       findings: "Uwzględnione wnioski",
       actions: "Następne kroki",
     },
     statuses: {
       idle: "Dodaj odpowiedzi po oględzinach",
       calculating: "Przeliczanie...",
+      restored: "Przywrócono ostatnią aktualizację po oględzinach",
       ready: (status, score) => `Nowy wynik: ${status}, ${score.toFixed(1)}/10`,
       error: "Nie udało się przeliczyć werdyktu",
     },
@@ -197,10 +233,19 @@ const COPY: Record<Locale, Copy> = {
       avoid: "ODPUŚĆ",
       verify_first: "NAJPIERW SPRAWDŹ",
     },
+    changed: {
+      same: "Werdykt pozostał ten sam; użyj zaktualizowanych ryzyk i limitu oferty.",
+      status: (before, after) => `Werdykt zmienił się z ${before} na ${after}.`,
+      score: (delta) => `Ocena decyzji zmieniła się o ${delta} pkt.`,
+      offer: (value) => `Sugerowany limit oferty obniżono o ${value}.`,
+      risk: (value) => `Korekta ryzyka: +${value} pkt.`,
+    },
     empty: "Nie ma jeszcze przeliczenia.",
+    saved: "Zapisano na tym urządzeniu, aby wrócić do tej analizy.",
   },
   ru: {
     title: "Пересчет вердикта после просмотра",
+    subtitle: "Зафиксируйте, что увидели на месте, и сравните исходный вывод с обновленным.",
     actions: { recalculate: "Пересчитать вердикт" },
     fields: {
       condition: "Состояние",
@@ -208,9 +253,10 @@ const COPY: Record<Locale, Copy> = {
       noise: "Шум",
       smell: "Запах",
       humidity: "Влажность",
-      staircase: "Подъезд",
-      orientation: "Стороны света",
+      staircase: "Общие зоны",
+      orientation: "Свет",
       kitchen_bathroom: "Кухня/ванная",
+      layout: "Планировка",
       renovation_need: "Нужен ремонт",
       notes: "Заметки просмотра",
     },
@@ -228,15 +274,17 @@ const COPY: Record<Locale, Copy> = {
       original: "Исходный вердикт",
       updated: "Новый вердикт",
       risk: "Корректировка риска",
-      offer: "Резерв в offer",
+      offer: "Снизить потолок офера на",
     },
     sections: {
+      changed: "Что изменилось",
       findings: "Учтенные выводы",
       actions: "Следующие шаги",
     },
     statuses: {
       idle: "Добавьте ответы после просмотра",
       calculating: "Пересчет...",
+      restored: "Восстановлено последнее обновление после просмотра",
       ready: (status, score) => `Обновлено: ${status}, ${score.toFixed(1)}/10`,
       error: "Не удалось пересчитать вердикт",
     },
@@ -246,10 +294,19 @@ const COPY: Record<Locale, Copy> = {
       avoid: "ИЗБЕГАТЬ",
       verify_first: "СНАЧАЛА ПРОВЕРИТЬ",
     },
+    changed: {
+      same: "Вердикт остался тем же; используйте обновленные риски и потолок предложения.",
+      status: (before, after) => `Вердикт изменился с ${before} на ${after}.`,
+      score: (delta) => `Оценка решения изменилась на ${delta} п.`,
+      offer: (value) => `Рекомендуемый потолок предложения снижен на ${value}.`,
+      risk: (value) => `Корректировка риска: +${value} п.`,
+    },
     empty: "Пересчета пока нет.",
+    saved: "Сохранено на этом устройстве, чтобы вернуться к этой квартире.",
   },
   uk: {
     title: "Перерахунок вердикту після перегляду",
+    subtitle: "Зафіксуйте, що побачили на місці, і порівняйте початковий висновок з оновленим.",
     actions: { recalculate: "Перерахувати вердикт" },
     fields: {
       condition: "Стан",
@@ -257,9 +314,10 @@ const COPY: Record<Locale, Copy> = {
       noise: "Шум",
       smell: "Запах",
       humidity: "Вологість",
-      staircase: "Під'їзд",
-      orientation: "Сторони світу",
+      staircase: "Спільні зони",
+      orientation: "Світло",
       kitchen_bathroom: "Кухня/ванна",
+      layout: "Планування",
       renovation_need: "Потрібен ремонт",
       notes: "Нотатки перегляду",
     },
@@ -277,15 +335,17 @@ const COPY: Record<Locale, Copy> = {
       original: "Початковий вердикт",
       updated: "Новий вердикт",
       risk: "Корекція ризику",
-      offer: "Резерв в offer",
+      offer: "Знизити ліміт офера на",
     },
     sections: {
+      changed: "Що змінилося",
       findings: "Враховані висновки",
       actions: "Наступні кроки",
     },
     statuses: {
       idle: "Додайте відповіді після перегляду",
       calculating: "Перерахунок...",
+      restored: "Відновлено останнє оновлення після перегляду",
       ready: (status, score) => `Оновлено: ${status}, ${score.toFixed(1)}/10`,
       error: "Не вдалося перерахувати вердикт",
     },
@@ -295,7 +355,15 @@ const COPY: Record<Locale, Copy> = {
       avoid: "УНИКАТИ",
       verify_first: "СПОЧАТКУ ПЕРЕВІРИТИ",
     },
+    changed: {
+      same: "Вердикт залишився тим самим; використайте оновлені ризики та ліміт пропозиції.",
+      status: (before, after) => `Вердикт змінився з ${before} на ${after}.`,
+      score: (delta) => `Оцінка рішення змінилася на ${delta} п.`,
+      offer: (value) => `Рекомендований ліміт пропозиції знижено на ${value}.`,
+      risk: (value) => `Корекція ризику: +${value} п.`,
+    },
     empty: "Перерахунку ще немає.",
+    saved: "Збережено на цьому пристрої, щоб повернутися до цієї квартири.",
   },
 };
 
@@ -303,30 +371,62 @@ export function PostViewingVerdictRecalculator({
   disabled = false,
   locale,
   onRecalculate,
+  onRestore,
   result,
+  storageKey,
 }: Props) {
   const copy = COPY[locale];
   const [answers, setAnswers] = useState<AnswersState>(DEFAULT_ANSWERS);
   const [status, setStatus] = useState(copy.statuses.idle);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const restoredStorageKey = useRef<string | null>(null);
+
+  useEffect(() => {
+    setStatus(result ? statusForResult(copy, result) : copy.statuses.idle);
+  }, [copy, result]);
+
+  useEffect(() => {
+    if (!storageKey || restoredStorageKey.current === storageKey) return;
+    restoredStorageKey.current = storageKey;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      const stored = raw ? (JSON.parse(raw) as Partial<StoredPostViewingState>) : null;
+      if (!stored || stored.version !== 1 || !stored.answers || !stored.result) return;
+      setAnswers({ ...DEFAULT_ANSWERS, ...stored.answers });
+      setStatus(copy.statuses.restored);
+      onRestore?.(stored.result);
+    } catch {
+      // Browser storage is best effort; the user can still recalculate from the form.
+    }
+  }, [copy.statuses.restored, onRestore, storageKey]);
 
   async function submit() {
     setLoading(true);
     setError("");
     setStatus(copy.statuses.calculating);
+    const submittedAnswers: AnswersState = {
+      ...answers,
+      notes: answers.notes.trim(),
+    };
+    const apiAnswers: PostViewingChecklistAnswers = {
+      ...answers,
+      notes: answers.notes.trim() || null,
+    };
     try {
-      const payload = await onRecalculate({
-        ...answers,
-        notes: answers.notes.trim() || null,
-      });
-      const verdict = payload.updated_decision.verdict;
-      setStatus(
-        copy.statuses.ready(
-          copy.verdicts[verdict.status] ?? verdict.status,
-          verdict.score,
-        ),
-      );
+      const payload = await onRecalculate(apiAnswers);
+      setStatus(statusForResult(copy, payload));
+      if (storageKey) {
+        window.localStorage.setItem(
+          storageKey,
+          JSON.stringify({
+            answers: submittedAnswers,
+            result: payload,
+            savedAt: Date.now(),
+            version: 1,
+          } satisfies StoredPostViewingState),
+        );
+      }
     } catch (caught) {
       setError(localizedError(caught, locale, copy.statuses.error));
       setStatus(copy.statuses.error);
@@ -336,15 +436,18 @@ export function PostViewingVerdictRecalculator({
   }
 
   return (
-    <section className="panel">
+    <section className="panel post-viewing-recalculator">
       <div className="panel-header">
-        <h2 className="icon-title">
-          <ClipboardCheck size={16} /> {copy.title}
-        </h2>
-        <span className="status-line">{status}</span>
+        <div>
+          <h2 className="icon-title">
+            <ClipboardCheck size={16} /> {copy.title}
+          </h2>
+          <p className="muted">{copy.subtitle}</p>
+        </div>
+        <span className="status-line" role="status">{status}</span>
       </div>
       <div className="panel-body">
-        <div className="form-grid compact">
+        <div className="form-grid compact post-viewing-form">
           {ISSUE_FIELDS.map((field) => (
             <label className="field" key={field}>
               <span>{copy.fields[field]}</span>
@@ -385,7 +488,7 @@ export function PostViewingVerdictRecalculator({
               ))}
             </select>
           </label>
-          <label className="field">
+          <label className="field post-viewing-notes">
             <span>{copy.fields.notes}</span>
             <input
               className="input"
@@ -396,7 +499,7 @@ export function PostViewingVerdictRecalculator({
             />
           </label>
           <button
-            className="button primary"
+            className="button primary post-viewing-submit"
             disabled={disabled || loading}
             type="button"
             onClick={() => void submit()}
@@ -413,7 +516,7 @@ export function PostViewingVerdictRecalculator({
 
         {result ? (
           <>
-            <div className="metric-grid compact" style={{ marginTop: 12 }}>
+            <div className="metric-grid compact post-viewing-metrics" style={{ marginTop: 12 }}>
               <Metric
                 label={copy.metrics.original}
                 value={`${copy.verdicts[result.original_decision.verdict.status]} · ${result.original_decision.verdict.score.toFixed(1)}/10`}
@@ -428,6 +531,13 @@ export function PostViewingVerdictRecalculator({
               />
               <Metric label={copy.metrics.offer} value={money(result.offer_adjustment_pln, locale)} />
             </div>
+            <section className="post-viewing-change-summary" style={{ marginTop: 12 }}>
+              <div className="panel-header inline">
+                <h3>{copy.sections.changed}</h3>
+                <span className="status-pill info">{copy.saved}</span>
+              </div>
+              <TextList empty={copy.empty} items={changeSummary(result, copy, locale)} />
+            </section>
             <div className="grid-2" style={{ marginTop: 12 }}>
               <section>
                 <div className="panel-header inline">
@@ -476,4 +586,42 @@ function TextList({ empty, items }: { empty: string; items: string[] }) {
       ))}
     </ul>
   );
+}
+
+function statusForResult(copy: Copy, result: PostViewingVerdictRecalculation) {
+  const verdict = result.updated_decision.verdict;
+  return copy.statuses.ready(
+    copy.verdicts[verdict.status] ?? verdict.status,
+    verdict.score,
+  );
+}
+
+function changeSummary(
+  result: PostViewingVerdictRecalculation,
+  copy: Copy,
+  locale: Locale,
+) {
+  const original = result.original_decision.verdict;
+  const updated = result.updated_decision.verdict;
+  const changes: string[] = [];
+  const originalLabel = copy.verdicts[original.status] ?? original.status;
+  const updatedLabel = copy.verdicts[updated.status] ?? updated.status;
+
+  if (original.status === updated.status) {
+    changes.push(copy.changed.same);
+  } else {
+    changes.push(copy.changed.status(originalLabel, updatedLabel));
+  }
+
+  const scoreDelta = updated.score - original.score;
+  if (Math.abs(scoreDelta) >= 0.1) {
+    changes.push(copy.changed.score(`${scoreDelta > 0 ? "+" : ""}${scoreDelta.toFixed(1)}`));
+  }
+  if (result.offer_adjustment_pln > 0) {
+    changes.push(copy.changed.offer(money(result.offer_adjustment_pln, locale)));
+  }
+  if (result.risk_adjustment_points > 0) {
+    changes.push(copy.changed.risk(result.risk_adjustment_points));
+  }
+  return changes;
 }

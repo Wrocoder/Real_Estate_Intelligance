@@ -49,6 +49,7 @@ POST_VIEWING_FIELD_LABELS = {
     "staircase": "staircase and common areas",
     "orientation": "orientation and daylight",
     "kitchen_bathroom": "kitchen and bathroom condition",
+    "layout": "layout and functional problems",
 }
 POST_VIEWING_MAJOR_ADJUSTMENTS = {
     "condition": (14, 50_000),
@@ -59,6 +60,7 @@ POST_VIEWING_MAJOR_ADJUSTMENTS = {
     "staircase": (9, 25_000),
     "orientation": (5, 15_000),
     "kitchen_bathroom": (10, 35_000),
+    "layout": (8, 30_000),
 }
 POST_VIEWING_RENOVATION_ADJUSTMENTS = {
     "none": (-2, 0, "ready_to_move_in", "No material renovation need confirmed."),
@@ -1920,6 +1922,7 @@ def _post_viewing_checklist(listing: Listing) -> list[str]:
         "staircase, roof/facade/lift impression and building maintenance",
         "orientation of windows and daylight",
         "kitchen/bathroom condition versus advertised standard",
+        "layout problems that reduce everyday usability or resale value",
         "what is included in price and what must be bought after handover",
     ]
     if listing.floor == 0:
@@ -2110,6 +2113,8 @@ def _remove_answered_post_viewing_unknowns(
         for field in ("condition", "windows", "smell", "humidity", "kitchen_bathroom")
     ):
         remove_tokens.add("condition of pipes")
+    if answers.layout != "unknown":
+        remove_tokens.add("layout problems")
     if answers.renovation_need != "unknown":
         remove_tokens.add("planned building repairs")
     if not remove_tokens:
@@ -2128,7 +2133,7 @@ def _post_viewing_checklist_statuses(
 ) -> list[DueDiligenceChecklistItem]:
     technical_answered = any(
         getattr(answers, field) != "unknown"
-        for field in ("condition", "windows", "smell", "humidity", "kitchen_bathroom")
+        for field in ("condition", "windows", "smell", "humidity", "kitchen_bathroom", "layout")
     )
     updated: list[DueDiligenceChecklistItem] = []
     for item in checklist:
@@ -2143,6 +2148,7 @@ def _post_viewing_checklist_statuses(
                         "smell",
                         "humidity",
                         "kitchen_bathroom",
+                        "layout",
                     )
                 )
                 else "known"

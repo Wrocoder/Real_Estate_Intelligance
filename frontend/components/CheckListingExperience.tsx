@@ -1015,7 +1015,13 @@ export default function CheckListingExperience() {
             disabled={activeOperation !== null || !result?.draft_id}
             locale={locale}
             onRecalculate={recalculatePostViewing}
+            onRestore={setPostViewingResult}
             result={postViewingResult}
+            storageKey={
+              result?.draft_id && analysis.buyer_decision
+                ? `wartometr-post-viewing-draft-${result.draft_id}-${analysis.buyer_decision.decision_model_version}`
+                : undefined
+            }
           />
         </details>
       ) : null}
