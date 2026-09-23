@@ -466,8 +466,18 @@ async function runSavedMonitoringFlow(browser) {
     await page.goto(`${baseUrl}/saved`, { waitUntil: "domcontentloaded" });
     const savedCard = page.locator(".apartment-card").filter({ hasText: "Ulubione mieszkanie" });
     await savedCard.waitFor({ state: "visible", timeout: 15000 });
-    if (!(await savedCard.innerText()).includes("Fabryczna")) {
-      throw new Error("saved apartment does not retain recognizable property context");
+    const savedCardText = await savedCard.innerText();
+    for (const expected of ["Fabryczna", "MONITORING", "Aktywne"]) {
+      if (!savedCardText.includes(expected)) {
+        throw new Error(`saved apartment monitoring state is missing: ${expected}`);
+      }
+    }
+    if (
+      !/Cena się zmieniła|Tańsza podobna oferta|Nadal na rynku|Szansa na negocjacje|Nie wykryto ważnych zmian/.test(
+        savedCardText,
+      )
+    ) {
+      throw new Error("saved apartment does not summarize object-watch monitoring outcome");
     }
 
     await page.goto(`${baseUrl}/alerts`, { waitUntil: "domcontentloaded" });

@@ -4675,6 +4675,55 @@ summary:focus-visible {
   color: var(--muted);
 }
 
+.saved-monitoring {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.saved-monitoring-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.saved-monitoring-heading > span:first-child {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.saved-monitoring p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.saved-monitoring-events {
+  display: grid;
+  gap: 10px;
+}
+
+.saved-monitoring-event {
+  display: grid;
+  gap: 6px;
+}
+
+.saved-monitoring-event strong,
+.saved-monitoring-event small {
+  overflow-wrap: anywhere;
+}
+
+.saved-monitoring-event small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .apartment-card-price strong {
   display: block;
   font-size: 28px;

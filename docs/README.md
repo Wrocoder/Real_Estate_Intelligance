@@ -33,9 +33,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 11](WartoMetr_Phase_11_Implementation.md): before-viewing assistant.
 - [Phase 12](WartoMetr_Phase_12_Implementation.md): after-viewing workflow.
 - [Phase 13](WartoMetr_Phase_13_Implementation.md): negotiation assistant.
+- [Phase 14](WartoMetr_Phase_14_Implementation.md): saved-apartment monitoring.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 14 and
+reports supersede earlier descriptions of the affected workflows. Phase 15 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations
