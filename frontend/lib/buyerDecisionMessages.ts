@@ -1057,6 +1057,10 @@ export function localizedSourceEvidence(source: BuyerSourceEvidence, locale: Loc
   return { topic: sourceTopic(c, source.topic), basis, note: c.sourceNote };
 }
 
+export function localizedDueDiligenceChecklistLabel(item: DueDiligenceChecklistItem, locale: Locale) {
+  return checklistLabel(CATALOG[locale], item);
+}
+
 function checklistLabel(c: MessageCatalog, item: DueDiligenceChecklistItem) {
   return c.checklist[item.code] ?? c.checklistUnknown;
 }

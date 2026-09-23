@@ -688,6 +688,7 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
 
             {decision.action_plan ? (
               <BuyerActionPlanPanel
+                dueDiligence={dueDiligence}
                 dueDiligenceLabel={localized.diligenceLabel}
                 dueDiligenceScore={dueDiligence.score}
                 locale={locale}

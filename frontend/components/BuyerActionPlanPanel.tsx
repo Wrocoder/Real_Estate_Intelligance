@@ -2,7 +2,15 @@ import { Check, ClipboardCheck, Copy } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProvenanceDetails } from "@/components/ProvenanceDetails";
-import type { BuyerActionEvidence, BuyerActionItem, BuyerActionPlan, ViewingAssistant } from "@/lib/api";
+import type {
+  BuyerActionEvidence,
+  BuyerActionItem,
+  BuyerActionPlan,
+  DueDiligenceChecklistItem,
+  PropertyDueDiligence,
+  ViewingAssistant,
+} from "@/lib/api";
+import { localizedDueDiligenceChecklistLabel } from "@/lib/buyerDecisionMessages";
 import {
   actionEvidenceLabel,
   actionLabel,
@@ -14,6 +22,7 @@ import type { Locale } from "@/lib/i18n";
 type Props = {
   plan: BuyerActionPlan;
   locale: Locale;
+  dueDiligence: PropertyDueDiligence;
   dueDiligenceScore: number;
   dueDiligenceLabel: string;
 };
@@ -113,6 +122,146 @@ type ViewingPrepItem = {
   inspect: string;
   ask: string;
   evidence: BuyerActionEvidence | null;
+};
+
+type DiligenceState = "verified" | "requires_check" | "risk" | "unknown" | "insufficient_data";
+type DiligenceWorkspaceCopy = {
+  title: string;
+  description: string;
+  statusTitle: string;
+  criticalTitle: string;
+  riskTitle: string;
+  documentsTitle: string;
+  questionsTitle: string;
+  noRisks: string;
+  legalCaveat: string;
+  market: Record<PropertyDueDiligence["market_type"], string>;
+  states: Record<DiligenceState, string>;
+  priorities: Record<DueDiligenceChecklistItem["priority"], string>;
+  categories: Record<string, string>;
+};
+
+const DILIGENCE_COPY: Record<Locale, DiligenceWorkspaceCopy> = {
+  pl: {
+    title: "Kontrola przed zakupem",
+    description: "Najpierw zamknij sprawy, które mogą zmienić decyzję przed ofertą, zadatkiem lub umową.",
+    statusTitle: "Status kontroli",
+    criticalTitle: "Krytyczne punkty do zamknięcia",
+    riskTitle: "Sygnały ryzyka",
+    documentsTitle: "Dokumenty do poproszenia",
+    questionsTitle: "Pytania do sprzedającego",
+    noRisks: "Nie wykryto dodatkowych czerwonych flag poza standardową listą kontroli.",
+    legalCaveat: "To jest lista kontrolna do decyzji kupującego, nie porada prawna. KW, umowę, zadatek i stan techniczny potwierdź z prawnikiem, notariuszem lub rzeczoznawcą.",
+    market: { primary: "Rynek pierwotny", secondary: "Rynek wtórny" },
+    states: {
+      verified: "ZWERYFIKOWANE",
+      requires_check: "WYMAGA SPRAWDZENIA",
+      risk: "RYZYKO",
+      unknown: "NIEZNANE",
+      insufficient_data: "ZA MAŁO DANYCH",
+    },
+    priorities: { critical: "Krytyczne", high: "Ważne", medium: "Uzupełniające", low: "Opcjonalne" },
+    categories: {
+      legal: "Prawo i KW",
+      financial: "Koszty i zobowiązania",
+      building: "Budynek",
+      technical: "Stan techniczny",
+      documents: "Dokumenty",
+      developer: "Deweloper",
+      delivery: "Realizacja",
+      contract: "Umowa",
+    },
+  },
+  en: {
+    title: "Due diligence workspace",
+    description: "Close the checks that can change the decision before an offer, deposit or contract.",
+    statusTitle: "Check status",
+    criticalTitle: "Critical checks to close",
+    riskTitle: "Risk signals",
+    documentsTitle: "Documents to request",
+    questionsTitle: "Questions for the seller",
+    noRisks: "No additional red flags detected beyond the standard diligence checklist.",
+    legalCaveat: "This is a buyer decision checklist, not legal advice. Confirm the register, contract, deposit and technical condition with a lawyer, notary or qualified expert.",
+    market: { primary: "Primary market", secondary: "Secondary market" },
+    states: {
+      verified: "VERIFIED",
+      requires_check: "REQUIRES CHECK",
+      risk: "RISK",
+      unknown: "UNKNOWN",
+      insufficient_data: "INSUFFICIENT DATA",
+    },
+    priorities: { critical: "Critical", high: "Important", medium: "Supporting", low: "Optional" },
+    categories: {
+      legal: "Legal and register",
+      financial: "Costs and liabilities",
+      building: "Building",
+      technical: "Technical condition",
+      documents: "Documents",
+      developer: "Developer",
+      delivery: "Delivery",
+      contract: "Contract",
+    },
+  },
+  ru: {
+    title: "Проверки перед покупкой",
+    description: "Закройте проверки, которые могут изменить решение до предложения цены, задатка или договора.",
+    statusTitle: "Статус проверок",
+    criticalTitle: "Критичные пункты",
+    riskTitle: "Сигналы риска",
+    documentsTitle: "Документы для запроса",
+    questionsTitle: "Вопросы продавцу",
+    noRisks: "Дополнительных красных флагов сверх стандартного списка проверки не найдено.",
+    legalCaveat: "Это список проверки для решения покупателя, не юридическая консультация. KW, договор, задаток и техническое состояние подтвердите с юристом, нотариусом или профильным экспертом.",
+    market: { primary: "Первичный рынок", secondary: "Вторичный рынок" },
+    states: {
+      verified: "ПРОВЕРЕНО",
+      requires_check: "ТРЕБУЕТ ПРОВЕРКИ",
+      risk: "РИСК",
+      unknown: "НЕИЗВЕСТНО",
+      insufficient_data: "НЕДОСТАТОЧНО ДАННЫХ",
+    },
+    priorities: { critical: "Критично", high: "Важно", medium: "Дополнительно", low: "Опционально" },
+    categories: {
+      legal: "Право и KW",
+      financial: "Расходы и долги",
+      building: "Дом",
+      technical: "Техническое состояние",
+      documents: "Документы",
+      developer: "Застройщик",
+      delivery: "Сроки сдачи",
+      contract: "Договор",
+    },
+  },
+  uk: {
+    title: "Перевірки перед купівлею",
+    description: "Закрийте перевірки, які можуть змінити рішення до пропозиції ціни, завдатку або договору.",
+    statusTitle: "Статус перевірок",
+    criticalTitle: "Критичні пункти",
+    riskTitle: "Сигнали ризику",
+    documentsTitle: "Документи для запиту",
+    questionsTitle: "Питання продавцю",
+    noRisks: "Додаткових червоних прапорців понад стандартний список перевірки не знайдено.",
+    legalCaveat: "Це список перевірки для рішення покупця, не юридична консультація. KW, договір, завдаток і технічний стан підтвердьте з юристом, нотаріусом або профільним експертом.",
+    market: { primary: "Первинний ринок", secondary: "Вторинний ринок" },
+    states: {
+      verified: "ПЕРЕВІРЕНО",
+      requires_check: "ПОТРЕБУЄ ПЕРЕВІРКИ",
+      risk: "РИЗИК",
+      unknown: "НЕВІДОМО",
+      insufficient_data: "НЕДОСТАТНЬО ДАНИХ",
+    },
+    priorities: { critical: "Критично", high: "Важливо", medium: "Додатково", low: "Опційно" },
+    categories: {
+      legal: "Право і KW",
+      financial: "Витрати і борги",
+      building: "Будинок",
+      technical: "Технічний стан",
+      documents: "Документи",
+      developer: "Забудовник",
+      delivery: "Строки здачі",
+      contract: "Договір",
+    },
+  },
 };
 
 export function BuyerActionPlanUnavailable({ locale }: { locale: Locale }) {
@@ -222,10 +371,12 @@ export function BeforeViewingAssistantPanel({
 export function BuyerActionPlanPanel({
   plan,
   locale,
+  dueDiligence,
   dueDiligenceScore,
   dueDiligenceLabel,
 }: Props) {
   const copy = actionPlanCopy(locale);
+  const diligenceCopy = DILIGENCE_COPY[locale];
   const storageKey = `wartometr-action-plan:${plan.subject_id}:${plan.version}`;
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
@@ -264,15 +415,22 @@ export function BuyerActionPlanPanel({
       <div className="buyer-action-plan-heading">
         <div>
           <h3>
-            <ClipboardCheck size={16} /> {copy.title}
+            <ClipboardCheck size={16} /> {diligenceCopy.title}
           </h3>
-          <p className="muted">{copy.description}</p>
+          <p className="muted">{diligenceCopy.description}</p>
         </div>
         <div className="buyer-action-plan-score">
           <strong>{dueDiligenceScore}/100</strong>
           <span className="muted">{dueDiligenceLabel}</span>
+          <small>{diligenceCopy.market[dueDiligence.market_type]}</small>
         </div>
       </div>
+
+      <DueDiligenceWorkspace
+        copy={diligenceCopy}
+        dueDiligence={dueDiligence}
+        locale={locale}
+      />
 
       <p className="buyer-action-plan-progress" role="status" aria-live="polite">
         {copy.progress(completed.size, plan.items.length)}
@@ -358,6 +516,117 @@ export function BuyerActionPlanPanel({
       </div>
     </section>
   );
+}
+
+function DueDiligenceWorkspace({
+  copy,
+  dueDiligence,
+  locale,
+}: {
+  copy: DiligenceWorkspaceCopy;
+  dueDiligence: PropertyDueDiligence;
+  locale: Locale;
+}) {
+  const counts = dueDiligenceStateCounts(dueDiligence);
+  const criticalChecks = dueDiligence.checklist
+    .filter((item) => item.priority === "critical" || item.status === "verify_required" || item.status === "unknown")
+    .slice(0, 8);
+
+  return (
+    <div className="due-diligence-workspace">
+      <section className="due-diligence-status">
+        <h4>{copy.statusTitle}</h4>
+        <div className="due-diligence-status-grid">
+          {(["verified", "requires_check", "risk", "unknown", "insufficient_data"] as const).map((state) => (
+            <div className={`due-diligence-status-card state-${state}`} key={state}>
+              <strong>{counts[state]}</strong>
+              <span>{copy.states[state]}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <div className="due-diligence-columns">
+        <section>
+          <h4>{copy.criticalTitle}</h4>
+          <div className="due-diligence-checks">
+            {criticalChecks.map((item) => {
+              const state = diligenceStateForItem(item);
+              return (
+                <article className="due-diligence-check" key={item.code}>
+                  <div>
+                    <span className={`status-pill ${diligenceTone(state)}`}>{copy.states[state]}</span>
+                    <span className="due-diligence-category">{copy.categories[item.category] ?? item.category}</span>
+                  </div>
+                  <strong>{localizedDueDiligenceChecklistLabel(item, locale)}</strong>
+                  <p>{item.rationale}</p>
+                  <small>{copy.priorities[item.priority]}</small>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <h4>{copy.riskTitle}</h4>
+          {dueDiligence.red_flags.length ? (
+            <ul className="section-list compact due-diligence-risk-list">
+              {dueDiligence.red_flags.slice(0, 6).map((flag) => (
+                <li key={flag}><span className="status-pill rejected">{copy.states.risk}</span>{flag}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">{copy.noRisks}</p>
+          )}
+        </section>
+      </div>
+
+      <div className="due-diligence-columns compact">
+        <section>
+          <h4>{copy.documentsTitle}</h4>
+          <ul className="section-list compact">
+            {dueDiligence.documents_to_request.slice(0, 6).map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </section>
+        <section>
+          <h4>{copy.questionsTitle}</h4>
+          <ul className="section-list compact">
+            {dueDiligence.questions_for_seller.slice(0, 6).map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </section>
+      </div>
+
+      <p className="due-diligence-caveat">{copy.legalCaveat}</p>
+    </div>
+  );
+}
+
+function dueDiligenceStateCounts(dueDiligence: PropertyDueDiligence): Record<DiligenceState, number> {
+  const counts: Record<DiligenceState, number> = {
+    verified: 0,
+    requires_check: 0,
+    risk: dueDiligence.red_flags.length,
+    unknown: 0,
+    insufficient_data: 0,
+  };
+  for (const item of dueDiligence.checklist) {
+    counts[diligenceStateForItem(item)] += 1;
+  }
+  return counts;
+}
+
+function diligenceStateForItem(item: DueDiligenceChecklistItem): DiligenceState {
+  if (item.status === "known") return "verified";
+  if (item.status === "verify_required") return "requires_check";
+  if (item.status === "estimated") return "insufficient_data";
+  return "unknown";
+}
+
+function diligenceTone(state: DiligenceState) {
+  if (state === "verified") return "healthy";
+  if (state === "risk") return "rejected";
+  if (state === "requires_check" || state === "insufficient_data") return "warning";
+  return "info";
 }
 
 function buildViewingPrepItems(

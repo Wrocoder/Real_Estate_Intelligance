@@ -1127,6 +1127,135 @@ summary:focus-visible {
   text-align: right;
 }
 
+.buyer-action-plan-score small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.due-diligence-workspace {
+  display: grid;
+  gap: 16px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.due-diligence-workspace h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+}
+
+.due-diligence-status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.due-diligence-status-card {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.due-diligence-status-card strong {
+  font-size: 22px;
+}
+
+.due-diligence-status-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.due-diligence-status-card.state-risk {
+  border-color: rgba(188, 68, 68, 0.34);
+}
+
+.due-diligence-status-card.state-requires_check,
+.due-diligence-status-card.state-insufficient_data {
+  border-color: rgba(175, 119, 35, 0.34);
+}
+
+.due-diligence-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.due-diligence-columns.compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.due-diligence-checks {
+  display: grid;
+  gap: 10px;
+}
+
+.due-diligence-check {
+  display: grid;
+  gap: 6px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.due-diligence-check > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.due-diligence-check strong,
+.due-diligence-check p,
+.due-diligence-check small {
+  overflow-wrap: anywhere;
+}
+
+.due-diligence-check p,
+.due-diligence-check small,
+.due-diligence-category,
+.due-diligence-caveat {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.due-diligence-check p {
+  margin: 0;
+}
+
+.due-diligence-category {
+  align-self: center;
+  font-weight: 700;
+}
+
+.due-diligence-risk-list {
+  display: grid;
+  gap: 8px;
+}
+
+.due-diligence-risk-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.due-diligence-risk-list .status-pill {
+  flex: 0 0 auto;
+}
+
+.due-diligence-caveat {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+
 .buyer-action-plan-progress {
   margin: 14px 0 8px;
   font-size: 13px;
@@ -4942,6 +5071,7 @@ summary:focus-visible {
   .buyer-decision-key-factors,
   .buyer-decision-detail-grid,
   .buyer-source-grid,
+  .due-diligence-columns,
   .grid-3,
   .ai-verdict-grid,
   .plan-grid,
@@ -4972,6 +5102,10 @@ summary:focus-visible {
 
   .post-viewing-metrics {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .due-diligence-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .ai-verdict-controls {
@@ -5237,6 +5371,8 @@ summary:focus-visible {
   .buyer-decision-key-factors,
   .buyer-decision-detail-grid,
   .buyer-source-grid,
+  .due-diligence-columns,
+  .due-diligence-columns.compact,
   .grid-3,
   .ai-verdict-grid,
   .plan-grid,
@@ -5272,6 +5408,20 @@ summary:focus-visible {
 
   .post-viewing-metrics {
     grid-template-columns: 1fr;
+  }
+
+  .due-diligence-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .buyer-action-plan-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .buyer-action-plan-score {
+    flex-basis: auto;
+    text-align: left;
   }
 
   .compare-evidence-grid {

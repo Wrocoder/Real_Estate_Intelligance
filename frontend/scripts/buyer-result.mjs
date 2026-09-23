@@ -14,7 +14,7 @@ const browser = await chromium.launch();
 const failures = [];
 let passed = 0;
 const locales = {
-  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska", additional: "Dodatkowa analiza mieszkania", recalculate: "Przelicz werdykt", changed: "Co się zmieniło", updated: "NAJPIERW SPRAWDŹ", negotiate: "Przygotuj negocjacje", targetRange: "Zakres docelowy", sellerMessage: "Wiadomość do sprzedającego lub agenta", copyMessage: "Kopiuj wiadomość" },
+  pl: { unknown: "Niezweryfikowane", next: "Kolejny krok", prepare: "Przygotuj mnie do oglądania", why: "Dlaczego to ważne", evidence: "Sprawdź dane i źródła", missing: "Brak danych", low: "Niska", additional: "Dodatkowa analiza mieszkania", recalculate: "Przelicz werdykt", changed: "Co się zmieniło", updated: "NAJPIERW SPRAWDŹ", negotiate: "Przygotuj negocjacje", targetRange: "Zakres docelowy", sellerMessage: "Wiadomość do sprzedającego lub agenta", copyMessage: "Kopiuj wiadomość", dueDiligence: "Kontrola przed zakupem", requiresCheck: "WYMAGA SPRAWDZENIA", risk: "RYZYKO", legalCaveat: "nie porada prawna" },
   en: { unknown: "Not verified", next: "Next step", prepare: "Prepare for the viewing", why: "Why it matters", evidence: "Review evidence and sources", missing: "Not available", low: "Low", additional: "Additional apartment analysis", recalculate: "Recalculate verdict", changed: "What changed", updated: "VERIFY FIRST", negotiate: "Prepare negotiation", targetRange: "Target range", sellerMessage: "Message to seller/agent", copyMessage: "Copy message" },
   ru: { unknown: "Не проверено", next: "Следующий шаг", prepare: "Подготовиться к просмотру", why: "Почему это важно", evidence: "Проверить данные и источники", missing: "Нет данных", low: "Низкая", additional: "Дополнительный анализ квартиры", recalculate: "Пересчитать вердикт", changed: "Что изменилось", updated: "СНАЧАЛА ПРОВЕРИТЬ", negotiate: "Подготовить переговоры", targetRange: "Целевой диапазон", sellerMessage: "Сообщение продавцу или агенту", copyMessage: "Скопировать сообщение" },
   uk: { unknown: "Не перевірено", next: "Наступний крок", prepare: "Підготуватися до огляду", why: "Чому це важливо", evidence: "Перевірити дані та джерела", missing: "Немає даних", low: "Низька", additional: "Додатковий аналіз квартири", recalculate: "Перерахувати вердикт", changed: "Що змінилося", updated: "СПОЧАТКУ ПЕРЕВІРИТИ", negotiate: "Підготувати переговори", targetRange: "Цільовий діапазон", sellerMessage: "Повідомлення продавцю або агенту", copyMessage: "Скопіювати повідомлення" },
@@ -136,7 +136,7 @@ try {
     assert.match(text, /warunkow|warunkową/);
     assert.doesNotMatch(text, /Realna transakcja|zaakceptowana cena|sprzedający zaakceptuje/);
     await negotiation.getByRole("button", { name: locales.pl.copyMessage, exact: true }).click();
-    assert.match(await negotiation.innerText(), /Wiadomość skopiowana/);
+    await negotiation.getByText("Wiadomość skopiowana", { exact: true }).waitFor();
   });
   for (const score of [0, null]) {
     await run(`confidence-${score}`, "pl", 390, (data) => {
@@ -155,6 +155,26 @@ try {
     assert.doesNotMatch(await page.locator(".buyer-evidence-summary").innerText(), /987/);
     await page.getByRole("button", { name: locales.pl.evidence, exact: true }).click();
     assert.match(await page.locator("#buyer-decision-sources").innerText(), /987.*Nie oznacza/);
+  });
+  await run("due-diligence-workspace", "pl", 390, (data) => {
+    data.buyer_decision.due_diligence.red_flags = [
+      "Starszy budynek: sprawdź dach, elewację i instalacje.",
+    ];
+    data.buyer_decision.due_diligence.checklist[0].status = "known";
+    data.buyer_decision.due_diligence.checklist[1].status = "verify_required";
+    data.buyer_decision.due_diligence.checklist[2].status = "unknown";
+    data.buyer_decision.due_diligence.checklist[10].status = "estimated";
+  }, async (page) => {
+    await page.locator("#buyer-decision-details > summary").click();
+    const workspace = page.locator("#buyer-action-plan");
+    await workspace.waitFor();
+    const text = await workspace.innerText();
+    assert.match(text, new RegExp(locales.pl.dueDiligence));
+    assert.match(text, new RegExp(locales.pl.requiresCheck));
+    assert.match(text, new RegExp(locales.pl.risk));
+    assert.match(text, /ZWERYFIKOWANE|NIEZNANE|ZA MAŁO DANYCH/);
+    assert.match(text, new RegExp(locales.pl.legalCaveat));
+    assert.doesNotMatch(text, /clean title|legal opinion|confirmed clean/i);
   });
   await run("missing-range", "pl", 390, (data) => {
     for (const key of ["fair_price_low_pln", "fair_price_mid_pln", "fair_price_high_pln", "price_delta_to_fair_mid_pct"]) data.buyer_decision.verdict[key] = null;
