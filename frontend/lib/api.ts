@@ -1,4 +1,5 @@
 import {
+  ApiError,
   authenticatedFetch,
   currentApiBaseUrl,
   request,
@@ -1396,6 +1397,71 @@ export type PropertyDueDiligence = {
   questions_for_seller: string[];
   checklist: DueDiligenceChecklistItem[];
   disclaimer: string;
+};
+
+export type DocumentAnalysisDocumentType =
+  | "kw_extract"
+  | "floor_plan"
+  | "community_statement"
+  | "energy_certificate"
+  | "developer_prospectus"
+  | "building_permit"
+  | "agreement_draft"
+  | "other";
+
+export type DocumentSignalStatus =
+  | "evidence_found"
+  | "needs_review"
+  | "conflict"
+  | "missing"
+  | "not_supported";
+
+export type DocumentSignal = {
+  checklist_code: string;
+  status: DocumentSignalStatus;
+  confidence: number;
+  evidence: string;
+  provenance: {
+    source_document: string;
+    page: number | null;
+    field: string;
+  };
+  severity: "info" | "warning" | "risk";
+  rationale: string;
+};
+
+export type DocumentUnknown = {
+  checklist_code: string;
+  reason: string;
+  recommended_next_action: string;
+};
+
+export type DocumentConflict = {
+  field: string;
+  observed_values: string[];
+  severity: "info" | "warning" | "risk";
+  manual_review_note: string;
+};
+
+export type DocumentCheck = {
+  id: string;
+  draft_id: string;
+  document_type: DocumentAnalysisDocumentType;
+  upload_channel: "file" | "metadata_only";
+  status: "analyzed" | "needs_review" | "not_supported";
+  filename: string | null;
+  content_type: string | null;
+  file_size_bytes: number;
+  source_hash: string;
+  signals: DocumentSignal[];
+  unknowns: DocumentUnknown[];
+  conflicts: DocumentConflict[];
+  confidence: number;
+  retention_deadline: string;
+  raw_document_retained: boolean;
+  disclaimer: string;
+  created_at: string;
+  updated_at: string;
 };
 
 export type BuyerSourceEvidence = {
@@ -3350,6 +3416,34 @@ function toQueryString<T extends object>(params: T) {
   return query ? `?${query}` : "";
 }
 
+async function parseAuthenticatedResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    let code =
+      {
+        400: "bad_request",
+        401: "auth_required",
+        403: "forbidden",
+        404: "not_found",
+        413: "payload_too_large",
+        422: "validation_error",
+      }[response.status] ?? "request_failed";
+    try {
+      const parsed = (await response.json()) as {
+        detail?: { code?: string; params?: Record<string, unknown> };
+        error?: { code?: string; params?: Record<string, unknown> };
+      };
+      const error = parsed.error ?? parsed.detail;
+      code = error?.code ?? code;
+      throw new ApiError(response.status, code, code, error?.params ?? {});
+    } catch (caught) {
+      if (caught instanceof ApiError) throw caught;
+      throw new ApiError(response.status, code, code);
+    }
+  }
+  if (response.status === 204) return undefined as T;
+  return response.json() as Promise<T>;
+}
+
 export const api = {
   recordProductEvent: (payload: ProductEventCreate) =>
     request<ApiSchema<"ProductEventAccepted">>("/api/v1/product-events", {
@@ -3965,6 +4059,40 @@ export const api = {
           ...(payload.branding ? { branding: payload.branding } : {}),
         }),
       },
+    ),
+  analyzeUserSubmittedDraftDocument: async (payload: {
+    draftId: string;
+    documentType: DocumentAnalysisDocumentType;
+    metadataText?: string;
+    file?: File | null;
+    confirmPrivateDocumentAnalysis: boolean;
+  }) => {
+    const form = new FormData();
+    form.set("document_type", payload.documentType);
+    form.set("confirm_private_document_analysis", String(payload.confirmPrivateDocumentAnalysis));
+    if (payload.metadataText) form.set("metadata_text", payload.metadataText);
+    if (payload.file) form.set("file", payload.file);
+    const response = await authenticatedFetch(
+      `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(
+        payload.draftId,
+      )}/documents/analyze`,
+      {
+        method: "POST",
+        body: form,
+      },
+    );
+    return parseAuthenticatedResponse<DocumentCheck>(response);
+  },
+  listUserSubmittedDraftDocuments: (draftId: string) =>
+    request<DocumentCheck[]>(
+      `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(draftId)}/documents`,
+    ),
+  deleteUserSubmittedDraftDocument: (draftId: string, documentCheckId: string) =>
+    request<void>(
+      `/api/v1/user-submitted-listings/drafts/${encodeURIComponent(
+        draftId,
+      )}/documents/${encodeURIComponent(documentCheckId)}`,
+      { method: "DELETE" },
     ),
   listAdminIngestionJobs: () =>
     request<IngestionJob[]>("/api/v1/admin/ingestion/jobs", {

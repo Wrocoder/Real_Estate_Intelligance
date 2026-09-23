@@ -25,6 +25,29 @@ def setup_function() -> None:
     memory_user_store.clear()
 
 
+def _create_private_draft(headers: dict[str, str] | None = None) -> dict:
+    response = client.post(
+        "/api/v1/user-submitted-listings/analyze",
+        headers=headers or {},
+        json={
+            "source_url": "https://www.otodom.pl/pl/oferta/document-check-demo",
+            "address": "Nowy Dwór, Wrocław",
+            "city": "Wrocław",
+            "district": "Fabryczna",
+            "market_type": "secondary",
+            "price": 675000,
+            "area_m2": 58.4,
+            "rooms": 3,
+            "floor": 3,
+            "building_floors": 6,
+            "building_year": 2014,
+            "confirm_private_analysis": True,
+        },
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 def test_user_submitted_listing_analysis_keeps_source_url_private() -> None:
     source_url = "https://www.otodom.pl/pl/oferta/demo-private-reference"
     response = client.post(
@@ -1193,6 +1216,139 @@ def test_user_submitted_listing_drafts_are_owner_scoped_and_deletable() -> None:
     assert owner_a_get.json()["request_payload"]["retention_days"] == 7
     assert owner_a_delete.status_code == 204
     assert owner_a_get_deleted.status_code == 404
+
+
+def test_user_submitted_document_check_extracts_redacted_grounded_signals() -> None:
+    headers = {"X-Domarion-User-Id": "document-owner"}
+    created = _create_private_draft(headers)
+    draft_id = created["draft_id"]
+    document_text = (
+        "Odpis księga wieczysta. Właściciel Jan Kowalski PESEL 80010112345, "
+        "email seller@example.com. Dział IV: hipoteka umowna do kwoty 420000 PLN."
+    )
+
+    response = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+        headers=headers,
+        data={
+            "document_type": "kw_extract",
+            "confirm_private_document_analysis": "true",
+        },
+        files={"file": ("kw.txt", document_text.encode("utf-8"), "text/plain")},
+    )
+    payload = response.json()
+    listed = client.get(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents",
+        headers=headers,
+    ).json()
+    serialized = str(payload)
+
+    assert response.status_code == 201
+    assert payload["draft_id"] == draft_id
+    assert payload["document_type"] == "kw_extract"
+    assert payload["upload_channel"] == "file"
+    assert payload["status"] == "needs_review"
+    assert payload["raw_document_retained"] is False
+    assert "not legal" in payload["disclaimer"]
+    assert {signal["checklist_code"] for signal in payload["signals"]} >= {
+        "kw_owner",
+        "kw_mortgage",
+    }
+    assert any(signal["provenance"]["source_document"] == "kw.txt" for signal in payload["signals"])
+    assert any(signal["status"] == "conflict" for signal in payload["signals"])
+    assert payload["conflicts"][0]["field"] == "kw_mortgage"
+    assert "seller@example.com" not in serialized
+    assert "80010112345" not in serialized
+    assert "[redacted-email]" in serialized
+    assert "[redacted-id]" in serialized
+    assert listed[0]["id"] == payload["id"]
+
+
+def test_user_submitted_document_check_requires_explicit_private_consent() -> None:
+    headers = {"X-Domarion-User-Id": "document-consent-owner"}
+    draft_id = _create_private_draft(headers)["draft_id"]
+
+    response = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+        headers=headers,
+        data={
+            "document_type": "floor_plan",
+            "metadata_text": "Powierzchnia lokalu 58,4 m2.",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "confirmation_required"
+
+
+def test_user_submitted_document_check_rejects_unsupported_files_and_raw_retention() -> None:
+    headers = {"X-Domarion-User-Id": "document-file-owner"}
+    draft_id = _create_private_draft(headers)["draft_id"]
+
+    unsupported = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+        headers=headers,
+        data={
+            "document_type": "kw_extract",
+            "confirm_private_document_analysis": "true",
+        },
+        files={"file": ("archive.zip", b"not allowed", "application/zip")},
+    )
+    retention = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+        headers=headers,
+        data={
+            "document_type": "kw_extract",
+            "confirm_private_document_analysis": "true",
+            "retain_original": "true",
+            "expert_review_consent": "true",
+            "metadata_text": "Księga wieczysta.",
+        },
+    )
+
+    assert unsupported.status_code == 400
+    assert unsupported.json()["error"]["code"] == "bad_request"
+    assert retention.status_code == 400
+    assert retention.json()["error"]["code"] == "bad_request"
+
+
+def test_user_submitted_document_checks_are_owner_scoped_and_deletable() -> None:
+    owner_a = {"X-Domarion-User-Id": "document-owner-a"}
+    owner_b = {"X-Domarion-User-Id": "document-owner-b"}
+    draft_id = _create_private_draft(owner_a)["draft_id"]
+
+    created = client.post(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+        headers=owner_a,
+        data={
+            "document_type": "floor_plan",
+            "confirm_private_document_analysis": "true",
+            "metadata_text": "Rzut lokalu. Powierzchnia 58,4 m2.",
+        },
+    ).json()
+
+    owner_b_list = client.get(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents",
+        headers=owner_b,
+    )
+    owner_b_delete = client.delete(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/{created['id']}",
+        headers=owner_b,
+    )
+    owner_a_delete = client.delete(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents/{created['id']}",
+        headers=owner_a,
+    )
+    owner_a_list_after_delete = client.get(
+        f"/api/v1/user-submitted-listings/drafts/{draft_id}/documents",
+        headers=owner_a,
+    )
+
+    assert owner_b_list.status_code == 404
+    assert owner_b_delete.status_code == 404
+    assert owner_a_delete.status_code == 204
+    assert owner_a_list_after_delete.status_code == 200
+    assert owner_a_list_after_delete.json() == []
 
 
 def test_user_submitted_listing_analysis_can_skip_private_draft() -> None:

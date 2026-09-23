@@ -154,6 +154,7 @@ from domarion.schemas import (
     DataQualityLog,
     DataQualityLogCreate,
     DataQualitySeverity,
+    DocumentCheck,
     DeveloperAlias,
     DeveloperFeedImportResponse,
     DeveloperProfile,
@@ -309,6 +310,7 @@ from domarion.services.crm import (
     missing_listing_ids,
 )
 from domarion.services.custom_dashboards import build_custom_dashboard_preview
+from domarion.services.document_analysis import analyze_user_submitted_document
 from domarion.services.future_impact import build_listing_future_impact
 from domarion.services.geo import MapQueryError, build_map_feature_collection, parse_bbox
 from domarion.services.growth_analysis import build_listing_growth_analysis
@@ -1881,6 +1883,86 @@ def create_user_submitted_listing_object_watch(
     )
     alert_payload = _with_default_alert_delivery_target(alert_payload, account)
     return user_store.create_alert(account.user.id, alert_payload)
+
+
+@router.post(
+    "/user-submitted-listings/drafts/{draft_id}/documents/analyze",
+    response_model=DocumentCheck,
+    status_code=status.HTTP_201_CREATED,
+)
+async def analyze_user_submitted_listing_document(
+    draft_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+    document_type: Annotated[str | None, Form()] = None,
+    retain_original: Annotated[bool, Form()] = False,
+    expert_review_consent: Annotated[bool, Form()] = False,
+    confirm_private_document_analysis: Annotated[bool, Form()] = False,
+    metadata_text: Annotated[str | None, Form()] = None,
+    file: Annotated[UploadFile | None, File()] = None,
+) -> DocumentCheck:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+
+    file_bytes: bytes | None = None
+    filename: str | None = None
+    content_type: str | None = None
+    if file is not None:
+        file_bytes = await file.read()
+        filename = file.filename
+        content_type = file.content_type
+
+    try:
+        check = analyze_user_submitted_document(
+            draft=draft,
+            document_type=document_type,
+            filename=filename,
+            content_type=content_type,
+            file_bytes=file_bytes,
+            metadata_text=metadata_text,
+            retain_original=retain_original,
+            expert_review_consent=expert_review_consent,
+            confirm_private_document_analysis=confirm_private_document_analysis,
+            existing_document_count=draft_store.count_document_checks(account.user.id, draft_id),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=_consumer_error_detail(exc)) from exc
+    return draft_store.save_document_check(account.user.id, check)
+
+
+@router.get(
+    "/user-submitted-listings/drafts/{draft_id}/documents",
+    response_model=list[DocumentCheck],
+)
+def list_user_submitted_listing_documents(
+    draft_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> list[DocumentCheck]:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    return draft_store.list_document_checks(account.user.id, draft_id)
+
+
+@router.delete(
+    "/user-submitted-listings/drafts/{draft_id}/documents/{document_check_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def delete_user_submitted_listing_document(
+    draft_id: str,
+    document_check_id: str,
+    draft_store: UserSubmittedListingStoreDep,
+    account: CurrentAccountDep,
+) -> Response:
+    draft = draft_store.get_draft(account.user.id, draft_id)
+    if draft is None:
+        raise HTTPException(status_code=404, detail="User-submitted listing draft not found")
+    deleted = draft_store.delete_document_check(account.user.id, draft_id, document_check_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Document check not found")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.delete("/user-submitted-listings/drafts/{draft_id}", status_code=status.HTTP_204_NO_CONTENT)

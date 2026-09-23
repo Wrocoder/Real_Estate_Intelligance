@@ -10,11 +10,13 @@ import {
   Building2,
   ClipboardCheck,
   ExternalLink,
+  FileUp,
   FileText,
   RefreshCw,
   Save,
   Search,
   ShieldCheck,
+  Trash2,
 } from "lucide-react";
 
 import { BuyerDecisionPanel } from "@/components/BuyerDecisionPanel";
@@ -40,6 +42,8 @@ import {
   type AIQuestionDescriptor,
   type BuyerProfile,
   type DeveloperReputation,
+  type DocumentAnalysisDocumentType,
+  type DocumentCheck,
   type GeneratedReport,
   type PostViewingChecklistAnswers,
   type PostViewingVerdictRecalculation,
@@ -296,13 +300,144 @@ const PRODUCT_COPY = {
 } as const;
 
 type ProductCopy = (typeof PRODUCT_COPY)[Locale];
-type CoreOperation = "draft" | "import" | "check" | "report" | "save" | "track";
+type CoreOperation = "draft" | "import" | "check" | "report" | "save" | "track" | "document";
 const PROFILE_NOTICE_COPY: Record<Locale, { applied: string; budget: string; edit: string }> = {
   en: { applied: "Using your saved buying purpose", budget: "Saved maximum price", edit: "Edit profile" },
   pl: { applied: "Używamy zapisanego celu zakupu", budget: "Zapisana maksymalna cena", edit: "Edytuj profil" },
   ru: { applied: "Используем сохраненную цель покупки", budget: "Сохраненная максимальная цена", edit: "Изменить профиль" },
   uk: { applied: "Використовуємо збережену мету купівлі", budget: "Збережена максимальна ціна", edit: "Змінити профіль" },
 };
+
+const DOCUMENT_CHECK_COPY = {
+  en: {
+    title: "Document check",
+    intro: "Attach a document or paste a short note. WartoMetr extracts only checklist signals and keeps unknowns visible.",
+    type: "Document type",
+    file: "File",
+    note: "Document notes or copied text",
+    notePlaceholder: "Paste a short excerpt, KW section note, area statement or fee/debt information.",
+    consent: "I have the right to use this document for private analysis.",
+    submit: "Analyze document",
+    loading: "Checking document...",
+    empty: "No documents checked for this apartment yet.",
+    disabled: "Save this private draft before checking documents.",
+    expert: "Ask legal/expert review before zadatek",
+    provenance: "Source",
+    unknowns: "Still unknown",
+    conflicts: "Needs manual review",
+    retained: "Original file is not stored by default.",
+    restrictions: "PDF, PNG, JPG and UTF-8 TXT up to 10 MB. OCR is not enabled in this first slice.",
+    deleted: "Document check removed.",
+    status: { analyzed: "Analyzed", needs_review: "Needs review", not_supported: "Not supported" },
+    signal: { evidence_found: "Found", needs_review: "Needs review", conflict: "Conflict", missing: "Missing", not_supported: "Not supported" },
+    types: {
+      kw_extract: "Land and mortgage register",
+      floor_plan: "Floor plan / usable area",
+      community_statement: "Wspólnota fees or debt",
+      energy_certificate: "Energy certificate",
+      developer_prospectus: "Developer prospectus",
+      building_permit: "Permit / handover document",
+      agreement_draft: "Agreement draft",
+      other: "Other document",
+    },
+  },
+  pl: {
+    title: "Sprawdzenie dokumentu",
+    intro: "Dodaj dokument albo krótką notatkę. WartoMetr wyciąga tylko sygnały do checklisty i pokazuje, co nadal jest niepewne.",
+    type: "Typ dokumentu",
+    file: "Plik",
+    note: "Notatka lub krótki tekst z dokumentu",
+    notePlaceholder: "Wklej krótki fragment, informację z KW, metraż, czynsz lub zadłużenie.",
+    consent: "Mam prawo użyć tego dokumentu do prywatnej analizy.",
+    submit: "Sprawdź dokument",
+    loading: "Sprawdzamy dokument...",
+    empty: "Brak sprawdzonych dokumentów dla tego mieszkania.",
+    disabled: "Zapisz prywatny szkic, aby sprawdzać dokumenty.",
+    expert: "Poproś o przegląd prawny/ekspercki przed zadatkiem",
+    provenance: "Źródło",
+    unknowns: "Nadal nieznane",
+    conflicts: "Wymaga ręcznej kontroli",
+    retained: "Oryginalny plik domyślnie nie jest przechowywany.",
+    restrictions: "PDF, PNG, JPG i UTF-8 TXT do 10 MB. OCR nie działa w tym pierwszym etapie.",
+    deleted: "Sprawdzenie dokumentu usunięte.",
+    status: { analyzed: "Przeanalizowano", needs_review: "Do sprawdzenia", not_supported: "Nieobsługiwany" },
+    signal: { evidence_found: "Znaleziono", needs_review: "Do sprawdzenia", conflict: "Konflikt", missing: "Brak", not_supported: "Nieobsługiwane" },
+    types: {
+      kw_extract: "Księga wieczysta",
+      floor_plan: "Rzut / powierzchnia użytkowa",
+      community_statement: "Opłaty lub zadłużenie wspólnoty",
+      energy_certificate: "Świadectwo energetyczne",
+      developer_prospectus: "Prospekt dewelopera",
+      building_permit: "Pozwolenie / odbiór",
+      agreement_draft: "Projekt umowy",
+      other: "Inny dokument",
+    },
+  },
+  ru: {
+    title: "Проверка документа",
+    intro: "Добавьте документ или короткую заметку. WartoMetr извлекает только сигналы для чеклиста и честно показывает неизвестное.",
+    type: "Тип документа",
+    file: "Файл",
+    note: "Заметка или короткий текст из документа",
+    notePlaceholder: "Вставьте короткий фрагмент, заметку из KW, площадь, платежи или задолженность.",
+    consent: "У меня есть право использовать этот документ для приватного анализа.",
+    submit: "Проверить документ",
+    loading: "Проверяем документ...",
+    empty: "Для этой квартиры документы еще не проверялись.",
+    disabled: "Сохраните приватный черновик, чтобы проверять документы.",
+    expert: "Запросить юридическую/экспертную проверку до zadatek",
+    provenance: "Источник",
+    unknowns: "Все еще неизвестно",
+    conflicts: "Нужна ручная проверка",
+    retained: "Оригинальный файл по умолчанию не сохраняется.",
+    restrictions: "PDF, PNG, JPG и UTF-8 TXT до 10 MB. OCR на этом первом этапе не включен.",
+    deleted: "Проверка документа удалена.",
+    status: { analyzed: "Проанализировано", needs_review: "Нужна проверка", not_supported: "Не поддерживается" },
+    signal: { evidence_found: "Найдено", needs_review: "Нужна проверка", conflict: "Конфликт", missing: "Нет данных", not_supported: "Не поддерживается" },
+    types: {
+      kw_extract: "Księga wieczysta / реестр",
+      floor_plan: "План / полезная площадь",
+      community_statement: "Платежи или долги wspólnota",
+      energy_certificate: "Энергетический сертификат",
+      developer_prospectus: "Проспект застройщика",
+      building_permit: "Разрешение / приемка",
+      agreement_draft: "Проект договора",
+      other: "Другой документ",
+    },
+  },
+  uk: {
+    title: "Перевірка документа",
+    intro: "Додайте документ або коротку нотатку. WartoMetr витягує лише сигнали для чеклиста і чесно показує невідоме.",
+    type: "Тип документа",
+    file: "Файл",
+    note: "Нотатка або короткий текст з документа",
+    notePlaceholder: "Вставте короткий фрагмент, нотатку з KW, площу, платежі або борг.",
+    consent: "Я маю право використати цей документ для приватного аналізу.",
+    submit: "Перевірити документ",
+    loading: "Перевіряємо документ...",
+    empty: "Для цієї квартири документи ще не перевірялися.",
+    disabled: "Збережіть приватну чернетку, щоб перевіряти документи.",
+    expert: "Запросити юридичну/експертну перевірку до zadatek",
+    provenance: "Джерело",
+    unknowns: "Все ще невідомо",
+    conflicts: "Потрібна ручна перевірка",
+    retained: "Оригінальний файл за замовчуванням не зберігається.",
+    restrictions: "PDF, PNG, JPG і UTF-8 TXT до 10 MB. OCR на цьому першому етапі не увімкнено.",
+    deleted: "Перевірку документа видалено.",
+    status: { analyzed: "Проаналізовано", needs_review: "Потрібна перевірка", not_supported: "Не підтримується" },
+    signal: { evidence_found: "Знайдено", needs_review: "Потрібна перевірка", conflict: "Конфлікт", missing: "Немає даних", not_supported: "Не підтримується" },
+    types: {
+      kw_extract: "Księga wieczysta / реєстр",
+      floor_plan: "План / корисна площа",
+      community_statement: "Платежі або борги wspólnota",
+      energy_certificate: "Енергетичний сертифікат",
+      developer_prospectus: "Проспект забудовника",
+      building_permit: "Дозвіл / приймання",
+      agreement_draft: "Проект договору",
+      other: "Інший документ",
+    },
+  },
+} as const;
 
 export default function CheckListingExperience() {
   const { locale } = useLocalePreference();
@@ -316,6 +451,12 @@ export default function CheckListingExperience() {
   const [reportResult, setReportResult] = useState<UserSubmittedListingReport | null>(null);
   const [savedReport, setSavedReport] = useState<GeneratedReport | null>(null);
   const [postViewingResult, setPostViewingResult] = useState<PostViewingVerdictRecalculation | null>(null);
+  const [documentChecks, setDocumentChecks] = useState<DocumentCheck[]>([]);
+  const [documentType, setDocumentType] = useState<DocumentAnalysisDocumentType>("kw_extract");
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentText, setDocumentText] = useState("");
+  const [documentConsent, setDocumentConsent] = useState(false);
+  const [documentStatus, setDocumentStatus] = useState("");
   const [aiQuestions, setAIQuestions] = useState<AIQuestionDescriptor[]>([]);
   const [aiAudience] = useState<ReportAudience>("buyer");
   const [selectedAIQuestion, setSelectedAIQuestion] = useState<AIQuestionCode>("summary");
@@ -397,6 +538,29 @@ export default function CheckListingExperience() {
   useEffect(() => {
     if (result) resultRef.current?.scrollIntoView({ block: "start" });
   }, [result]);
+
+  useEffect(() => {
+    const draftId = result?.draft_id;
+    if (!draftId) {
+      setDocumentChecks([]);
+      setDocumentStatus(DOCUMENT_CHECK_COPY[locale].disabled);
+      return;
+    }
+    let cancelled = false;
+    api.listUserSubmittedDraftDocuments(draftId)
+      .then((payload) => {
+        if (cancelled) return;
+        setDocumentChecks(payload);
+        setDocumentStatus(payload.length ? DOCUMENT_CHECK_COPY[locale].retained : DOCUMENT_CHECK_COPY[locale].empty);
+      })
+      .catch((caught) => {
+        if (cancelled) return;
+        setDocumentStatus(localizedError(caught, locale, copy.statuses.checkError));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [copy.statuses.checkError, locale, result?.draft_id]);
 
   const resetAIAnswer = useCallback(
     (nextStatus = copy.statuses.aiReadyAfterCheck) => {
@@ -708,6 +872,47 @@ export default function CheckListingExperience() {
     }
   }
 
+  async function analyzeDocument(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!result?.draft_id || !documentConsent || activeOperation !== null) return;
+    setError("");
+    setActiveOperation("document");
+    setDocumentStatus(DOCUMENT_CHECK_COPY[locale].loading);
+    try {
+      const payload = await api.analyzeUserSubmittedDraftDocument({
+        draftId: result.draft_id,
+        documentType,
+        metadataText: documentText,
+        file: documentFile,
+        confirmPrivateDocumentAnalysis: documentConsent,
+      });
+      setDocumentChecks((current) => [payload, ...current.filter((item) => item.id !== payload.id)]);
+      setDocumentFile(null);
+      setDocumentText("");
+      setDocumentConsent(false);
+      setDocumentStatus(DOCUMENT_CHECK_COPY[locale].retained);
+    } catch (caught) {
+      setDocumentStatus(localizedError(caught, locale, copy.statuses.checkError));
+    } finally {
+      setActiveOperation(null);
+    }
+  }
+
+  async function deleteDocumentCheck(documentCheckId: string) {
+    if (!result?.draft_id || activeOperation !== null) return;
+    setError("");
+    setActiveOperation("document");
+    try {
+      await api.deleteUserSubmittedDraftDocument(result.draft_id, documentCheckId);
+      setDocumentChecks((current) => current.filter((item) => item.id !== documentCheckId));
+      setDocumentStatus(DOCUMENT_CHECK_COPY[locale].deleted);
+    } catch (caught) {
+      setDocumentStatus(localizedError(caught, locale, copy.statuses.checkError));
+    } finally {
+      setActiveOperation(null);
+    }
+  }
+
   async function generateAIAnswer() {
     if (!result?.draft_id) {
       setAiStatus(copy.statuses.aiDraftRequired);
@@ -1006,6 +1211,29 @@ export default function CheckListingExperience() {
           </div>
           <p className="status-line" role="status">{saveStatus}</p>
         </div>
+      ) : null}
+
+      {analysis && result ? (
+        <details className="listing-section-disclosure document-check-disclosure">
+          <summary>{DOCUMENT_CHECK_COPY[locale].title}</summary>
+          <DocumentCheckPanel
+            busy={activeOperation !== null}
+            checks={documentChecks}
+            consent={documentConsent}
+            disabled={!result.draft_id}
+            file={documentFile}
+            locale={locale}
+            metadataText={documentText}
+            onConsentChange={setDocumentConsent}
+            onDelete={(documentCheckId) => void deleteDocumentCheck(documentCheckId)}
+            onFileChange={setDocumentFile}
+            onMetadataTextChange={setDocumentText}
+            onSubmit={(event) => void analyzeDocument(event)}
+            onTypeChange={setDocumentType}
+            status={documentStatus}
+            type={documentType}
+          />
+        </details>
       ) : null}
 
       {analysis?.buyer_decision ? (
@@ -1559,10 +1787,192 @@ function operationLabel(operation: CoreOperation, copy: CheckPageCopy) {
     case "save":
     case "track":
       return copy.statuses.saving;
+    case "document":
+      return copy.statuses.calculating;
     case "draft":
     case "check":
       return copy.statuses.calculating;
   }
+}
+
+const DOCUMENT_TYPE_OPTIONS: DocumentAnalysisDocumentType[] = [
+  "kw_extract",
+  "floor_plan",
+  "community_statement",
+  "energy_certificate",
+  "developer_prospectus",
+  "building_permit",
+  "agreement_draft",
+  "other",
+];
+
+function DocumentCheckPanel({
+  busy,
+  checks,
+  consent,
+  disabled,
+  file,
+  locale,
+  metadataText,
+  onConsentChange,
+  onDelete,
+  onFileChange,
+  onMetadataTextChange,
+  onSubmit,
+  onTypeChange,
+  status,
+  type,
+}: {
+  busy: boolean;
+  checks: DocumentCheck[];
+  consent: boolean;
+  disabled: boolean;
+  file: File | null;
+  locale: Locale;
+  metadataText: string;
+  onConsentChange: (value: boolean) => void;
+  onDelete: (documentCheckId: string) => void;
+  onFileChange: (value: File | null) => void;
+  onMetadataTextChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onTypeChange: (value: DocumentAnalysisDocumentType) => void;
+  status: string;
+  type: DocumentAnalysisDocumentType;
+}) {
+  const copy = DOCUMENT_CHECK_COPY[locale];
+  const formDisabled = disabled || busy;
+  const canSubmit = !formDisabled && consent && (Boolean(file) || metadataText.trim().length > 0);
+  return (
+    <section className="document-check-panel">
+      <div className="document-check-intro">
+        <div>
+          <h3><FileUp size={18} /> {copy.title}</h3>
+          <p>{copy.intro}</p>
+        </div>
+        <span className="status-pill warning">{copy.expert}</span>
+      </div>
+      <form className="document-check-form" onSubmit={onSubmit}>
+        <label className="field">
+          <span>{copy.type}</span>
+          <select
+            disabled={formDisabled}
+            value={type}
+            onChange={(event) => onTypeChange(event.target.value as DocumentAnalysisDocumentType)}
+          >
+            {DOCUMENT_TYPE_OPTIONS.map((option) => (
+              <option key={option} value={option}>{copy.types[option]}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          <span>{copy.file}</span>
+          <input
+            accept=".pdf,.png,.jpg,.jpeg,.txt,application/pdf,image/png,image/jpeg,text/plain"
+            disabled={formDisabled}
+            type="file"
+            onChange={(event) => onFileChange(event.target.files?.[0] ?? null)}
+          />
+        </label>
+        <label className="field document-check-notes">
+          <span>{copy.note}</span>
+          <textarea
+            disabled={formDisabled}
+            placeholder={copy.notePlaceholder}
+            rows={4}
+            value={metadataText}
+            onChange={(event) => onMetadataTextChange(event.target.value)}
+          />
+        </label>
+        <label className="checkbox-row document-check-consent">
+          <input
+            checked={consent}
+            disabled={formDisabled}
+            type="checkbox"
+            onChange={(event) => onConsentChange(event.target.checked)}
+          />
+          <span>{copy.consent}</span>
+        </label>
+        <div className="document-check-actions">
+          <button className="button primary" disabled={!canSubmit} type="submit">
+            <FileUp size={16} /> {copy.submit}
+          </button>
+          <p className="status-line" role="status">{disabled ? copy.disabled : status || copy.empty}</p>
+        </div>
+        <p className="document-check-limits">{copy.retained} {copy.restrictions}</p>
+      </form>
+      {checks.length ? (
+        <div className="document-check-results">
+          {checks.map((check) => (
+            <article className="document-check-card" key={check.id}>
+              <div className="document-check-card-header">
+                <div>
+                  <span className={`status-pill ${documentStatusTone(check.status)}`}>{copy.status[check.status]}</span>
+                  <h4>{copy.types[check.document_type]}</h4>
+                </div>
+                <button className="button icon-button" type="button" onClick={() => onDelete(check.id)} aria-label={copy.deleted}>
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <dl className="document-check-meta">
+                <div><dt>{copy.provenance}</dt><dd>{check.filename ?? copy.types[check.document_type]}</dd></div>
+                <div><dt>{PRODUCT_COPY[locale].confidence}</dt><dd>{check.confidence}/100</dd></div>
+              </dl>
+              {check.signals.length ? (
+                <div className="document-check-signal-list">
+                  {check.signals.map((signal) => (
+                    <div className="document-check-signal" key={`${check.id}-${signal.checklist_code}-${signal.status}`}>
+                      <span className={`status-pill ${documentSignalTone(signal.status)}`}>{copy.signal[signal.status]}</span>
+                      <strong>{signal.checklist_code}</strong>
+                      <p>{signal.rationale}</p>
+                      <small>{signal.evidence}</small>
+                      <small>{copy.provenance}: {signal.provenance.source_document}{signal.provenance.page ? `, p. ${signal.provenance.page}` : ""}, {signal.provenance.field}</small>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {check.unknowns.length ? (
+                <div className="document-check-followup">
+                  <h5>{copy.unknowns}</h5>
+                  <ul>
+                    {check.unknowns.map((unknown) => (
+                      <li key={`${check.id}-${unknown.checklist_code}`}>
+                        <strong>{unknown.checklist_code}</strong>: {unknown.recommended_next_action}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {check.conflicts.length ? (
+                <div className="document-check-followup risk">
+                  <h5>{copy.conflicts}</h5>
+                  <ul>
+                    {check.conflicts.map((conflict) => (
+                      <li key={`${check.id}-${conflict.field}`}>{conflict.manual_review_note}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </article>
+          ))}
+        </div>
+      ) : (
+        <p className="empty-state">{copy.empty}</p>
+      )}
+    </section>
+  );
+}
+
+function documentStatusTone(status: DocumentCheck["status"]) {
+  if (status === "analyzed") return "healthy";
+  if (status === "not_supported") return "neutral";
+  return "warning";
+}
+
+function documentSignalTone(status: DocumentCheck["signals"][number]["status"]) {
+  if (status === "evidence_found") return "healthy";
+  if (status === "conflict") return "danger";
+  if (status === "not_supported" || status === "missing") return "neutral";
+  return "warning";
 }
 
 function ImportOutcomeNotice({

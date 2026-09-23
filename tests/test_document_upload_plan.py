@@ -29,9 +29,9 @@ def test_document_upload_due_diligence_plan_covers_privacy_and_guardrails() -> N
         assert guardrail in document
 
 
-def test_document_upload_design_is_indexed_as_design_only() -> None:
+def test_document_upload_design_is_indexed_with_phase_16_limits() -> None:
     index = (ROOT / "docs" / "README.md").read_text(encoding="utf-8")
 
     assert "[Document-upload design](document_upload_due_diligence_plan.md)" in index
-    assert "design only" in index
-    assert "does not prove an upload implementation" in index
+    assert "[Phase 16](WartoMetr_Phase_16_Implementation.md)" in index
+    assert "metadata/text-first screening" in index

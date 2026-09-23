@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
 from domarion.schemas import (
+    DocumentCheck,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
     UserSubmittedListingRequest,
@@ -11,6 +12,7 @@ from domarion.schemas import (
 class InMemoryUserSubmittedListingStore:
     def __init__(self) -> None:
         self._items: dict[str, UserSubmittedListingDraft] = {}
+        self._document_checks: dict[str, tuple[str, bool, DocumentCheck]] = {}
 
     def save_draft(
         self,
@@ -79,16 +81,53 @@ class InMemoryUserSubmittedListingStore:
         if draft is None or draft.owner_id != owner_id:
             return False
         del self._items[draft_id]
+        for check_id, (check_owner_id, deleted, check) in list(self._document_checks.items()):
+            if check_owner_id == owner_id and check.draft_id == draft_id and not deleted:
+                self._document_checks[check_id] = (check_owner_id, True, check)
+        return True
+
+    def save_document_check(self, owner_id: str, check: DocumentCheck) -> DocumentCheck:
+        self._document_checks[check.id] = (owner_id, False, check)
+        return check
+
+    def list_document_checks(self, owner_id: str, draft_id: str) -> list[DocumentCheck]:
+        checks = [
+            check
+            for check_owner_id, deleted, check in self._document_checks.values()
+            if check_owner_id == owner_id and check.draft_id == draft_id and not deleted
+        ]
+        return sorted(checks, key=lambda item: item.created_at, reverse=True)
+
+    def count_document_checks(self, owner_id: str, draft_id: str) -> int:
+        return len(self.list_document_checks(owner_id, draft_id))
+
+    def delete_document_check(
+        self,
+        owner_id: str,
+        draft_id: str,
+        document_check_id: str,
+    ) -> bool:
+        item = self._document_checks.get(document_check_id)
+        if item is None:
+            return False
+        check_owner_id, deleted, check = item
+        if check_owner_id != owner_id or check.draft_id != draft_id or deleted:
+            return False
+        self._document_checks[document_check_id] = (check_owner_id, True, check)
         return True
 
     def prune_expired(self) -> int:
         expired_ids = [draft_id for draft_id, draft in self._items.items() if _is_expired(draft)]
         for draft_id in expired_ids:
             del self._items[draft_id]
+            for check_id, (owner_id, deleted, check) in list(self._document_checks.items()):
+                if check.draft_id == draft_id and not deleted:
+                    self._document_checks[check_id] = (owner_id, True, check)
         return len(expired_ids)
 
     def clear(self) -> None:
         self._items.clear()
+        self._document_checks.clear()
 
     @staticmethod
     def _filter_sort_limit(

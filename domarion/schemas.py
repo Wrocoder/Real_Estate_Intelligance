@@ -234,6 +234,26 @@ DueDiligenceCheckStatus = Literal[
     "unknown",
     "not_applicable",
 ]
+DocumentAnalysisDocumentType = Literal[
+    "kw_extract",
+    "floor_plan",
+    "community_statement",
+    "energy_certificate",
+    "developer_prospectus",
+    "building_permit",
+    "agreement_draft",
+    "other",
+]
+DocumentAnalysisUploadChannel = Literal["file", "metadata_only"]
+DocumentAnalysisStatus = Literal["analyzed", "needs_review", "not_supported"]
+DocumentSignalStatus = Literal[
+    "evidence_found",
+    "needs_review",
+    "conflict",
+    "missing",
+    "not_supported",
+]
+DocumentSignalSeverity = Literal["info", "warning", "risk"]
 PreViewingRecommendation = Literal["view", "skip", "verify_first"]
 PostViewingIssueLevel = Literal["unknown", "good", "minor_issue", "major_issue"]
 PostViewingRenovationNeed = Literal["unknown", "none", "refresh", "light", "full"]
@@ -2530,6 +2550,56 @@ class UserSubmittedListingAnalysis(BaseModel):
     retention_note: str
     draft_id: str | None = None
     draft_expires_at: datetime | None = None
+
+
+class DocumentSignalProvenance(BaseModel):
+    source_document: str
+    page: int | None = Field(default=None, ge=1)
+    field: str
+
+
+class DocumentSignal(BaseModel):
+    checklist_code: str
+    status: DocumentSignalStatus
+    confidence: int = Field(ge=0, le=100)
+    evidence: str
+    provenance: DocumentSignalProvenance
+    severity: DocumentSignalSeverity = "info"
+    rationale: str
+
+
+class DocumentUnknown(BaseModel):
+    checklist_code: str
+    reason: str
+    recommended_next_action: str
+
+
+class DocumentConflict(BaseModel):
+    field: str
+    observed_values: list[str] = Field(default_factory=list)
+    severity: DocumentSignalSeverity = "warning"
+    manual_review_note: str
+
+
+class DocumentCheck(BaseModel):
+    id: str
+    draft_id: str
+    document_type: DocumentAnalysisDocumentType
+    upload_channel: DocumentAnalysisUploadChannel
+    status: DocumentAnalysisStatus
+    filename: str | None = None
+    content_type: str | None = None
+    file_size_bytes: int = Field(default=0, ge=0)
+    source_hash: str
+    signals: list[DocumentSignal] = Field(default_factory=list)
+    unknowns: list[DocumentUnknown] = Field(default_factory=list)
+    conflicts: list[DocumentConflict] = Field(default_factory=list)
+    confidence: int = Field(ge=0, le=100)
+    retention_deadline: datetime
+    raw_document_retained: bool = False
+    disclaimer: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class ScoringServiceRequest(BaseModel):

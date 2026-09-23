@@ -1000,6 +1000,149 @@ summary:focus-visible {
   padding: 0 0 18px;
 }
 
+.document-check-panel {
+  display: grid;
+  gap: 16px;
+  padding: 0 0 18px;
+}
+
+.document-check-intro {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.document-check-intro h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 18px;
+}
+
+.document-check-intro p,
+.document-check-limits {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.document-check-form {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(220px, 1fr);
+  gap: 12px;
+}
+
+.document-check-notes,
+.document-check-consent,
+.document-check-actions,
+.document-check-limits {
+  grid-column: 1 / -1;
+}
+
+.document-check-notes textarea {
+  min-height: 104px;
+  resize: vertical;
+}
+
+.document-check-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.document-check-results {
+  display: grid;
+  gap: 12px;
+}
+
+.document-check-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: color-mix(in srgb, var(--surface) 94%, var(--accent) 6%);
+}
+
+.document-check-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.document-check-card-header h4 {
+  margin: 6px 0 0;
+  font-size: 16px;
+}
+
+.document-check-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.document-check-meta div {
+  display: grid;
+  gap: 2px;
+}
+
+.document-check-meta dt,
+.document-check-signal small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.document-check-meta dd {
+  margin: 0;
+  font-weight: 700;
+}
+
+.document-check-signal-list {
+  display: grid;
+  gap: 10px;
+}
+
+.document-check-signal {
+  display: grid;
+  gap: 5px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.document-check-signal p,
+.document-check-followup ul {
+  margin: 0;
+}
+
+.document-check-signal .status-pill {
+  justify-self: start;
+}
+
+.document-check-followup {
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.document-check-followup h5 {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.document-check-followup li {
+  margin-bottom: 6px;
+}
+
+.document-check-followup.risk {
+  border-left: 3px solid var(--danger);
+  padding-left: 10px;
+}
+
 .listing-secondary-disclosure > summary {
   color: var(--muted);
   font-size: 15px;
@@ -5198,6 +5341,21 @@ summary:focus-visible {
 
   .buyer-action-item {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .document-check-intro,
+  .document-check-actions,
+  .document-check-card-header {
+    display: grid;
+  }
+
+  .document-check-form,
+  .document-check-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .document-check-card {
+    padding: 12px;
   }
 
   .buyer-action-priority {

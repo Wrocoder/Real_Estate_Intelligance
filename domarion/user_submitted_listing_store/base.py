@@ -1,6 +1,7 @@
 from typing import Protocol
 
 from domarion.schemas import (
+    DocumentCheck,
     UserSubmittedListingAnalysis,
     UserSubmittedListingDraft,
     UserSubmittedListingRequest,
@@ -35,6 +36,23 @@ class UserSubmittedListingStore(Protocol):
         raise NotImplementedError
 
     def delete_draft(self, owner_id: str, draft_id: str) -> bool:
+        raise NotImplementedError
+
+    def save_document_check(self, owner_id: str, check: DocumentCheck) -> DocumentCheck:
+        raise NotImplementedError
+
+    def list_document_checks(self, owner_id: str, draft_id: str) -> list[DocumentCheck]:
+        raise NotImplementedError
+
+    def count_document_checks(self, owner_id: str, draft_id: str) -> int:
+        raise NotImplementedError
+
+    def delete_document_check(
+        self,
+        owner_id: str,
+        draft_id: str,
+        document_check_id: str,
+    ) -> bool:
         raise NotImplementedError
 
     def prune_expired(self) -> int:

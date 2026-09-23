@@ -1101,6 +1101,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Analyze User Submitted Listing Document */
+        post: operations["analyze_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents_analyze_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-submitted-listings/drafts/{draft_id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List User Submitted Listing Documents */
+        get: operations["list_user_submitted_listing_documents_api_v1_user_submitted_listings_drafts__draft_id__documents_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/user-submitted-listings/drafts/{draft_id}/documents/{document_check_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete User Submitted Listing Document */
+        delete: operations["delete_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents__document_check_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate": {
         parameters: {
             query?: never;
@@ -4441,6 +4492,30 @@ export interface components {
              */
             demo_mode: boolean;
         };
+        /** Body_analyze_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents_analyze_post */
+        Body_analyze_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents_analyze_post: {
+            /** Document Type */
+            document_type?: string | null;
+            /**
+             * Retain Original
+             * @default false
+             */
+            retain_original: boolean;
+            /**
+             * Expert Review Consent
+             * @default false
+             */
+            expert_review_consent: boolean;
+            /**
+             * Confirm Private Document Analysis
+             * @default false
+             */
+            confirm_private_document_analysis: boolean;
+            /** Metadata Text */
+            metadata_text?: string | null;
+            /** File */
+            file?: string | null;
+        };
         /** Body_import_admin_developer_feed_api_v1_admin_developers_import_post */
         Body_import_admin_developer_feed_api_v1_admin_developers_import_post: {
             /**
@@ -6183,6 +6258,125 @@ export interface components {
             metadata?: {
                 [key: string]: unknown;
             };
+        };
+        /** DocumentCheck */
+        DocumentCheck: {
+            /** Id */
+            id: string;
+            /** Draft Id */
+            draft_id: string;
+            /**
+             * Document Type
+             * @enum {string}
+             */
+            document_type: "kw_extract" | "floor_plan" | "community_statement" | "energy_certificate" | "developer_prospectus" | "building_permit" | "agreement_draft" | "other";
+            /**
+             * Upload Channel
+             * @enum {string}
+             */
+            upload_channel: "file" | "metadata_only";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "analyzed" | "needs_review" | "not_supported";
+            /** Filename */
+            filename?: string | null;
+            /** Content Type */
+            content_type?: string | null;
+            /**
+             * File Size Bytes
+             * @default 0
+             */
+            file_size_bytes: number;
+            /** Source Hash */
+            source_hash: string;
+            /** Signals */
+            signals?: components["schemas"]["DocumentSignal"][];
+            /** Unknowns */
+            unknowns?: components["schemas"]["DocumentUnknown"][];
+            /** Conflicts */
+            conflicts?: components["schemas"]["DocumentConflict"][];
+            /** Confidence */
+            confidence: number;
+            /**
+             * Retention Deadline
+             * Format: date-time
+             */
+            retention_deadline: string;
+            /**
+             * Raw Document Retained
+             * @default false
+             */
+            raw_document_retained: boolean;
+            /** Disclaimer */
+            disclaimer: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** DocumentConflict */
+        DocumentConflict: {
+            /** Field */
+            field: string;
+            /** Observed Values */
+            observed_values?: string[];
+            /**
+             * Severity
+             * @default warning
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "risk";
+            /** Manual Review Note */
+            manual_review_note: string;
+        };
+        /** DocumentSignal */
+        DocumentSignal: {
+            /** Checklist Code */
+            checklist_code: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "evidence_found" | "needs_review" | "conflict" | "missing" | "not_supported";
+            /** Confidence */
+            confidence: number;
+            /** Evidence */
+            evidence: string;
+            provenance: components["schemas"]["DocumentSignalProvenance"];
+            /**
+             * Severity
+             * @default info
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "risk";
+            /** Rationale */
+            rationale: string;
+        };
+        /** DocumentSignalProvenance */
+        DocumentSignalProvenance: {
+            /** Source Document */
+            source_document: string;
+            /** Page */
+            page?: number | null;
+            /** Field */
+            field: string;
+        };
+        /** DocumentUnknown */
+        DocumentUnknown: {
+            /** Checklist Code */
+            checklist_code: string;
+            /** Reason */
+            reason: string;
+            /** Recommended Next Action */
+            recommended_next_action: string;
         };
         /** DueDiligenceChecklistItem */
         DueDiligenceChecklistItem: {
@@ -9456,7 +9650,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "unpaid" | "paid" | "fulfilled" | "canceled";
+            status: "unpaid" | "paid" | "fulfilled" | "canceled" | "failed" | "refunded";
             /** Amount Grosz */
             amount_grosz: number;
             /**
@@ -9547,7 +9741,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "order_created" | "checkout_created" | "payment_marked_paid" | "payment_webhook_processed" | "payment_webhook_ignored" | "report_fulfilled" | "fulfillment_skipped" | "payment_provider_error";
+            event_type: "order_created" | "checkout_created" | "payment_marked_paid" | "payment_webhook_processed" | "payment_webhook_ignored" | "payment_webhook_rejected" | "payment_failed" | "payment_refunded" | "report_fulfilled" | "fulfillment_skipped" | "payment_provider_error";
             /** Actor Id */
             actor_id?: string | null;
             /** Message */
@@ -13577,6 +13771,108 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Alert"];
                 };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    analyze_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents_analyze_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "multipart/form-data": components["schemas"]["Body_analyze_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents_analyze_post"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_user_submitted_listing_documents_api_v1_user_submitted_listings_drafts__draft_id__documents_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                draft_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentCheck"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_user_submitted_listing_document_api_v1_user_submitted_listings_drafts__draft_id__documents__document_check_id__delete: {
+        parameters: {
+            query?: never;
+            header?: {
+                authorization?: string | null;
+            };
+            path: {
+                draft_id: string;
+                document_check_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Validation Error */
             422: {

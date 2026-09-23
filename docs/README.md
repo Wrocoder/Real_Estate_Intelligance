@@ -35,9 +35,10 @@ counts or readiness verdicts as evidence for the current working tree.
 - [Phase 13](WartoMetr_Phase_13_Implementation.md): negotiation assistant.
 - [Phase 14](WartoMetr_Phase_14_Implementation.md): saved-apartment monitoring.
 - [Phase 15](WartoMetr_Phase_15_Implementation.md): buyer due-diligence workspace.
+- [Phase 16](WartoMetr_Phase_16_Implementation.md): private document-analysis first slice.
 
 These are dated verification records, not independent roadmaps. Later phase
-reports supersede earlier descriptions of the affected workflows. Phase 16 and
+reports supersede earlier descriptions of the affected workflows. Phase 17 and
 later work is governed by the current roadmap, not implied complete here.
 
 ## Runtime And Operations
@@ -67,8 +68,9 @@ Render fallback is still described in deployment.md and implemented by
 These describe proposed work or validation procedures, not current feature
 availability, current pricing or approval to change the implementation order.
 
-- [Document-upload design](document_upload_due_diligence_plan.md): design only;
-  document_upload_due_diligence_plan.md does not prove an upload implementation.
+- [Document-upload design](document_upload_due_diligence_plan.md): guardrails
+  and later-slice design for document analysis beyond the implemented Phase 16
+  metadata/text-first screening.
 - [City expansion checklist](poland_city_expansion_checklist.md): retained
   data-source and rollout gates, not a current geographic coverage inventory.
 - [Validation strategy](product_validation_strategy.md): dated hypotheses.

@@ -884,6 +884,36 @@ class UserSubmittedListingDraft(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
+class UserSubmittedDocumentCheck(Base):
+    __tablename__ = "user_submitted_document_checks"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    owner_id: Mapped[str] = mapped_column(String(120), index=True)
+    draft_id: Mapped[str] = mapped_column(
+        ForeignKey("user_submitted_listing_drafts.id"),
+        index=True,
+    )
+    document_type: Mapped[str] = mapped_column(String(60), index=True)
+    upload_channel: Mapped[str] = mapped_column(String(40), index=True)
+    status: Mapped[str] = mapped_column(String(40), index=True)
+    filename: Mapped[str | None] = mapped_column(String(255))
+    content_type: Mapped[str | None] = mapped_column(String(120))
+    file_size_bytes: Mapped[int] = mapped_column(Integer, default=0)
+    source_hash: Mapped[str] = mapped_column(String(128), index=True)
+    signals_json: Mapped[list] = mapped_column(JSONB, default=list)
+    unknowns_json: Mapped[list] = mapped_column(JSONB, default=list)
+    conflicts_json: Mapped[list] = mapped_column(JSONB, default=list)
+    confidence: Mapped[int] = mapped_column(Integer)
+    retention_deadline: Mapped[datetime] = mapped_column(DateTime, index=True)
+    raw_document_retained: Mapped[bool] = mapped_column(Boolean, default=False)
+    disclaimer: Mapped[str] = mapped_column(Text)
+    deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    draft: Mapped[UserSubmittedListingDraft] = relationship()
+
+
 class PartnerReferralLead(Base):
     __tablename__ = "partner_referral_leads"
 

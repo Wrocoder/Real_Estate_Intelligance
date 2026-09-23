@@ -178,6 +178,18 @@ try {
       const result = await (await responsePromise).json();
       await page.locator(".buyer-decision").waitFor();
       assert.equal(analysisCalls, 1);
+      await page.locator("summary").filter({ hasText: "Sprawdzenie dokumentu" }).click();
+      await page.getByLabel("Typ dokumentu").selectOption("floor_plan");
+      await page.getByLabel("Notatka lub krótki tekst z dokumentu").fill("Rzut lokalu. Powierzchnia 55 m2 zgodnie z dokumentem.");
+      await page.getByLabel("Mam prawo użyć tego dokumentu do prywatnej analizy.").check();
+      const documentResponsePromise = page.waitForResponse((response) => response.url().includes("/documents/analyze"));
+      await page.getByRole("button", { name: "Sprawdź dokument", exact: true }).click();
+      const documentResponse = await documentResponsePromise;
+      assert.equal(documentResponse.status(), 201);
+      const documentPayload = await documentResponse.json();
+      assert.equal(documentPayload.document_type, "floor_plan");
+      await page.getByText("area_match", { exact: true }).waitFor();
+      await page.getByText("Oryginalny plik domyślnie nie jest przechowywany.", { exact: true }).waitFor();
       await healthy(page);
       await page.screenshot({ path: path.join(artifacts, "result-mobile.png"), fullPage: true });
       await page.goto(`${baseUrl}/check?draft=${encodeURIComponent(result.draft_id)}`, { waitUntil: "networkidle" });
