@@ -13,6 +13,8 @@ const COPY = {
     title: "Current geographic coverage",
     loading: "Checking supported locations...",
     unavailable: "Coverage details are temporarily unavailable. We will not rate a location until its market data is available.",
+    focusTitle: "Validation market: Wroclaw",
+    focusText: "Wroclaw is the primary controlled-beta market because district and transaction support is strongest there. Other supported locations remain available, with confidence following the available evidence.",
     cities: "Locations with data",
     browse: "Browse locations",
     checked: "Coverage checked",
@@ -25,6 +27,8 @@ const COPY = {
     title: "Aktualny zakres geograficzny",
     loading: "Sprawdzamy obsługiwane lokalizacje...",
     unavailable: "Szczegóły zasięgu są chwilowo niedostępne. Nie ocenimy lokalizacji, dopóki nie będzie dla niej danych rynkowych.",
+    focusTitle: "Rynek walidacyjny: Wrocław",
+    focusText: "Wrocław jest głównym rynkiem controlled beta, bo tu wsparcie osiedli i transakcji jest najmocniejsze. Inne obsługiwane lokalizacje pozostają dostępne, a pewność oceny zależy od dostępnych danych.",
     cities: "Miejscowości z danymi",
     browse: "Przeglądaj lokalizacje",
     checked: "Sprawdzono zakres",
@@ -37,6 +41,8 @@ const COPY = {
     title: "Текущее географическое покрытие",
     loading: "Проверяем поддерживаемые локации...",
     unavailable: "Данные о покрытии временно недоступны. Мы не будем уверенно оценивать локацию без рыночных данных.",
+    focusTitle: "Рынок валидации: Вроцлав",
+    focusText: "Вроцлав остаётся основным рынком controlled beta, потому что поддержка районов и сделок здесь самая сильная. Другие поддерживаемые локации доступны, а уверенность оценки зависит от имеющихся данных.",
     cities: "Населённые пункты с данными",
     browse: "Посмотреть локации",
     checked: "Покрытие проверено",
@@ -49,6 +55,8 @@ const COPY = {
     title: "Поточне географічне покриття",
     loading: "Перевіряємо підтримувані локації...",
     unavailable: "Дані про покриття тимчасово недоступні. Ми не будемо впевнено оцінювати локацію без ринкових даних.",
+    focusTitle: "Ринок валідації: Вроцлав",
+    focusText: "Вроцлав залишається основним ринком controlled beta, бо підтримка районів і угод тут найсильніша. Інші підтримувані локації доступні, а впевненість оцінки залежить від наявних даних.",
     cities: "Населені пункти з даними",
     browse: "Переглянути локації",
     checked: "Покриття перевірено",
@@ -64,6 +72,10 @@ export function CoverageNotice() {
   const copy = COPY[locale];
   const [coverage, setCoverage] = useState<CoverageMetadata | null>(null);
   const [failed, setFailed] = useState(false);
+  const hasWroclawCoverage = coverage?.supported_cities.some((city) => {
+    const normalized = city.toLocaleLowerCase("pl-PL");
+    return normalized === "wrocław" || normalized === "wroclaw";
+  }) ?? false;
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +101,12 @@ export function CoverageNotice() {
             <span><b>{copy.checked}</b> {dateValue(coverage.checked_at, locale)}</span>
             <span><b>{copy.source}</b> {coverage.source_name}</span>
           </div>
+          {hasWroclawCoverage ? (
+            <div className="coverage-focus">
+              <strong>{copy.focusTitle}</strong>
+              <span>{copy.focusText}</span>
+            </div>
+          ) : null}
           <Link className="coverage-notice-link" href="/areas">
             {copy.browse} <ArrowRight aria-hidden="true" size={15} />
           </Link>

@@ -8,6 +8,7 @@ price and must not become a ``ListingSnapshot``.
 from __future__ import annotations
 
 import json
+import http.client
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass
@@ -844,7 +845,12 @@ def _fetch(url: str, *, timeout_seconds: float, max_bytes: int) -> bytes:
             body = response.read(max_bytes + 1)
     except HTTPError as exc:
         raise RcnTransactionError(f"RCN service returned HTTP {exc.code}.") from exc
-    except (TimeoutError, URLError) as exc:
+    except (
+        TimeoutError,
+        URLError,
+        http.client.HTTPException,
+        OSError,
+    ) as exc:
         raise RcnTransactionError(f"RCN service could not be fetched: {exc}") from exc
     if len(body) > max_bytes:
         raise RcnTransactionError(f"RCN response exceeds the {max_bytes} byte safety limit.")

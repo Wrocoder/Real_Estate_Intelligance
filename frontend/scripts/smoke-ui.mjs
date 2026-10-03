@@ -147,7 +147,11 @@ const scoreLabels = read("lib/scoreLabels.ts");
 const formatters = read("lib/format.ts");
 const useLocalePreference = read("lib/useLocalePreference.ts");
 const sitemap = read("app/sitemap.ts");
+const ciWorkflow = read("../.github/workflows/ci.yml");
 const browserQuality = read("scripts/browser-quality.mjs");
+const checkEntryBrowser = read("scripts/check-entry.mjs");
+const adminFunnelBrowser = read("scripts/admin-funnel.mjs");
+const browserReleaseGate = read("scripts/browser-release-gate.mjs");
 
 const consumerSource = fs
   .readdirSync(path.join(root, "app"), { recursive: true })
@@ -162,6 +166,103 @@ const consumerComponentSource = fs
   .join("\n");
 
 expectIncludes("package scripts", JSON.stringify(packageJson.scripts), ['"build"', '"lint"', '"smoke"', '"typecheck"']);
+expectIncludes("browser CI uses deterministic memory stores", ciWorkflow, [
+  "DATA_REPOSITORY_BACKEND: memory",
+  "USER_STORE_BACKEND: memory",
+  "AUTH_STORE_BACKEND: memory",
+  "REPORT_STORE_BACKEND: memory",
+  "REPORT_ORDER_STORE_BACKEND: memory",
+  "USER_SUBMITTED_LISTING_STORE_BACKEND: memory",
+  "PRODUCT_ANALYTICS_STORE_BACKEND: memory",
+]);
+expectIncludes("browser CI separates public and internal route gates", ciWorkflow, [
+  'INTERNAL_ROUTES_ENABLED: "false"',
+  "Run browser quality gate",
+  "Run buyer outcome browser gate",
+  "Start internal frontend for admin browser gate",
+  "INTERNAL_ROUTES_ENABLED=true",
+  "NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001",
+  "BROWSER_BASE_URL: http://127.0.0.1:3001",
+  "Run admin funnel browser gate",
+  "/tmp/domarion-frontend-internal.log",
+]);
+expectIncludes("browser release gate", JSON.stringify(packageJson.scripts) + browserReleaseGate, [
+  '"browser:release-gate"',
+  "browser:check-entry:outcome",
+  "browser:admin-funnel",
+  "Browser release gate passed.",
+]);
+expectIncludes("check entry browser scripts", JSON.stringify(packageJson.scripts), [
+  '"browser:check-entry"',
+  '"browser:check-entry:outcome"',
+  '"browser:check-entry:sign-in"',
+]);
+expectIncludes("admin funnel browser script", JSON.stringify(packageJson.scripts) + adminFunnelBrowser, [
+  '"browser:admin-funnel"',
+  "mockAdminApi(page, seenRequests, unexpectedRequests)",
+  "Buyer decision funnel",
+  "Privacy boundary",
+  "document.documentElement.scrollWidth > window.innerWidth + 1",
+  'seenRequests.has("/api/v1/admin/product-funnel")',
+  '"buyer_outcome"',
+  '"payment_completed"',
+]);
+expectIncludes("compare decision browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "compare-decision"',
+  "runCompareDecision(browser, locale, { width: 390, height: 844 })",
+  'runCompareDecision(browser, "pl", { width: 1440, height: 900 })',
+  "runPartialCompareDecision(browser)",
+  "browser quality passed: compare-decision/partial",
+]);
+expectIncludes("provenance surfaces browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "provenance-surfaces"',
+  "runProvenanceSurfaces(browser)",
+  "assertLocalizedProvenanceDetails(provenanceScope, route)",
+  'page.locator(".area-evidence")',
+  "browser quality passed: provenance-surfaces",
+]);
+expectIncludes("buyer action plan browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "buyer-action-plan"',
+  "runBuyerDecisionLocalization(browser, locale)",
+  "browser quality passed: buyer-action-plan/${locale}/localized",
+  "runBuyerActionPlan(browser, viewport)",
+  "browser quality passed: buyer-action-plan/${viewport.width}",
+]);
+expectIncludes("available negotiation browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "negotiation-available"',
+  "runAvailableNegotiationScenario(browser, viewport)",
+  "browser quality passed: negotiation-available/${viewport.width}",
+  "Pewność scenariusza: 78/100",
+  "Kopiuj krótkie uzasadnienie",
+]);
+expectIncludes("listing decision browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "listing-decision"',
+  "runListingDecisionHierarchy(browser, viewport)",
+  "browser quality passed: listing-decision/${viewport.width}",
+  "decision, evidence, actions and secondary analysis are out of order",
+  "Przygotuj negocjację",
+]);
+expectIncludes("score explainability browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "score-explainability"',
+  "runScoreExplainability(browser, locale, { width: 390, height: 844 })",
+  'runScoreExplainability(browser, "pl", { width: 1440, height: 900 })',
+  "browser quality passed: score-explainability/pl/desktop",
+  "internal score code leaked into the UI",
+]);
+expectIncludes("rental evidence browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "rental-evidence"',
+  'listingId: "wr-001", status: "estimated"',
+  'listingId: "wys-001", status: "insufficient"',
+  "runRentalEvidence(browser, rentalCase.listingId, rentalCase.status, locale",
+  "browser quality passed: rental-estimated/pl/desktop",
+]);
+expectIncludes("check flow states browser scenario", browserQuality, [
+  'BROWSER_QUALITY_SCENARIO === "check-flow-states"',
+  "runCriticalFlow(browser)",
+  "browser quality passed: critical-flow",
+  "runFailureState(browser)",
+  "browser quality passed: failure-state",
+]);
 
 expectIncludes("responsive guardrails", globalStyles, [
   "overflow-x: hidden;",
@@ -444,6 +545,29 @@ expectIncludes("check decision summary", checkPage, [
   "reportResult.report.buyer_decision",
   "decisionSummaryFromScores(",
 ]);
+expectIncludes("check buyer outcome prompt", checkPage + globalStyles, [
+  "buyer-outcome-panel",
+  "outcomePrivacy",
+  "outcomeChooseImpact",
+  "buyerOutcomeSubmittedRef",
+  'trackProductEvent("buyer_outcome"',
+  "aria-pressed={buyerOutcome === outcome}",
+  "buyer-outcome-privacy",
+]);
+expectIncludes("check buyer outcome browser gate", checkEntryBrowser, [
+  "process.argv[2]",
+  "CHECK_ENTRY_SCENARIO",
+  'shouldRun("outcome-prompt")',
+  "buyer outcome prompt after analysis",
+  "We do not store the listing link, address, account or notes with this answer.",
+  "Choose whether the analysis influenced the decision to send the anonymous answer.",
+  'event.event_name === "buyer_outcome"',
+  'surface: "check"',
+  'outcome: "negotiated"',
+  'decision_impact: "yes"',
+  "source_url",
+  "address",
+]);
 expectIncludes("check buyer profile", checkPage, [
   "api.getMe()",
   "account.buyer_profile",
@@ -510,7 +634,7 @@ expectIncludes("compare page i18n", comparePage, [
   "money(metric.estimated_monthly_payment_pln, locale)",
   "setSelectedIds(initialIds)",
   ".slice(0, 5)",
-  "current.length >= 5",
+  "current.length >= MAX_COMPARE_ITEMS",
   "compare-table-desktop",
   "compare-mobile-cards",
 ]);
@@ -777,7 +901,10 @@ expectIncludes("live area detail", areaDetailPage + areaDetailContent, [
   "initialArea={area}",
   "<AreaDynamicEvidence",
   "useLocalePreference()",
-  "href={`/check?district=${encodeURIComponent(area.name)}`}",
+  "`/check?city=${encodeURIComponent(area.city)}&district=${encodeURIComponent(area.name)}`",
+  "area-check-cta",
+  "area-evidence-summary",
+  "copy.evidenceNote",
 ]);
 expectIncludes("area transaction price history", areaDynamicEvidence + areaPriceHistoryChart, [
   "api.getAreaPriceHistory(areaId)",
@@ -803,6 +930,7 @@ expectIncludes("decision-first area guidance", areaDynamicEvidence + areaDecisio
   "checkRental",
   "comparableAreas.map",
   "priceDifference(percent(difference, locale))",
+  "`/search?city=${encodeURIComponent(area.city)}&district=${encodeURIComponent(area.name)}`",
 ]);
 expectIncludes("area infrastructure unknown handling", areaDynamicEvidence, [
   "infrastructureResults",
@@ -1051,6 +1179,9 @@ expectIncludes("buyer action plan is localized and exportable", buyerActionMessa
 expectIncludes("buyer decision uses one structured action plan", buyerDecisionPanel, [
   "<BuyerActionPlanPanel",
   "plan={decision.action_plan}",
+  "<TrustBoundaryPreview",
+  "known={localized.known}",
+  "couldNotVerify={localized.couldNotVerify}",
 ]);
 expectNotIncludes("buyer decision excludes backend prose", buyerDecisionPanel, [
   "decision.verdict.top_reasons",
@@ -1191,6 +1322,7 @@ expectIncludes("versioned decision funnel events", productAnalyticsSurfaces, [
   '"pricing_viewed"',
   '"checkout_started"',
   '"purchase_completed"',
+  '"buyer_outcome"',
 ]);
 expectNotIncludes("product events do not collect direct identifiers", productAnalytics, [
   "source_url",
@@ -1199,6 +1331,18 @@ expectNotIncludes("product events do not collect direct identifiers", productAna
   "report_id",
   "email",
   "phone",
+]);
+expectIncludes("admin product funnel aggregate", adminPage, [
+  "api.getAdminProductFunnel(30)",
+  "buildFunnelMetrics(productFunnel)",
+  "Buyer decision funnel",
+  "Helpful buyer decisions",
+  "Repeat check signal",
+  "Privacy boundary: this panel uses aggregate stage counts only.",
+  "raw journeys, users, listings, reports, orders or URLs",
+  '"buyer_outcome"',
+  '"payment_completed"',
+  '"analysis_completed"',
 ]);
 expectIncludes("financial values use tabular numerals", globalStyles, ["font-variant-numeric: tabular-nums"]);
 expectIncludes("homepage single heading", explorerPage, ["<h2>{onboarding.title}</h2>"]);

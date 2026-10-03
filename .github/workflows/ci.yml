@@ -125,6 +125,13 @@ jobs:
       DEMO_MODE_ENABLED: "true"
       ENVIRONMENT: test
       DATA_REPOSITORY_BACKEND: memory
+      USER_STORE_BACKEND: memory
+      AUTH_STORE_BACKEND: memory
+      REPORT_STORE_BACKEND: memory
+      REPORT_ORDER_STORE_BACKEND: memory
+      USER_SUBMITTED_LISTING_STORE_BACKEND: memory
+      PRODUCT_ANALYTICS_STORE_BACKEND: memory
+      INTERNAL_ROUTES_ENABLED: "false"
       NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
       NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       NEXT_TELEMETRY_DISABLED: "1"
@@ -189,6 +196,32 @@ jobs:
         working-directory: frontend
         run: npm run browser:quality
 
+      - name: Run buyer outcome browser gate
+        working-directory: frontend
+        run: npm run browser:check-entry:outcome
+
+      - name: Start internal frontend for admin browser gate
+        working-directory: frontend
+        run: |
+          INTERNAL_ROUTES_ENABLED=true \
+          NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3001 \
+          nohup npm run start -- -p 3001 > /tmp/domarion-frontend-internal.log 2>&1 &
+
+      - name: Wait for internal frontend
+        run: |
+          for attempt in {1..60}; do
+            curl --fail --silent http://127.0.0.1:3001/admin && exit 0
+            sleep 1
+          done
+          cat /tmp/domarion-frontend-internal.log
+          exit 1
+
+      - name: Run admin funnel browser gate
+        working-directory: frontend
+        env:
+          BROWSER_BASE_URL: http://127.0.0.1:3001
+        run: npm run browser:admin-funnel
+
       - name: Upload browser artifacts
         if: failure()
         uses: actions/upload-artifact@v7
@@ -196,8 +229,11 @@ jobs:
           name: browser-quality-artifacts
           path: |
             frontend/artifacts/browser-quality
+            frontend/artifacts/check-entry
+            frontend/artifacts/admin-funnel
             /tmp/domarion-backend.log
             /tmp/domarion-frontend.log
+            /tmp/domarion-frontend-internal.log
 
   docker-build:
     name: Docker Build

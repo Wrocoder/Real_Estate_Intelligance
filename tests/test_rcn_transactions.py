@@ -1,4 +1,5 @@
 import json
+import http.client
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
@@ -211,6 +212,24 @@ def test_parse_gml_epsg_2180_converts_axis_order_to_easting_northing():
     assert features[0]["_geometry_x"] == "742142.023"
     assert features[0]["_geometry_y"] == "372911.381"
     assert features[0]["_geometry_crs"] == "urn:ogc:def:crs:EPSG::2180"
+
+
+def test_fetch_wraps_remote_disconnect_as_rcn_error(monkeypatch):
+    def disconnected(*args, **kwargs):  # noqa: ANN002, ANN003
+        raise http.client.RemoteDisconnected("closed")
+
+    monkeypatch.setattr(rcn_transactions, "urlopen", disconnected)
+
+    try:
+        rcn_transactions._fetch(
+            "https://mapy.geoportal.gov.pl/wss/service/rcn",
+            timeout_seconds=1,
+            max_bytes=1024,
+        )
+    except rcn_transactions.RcnTransactionError as exc:
+        assert "RCN service could not be fetched" in str(exc)
+    else:
+        raise AssertionError("remote disconnect escaped the RCN error boundary")
 
 
 def test_normalize_rcn_feature_rejects_a_row_outside_requested_region():

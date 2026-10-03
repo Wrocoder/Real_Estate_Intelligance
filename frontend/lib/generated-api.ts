@@ -9007,7 +9007,7 @@ export interface components {
              * Event Name
              * @enum {string}
              */
-            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            event_name: "landing_viewed" | "check_started" | "listing_parsed" | "check_completed" | "analysis_completed" | "report_opened" | "verdict_viewed" | "result_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "payment_started" | "purchase_completed" | "payment_completed" | "buyer_outcome";
             /**
              * Schema Version
              * @default 1.0
@@ -9021,7 +9021,7 @@ export interface components {
              * Event Name
              * @enum {string}
              */
-            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            event_name: "landing_viewed" | "check_started" | "listing_parsed" | "check_completed" | "analysis_completed" | "report_opened" | "verdict_viewed" | "result_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "payment_started" | "purchase_completed" | "payment_completed" | "buyer_outcome";
             /**
              * Journey Id
              * Format: uuid
@@ -9049,7 +9049,7 @@ export interface components {
              * Event Name
              * @enum {string}
              */
-            event_name: "check_started" | "check_completed" | "report_opened" | "verdict_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "purchase_completed";
+            event_name: "landing_viewed" | "check_started" | "listing_parsed" | "check_completed" | "analysis_completed" | "report_opened" | "verdict_viewed" | "result_viewed" | "comparables_opened" | "risk_opened" | "negotiation_opened" | "negotiation_message_generated" | "property_saved" | "saved" | "comparison_started" | "comparison_completed" | "pricing_viewed" | "checkout_started" | "payment_started" | "purchase_completed" | "payment_completed" | "buyer_outcome";
             /** Event Count */
             event_count: number;
             /** Unique Journeys */

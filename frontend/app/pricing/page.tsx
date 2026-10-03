@@ -340,6 +340,16 @@ export default function PricingPage() {
             },
             order.id,
           );
+          trackProductEventOnce(
+            "payment_completed",
+            locale,
+            {
+              surface: "checkout",
+              report_type: order.audience,
+              payment_provider: "unknown",
+            },
+            order.id,
+          );
         }
       }
       setStatus(copy.statuses.ready);
@@ -388,6 +398,11 @@ export default function PricingPage() {
         billing_details: billingPayload(billingForm),
       });
       trackProductEvent("checkout_started", locale, {
+        surface: "pricing",
+        report_type: product.audience,
+        payment_provider: productPaymentProvider(checkout.provider),
+      });
+      trackProductEvent("payment_started", locale, {
         surface: "pricing",
         report_type: product.audience,
         payment_provider: productPaymentProvider(checkout.provider),

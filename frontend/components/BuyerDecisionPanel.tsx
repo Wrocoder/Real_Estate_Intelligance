@@ -541,6 +541,14 @@ export function BuyerDecisionPanel({ decision, confidenceScore, locale, onNegoti
       </button>
       </div>
 
+      <TrustBoundaryPreview
+        copy={copy}
+        known={localized.known}
+        estimated={localized.estimated}
+        couldNotVerify={localized.couldNotVerify}
+        completenessScore={knowledge.check_completeness_score}
+      />
+
       <BeforeViewingAssistantPanel
         assistant={decision.pre_viewing}
         locale={locale}
@@ -802,6 +810,70 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dt>{label}</dt>
       <dd>{value}</dd>
     </>
+  );
+}
+
+function TrustBoundaryPreview({
+  copy,
+  known,
+  estimated,
+  couldNotVerify,
+  completenessScore,
+}: {
+  copy: BuyerDecisionCopy;
+  known: string[];
+  estimated: string[];
+  couldNotVerify: string[];
+  completenessScore: number;
+}) {
+  return (
+    <section className="buyer-trust-boundary" aria-labelledby="buyer-trust-boundary-title">
+      <div className="buyer-trust-boundary-heading">
+        <h3 id="buyer-trust-boundary-title">{copy.sections.knowledge}</h3>
+        <span>{copy.metrics.completeness}: {completenessScore}/100</span>
+      </div>
+      <div className="buyer-trust-boundary-grid">
+        <TrustBoundaryColumn
+          emptyLabel={copy.labels.empty}
+          items={known}
+          title={copy.labels.known}
+        />
+        <TrustBoundaryColumn
+          emptyLabel={copy.labels.empty}
+          items={estimated}
+          title={copy.labels.estimated}
+        />
+        <TrustBoundaryColumn
+          emptyLabel={copy.labels.empty}
+          items={couldNotVerify}
+          title={copy.labels.couldNotVerify}
+        />
+      </div>
+    </section>
+  );
+}
+
+function TrustBoundaryColumn({
+  emptyLabel,
+  items,
+  title,
+}: {
+  emptyLabel: string;
+  items: string[];
+  title: string;
+}) {
+  const visibleItems = items.slice(0, 2);
+  return (
+    <div>
+      <strong>{title}</strong>
+      {visibleItems.length ? (
+        <ul>
+          {visibleItems.map((item) => <li key={item}>{item}</li>)}
+        </ul>
+      ) : (
+        <p>{emptyLabel}</p>
+      )}
+    </div>
   );
 }
 

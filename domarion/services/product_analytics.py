@@ -9,45 +9,65 @@ from domarion.schemas import (
 )
 
 PRODUCT_EVENT_ORDER: tuple[ProductEventName, ...] = (
+    "landing_viewed",
     "check_started",
+    "listing_parsed",
     "check_completed",
+    "analysis_completed",
     "verdict_viewed",
+    "result_viewed",
     "comparables_opened",
     "risk_opened",
     "negotiation_opened",
     "negotiation_message_generated",
     "property_saved",
+    "saved",
     "comparison_started",
     "comparison_completed",
     "report_opened",
     "pricing_viewed",
     "checkout_started",
+    "payment_started",
     "purchase_completed",
+    "payment_completed",
+    "buyer_outcome",
 )
 
 EVENT_PROPERTY_KEYS: dict[ProductEventName, frozenset[str]] = {
+    "landing_viewed": frozenset({"surface"}),
     "check_started": frozenset({"surface", "intent", "market_type", "entry_mode"}),
+    "listing_parsed": frozenset({"surface", "entry_mode", "result_state"}),
     "check_completed": frozenset(
+        {"surface", "intent", "market_type", "result_state", "confidence_level"}
+    ),
+    "analysis_completed": frozenset(
         {"surface", "intent", "market_type", "result_state", "confidence_level"}
     ),
     "report_opened": frozenset({"surface", "report_type"}),
     "verdict_viewed": frozenset({"surface", "verdict", "confidence_level"}),
+    "result_viewed": frozenset({"surface", "verdict", "confidence_level"}),
     "comparables_opened": frozenset({"surface", "evidence_state"}),
     "risk_opened": frozenset({"surface", "evidence_state"}),
     "negotiation_opened": frozenset({"surface", "evidence_state"}),
     "negotiation_message_generated": frozenset({"surface", "result_state"}),
     "property_saved": frozenset({"surface"}),
+    "saved": frozenset({"surface"}),
     "comparison_started": frozenset({"surface", "intent", "comparison_size"}),
     "comparison_completed": frozenset(
         {"surface", "intent", "comparison_size", "result_state"}
     ),
     "pricing_viewed": frozenset({"surface"}),
     "checkout_started": frozenset({"surface", "report_type", "payment_provider"}),
+    "payment_started": frozenset({"surface", "report_type", "payment_provider"}),
     "purchase_completed": frozenset({"surface", "report_type", "payment_provider"}),
+    "payment_completed": frozenset({"surface", "report_type", "payment_provider"}),
+    "buyer_outcome": frozenset({"surface", "outcome", "decision_impact"}),
 }
 
 PROPERTY_VALUES: dict[str, frozenset[str]] = {
-    "surface": frozenset({"check", "listing", "reports", "compare", "pricing", "checkout"}),
+    "surface": frozenset(
+        {"home", "check", "listing", "reports", "compare", "pricing", "checkout"}
+    ),
     "intent": frozenset({"living", "investment", "unsure"}),
     "market_type": frozenset({"primary", "secondary"}),
     "entry_mode": frozenset({"url", "manual", "restored"}),
@@ -57,6 +77,8 @@ PROPERTY_VALUES: dict[str, frozenset[str]] = {
     "evidence_state": frozenset({"available", "partial", "insufficient", "unknown"}),
     "report_type": frozenset({"buyer", "investor", "realtor"}),
     "payment_provider": frozenset({"stripe", "payu", "mock", "unknown"}),
+    "outcome": frozenset({"bought", "negotiated", "rejected", "still_checking"}),
+    "decision_impact": frozenset({"yes", "no", "unsure"}),
 }
 
 

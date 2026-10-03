@@ -54,6 +54,7 @@ import {
   type PlannedInvestment,
   type PlannedInvestmentImportResponse,
   type PlannedInvestmentPayload,
+  type ProductFunnelSummary,
   type PropertyDeduplicationMatch,
   type PropertyDeduplicationReviewStatus,
   type RawListingSummary,
@@ -421,6 +422,7 @@ export default function AdminPage() {
     useState<ScoringBacktestResult | null>(null);
   const [scoringBacktestReport, setScoringBacktestReport] =
     useState<ScoringBacktestReport | null>(null);
+  const [productFunnel, setProductFunnel] = useState<ProductFunnelSummary | null>(null);
   const [logs, setLogs] = useState<DataQualityLog[]>([]);
   const [rawListings, setRawListings] = useState<RawListingSummary[]>([]);
   const [dedupMatches, setDedupMatches] = useState<PropertyDeduplicationMatch[]>([]);
@@ -509,6 +511,7 @@ export default function AdminPage() {
         developerData,
         backtestData,
         backtestReportData,
+        funnelData,
         logData,
         rawData,
         dedupData,
@@ -526,6 +529,7 @@ export default function AdminPage() {
           api.listDevelopers({ limit: 100 }),
           api.getAdminScoringBacktest({ city: "Wrocław", limit: 5 }),
           api.getAdminScoringBacktestReport({ city: "Wrocław", limit: 10 }),
+          api.getAdminProductFunnel(30),
           api.listAdminDataQualityLogs({ job_id: jobId || undefined, limit: 50 }),
           api.listAdminRawListings({ limit: 50 }),
           api.listAdminDeduplicationMatches({
@@ -546,6 +550,7 @@ export default function AdminPage() {
       setDeveloperReputations(developerData.items);
       setScoringBacktest(backtestData);
       setScoringBacktestReport(backtestReportData);
+      setProductFunnel(funnelData);
       setLogs(logData);
       setRawListings(rawData);
       setDedupMatches(dedupData);
@@ -613,6 +618,7 @@ export default function AdminPage() {
   const openDeletionRequestCount = dataDeletionRequests.filter(
     (request) => request.status === "open",
   ).length;
+  const funnelMetrics = useMemo(() => buildFunnelMetrics(productFunnel), [productFunnel]);
 
   async function createManualJob() {
     const created = await api.createAdminIngestionJob({
@@ -1250,6 +1256,85 @@ export default function AdminPage() {
         <LoadingBlock />
       ) : (
         <div className="admin-grid" style={{ marginTop: 16 }}>
+          <section className="panel admin-wide">
+            <div className="panel-header">
+              <h2>Buyer decision funnel</h2>
+              <span className="muted">
+                Aggregate only · last {productFunnel?.window_days ?? 30} days
+              </span>
+            </div>
+            <div className="panel-body compact-panel-body">
+              {productFunnel ? (
+                <>
+                  <div className="metric-grid compact">
+                    <div className="metric">
+                      <span>Started checks</span>
+                      <strong>{numberValue(funnelMetrics.startedChecks)}</strong>
+                      <small>{numberValue(productFunnel.total_events)} total events</small>
+                    </div>
+                    <div className="metric">
+                      <span>Completed checks</span>
+                      <strong>{numberValue(funnelMetrics.completedChecks)}</strong>
+                      <small>
+                        {rateFromCounts(funnelMetrics.completedChecks, funnelMetrics.startedChecks)}
+                      </small>
+                    </div>
+                    <div className="metric">
+                      <span>Helpful buyer decisions</span>
+                      <strong>{numberValue(funnelMetrics.helpfulBuyerDecisions)}</strong>
+                      <small>
+                        {rateFromCounts(
+                          funnelMetrics.helpfulBuyerDecisions,
+                          funnelMetrics.completedChecks,
+                        )}
+                      </small>
+                    </div>
+                    <div className="metric">
+                      <span>Paid checks</span>
+                      <strong>{numberValue(funnelMetrics.paidChecks)}</strong>
+                      <small>{rateFromCounts(funnelMetrics.paidChecks, funnelMetrics.startedChecks)}</small>
+                    </div>
+                    <div className="metric">
+                      <span>Repeat check signal</span>
+                      <strong>{numberValue(funnelMetrics.repeatCheckSignal)}</strong>
+                      <small>extra check_started events</small>
+                    </div>
+                  </div>
+
+                  <p className="muted">
+                    Privacy boundary: this panel uses aggregate stage counts only. It does
+                    not show raw journeys, users, listings, reports, orders or URLs.
+                  </p>
+
+                  <div className="table-scroll">
+                    <table className="table">
+                      <thead>
+                        <tr>
+                          <th>Stage</th>
+                          <th>Unique journeys</th>
+                          <th>Events</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {productFunnel.stages.map((stage) => (
+                          <tr key={stage.event_name}>
+                            <td>
+                              <strong>{stage.event_name}</strong>
+                            </td>
+                            <td>{numberValue(stage.unique_journeys)}</td>
+                            <td>{numberValue(stage.event_count)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <EmptyBlock label="No aggregate product funnel events in this window." />
+              )}
+            </div>
+          </section>
+
           <section className="panel">
             <div className="panel-header">
               <h2>Ingestion Jobs</h2>
@@ -4823,6 +4908,50 @@ function dedupPayloadText(payload: Record<string, unknown>, key: string) {
   const value = payload[key];
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
+}
+
+type FunnelStageName = ProductFunnelSummary["stages"][number]["event_name"];
+
+function buildFunnelMetrics(summary: ProductFunnelSummary | null) {
+  const startedChecks = funnelStageUnique(summary, "check_started");
+  const completedChecks = Math.max(
+    funnelStageUnique(summary, "analysis_completed"),
+    funnelStageUnique(summary, "check_completed"),
+  );
+  const helpfulBuyerDecisions = funnelStageUnique(summary, "buyer_outcome");
+  const paidChecks = Math.max(
+    funnelStageUnique(summary, "payment_completed"),
+    funnelStageUnique(summary, "purchase_completed"),
+  );
+  const repeatCheckSignal = Math.max(
+    0,
+    funnelStageCount(summary, "check_started") - startedChecks,
+  );
+
+  return {
+    startedChecks,
+    completedChecks,
+    helpfulBuyerDecisions,
+    paidChecks,
+    repeatCheckSignal,
+  };
+}
+
+function funnelStageUnique(summary: ProductFunnelSummary | null, eventName: FunnelStageName) {
+  return funnelStage(summary, eventName)?.unique_journeys ?? 0;
+}
+
+function funnelStageCount(summary: ProductFunnelSummary | null, eventName: FunnelStageName) {
+  return funnelStage(summary, eventName)?.event_count ?? 0;
+}
+
+function funnelStage(summary: ProductFunnelSummary | null, eventName: FunnelStageName) {
+  return summary?.stages.find((stage) => stage.event_name === eventName) ?? null;
+}
+
+function rateFromCounts(numerator: number, denominator: number) {
+  if (denominator <= 0) return "-";
+  return `${((numerator / denominator) * 100).toFixed(1)}%`;
 }
 
 function formatDate(value: string) {

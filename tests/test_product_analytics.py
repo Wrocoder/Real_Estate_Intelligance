@@ -24,20 +24,28 @@ def setup_function() -> None:
 
 def test_product_event_contract_has_all_version_one_funnel_names() -> None:
     assert set(PRODUCT_EVENT_ORDER) == {
+        "landing_viewed",
         "check_started",
+        "listing_parsed",
         "check_completed",
+        "analysis_completed",
         "report_opened",
         "verdict_viewed",
+        "result_viewed",
         "comparables_opened",
         "risk_opened",
         "negotiation_opened",
         "negotiation_message_generated",
         "property_saved",
+        "saved",
         "comparison_started",
         "comparison_completed",
         "pricing_viewed",
         "checkout_started",
+        "payment_started",
         "purchase_completed",
+        "payment_completed",
+        "buyer_outcome",
     }
     assert set(EVENT_PROPERTY_KEYS) == set(PRODUCT_EVENT_ORDER)
 
@@ -75,12 +83,56 @@ def test_product_events_accept_allowlisted_non_pii_properties() -> None:
     }
 
 
-def test_product_events_reject_listing_url_address_and_free_text() -> None:
-    for forbidden_property in ("source_url", "address", "email", "message"):
+def test_product_events_accept_privacy_bounded_outcome_tracking() -> None:
+    response = client.post(
+        "/api/v1/product-events",
+        json=_event(
+            "buyer_outcome",
+            {
+                "surface": "check",
+                "outcome": "negotiated",
+                "decision_impact": "yes",
+            },
+        ),
+    )
+
+    assert response.status_code == 202
+    assert response.json()["event_name"] == "buyer_outcome"
+
+
+def test_product_events_accept_phase_17_core_funnel_events() -> None:
+    for event_name, properties in (
+        ("landing_viewed", {"surface": "home"}),
+        (
+            "listing_parsed",
+            {"surface": "check", "entry_mode": "url", "result_state": "partial"},
+        ),
+        (
+            "analysis_completed",
+            {"surface": "check", "intent": "living", "result_state": "success"},
+        ),
+        (
+            "result_viewed",
+            {"surface": "check", "verdict": "negotiate", "confidence_level": "medium"},
+        ),
+        (
+            "payment_started",
+            {"surface": "pricing", "report_type": "buyer", "payment_provider": "stripe"},
+        ),
+        (
+            "payment_completed",
+            {"surface": "checkout", "report_type": "buyer", "payment_provider": "unknown"},
+        ),
+    ):
+        assert client.post("/api/v1/product-events", json=_event(event_name, properties)).status_code == 202
+
+
+def test_product_events_reject_listing_url_address_identifier_and_free_text() -> None:
+    for forbidden_property in ("source_url", "address", "listing_id", "email", "message"):
         response = client.post(
             "/api/v1/product-events",
             json=_event(
-                "check_started",
+                "buyer_outcome",
                 {"surface": "check", forbidden_property: "sensitive value"},
             ),
         )
@@ -117,7 +169,10 @@ def test_admin_product_funnel_returns_ordered_aggregate_without_raw_events() -> 
     assert response.status_code == 200
     assert payload["total_events"] == 2
     assert payload["unique_journeys"] == 1
-    assert payload["stages"][0] == {
+    check_started_stage = next(
+        stage for stage in payload["stages"] if stage["event_name"] == "check_started"
+    )
+    assert check_started_stage == {
         "event_name": "check_started",
         "event_count": 1,
         "unique_journeys": 1,

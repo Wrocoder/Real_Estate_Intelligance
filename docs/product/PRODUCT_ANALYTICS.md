@@ -31,24 +31,42 @@ most 180 days. The application removes expired rows while recording new events.
 
 | Event | Meaning | Allowed properties |
 | --- | --- | --- |
+| `landing_viewed` | Buyer reaches the check-first landing experience | `surface` |
 | `check_started` | Buyer starts a URL or manual apartment check | `surface`, `intent`, `market_type`, `entry_mode` |
+| `listing_parsed` | URL import/extraction finishes with a categorized result | `surface`, `entry_mode`, `result_state` |
 | `check_completed` | Check returns a usable or partial result | `surface`, `intent`, `market_type`, `result_state`, `confidence_level` |
+| `analysis_completed` | Canonical Phase 17 alias for a completed property analysis | `surface`, `intent`, `market_type`, `result_state`, `confidence_level` |
 | `verdict_viewed` | A structured buyer verdict is shown | `surface`, `verdict`, `confidence_level` |
+| `result_viewed` | Canonical Phase 17 alias for the buyer result being shown | `surface`, `verdict`, `confidence_level` |
 | `comparables_opened` | Comparable evidence is shown or explicitly opened | `surface`, `evidence_state` |
 | `risk_opened` | The main risk explanation is shown | `surface`, `evidence_state` |
 | `negotiation_opened` | Buyer opens negotiation guidance | `surface`, `evidence_state` |
 | `negotiation_message_generated` | Grounded negotiation answer is generated | `surface`, `result_state` |
 | `property_saved` | Apartment is successfully saved | `surface` |
+| `saved` | Canonical Phase 17 alias for a successful save/track action | `surface` |
 | `comparison_started` | Comparison request starts with two to four apartments | `surface`, `intent`, `comparison_size` |
 | `comparison_completed` | Comparison returns a complete or partial recommendation | `surface`, `intent`, `comparison_size`, `result_state` |
 | `report_opened` | Buyer opens HTML or PDF report content | `surface`, `report_type` |
 | `pricing_viewed` | Pricing route is shown | `surface` |
 | `checkout_started` | A checkout session is created | `surface`, `report_type`, `payment_provider` |
+| `payment_started` | Canonical Phase 17 alias for checkout/payment start | `surface`, `report_type`, `payment_provider` |
 | `purchase_completed` | A fulfilled order is observed after checkout | `surface`, `report_type`, `payment_provider` |
+| `payment_completed` | Canonical Phase 17 alias for fulfilled payment/order observation | `surface`, `report_type`, `payment_provider` |
+| `buyer_outcome` | Optional anonymous answer about what the buyer did after analysis | `surface`, `outcome`, `decision_impact` |
 
 Allowed categorical values live in `domarion/services/product_analytics.py` and
 are the source of truth. Frontend failures to send analytics are intentionally
 ignored so measurement can never block the buyer workflow.
+
+`buyer_outcome` is deliberately categorical. It records only whether the buyer
+bought, negotiated, rejected the apartment or is still checking, plus whether
+the buyer says WartoMetr influenced the decision. It does not store notes,
+listing ids, URLs, addresses, order ids or user ids.
+
+The buyer-facing prompt sends at most one `buyer_outcome` event for the currently
+rendered result. Changing the apartment check resets the local prompt state.
+The UI repeats the privacy boundary before submission so users understand that
+the answer is optional and anonymous.
 
 ## Operations
 
@@ -59,3 +77,10 @@ deterministic memory store.
 The admin aggregate supports windows from 1 to 90 days. Use unique-journey
 counts to compare major stages; event counts also reveal repeated use. Do not
 join the table to user, listing, report or billing records.
+
+The internal admin dashboard shows a 30-day buyer decision funnel from this
+aggregate endpoint. The north-star panel derives started checks, completed
+checks, optional buyer-outcome responses and paid checks from stage-level
+unique-journey counts. Its repeat check signal is only the aggregate difference
+between `check_started` event count and unique journeys; it must not be treated
+as a user-level repeat-buyer metric.

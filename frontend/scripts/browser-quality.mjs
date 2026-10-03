@@ -139,10 +139,10 @@ async function runBuyerDecisionLocalization(browser, locale) {
     },
   }[locale];
   const actionState = {
-    pl: { title: "Plan działania przed zakupem", phase: "Przed złożeniem oferty" },
-    en: { title: "Action plan before purchase", phase: "Before making an offer" },
-    ru: { title: "План действий перед покупкой", phase: "До предложения" },
-    uk: { title: "План дій перед купівлею", phase: "До пропозиції" },
+    pl: { title: "Kontrola przed zakupem", phase: "Przed złożeniem oferty" },
+    en: { title: "Due diligence workspace", phase: "Before making an offer" },
+    ru: { title: "Проверки перед покупкой", phase: "До предложения" },
+    uk: { title: "Перевірки перед купівлею", phase: "До пропозиції" },
   }[locale];
   try {
     await page.goto(`${baseUrl}/listings/wr-001`, {
@@ -352,7 +352,7 @@ async function runFailureState(browser) {
   const page = await context.newPage();
   const observation = await observe(page, "failure-state");
   try {
-    await page.goto(`${baseUrl}/check`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/check`, { waitUntil: "networkidle" });
     await page.waitForTimeout(500);
     const urlInput = page.getByLabel("Link Otodom lub OLX");
     await urlInput.fill("https://www.otodom.pl/pl/oferta/not-a-real-listing-ID404");
@@ -387,22 +387,27 @@ async function runCriticalFlow(browser) {
   const page = await context.newPage();
   const observation = await observe(page, "critical-flow");
   try {
-    await page.goto(`${baseUrl}/check`, { waitUntil: "domcontentloaded" });
-    await page.getByText("Wpisz dane mieszkania ręcznie", { exact: true }).click();
-    await page.getByLabel("Adres").fill("ul. Testowa 1");
-    await page.getByLabel("Miasto").fill("Wrocław");
-    await page.getByLabel("Dzielnica", { exact: true }).fill("Fabryczna");
-    await page.getByLabel("Rynek", { exact: true }).selectOption("secondary");
-    await page.getByLabel("Cena").fill("650000");
-    await page.getByLabel("Powierzchnia m2").fill("55");
-    await page.getByLabel("Pokoje").fill("3");
+    await page.goto(`${baseUrl}/check`, { waitUntil: "networkidle" });
+    const manualPanel = page.locator(".manual-entry-panel");
+    await manualPanel.waitFor({ state: "visible", timeout: 10000 });
+    if ((await manualPanel.getAttribute("open")) === null) {
+      await page.locator(".manual-entry-panel > summary").click();
+    }
+    const manualForm = manualPanel.locator("form");
+    await manualForm.locator('input[aria-label="Adres"]').fill("ul. Testowa 1");
+    await manualForm.locator('input[aria-label="Miasto"]').fill("Wrocław");
+    await manualForm.locator('input[aria-label="Dzielnica"]').fill("Fabryczna");
+    await manualForm.locator('select[aria-label="Rynek"]').selectOption("secondary");
+    await manualForm.locator('input[aria-label="Cena"]').fill("650000");
+    await manualForm.locator('input[aria-label="Powierzchnia m2"]').fill("55");
+    await manualForm.locator('input[aria-label="Pokoje"]').fill("3");
+    if ((await manualForm.locator('input[aria-label="Adres"]').inputValue()) !== "ul. Testowa 1") {
+      throw new Error("manual address field was not filled");
+    }
     await page.getByRole("checkbox").check();
-    const submitButtons = page.getByRole("button", {
-      name: "Sprawdź mieszkanie",
-    });
-    const submitButtonCount = await submitButtons.count();
-    if (submitButtonCount < 2) throw new Error("manual check submit button is missing");
-    await submitButtons.nth(submitButtonCount - 1).click();
+    const submitButton = manualForm.locator('button[type="submit"]');
+    await submitButton.waitFor({ state: "visible", timeout: 5000 });
+    await submitButton.click();
     await page.locator(".buyer-decision").waitFor({ state: "visible", timeout: 15000 });
     await page.locator(".decision-support-panel > summary").click();
     const dataGap = page.locator(".score-data-gap");
@@ -424,13 +429,23 @@ async function runCriticalFlow(browser) {
       path: path.join(artifactDir, "critical-flow.trace.zip"),
     });
   } catch (error) {
-    await page.screenshot({
-      path: path.join(artifactDir, "critical-flow.failure.png"),
-      fullPage: true,
-    });
-    await context.tracing.stop({
-      path: path.join(artifactDir, "critical-flow.failure.trace.zip"),
-    });
+    console.error(`critical-flow failed: ${error.stack ?? error.message ?? String(error)}`);
+    try {
+      await page.screenshot({
+        path: path.join(artifactDir, "critical-flow.failure.png"),
+        fullPage: true,
+        timeout: 5000,
+      });
+    } catch (screenshotError) {
+      console.error(`critical-flow failure screenshot skipped: ${screenshotError.message}`);
+    }
+    try {
+      await context.tracing.stop({
+        path: path.join(artifactDir, "critical-flow.failure.trace.zip"),
+      });
+    } catch (traceError) {
+      console.error(`critical-flow failure trace skipped: ${traceError.message}`);
+    }
     throw error;
   } finally {
     await context.close();
@@ -512,8 +527,11 @@ async function runProvenanceSurfaces(browser) {
       await page.goto(`${baseUrl}${route}`, {
         waitUntil: "domcontentloaded",
       });
+      let provenanceScope = page.locator("main");
       if (route.startsWith("/listings/")) {
+        const evidenceDisclosure = page.locator(".listing-evidence-disclosure");
         await page.locator(".listing-evidence-disclosure > summary").click();
+        provenanceScope = evidenceDisclosure.locator(".listing-section-disclosure-body");
         const comparableSection = page.locator(".comparable-evidence-section");
         await comparableSection.waitFor({
           state: "visible",
@@ -531,26 +549,32 @@ async function runProvenanceSurfaces(browser) {
         ) {
           throw new Error(`${route}: comparable factor code leaked into the UI`);
         }
+      } else {
+        provenanceScope = page.locator(".area-evidence");
       }
-      await page.locator("details.provenance-details").first().waitFor({ state: "visible", timeout: 10000 });
-      const details = page.locator("details.provenance-details").first();
-      await details.locator("summary").click();
-      await details.locator(".provenance-details-body").waitFor({ state: "visible" });
-      const detailText = await details.innerText();
-      if (!/Źródło|Typ źródła|Sposób przygotowania/.test(detailText)) {
-        throw new Error(`${route}: localized provenance fields are missing`);
-      }
-      if (
-        /listing_reference|market_snapshot|area_statistics|derived_model|deterministic_fixture|open_data_or_admin_verified/.test(
-          detailText,
-        )
-      ) {
-        throw new Error(`${route}: internal provenance code leaked into the UI`);
-      }
+      await assertLocalizedProvenanceDetails(provenanceScope, route);
       await assertHealthy(page, observation);
     }
   } finally {
     await context.close();
+  }
+}
+
+async function assertLocalizedProvenanceDetails(scope, route) {
+  const details = scope.locator("details.provenance-details").first();
+  await details.waitFor({ state: "visible", timeout: 10000 });
+  await details.locator("summary").first().click();
+  await details.locator(".provenance-details-body").first().waitFor({ state: "visible" });
+  const detailText = await details.innerText();
+  if (!/Źródło|Typ źródła|Sposób przygotowania/.test(detailText)) {
+    throw new Error(`${route}: localized provenance fields are missing`);
+  }
+  if (
+    /listing_reference|market_snapshot|area_statistics|derived_model|deterministic_fixture|open_data_or_admin_verified/.test(
+      detailText,
+    )
+  ) {
+    throw new Error(`${route}: internal provenance code leaked into the UI`);
   }
 }
 
@@ -965,7 +989,7 @@ async function runMobileComposition(browser, viewport) {
   const label = `mobile-composition/${viewport.width}`;
   const observation = await observe(page, label);
   try {
-    await page.goto(`${baseUrl}/areas`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/areas`, { waitUntil: "networkidle" });
     const disclosure = page.locator(".mobile-nav-disclosure");
     const summary = page.locator(".mobile-nav-summary");
     const navigationIsOpen = async () => (await disclosure.getAttribute("data-open")) === "true";
@@ -1615,6 +1639,148 @@ if (process.env.BROWSER_QUALITY_SCENARIO === "saved-monitoring") {
   }
   process.exit(0);
 }
+if (process.env.BROWSER_QUALITY_SCENARIO === "provenance-surfaces") {
+  try {
+    await runProvenanceSurfaces(browser);
+    console.log("browser quality passed: provenance-surfaces");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "buyer-action-plan") {
+  try {
+    for (const locale of locales) {
+      await runBuyerDecisionLocalization(browser, locale);
+      console.log(`browser quality passed: buyer-action-plan/${locale}/localized`);
+    }
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await runBuyerActionPlan(browser, viewport);
+      console.log(`browser quality passed: buyer-action-plan/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "negotiation-available") {
+  try {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await runAvailableNegotiationScenario(browser, viewport);
+      console.log(`browser quality passed: negotiation-available/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "listing-decision") {
+  try {
+    for (const viewport of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      await runListingDecisionHierarchy(browser, viewport);
+      console.log(`browser quality passed: listing-decision/${viewport.width}`);
+    }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "score-explainability") {
+  try {
+    for (const locale of locales) {
+      await runScoreExplainability(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: score-explainability/${locale}/mobile`);
+    }
+    await runScoreExplainability(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: score-explainability/pl/desktop");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "rental-evidence") {
+  try {
+    for (const locale of locales) {
+      for (const rentalCase of [
+        { listingId: "wr-001", status: "estimated" },
+        { listingId: "wys-001", status: "insufficient" },
+      ]) {
+        await runRentalEvidence(browser, rentalCase.listingId, rentalCase.status, locale, {
+          width: 390,
+          height: 844,
+        });
+        console.log(`browser quality passed: rental-${rentalCase.status}/${locale}/mobile`);
+      }
+    }
+    await runRentalEvidence(browser, "wr-001", "estimated", "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: rental-estimated/pl/desktop");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "check-flow-states") {
+  try {
+    await runCriticalFlow(browser);
+    console.log("browser quality passed: critical-flow");
+    await runFailureState(browser);
+    console.log("browser quality passed: failure-state");
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
 if (process.env.BROWSER_QUALITY_SCENARIO === "product-analytics") {
   try {
     await runProductAnalytics(browser);
@@ -1780,6 +1946,27 @@ if (process.env.BROWSER_QUALITY_SCENARIO === "search-transparency") {
       await runTransparentSearch(browser, viewport);
       console.log(`browser quality passed: search-transparency/pl/${viewport.width}`);
     }
+  } catch (error) {
+    failures.push(error.message);
+  } finally {
+    await browser.close();
+  }
+  if (failures.length) {
+    console.error(failures.join("\n"));
+    process.exit(1);
+  }
+  process.exit(0);
+}
+if (process.env.BROWSER_QUALITY_SCENARIO === "compare-decision") {
+  try {
+    for (const locale of locales) {
+      await runCompareDecision(browser, locale, { width: 390, height: 844 });
+      console.log(`browser quality passed: compare-decision/${locale}/mobile`);
+    }
+    await runCompareDecision(browser, "pl", { width: 1440, height: 900 });
+    console.log("browser quality passed: compare-decision/pl/desktop");
+    await runPartialCompareDecision(browser);
+    console.log("browser quality passed: compare-decision/partial");
   } catch (error) {
     failures.push(error.message);
   } finally {

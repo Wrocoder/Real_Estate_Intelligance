@@ -40,6 +40,16 @@ export function trackProductEventOnce(
   trackProductEvent(eventName, locale, properties);
 }
 
+export function productSurface(pathname: string | null | undefined) {
+  if (pathname === "/") return "home";
+  if (pathname?.startsWith("/check")) return "check";
+  if (pathname?.startsWith("/compare")) return "compare";
+  if (pathname?.startsWith("/pricing")) return "pricing";
+  if (pathname?.startsWith("/reports")) return "reports";
+  if (pathname?.startsWith("/listings")) return "listing";
+  return "check";
+}
+
 function getJourneyId() {
   if (typeof window === "undefined") return null;
   try {
@@ -76,4 +86,11 @@ export function productVerdict(status: string | null | undefined) {
 export function productPaymentProvider(provider: string | null | undefined) {
   if (provider === "stripe" || provider === "payu" || provider === "mock") return provider;
   return "unknown";
+}
+
+export function productResultState(status: string | null | undefined) {
+  if (status === "extracted" || status === "success") return "success";
+  if (status === "partial") return "partial";
+  if (status === "unsupported" || status === "insufficient") return "insufficient";
+  return "error";
 }

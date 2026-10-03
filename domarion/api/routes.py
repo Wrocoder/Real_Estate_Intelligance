@@ -6336,6 +6336,7 @@ def _generate_paid_report_for_order(
             owner_id=order.owner_id,
             product_code=order.product_code,
             report_metadata_extra=_paid_report_metadata(order),
+            apply_paid_variant=True,
         )
         return _save_report_ai_insights(ai_insight_store, report)
 
@@ -6348,6 +6349,7 @@ def _generate_paid_report_for_order(
         owner_id=order.owner_id,
         product_code=order.product_code,
         report_metadata_extra=_paid_report_metadata(order),
+        apply_paid_variant=True,
     )
     return _save_report_ai_insights(ai_insight_store, report)
 

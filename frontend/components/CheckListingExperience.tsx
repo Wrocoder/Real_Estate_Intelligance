@@ -3,6 +3,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -66,8 +67,11 @@ import { useLocalePreference } from "@/lib/useLocalePreference";
 import {
   productConfidence,
   productIntent,
+  productResultState,
+  productSurface,
   productVerdict,
   trackProductEvent,
+  trackProductEventOnce,
 } from "@/lib/productAnalytics";
 
 type CheckFormState = {
@@ -127,6 +131,8 @@ const RENOVATION_CONDITIONS: RenovationCondition[] = [
   "custom_budget",
 ];
 type RequiredReportField = keyof CheckPageCopy["requiredFieldLabels"];
+type BuyerOutcome = "bought" | "negotiated" | "rejected" | "still_checking";
+type DecisionImpact = "yes" | "no" | "unsure";
 
 function shouldOpenManualEntry(caught: unknown) {
   return caught instanceof ApiError && caught.status === 400;
@@ -173,6 +179,20 @@ const PRODUCT_COPY = {
       "No reliable listing details were extracted. Try again or enter the address, price, size and rooms manually.",
     importUnsupportedTitle: "This listing source is not supported",
     importUnsupportedText: "We can import Otodom and OLX listings. You can still enter the apartment details manually.",
+    outcomeTitle: "What happened after this analysis?",
+    outcomeHint: "Optional. This helps us measure whether WartoMetr supports real buying decisions.",
+    outcomeBought: "I bought it",
+    outcomeNegotiated: "I negotiated",
+    outcomeRejected: "I walked away",
+    outcomeStillChecking: "Still checking",
+    impactTitle: "Did WartoMetr influence the decision?",
+    impactYes: "Yes",
+    impactNo: "No",
+    impactUnsure: "Not sure",
+    outcomeChooseImpact: "Choose whether the analysis influenced the decision to send the anonymous answer.",
+    outcomePrivacy: "We do not store the listing link, address, account or notes with this answer.",
+    outcomeRecorded: "Recorded anonymously:",
+    outcomeThanks: "Thanks. We saved only this anonymous category.",
   },
   pl: {
     heroTitle: "Sprawdź mieszkanie przed zakupem",
@@ -214,6 +234,20 @@ const PRODUCT_COPY = {
       "Nie udało się pobrać wiarygodnych danych ogłoszenia. Spróbuj ponownie albo wpisz ręcznie adres, cenę, metraż i liczbę pokoi.",
     importUnsupportedTitle: "To źródło ogłoszenia nie jest obsługiwane",
     importUnsupportedText: "Importujemy ogłoszenia z Otodom i OLX. Dane mieszkania możesz nadal wpisać ręcznie.",
+    outcomeTitle: "Co zrobiłeś po tej analizie?",
+    outcomeHint: "Opcjonalnie. To pomaga mierzyć, czy WartoMetr wspiera realne decyzje kupujących.",
+    outcomeBought: "Kupiłem",
+    outcomeNegotiated: "Negocjowałem",
+    outcomeRejected: "Zrezygnowałem",
+    outcomeStillChecking: "Sprawdzam dalej",
+    impactTitle: "Czy WartoMetr wpłynął na decyzję?",
+    impactYes: "Tak",
+    impactNo: "Nie",
+    impactUnsure: "Nie wiem",
+    outcomeChooseImpact: "Wybierz, czy analiza wpłynęła na decyzję, aby wysłać anonimową odpowiedź.",
+    outcomePrivacy: "Nie zapisujemy przy tej odpowiedzi linku do ogłoszenia, adresu, konta ani notatek.",
+    outcomeRecorded: "Zapisano anonimowo:",
+    outcomeThanks: "Dzięki. Zapisaliśmy tylko tę anonimową kategorię.",
   },
   ru: {
     heroTitle: "Проверьте квартиру перед покупкой",
@@ -255,6 +289,20 @@ const PRODUCT_COPY = {
       "Надежные данные объявления не извлечены. Повторите попытку или введите вручную адрес, цену, площадь и число комнат.",
     importUnsupportedTitle: "Источник объявления не поддерживается",
     importUnsupportedText: "Мы импортируем объявления с Otodom и OLX. Параметры квартиры можно ввести вручную.",
+    outcomeTitle: "Что вы сделали после этой проверки?",
+    outcomeHint: "Необязательно. Это помогает понять, помогает ли WartoMetr в реальных решениях о покупке.",
+    outcomeBought: "Купил(а)",
+    outcomeNegotiated: "Торговался(ась)",
+    outcomeRejected: "Отказался(ась)",
+    outcomeStillChecking: "Проверяю дальше",
+    impactTitle: "WartoMetr повлиял на решение?",
+    impactYes: "Да",
+    impactNo: "Нет",
+    impactUnsure: "Не уверен(а)",
+    outcomeChooseImpact: "Выберите, повлиял ли анализ на решение, чтобы отправить анонимный ответ.",
+    outcomePrivacy: "Мы не сохраняем с этим ответом ссылку на объявление, адрес, аккаунт или заметки.",
+    outcomeRecorded: "Анонимно сохранено:",
+    outcomeThanks: "Спасибо. Мы сохранили только эту анонимную категорию.",
   },
   uk: {
     heroTitle: "Перевірте квартиру перед купівлею",
@@ -296,11 +344,27 @@ const PRODUCT_COPY = {
       "Надійні дані оголошення не вилучено. Спробуйте ще раз або введіть вручну адресу, ціну, площу та кількість кімнат.",
     importUnsupportedTitle: "Джерело оголошення не підтримується",
     importUnsupportedText: "Ми імпортуємо оголошення з Otodom і OLX. Параметри квартири можна ввести вручну.",
+    outcomeTitle: "Що ви зробили після цієї перевірки?",
+    outcomeHint: "Необов'язково. Це допомагає зрозуміти, чи WartoMetr підтримує реальні рішення покупців.",
+    outcomeBought: "Купив(ла)",
+    outcomeNegotiated: "Торгувався(лася)",
+    outcomeRejected: "Відмовився(лася)",
+    outcomeStillChecking: "Перевіряю далі",
+    impactTitle: "Чи WartoMetr вплинув на рішення?",
+    impactYes: "Так",
+    impactNo: "Ні",
+    impactUnsure: "Не впевнений(а)",
+    outcomeChooseImpact: "Виберіть, чи вплинув аналіз на рішення, щоб надіслати анонімну відповідь.",
+    outcomePrivacy: "Ми не зберігаємо з цією відповіддю посилання на оголошення, адресу, акаунт або нотатки.",
+    outcomeRecorded: "Анонімно збережено:",
+    outcomeThanks: "Дякуємо. Ми зберегли лише цю анонімну категорію.",
   },
 } as const;
 
 type ProductCopy = (typeof PRODUCT_COPY)[Locale];
 type CoreOperation = "draft" | "import" | "check" | "report" | "save" | "track" | "document";
+const BUYER_OUTCOMES: BuyerOutcome[] = ["bought", "negotiated", "rejected", "still_checking"];
+const DECISION_IMPACTS: DecisionImpact[] = ["yes", "no", "unsure"];
 const PROFILE_NOTICE_COPY: Record<Locale, { applied: string; budget: string; edit: string }> = {
   en: { applied: "Using your saved buying purpose", budget: "Saved maximum price", edit: "Edit profile" },
   pl: { applied: "Używamy zapisanego celu zakupu", budget: "Zapisana maksymalna cena", edit: "Edytuj profil" },
@@ -440,10 +504,12 @@ const DOCUMENT_CHECK_COPY = {
 } as const;
 
 export default function CheckListingExperience() {
+  const pathname = usePathname();
   const { locale } = useLocalePreference();
   const copy = CHECK_PAGE_COPY[locale];
   const product = PRODUCT_COPY[locale];
   const entry = CHECK_ENTRY_COPY[locale];
+  const analyticsSurface = productSurface(pathname);
   const [form, setForm] = useState<CheckFormState>(DEFAULT_FORM);
   const [result, setResult] = useState<UserSubmittedListingAnalysis | null>(null);
   const [referencePreview, setReferencePreview] = useState<SourceReferencePreview | null>(null);
@@ -482,11 +548,31 @@ export default function CheckListingExperience() {
   const [editedFields, setEditedFields] = useState<string[]>([]);
   const [areaContext, setAreaContext] = useState("");
   const [entryExpanded, setEntryExpanded] = useState(false);
+  const [buyerOutcome, setBuyerOutcome] = useState<BuyerOutcome | null>(null);
+  const [decisionImpact, setDecisionImpact] = useState<DecisionImpact | null>(null);
+  const [buyerOutcomeSubmitted, setBuyerOutcomeSubmitted] = useState(false);
   const [recoveryReady, setRecoveryReady] = useState(false);
   const requestEpoch = useRef(0);
   const mutationBusy = useRef(false);
+  const buyerOutcomeSubmittedRef = useRef(false);
   const confirmationRef = useRef<HTMLDetailsElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    trackProductEventOnce(
+      "landing_viewed",
+      locale,
+      { surface: analyticsSurface },
+      analyticsSurface,
+    );
+  }, [analyticsSurface, locale]);
+
+  useEffect(() => {
+    buyerOutcomeSubmittedRef.current = false;
+    setBuyerOutcome(null);
+    setDecisionImpact(null);
+    setBuyerOutcomeSubmitted(false);
+  }, [result]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -684,7 +770,7 @@ export default function CheckListingExperience() {
     setPostViewingResult(null);
     setStatus(copy.statuses.calculating);
     trackProductEvent("check_started", locale, {
-      surface: "check",
+      surface: analyticsSurface,
       intent: productIntent(form.purchase_intent),
       market_type: form.market_type,
       entry_mode: form.source_url ? "url" : "manual",
@@ -755,6 +841,11 @@ export default function CheckListingExperience() {
       setReferencePreview(payload.reference_preview);
       setForm(updatedForm);
       setUrlImportStatus(urlImportStatusLabel(payload, copy));
+      trackProductEvent("listing_parsed", locale, {
+        surface: analyticsSurface,
+        entry_mode: "url",
+        result_state: productResultState(payload.status),
+      });
       setReportStatus(copy.statuses.reportNotCreated);
       setSaveStatus(copy.statuses.notSaved);
       setAwaitingConfirmation(true);
@@ -765,6 +856,11 @@ export default function CheckListingExperience() {
       if (epoch !== requestEpoch.current) return;
       if (caught instanceof ApiError && caught.status === 401) setAuthRequired(true);
       if (shouldOpenManualEntry(caught)) setManualEntryRequested(true);
+      trackProductEvent("listing_parsed", locale, {
+        surface: analyticsSurface,
+        entry_mode: "url",
+        result_state: "error",
+      });
       setError(localizedError(caught, locale, copy.statuses.importError));
       setUrlImportStatus(copy.statuses.importError);
       setRetryAction("import");
@@ -843,6 +939,8 @@ export default function CheckListingExperience() {
       });
       setSavedReport(payload);
       setSaveStatus(copy.statuses.saved);
+      trackProductEvent("property_saved", locale, { surface: analyticsSurface });
+      trackProductEvent("saved", locale, { surface: analyticsSurface });
       setRetryAction(null);
     } catch (caught) {
       setError(localizedError(caught, locale, copy.statuses.saveError));
@@ -862,6 +960,8 @@ export default function CheckListingExperience() {
     try {
       await api.createUserSubmittedDraftObjectWatch(result.draft_id, {});
       setSaveStatus(product.track);
+      trackProductEvent("property_saved", locale, { surface: analyticsSurface });
+      trackProductEvent("saved", locale, { surface: analyticsSurface });
       setRetryAction(null);
     } catch (caught) {
       setError(localizedError(caught, locale, copy.statuses.saveError));
@@ -931,7 +1031,7 @@ export default function CheckListingExperience() {
       setAiAnswer(answer);
       if (selectedAIQuestion === "negotiation" && !answer.refused) {
         trackProductEvent("negotiation_message_generated", locale, {
-          surface: "check",
+          surface: analyticsSurface,
           result_state: "success",
         });
       }
@@ -965,27 +1065,75 @@ export default function CheckListingExperience() {
   function trackCompletedAnalysis(payload: UserSubmittedListingAnalysis) {
     const confidence = productConfidence(payload.confidence_score);
     trackProductEvent("check_completed", locale, {
-      surface: "check",
+      surface: analyticsSurface,
+      intent: productIntent(payload.analysis.buyer_decision?.selected_intent),
+      market_type: payload.analysis.listing.market_type,
+      result_state: payload.analysis.buyer_decision ? "success" : "partial",
+      confidence_level: confidence,
+    });
+    trackProductEvent("analysis_completed", locale, {
+      surface: analyticsSurface,
       intent: productIntent(payload.analysis.buyer_decision?.selected_intent),
       market_type: payload.analysis.listing.market_type,
       result_state: payload.analysis.buyer_decision ? "success" : "partial",
       confidence_level: confidence,
     });
     trackProductEvent("verdict_viewed", locale, {
-      surface: "check",
+      surface: analyticsSurface,
+      verdict: productVerdict(payload.analysis.buyer_decision?.verdict.status),
+      confidence_level: confidence,
+    });
+    trackProductEvent("result_viewed", locale, {
+      surface: analyticsSurface,
       verdict: productVerdict(payload.analysis.buyer_decision?.verdict.status),
       confidence_level: confidence,
     });
     trackProductEvent("risk_opened", locale, {
-      surface: "check",
+      surface: analyticsSurface,
       evidence_state: payload.analysis.buyer_decision?.verdict.top_risks.length
         ? "available"
         : "insufficient",
     });
     trackProductEvent("comparables_opened", locale, {
-      surface: "check",
+      surface: analyticsSurface,
       evidence_state: payload.analysis.comparables.length ? "available" : "insufficient",
     });
+  }
+
+  function chooseBuyerOutcome(outcome: BuyerOutcome) {
+    if (buyerOutcomeSubmitted) return;
+    setBuyerOutcome(outcome);
+    setDecisionImpact(null);
+  }
+
+  function submitBuyerOutcome(outcome: BuyerOutcome, impact: DecisionImpact) {
+    if (buyerOutcomeSubmittedRef.current) return;
+    buyerOutcomeSubmittedRef.current = true;
+    setBuyerOutcome(outcome);
+    setDecisionImpact(impact);
+    setBuyerOutcomeSubmitted(true);
+    trackProductEvent("buyer_outcome", locale, {
+      surface: analyticsSurface,
+      outcome,
+      decision_impact: impact,
+    });
+  }
+
+  function buyerOutcomeLabel(outcome: BuyerOutcome) {
+    return {
+      bought: product.outcomeBought,
+      negotiated: product.outcomeNegotiated,
+      rejected: product.outcomeRejected,
+      still_checking: product.outcomeStillChecking,
+    }[outcome];
+  }
+
+  function decisionImpactLabel(impact: DecisionImpact) {
+    return {
+      yes: product.impactYes,
+      no: product.impactNo,
+      unsure: product.impactUnsure,
+    }[impact];
   }
 
   const analysis = result?.analysis ?? null;
@@ -1174,7 +1322,7 @@ export default function CheckListingExperience() {
           locale={locale}
           onNegotiationOpened={() =>
             trackProductEvent("negotiation_opened", locale, {
-              surface: "check",
+              surface: analyticsSurface,
               evidence_state: displayedDecision.negotiation.scenario_status === "available"
                 ? "available"
                 : "insufficient",
@@ -1211,6 +1359,54 @@ export default function CheckListingExperience() {
           </div>
           <p className="status-line" role="status">{saveStatus}</p>
         </div>
+      ) : null}
+
+      {analysis && result ? (
+        <section className="buyer-outcome-panel" aria-labelledby="buyer-outcome-title">
+          <div className="buyer-outcome-heading">
+            <h2 id="buyer-outcome-title"><ShieldCheck size={18} /> {product.outcomeTitle}</h2>
+            <p>{product.outcomeHint}</p>
+          </div>
+          <div className="buyer-outcome-controls" role="group" aria-label={product.outcomeTitle}>
+            {BUYER_OUTCOMES.map((outcome) => (
+              <button
+                className={buyerOutcome === outcome ? "chip-button selected" : "chip-button"}
+                aria-pressed={buyerOutcome === outcome}
+                disabled={buyerOutcomeSubmitted}
+                key={outcome}
+                onClick={() => chooseBuyerOutcome(outcome)}
+                type="button"
+              >
+                {buyerOutcomeLabel(outcome)}
+              </button>
+            ))}
+          </div>
+          <div className="buyer-outcome-impact">
+            <span>{product.impactTitle}</span>
+            <div className="buyer-outcome-controls" role="group" aria-label={product.impactTitle}>
+              {DECISION_IMPACTS.map((impact) => (
+                <button
+                  className={decisionImpact === impact ? "chip-button selected" : "chip-button"}
+                  aria-pressed={decisionImpact === impact}
+                  disabled={!buyerOutcome || buyerOutcomeSubmitted}
+                  key={impact}
+                  onClick={() => buyerOutcome ? submitBuyerOutcome(buyerOutcome, impact) : undefined}
+                  type="button"
+                >
+                  {decisionImpactLabel(impact)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="buyer-outcome-privacy">{product.outcomePrivacy}</p>
+          {buyerOutcome && decisionImpact && buyerOutcomeSubmitted ? (
+            <p className="status-line" role="status">
+              {product.outcomeThanks} <strong>{product.outcomeRecorded}</strong> {buyerOutcomeLabel(buyerOutcome)} · {decisionImpactLabel(decisionImpact)}
+            </p>
+          ) : buyerOutcome ? (
+            <p className="status-line" role="status">{product.outcomeChooseImpact}</p>
+          ) : null}
+        </section>
       ) : null}
 
       {analysis && result ? (

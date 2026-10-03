@@ -53,6 +53,7 @@ def generate_and_store_object_report(
     branding: ReportBranding | None = None,
     product_code: ReportProductCode = "object_report",
     report_metadata_extra: dict | None = None,
+    apply_paid_variant: bool = False,
 ) -> GeneratedReport:
     listing = repository.get_listing(listing_id)
     if listing is None:
@@ -60,7 +61,8 @@ def generate_and_store_object_report(
 
     analysis = build_listing_analysis(repository, listing)
     report = build_object_report(analysis, audience, branding=branding)
-    report = _apply_paid_object_report_variant(report, analysis, product_code)
+    if apply_paid_variant:
+        report = _apply_paid_object_report_variant(report, analysis, product_code)
 
     if report_format == "html":
         content = render_object_report_html(report, analysis)
@@ -75,7 +77,7 @@ def generate_and_store_object_report(
         audience=audience,
         report_format=report_format,
         content_type=content_type,
-        title=_object_report_title(listing.title, product_code),
+        title=_object_report_title(listing.title, product_code, apply_paid_variant),
         summary=report.summary,
         content=content,
         report_metadata={
@@ -178,12 +180,14 @@ def generate_and_store_user_submitted_draft_report(
     branding: ReportBranding | None = None,
     product_code: ReportProductCode = "object_report",
     report_metadata_extra: dict | None = None,
+    apply_paid_variant: bool = False,
 ) -> GeneratedReport:
     analysis_wrapper = UserSubmittedListingAnalysis.model_validate(draft.analysis_payload)
     analysis = analysis_wrapper.analysis
     listing = analysis.listing
     report = build_user_submitted_object_report(analysis_wrapper, audience, branding=branding)
-    report = _apply_paid_object_report_variant(report, analysis, product_code)
+    if apply_paid_variant:
+        report = _apply_paid_object_report_variant(report, analysis, product_code)
 
     if report_format == "html":
         content = render_object_report_html(report, analysis)
@@ -198,7 +202,7 @@ def generate_and_store_user_submitted_draft_report(
         audience=audience,
         report_format=report_format,
         content_type=content_type,
-        title=_object_report_title(listing.title, product_code),
+        title=_object_report_title(listing.title, product_code, apply_paid_variant),
         summary=report.summary,
         content=content,
         report_metadata={
@@ -549,7 +553,13 @@ def _apply_paid_object_report_variant(
     )
 
 
-def _object_report_title(listing_title: str, product_code: ReportProductCode) -> str:
+def _object_report_title(
+    listing_title: str,
+    product_code: ReportProductCode,
+    apply_paid_variant: bool,
+) -> str:
+    if not apply_paid_variant:
+        return listing_title
     if product_code == "object_report":
         return f"Buyer Report - {listing_title}"
     if product_code == "full_object_analysis":

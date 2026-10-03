@@ -332,20 +332,28 @@ MortgageNoteCode = Literal[
     "within_budgeting_thresholds",
 ]
 ProductEventName = Literal[
+    "landing_viewed",
     "check_started",
+    "listing_parsed",
     "check_completed",
+    "analysis_completed",
     "report_opened",
     "verdict_viewed",
+    "result_viewed",
     "comparables_opened",
     "risk_opened",
     "negotiation_opened",
     "negotiation_message_generated",
     "property_saved",
+    "saved",
     "comparison_started",
     "comparison_completed",
     "pricing_viewed",
     "checkout_started",
+    "payment_started",
     "purchase_completed",
+    "payment_completed",
+    "buyer_outcome",
 ]
 MarketIntelligenceAudience = Literal["bank", "developer", "fund"]
 MarketIntelligenceSeverity = Literal["positive", "neutral", "watch", "risk"]

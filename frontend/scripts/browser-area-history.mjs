@@ -49,6 +49,14 @@ try {
       if (!(await page.locator(".area-yearly-history").isVisible())) {
         failures.push(`${viewport.name}: yearly history summary is not visible`);
       }
+      if (!(await page.locator(".area-check-cta").isVisible())) {
+        failures.push(`${viewport.name}: area-to-check CTA is not visible`);
+      }
+      const ctaButton = page.locator(".area-check-cta .button.primary");
+      const ctaHref = await ctaButton.count() > 0 ? await ctaButton.first().getAttribute("href") : null;
+      if (!ctaHref?.includes("/check?city=") || !ctaHref.includes("&district=")) {
+        failures.push(`${viewport.name}: area-to-check CTA does not preserve city and district`);
+      }
       const chartScrollsInternally = await page.locator(".area-price-chart-scroll").evaluate(
         (element) => element.scrollWidth > element.clientWidth + 1,
       );
