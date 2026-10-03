@@ -70,7 +70,9 @@ def analyze_user_submitted_document(
         raise ValueError("document check limit reached for this draft")
 
     normalized_type = _normalize_document_type(document_type)
-    upload_channel: DocumentAnalysisUploadChannel = "file" if file_bytes is not None else "metadata_only"
+    upload_channel: DocumentAnalysisUploadChannel = (
+        "file" if file_bytes is not None else "metadata_only"
+    )
     file_size = len(file_bytes or b"")
     if file_bytes is not None:
         _validate_file(filename, content_type, file_size)
@@ -195,7 +197,10 @@ def _signals_for_document(
         add_signal(
             "kw_owner",
             ("właściciel", "wlasciciel", "księga wieczysta", "ksiega wieczysta"),
-            "The document appears to mention ownership/register context; seller authority still needs professional verification.",
+            (
+                "The document appears to mention ownership/register context; "
+                "seller authority still needs professional verification."
+            ),
             status="needs_review",
             confidence=60,
         )
@@ -223,7 +228,10 @@ def _signals_for_document(
         add_signal(
             "area_match",
             ("powierzchnia", "m2", "m²", "rzut", "plan lokalu"),
-            "The document appears to contain area or layout evidence; compare it with the listing area manually.",
+            (
+                "The document appears to contain area or layout evidence; "
+                "compare it with the listing area manually."
+            ),
             status="evidence_found",
             confidence=65,
             severity="info",
@@ -256,14 +264,20 @@ def _signals_for_document(
         add_signal(
             "prospekt",
             ("prospekt informacyjny", "standard wykończenia", "standard wykonczenia"),
-            "Developer prospectus wording was detected; compare obligations, standard and annexes before signing.",
+            (
+                "Developer prospectus wording was detected; compare obligations, "
+                "standard and annexes before signing."
+            ),
             status="needs_review",
             confidence=60,
         )
         add_signal(
             "escrow",
             ("rachunek powierniczy", "harmonogram płatności", "harmonogram platnosci"),
-            "Escrow/payment schedule wording was detected; verify bank account structure and payment milestones.",
+            (
+                "Escrow/payment schedule wording was detected; verify bank account "
+                "structure and payment milestones."
+            ),
             status="needs_review",
             confidence=60,
         )
@@ -271,7 +285,10 @@ def _signals_for_document(
         add_signal(
             "permits",
             ("pozwolenie na budowę", "pozwolenie na budowe", "decyzja", "użytkowanie"),
-            "Permit or handover wording was detected; confirm validity and finality with the source document.",
+            (
+                "Permit or handover wording was detected; confirm validity and "
+                "finality with the source document."
+            ),
             status="needs_review",
             confidence=58,
         )
@@ -279,7 +296,10 @@ def _signals_for_document(
         add_signal(
             "agreement_review",
             ("zadatek", "zaliczka", "kara umowna", "odstąpienie", "odstapienie"),
-            "Contract-risk wording was detected; this requires legal review, not automated approval.",
+            (
+                "Contract-risk wording was detected; this requires legal review, "
+                "not automated approval."
+            ),
             status="needs_review",
             confidence=55,
             severity="risk",
@@ -322,8 +342,14 @@ def _unknowns_for_document(
     return [
         DocumentUnknown(
             checklist_code=code,
-            reason="The uploaded material did not contain enough machine-readable evidence for this check.",
-            recommended_next_action="Request the original/current document and have the relevant expert verify it before zadatek.",
+            reason=(
+                "The uploaded material did not contain enough machine-readable evidence "
+                "for this check."
+            ),
+            recommended_next_action=(
+                "Request the original/current document and have the relevant expert "
+                "verify it before zadatek."
+            ),
         )
         for code in expected
         if code not in found

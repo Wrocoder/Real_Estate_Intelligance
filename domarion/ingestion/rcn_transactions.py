@@ -7,8 +7,8 @@ price and must not become a ``ListingSnapshot``.
 
 from __future__ import annotations
 
-import json
 import http.client
+import json
 import re
 from collections import Counter, defaultdict
 from dataclasses import dataclass

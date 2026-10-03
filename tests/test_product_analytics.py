@@ -124,7 +124,9 @@ def test_product_events_accept_phase_17_core_funnel_events() -> None:
             {"surface": "checkout", "report_type": "buyer", "payment_provider": "unknown"},
         ),
     ):
-        assert client.post("/api/v1/product-events", json=_event(event_name, properties)).status_code == 202
+        response = client.post("/api/v1/product-events", json=_event(event_name, properties))
+
+        assert response.status_code == 202
 
 
 def test_product_events_reject_listing_url_address_identifier_and_free_text() -> None:
