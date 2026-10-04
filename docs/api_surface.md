@@ -1,6 +1,6 @@
 # API Surface
 
-Дата сверки: 2026-09-06. Список ниже получен из `domarion.main.app.openapi()`
+Дата сверки: 2026-10-03. Список ниже получен из `domarion.main.app.openapi()`
 для текущего FastAPI приложения. Swagger UI на `/docs` остается источником
 истины для параметров, request bodies и response schemas.
 
@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | `GET` | `/health` | Process heartbeat. |
 | `GET` | `/ready` | Production readiness/preflight report. |
+| `GET` | `/runtime-context` | Public runtime data-mode context for the frontend. |
 
 ## Public Product API
 
@@ -26,6 +27,7 @@
 | `GET` | `/api/v1/listings/{listing_id}/developer` |
 | `POST` | `/api/v1/compare` |
 | `GET` | `/api/v1/areas` |
+| `GET` | `/api/v1/coverage` |
 | `GET` | `/api/v1/areas/compare` |
 | `GET` | `/api/v1/areas/{area_id}/statistics` |
 | `GET` | `/api/v1/areas/{area_id}/price-history` |
@@ -39,6 +41,7 @@
 | `GET` | `/api/v1/infrastructure/schools` |
 | `GET` | `/api/v1/infrastructure/transport-routes` |
 | `GET` | `/api/v1/infrastructure/transport-stops` |
+| `GET` | `/api/v1/planned-investments` |
 | `GET` | `/api/v1/news` |
 | `GET` | `/api/v1/news/{article_id}` |
 | `GET` | `/api/v1/developers` |
@@ -50,7 +53,13 @@
 
 | Method | Path |
 | --- | --- |
+| `POST` | `/api/v1/auth/register` |
+| `POST` | `/api/v1/auth/login` |
+| `GET` | `/api/v1/auth/session` |
+| `POST` | `/api/v1/auth/logout` |
 | `GET` | `/api/v1/me` |
+| `PUT` | `/api/v1/me/buyer-profile` |
+| `DELETE` | `/api/v1/me/buyer-profile` |
 | `PATCH` | `/api/v1/me/subscription` |
 | `GET` | `/api/v1/plans` |
 | `GET` | `/api/v1/favorites` |
@@ -79,7 +88,14 @@
 | `GET` | `/api/v1/user-submitted-listings/drafts` |
 | `GET` | `/api/v1/user-submitted-listings/drafts/{draft_id}` |
 | `DELETE` | `/api/v1/user-submitted-listings/drafts/{draft_id}` |
+| `GET` | `/api/v1/user-submitted-listings/drafts/{draft_id}/documents` |
+| `POST` | `/api/v1/user-submitted-listings/drafts/{draft_id}/documents/analyze` |
+| `DELETE` | `/api/v1/user-submitted-listings/drafts/{draft_id}/documents/{document_check_id}` |
 | `POST` | `/api/v1/user-submitted-listings/drafts/{draft_id}/reports/generate` |
+| `POST` | `/api/v1/user-submitted-listings/drafts/{draft_id}/post-viewing-verdict` |
+| `POST` | `/api/v1/user-submitted-listings/drafts/{draft_id}/watch` |
+| `POST` | `/api/v1/listings/{listing_id}/post-viewing-verdict` |
+| `POST` | `/api/v1/listings/{listing_id}/watch` |
 
 Analysis and report responses expose buyer source evidence with the source
 class, update date, observation count, geographic scope, time range, explicit
@@ -155,6 +171,7 @@ for report-list cards; older reports and non-property reports may return
 | `POST` | `/api/v1/ai/news/{article_id}/summary` |
 | `GET` | `/api/v1/ai-insights` |
 | `GET` | `/api/v1/ai-insights/{insight_id}` |
+| `POST` | `/api/v1/product-events` |
 
 ## B2B, API-Lite And Enterprise
 
@@ -277,6 +294,7 @@ fixtures and are never a production authentication mechanism.
 | `POST` | `/api/v1/admin/area-market-snapshots` |
 | `POST` | `/api/v1/admin/price-history/rebuild` |
 | `POST` | `/api/v1/admin/alerts/deliver-daily-email` |
+| `GET` | `/api/v1/admin/product-funnel` |
 
 `/admin/scoring/backtest` and `/admin/scoring/backtest-report` now use
 `temporal_transaction_holdout` with `backtest_version =

@@ -1,3 +1,4 @@
+import logging
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
@@ -5,12 +6,15 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from domarion import __version__
 from domarion.api import router
 from domarion.api.auth_routes import router as auth_router
 from domarion.api.product_analytics_routes import router as product_analytics_router
 from domarion.core import Settings, get_settings
+from domarion.db.session import engine
 from domarion.ingestion_admin_store import IngestionAdminStore
 from domarion.ingestion_admin_store.factory import get_ingestion_admin_store
 from domarion.observability import (
@@ -18,8 +22,9 @@ from domarion.observability import (
     configure_error_tracking,
     configure_logging,
 )
-from domarion.schemas import ProductionReadinessReport, RuntimeContext
+from domarion.schemas import ProductionReadinessCheck, ProductionReadinessReport, RuntimeContext
 from domarion.services.production_readiness import (
+    REQUIRED_POSTGRES_BACKENDS,
     build_production_readiness_report,
     validate_startup_auth,
     validate_startup_data_mode,
@@ -116,9 +121,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     ) -> JSONResponse:
         fields = []
         for error in exc.errors():
-            field = ".".join(
-                str(part) for part in error.get("loc", ()) if part != "body"
-            )
+            field = ".".join(str(part) for part in error.get("loc", ()) if part != "body")
             fields.append(
                 {
                     "field": field or "body",
@@ -139,6 +142,14 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content=error_payload(request, None, 500),
+        )
+
+    @app.exception_handler(OperationalError)
+    async def database_error_handler(request: Request, _exc: OperationalError) -> JSONResponse:
+        logging.getLogger(__name__).error("Database operation unavailable", exc_info=_exc)
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content=error_payload(request, None, 503),
         )
 
     app.add_middleware(
@@ -169,12 +180,41 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         response: Response,
         ingestion_store: Annotated[IngestionAdminStore, Depends(get_ingestion_admin_store)],
     ) -> ProductionReadinessReport:
+        database_check = None
+        if any(
+            getattr(settings, field_name).strip().casefold() == "postgres"
+            for field_name in REQUIRED_POSTGRES_BACKENDS.values()
+        ):
+            try:
+                with engine.connect() as connection:
+                    connection.execute(text("SELECT 1"))
+                database_check = ProductionReadinessCheck(
+                    name="database_connection",
+                    status="pass",
+                    severity="info",
+                    message="PostgreSQL connection is available.",
+                )
+            except SQLAlchemyError:
+                database_check = ProductionReadinessCheck(
+                    name="database_connection",
+                    status="fail",
+                    severity="critical",
+                    message="PostgreSQL connection is unavailable.",
+                    remediation="Start the configured database and verify DATABASE_URL.",
+                )
         sources = (
             ingestion_store.list_sources()
             if settings.environment.strip().casefold() == "production"
+            and (database_check is None or database_check.status == "pass")
             else []
         )
         report = build_production_readiness_report(settings, sources=sources)
+        if database_check is not None:
+            report.checks.append(database_check)
+            report.check_count += 1
+            if database_check.status == "fail":
+                report.failed_count += 1
+                report.status = "blocked"
         if report.status == "blocked":
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         return report

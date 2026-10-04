@@ -5,5 +5,11 @@ from domarion.core.config import get_settings
 
 settings = get_settings()
 
-engine = create_engine(settings.sqlalchemy_database_url, pool_pre_ping=True)
+engine = create_engine(
+    settings.sqlalchemy_database_url,
+    pool_pre_ping=True,
+    connect_args={"connect_timeout": 5}
+    if settings.sqlalchemy_database_url.startswith("postgresql")
+    else {},
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

@@ -43,6 +43,7 @@ selling at scale.
 - `README.md` - quick start, локальный запуск и практические API/CLI examples.
 - `docs/api_surface.md` - актуальная карта API surface, сверенная с OpenAPI.
 - `docs/deployment.md` - CI, Docker, staging compose, env vars and deployment notes.
+- `docs/local_runtime.md` - local database recovery, browser sessions and concurrent frontend servers.
 - `docs/oci_staging_setup_runbook.md` - active Oracle Cloud runbook: GitHub
   Environment, VM bootstrap, deploy, checks, operations and rollback.
 - `docs/production_readiness_audit_2026-09-01.md` - исторический аудит и незакрытые
@@ -63,7 +64,10 @@ selling at scale.
 - `docs/product_validation_strategy.md` - исторические гипотезы коммерческой валидации.
 - `docs/document_upload_due_diligence_plan.md` - future due-diligence document
   upload/metadata flow with minimal retention, redaction and legal guardrails.
-- `docs/WartoMetr_Phase_7_Implementation.md` - последний отчёт реализации и проверок.
+- `docs/current_readiness_audit_2026-10-03.md` - текущая сверка документации с
+  кодом и список оставшихся production/product gaps.
+- `docs/WartoMetr_Phase_37_Implementation.md` - последний phase-отчёт реализации
+  и локальной browser-проверки на момент 2026-10-03.
 
 ## Backend локально
 

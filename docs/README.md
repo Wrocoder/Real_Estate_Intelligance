@@ -1,6 +1,6 @@
 # Documentation Index
 
-Reviewed: 2026-09-21. This index distinguishes maintained references, proposed
+Reviewed: 2026-10-03. This index distinguishes maintained references, proposed
 work and historical evidence. A document's presence does not prove deployment,
 market accuracy or production readiness.
 
@@ -9,6 +9,7 @@ market accuracy or production readiness.
 - [Repository setup and commands](../README.md)
 - [Project rules](../AGENTS.md)
 - [Current transformation roadmap](WartoMetr_Product_Transformation_Master_Prompt.md)
+- [Current readiness audit](current_readiness_audit_2026-10-03.md)
 - [Frontend route map](frontend_route_product_map.md)
 - [API surface](api_surface.md); running OpenAPI is authoritative for schemas.
 
@@ -65,6 +66,7 @@ later work is governed by the current roadmap, not implied complete here.
 ## Runtime And Operations
 
 - [Deployment and CI](deployment.md)
+- [Local database and session troubleshooting](local_runtime.md)
 - [OCI staging setup](oci_staging_setup_runbook.md)
 - [Production operations](production_ops_runbook.md)
 - [Source compliance](source_compliance_policy.md)

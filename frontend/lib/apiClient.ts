@@ -14,6 +14,15 @@ export class ApiError extends Error {
 }
 
 export function currentApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    const localHosts = ["localhost", "127.0.0.1", "[::1]"];
+    const apiUrl = new URL(API_BASE_URL, window.location.origin);
+    if (localHosts.includes(apiUrl.hostname) && localHosts.includes(window.location.hostname)) {
+      // Keep local session cookies on the same site as the frontend.
+      apiUrl.hostname = window.location.hostname;
+      return apiUrl.toString().replace(/\/$/, "");
+    }
+  }
   return API_BASE_URL;
 }
 

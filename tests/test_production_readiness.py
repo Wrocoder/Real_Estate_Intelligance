@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from domarion import cli
 from domarion.core.config import Settings
@@ -11,6 +12,57 @@ from domarion.main import app, create_app
 from domarion.services.production_readiness import build_production_readiness_report
 
 client = TestClient(app)
+
+
+def test_readiness_blocks_when_postgres_connection_is_unavailable(monkeypatch) -> None:
+    def unavailable():
+        raise OperationalError("SELECT 1", {}, RuntimeError("private connection details"))
+
+    monkeypatch.setattr("domarion.main.engine.connect", unavailable)
+    settings = app.state.settings.model_copy(update={"auth_store_backend": "postgres"})
+    response = TestClient(create_app(settings)).get("/ready")
+
+    assert response.status_code == 503
+    payload = response.json()
+    assert payload["status"] == "blocked"
+    assert payload["failed_count"] == 1
+    assert payload["check_count"] == len(payload["checks"])
+    assert payload["checks"][-1]["name"] == "database_connection"
+    assert payload["checks"][-1]["status"] == "fail"
+    assert "private connection details" not in response.text
+
+
+def test_readiness_checks_postgres_even_when_only_auth_uses_it(monkeypatch) -> None:
+    from contextlib import contextmanager
+
+    statements = []
+
+    class Connection:
+        def execute(self, statement):
+            statements.append(str(statement))
+
+    @contextmanager
+    def connected():
+        yield Connection()
+
+    monkeypatch.setattr("domarion.main.engine.connect", connected)
+    settings = app.state.settings.model_copy(update={"auth_store_backend": "postgres"})
+    response = TestClient(create_app(settings)).get("/ready")
+
+    assert response.status_code == 200
+    assert statements == ["SELECT 1"]
+    assert response.json()["checks"][-1]["status"] == "pass"
+
+
+def test_readiness_memory_mode_does_not_connect_to_postgres(monkeypatch) -> None:
+    def unexpected_connection():
+        raise AssertionError("Memory mode must not require PostgreSQL")
+
+    monkeypatch.setattr("domarion.main.engine.connect", unexpected_connection)
+    response = client.get("/ready")
+
+    assert response.status_code == 200
+    assert all(check["name"] != "database_connection" for check in response.json()["checks"])
 
 
 def test_readiness_endpoint_reports_local_ready() -> None:

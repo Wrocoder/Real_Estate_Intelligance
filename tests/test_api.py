@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+from sqlalchemy.exc import OperationalError
 
 from domarion.main import app, create_app
 
@@ -84,6 +85,26 @@ def test_internal_errors_return_only_safe_code_and_correlation_id() -> None:
     }
     assert response.status_code == 500
     assert response.json() == {"detail": expected_error, "error": expected_error}
+    assert "secret" not in response.text
+
+
+def test_database_outage_returns_safe_retryable_error_with_cors() -> None:
+    isolated_app = create_app(app.state.settings)
+
+    @isolated_app.get("/__test/database-error")
+    def raise_database_error() -> None:
+        raise OperationalError("SELECT private_table", {}, RuntimeError("secret"))
+
+    response = TestClient(isolated_app).get(
+        "/__test/database-error",
+        headers={"Origin": "http://localhost:3000", "X-Request-ID": "database-outage-test"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "service_unavailable"
+    assert response.json()["error"]["correlation_id"] == "database-outage-test"
+    assert response.headers["Access-Control-Allow-Origin"] == "http://localhost:3000"
+    assert "private_table" not in response.text
     assert "secret" not in response.text
 
 
@@ -647,15 +668,9 @@ def test_listing_analysis() -> None:
         "rental",
     }
     assert payload["scores"]["explainability"]["version"] == "score-explanation-v2"
-    assert all(
-        detail["calculation_version"] == "domarion-scoring-v2"
-        for detail in score_details
-    )
+    assert all(detail["calculation_version"] == "domarion-scoring-v2" for detail in score_details)
     assert all(0 <= detail["coverage_score"] <= 100 for detail in score_details)
-    assert all(
-        detail["confidence_level"] in {"high", "medium", "low"}
-        for detail in score_details
-    )
+    assert all(detail["confidence_level"] in {"high", "medium", "low"} for detail in score_details)
     assert all(
         set(driver) == {"code", "direction"}
         for detail in score_details
@@ -759,15 +774,15 @@ def test_listing_growth_analysis_returns_structured_factors() -> None:
     }
     factor_codes = {factor["code"] for factor in payload["factors"]}
     assert {
-               "transport",
-               "education",
-               "parks_greenery",
-               "healthcare",
-               "retail_services",
-               "offices_jobs",
-               "universities",
-               "population_jobs_growth",
-           } == factor_codes
+        "transport",
+        "education",
+        "parks_greenery",
+        "healthcare",
+        "retail_services",
+        "offices_jobs",
+        "universities",
+        "population_jobs_growth",
+    } == factor_codes
     assert payload["positive_signals"]
     assert payload["drag_signals"]
     assert "screening heuristic" in payload["methodology_note"]
@@ -821,14 +836,14 @@ def test_ai_assistant_contract_and_questions_are_public() -> None:
     assert questions_response.status_code == 200
     question_codes = {item["code"] for item in questions_response.json()}
     assert {
-               "price",
-               "negotiation",
-               "risks",
-               "future_plans",
-               "family_fit",
-               "rental_fit",
-               "seller_questions",
-           } <= question_codes
+        "price",
+        "negotiation",
+        "risks",
+        "future_plans",
+        "family_fit",
+        "rental_fit",
+        "seller_questions",
+    } <= question_codes
 
 
 def test_listing_ai_answer_is_source_grounded_and_logged() -> None:

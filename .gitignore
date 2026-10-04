@@ -34,6 +34,7 @@ july.py
 # Node / frontend
 node_modules/
 .next/
+.next-internal/
 out/
 coverage/
 
